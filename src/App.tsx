@@ -11,6 +11,8 @@ import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import { AnimatePresence } from "framer-motion";
+import Auth from "./pages/Auth";
+import { AuthProvider } from "./contexts/AuthContext";
 
 const queryClient = new QueryClient();
 
@@ -20,17 +22,38 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <AnimatePresence mode="wait">
-          <Layout>
+        <AuthProvider>
+          <AnimatePresence mode="wait">
             <Routes>
-              <Route path="/" element={<Feed />} />
-              <Route path="/messages" element={<Messages />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="*" element={<NotFound />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/" element={
+                <Layout>
+                  <Feed />
+                </Layout>
+              } />
+              <Route path="/messages" element={
+                <Layout>
+                  <Messages />
+                </Layout>
+              } />
+              <Route path="/profile" element={
+                <Layout>
+                  <Profile />
+                </Layout>
+              } />
+              <Route path="/settings" element={
+                <Layout>
+                  <Settings />
+                </Layout>
+              } />
+              <Route path="*" element={
+                <Layout>
+                  <NotFound />
+                </Layout>
+              } />
             </Routes>
-          </Layout>
-        </AnimatePresence>
+          </AnimatePresence>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

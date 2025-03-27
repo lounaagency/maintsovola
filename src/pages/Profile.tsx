@@ -1,21 +1,30 @@
 
-import React from "react";
+import React, { useEffect } from "react";
 import UserAvatar from "@/components/UserAvatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Edit, Settings, Image, MapPin, Link as LinkIcon } from "lucide-react";
+import { Edit, Settings, Image, MapPin, Link as LinkIcon, LogOut } from "lucide-react";
 import Post from "@/components/Post";
 import { motion } from "framer-motion";
+import { Navigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Profile: React.FC = () => {
-  const profile = {
-    name: "Alex Morgan",
-    username: "alexmorgan",
-    avatar: "https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&q=80&w=200",
+  const { user, profile, signOut, loading } = useAuth();
+  
+  // Redirect to auth page if not logged in
+  if (!loading && !user) {
+    return <Navigate to="/auth" />;
+  }
+
+  const profileData = {
+    name: profile?.nom || "Utilisateur",
+    username: profile?.email?.split('@')[0] || "utilisateur",
+    avatar: profile?.photo_profil || "https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&q=80&w=200",
     cover: "https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&q=80&w=1200",
-    bio: "Product Designer & Developer | Creating digital experiences that people love",
-    location: "San Francisco, CA",
-    website: "alexmorgan.design",
+    bio: `${profile?.role || "Utilisateur"} | Plateforme AgrInvest`,
+    location: "Madagascar",
+    website: "agrinvest.mg",
     followers: 1425,
     following: 356,
     posts: 123,
@@ -25,11 +34,11 @@ const Profile: React.FC = () => {
     {
       id: "1",
       author: {
-        name: profile.name,
-        username: profile.username,
-        avatar: profile.avatar,
+        name: profileData.name,
+        username: profileData.username,
+        avatar: profileData.avatar,
       },
-      content: "Just launched my new portfolio website! Check it out and let me know what you think.",
+      content: "Je viens de rejoindre AgrInvest ! Prêt à participer à des projets agricoles passionnants.",
       image: "https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?auto=format&fit=crop&q=80&w=1200",
       timestamp: "2d ago",
       likes: 87,
@@ -39,11 +48,11 @@ const Profile: React.FC = () => {
     {
       id: "2",
       author: {
-        name: profile.name,
-        username: profile.username,
-        avatar: profile.avatar,
+        name: profileData.name,
+        username: profileData.username,
+        avatar: profileData.avatar,
       },
-      content: "Working on something exciting. Can't wait to share it with you all soon!",
+      content: "Découvrez mon nouveau projet agricole ! Une opportunité unique d'investissement.",
       timestamp: "1w ago",
       likes: 124,
       comments: 32,
@@ -66,12 +75,20 @@ const Profile: React.FC = () => {
     show: { opacity: 1, y: 0 }
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-md mx-auto pb-6">
       <div className="relative">
         <div
           className="h-48 bg-cover bg-center bg-no-repeat"
-          style={{ backgroundImage: `url(${profile.cover})` }}
+          style={{ backgroundImage: `url(${profileData.cover})` }}
         >
           <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/40" />
         </div>
@@ -88,45 +105,49 @@ const Profile: React.FC = () => {
         <div className="relative -mt-16 px-4">
           <div className="flex justify-between items-end">
             <div className="bg-white p-1 rounded-full">
-              <UserAvatar src={profile.avatar} alt={profile.name} size="lg" status="online" />
+              <UserAvatar src={profileData.avatar} alt={profileData.name} size="lg" status="online" />
             </div>
-            <Button variant="outline" className="rounded-full">
-              Edit Profile
+            <Button variant="outline" className="rounded-full" onClick={signOut}>
+              <LogOut size={16} className="mr-2" />
+              Déconnexion
             </Button>
           </div>
           
           <div className="mt-2">
-            <h1 className="text-xl font-bold">{profile.name}</h1>
-            <p className="text-sm text-gray-500">@{profile.username}</p>
+            <h1 className="text-xl font-bold">{profileData.name}</h1>
+            <p className="text-sm text-gray-500">@{profileData.username}</p>
+            <div className="mt-1 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+              {profile?.role || "Utilisateur"}
+            </div>
           </div>
           
-          <p className="mt-3 text-sm text-gray-800">{profile.bio}</p>
+          <p className="mt-3 text-sm text-gray-800">{profileData.bio}</p>
           
           <div className="flex flex-wrap gap-y-2 mt-3">
             <div className="flex items-center text-xs text-gray-600 mr-4">
               <MapPin size={14} className="mr-1" />
-              <span>{profile.location}</span>
+              <span>{profileData.location}</span>
             </div>
             <div className="flex items-center text-xs text-gray-600">
               <LinkIcon size={14} className="mr-1" />
-              <a href={`https://${profile.website}`} target="_blank" rel="noopener noreferrer" className="text-blue-600">
-                {profile.website}
+              <a href={`https://${profileData.website}`} target="_blank" rel="noopener noreferrer" className="text-blue-600">
+                {profileData.website}
               </a>
             </div>
           </div>
           
           <div className="flex mt-4 pt-4 border-t border-border">
             <div className="flex-1 text-center">
-              <p className="text-sm font-semibold">{profile.posts}</p>
-              <p className="text-xs text-gray-500">Posts</p>
+              <p className="text-sm font-semibold">{profileData.posts}</p>
+              <p className="text-xs text-gray-500">Projets</p>
             </div>
             <div className="flex-1 text-center border-x border-border">
-              <p className="text-sm font-semibold">{profile.followers}</p>
-              <p className="text-xs text-gray-500">Followers</p>
+              <p className="text-sm font-semibold">{profileData.followers}</p>
+              <p className="text-xs text-gray-500">Abonnés</p>
             </div>
             <div className="flex-1 text-center">
-              <p className="text-sm font-semibold">{profile.following}</p>
-              <p className="text-xs text-gray-500">Following</p>
+              <p className="text-sm font-semibold">{profileData.following}</p>
+              <p className="text-xs text-gray-500">Abonnements</p>
             </div>
           </div>
         </div>
@@ -135,9 +156,9 @@ const Profile: React.FC = () => {
       <div className="px-4 mt-6">
         <Tabs defaultValue="posts" className="w-full">
           <TabsList className="grid w-full grid-cols-3 bg-muted rounded-lg">
-            <TabsTrigger value="posts" className="rounded-md">Posts</TabsTrigger>
+            <TabsTrigger value="posts" className="rounded-md">Projets</TabsTrigger>
             <TabsTrigger value="photos" className="rounded-md">Photos</TabsTrigger>
-            <TabsTrigger value="saved" className="rounded-md">Saved</TabsTrigger>
+            <TabsTrigger value="saved" className="rounded-md">Sauvegardés</TabsTrigger>
           </TabsList>
           
           <TabsContent value="posts" className="mt-4">
@@ -170,7 +191,7 @@ const Profile: React.FC = () => {
           
           <TabsContent value="saved" className="mt-4">
             <div className="flex items-center justify-center h-40 border rounded-lg border-dashed text-gray-500">
-              No saved posts yet
+              Pas de projets sauvegardés
             </div>
           </TabsContent>
         </Tabs>

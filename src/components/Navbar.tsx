@@ -2,9 +2,11 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Home, MessageCircle, User, Settings } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Navbar: React.FC = () => {
   const location = useLocation();
+  const { user } = useAuth();
   
   const isActive = (path: string) => {
     return location.pathname === path;
@@ -20,7 +22,7 @@ const Navbar: React.FC = () => {
           <div className="relative">
             <Home size={20} strokeWidth={2} />
           </div>
-          <span className="mt-1">Feed</span>
+          <span className="mt-1">Accueil</span>
         </Link>
         
         <Link 
@@ -34,13 +36,13 @@ const Navbar: React.FC = () => {
         </Link>
         
         <Link 
-          to="/profile" 
-          className={`bottom-nav-item ${isActive("/profile") ? "active" : ""}`}
+          to={user ? "/profile" : "/auth"} 
+          className={`bottom-nav-item ${isActive("/profile") || isActive("/auth") ? "active" : ""}`}
         >
           <div className="relative">
             <User size={20} strokeWidth={2} />
           </div>
-          <span className="mt-1">Profile</span>
+          <span className="mt-1">Profil</span>
         </Link>
         
         <Link 
@@ -50,7 +52,7 @@ const Navbar: React.FC = () => {
           <div className="relative">
             <Settings size={20} strokeWidth={2} />
           </div>
-          <span className="mt-1">Settings</span>
+          <span className="mt-1">Réglages</span>
         </Link>
       </div>
     </nav>
