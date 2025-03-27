@@ -20,7 +20,7 @@
     --card: 0 0% 100%;
     --card-foreground: 222.2 47.4% 11.2%;
 
-    --primary: 222.2 47.4% 11.2%;
+    --primary: 151 72% 26%; /* Maintso Vola green - derived from #13764A */
     --primary-foreground: 210 40% 98%;
 
     --secondary: 210 40% 96.1%;
@@ -32,7 +32,7 @@
     --destructive: 0 92% 63%;
     --destructive-foreground: 210 40% 98%;
 
-    --ring: 215 20.2% 65.1%;
+    --ring: 151 72% 26%; /* Match primary color */
 
     --radius: 0.5rem;
   }
@@ -56,7 +56,7 @@
     --card: 224 71% 4%;
     --card-foreground: 213 31% 91%;
 
-    --primary: 210 40% 98%;
+    --primary: 151 72% 26%; /* Maintso Vola green - derived from #13764A */
     --primary-foreground: 222.2 47.4% 1.2%;
 
     --secondary: 222.2 47.4% 11.2%;
@@ -65,7 +65,7 @@
     --destructive: 0 63% 31%;
     --destructive-foreground: 210 40% 98%;
 
-    --ring: 216 34% 17%;
+    --ring: 151 72% 26%; /* Match primary color */
 
     --radius: 0.5rem;
   }
@@ -87,7 +87,7 @@
   }
   
   .bottom-nav-item.active {
-    @apply text-primary;
+    @apply text-maintso; /* Updated to use Maintso color */
   }
   
   .bottom-nav-item .relative {

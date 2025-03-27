@@ -134,7 +134,7 @@ const Settings: React.FC = () => {
             </div>
             
             <div className="pt-2">
-              <Button type="submit" className="w-full" disabled={saving}>
+              <Button type="submit" className="w-full bg-maintso hover:bg-maintso-600" disabled={saving}>
                 {saving ? "Saving..." : "Save Changes"}
               </Button>
             </div>
@@ -155,27 +155,27 @@ const Settings: React.FC = () => {
             <h3 className="text-sm font-medium text-gray-500">{group.title}</h3>
             
             <div className="space-y-1">
-              {group.items.map((item) => (
+              {group.items.map((settingItem) => (
                 <motion.div
-                  key={item.label}
+                  key={settingItem.label}
                   variants={item}
                   whileTap={{ scale: 0.98 }}
-                  onClick={item.action}
+                  onClick={settingItem.action}
                   className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
                 >
                   <div className="flex items-center">
-                    <item.icon 
+                    <settingItem.icon 
                       size={18} 
-                      className={item.danger ? "text-red-500" : "text-gray-500"} 
+                      className={settingItem.danger ? "text-red-500" : "text-gray-500"} 
                     />
                     <span 
-                      className={`ml-3 ${item.danger ? "text-red-500" : "text-gray-800"}`}
+                      className={`ml-3 ${settingItem.danger ? "text-red-500" : "text-gray-800"}`}
                     >
-                      {item.label}
+                      {settingItem.label}
                     </span>
                   </div>
                   
-                  {!item.danger && <ChevronRight size={18} className="text-gray-400" />}
+                  {!settingItem.danger && <ChevronRight size={18} className="text-gray-400" />}
                 </motion.div>
               ))}
             </div>

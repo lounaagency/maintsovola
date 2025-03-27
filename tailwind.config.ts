@@ -62,7 +62,21 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
-				}
+				},
+				maintso: {
+					DEFAULT: '#13764A',
+					50: '#E6F2EC',
+					100: '#C4E0D0',
+					200: '#91C4A8',
+					300: '#5EA880',
+					400: '#349460',
+					500: '#13764A', // Main Maintso Vola color
+					600: '#106840',
+					700: '#0D5A36',
+					800: '#0A4C2C',
+					900: '#073E22',
+					foreground: '#FFFFFF'
+				},
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
