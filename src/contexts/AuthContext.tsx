@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 interface UserProfile {
-  id_utilisateur: number;
+  id_utilisateur: string;
   nom: string;
   email: string;
   role: string;
@@ -64,24 +64,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => subscription.unsubscribe();
   }, []);
 
-  const fetchUserProfile = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('utilisateur')
-        .select('*')
-        .eq('email', user?.email)
-        .single();
+const fetchUserProfile = async (userId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('utilisateur')
+      .select('*')
+      .eq('id_utilisateur', userId) // Utilisation du paramètre userId
+      .single();
 
-      if (error) {
-        console.error("Error fetching profile:", error);
-        return;
-      }
-      
-      setProfile(data);
-    } catch (error) {
+    if (error) {
       console.error("Error fetching profile:", error);
+      return;
     }
-  };
+    
+    setProfile(data);
+  } catch (error) {
+    console.error("Error fetching profile:", error);
+  }
+};
+
 
 const signUp = async (email: string, password: string, userData: { nom: string; role: string }) => {
   try {
@@ -101,7 +102,7 @@ const signUp = async (email: string, password: string, userData: { nom: string; 
 
     if (error) throw error;
     if (!data.user) throw new Error("L'utilisateur n'a pas été créé.");
-
+    
     console.log("Données utilisateur :", {
         id_utilisateur: data?.user?.id,
         email,
