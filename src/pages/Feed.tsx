@@ -6,7 +6,77 @@ import NewProject from "@/components/NewProject";
 import { motion } from "framer-motion";
 import { AgriculturalProject } from "@/types/agriculturalProject";
 
+
+type ProjectData = {
+  id_projet: number;
+  id_tantsaha: number;
+  id_region: number | null;
+  id_district: number | null;
+  id_commune: number | null;
+  nom_projet: string;
+  surface_projet: number;
+  statut: boolean;
+  region_name: string;
+  district_name: string;
+  commune_name: string;
+  created_at: string;
+};
+
+
+
+
+
 const Feed: React.FC = () => {
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  const [projects, setProjects] = useState<ProjectData[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Vérifier si l'utilisateur est connecté
+  if (!user) {
+    return <Navigate to="/auth" />;
+  }
+
+  useEffect(() => {
+    fetchProjects();
+  }, [user]);
+
+  // Récupérer les projets
+  const fetchProjects = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("projet")
+        .select(`
+          *,
+          region:id_region(nom_region),
+          district:id_district(nom_district),
+          commune:id_commune(nom_commune)
+        `)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      // Ajouter les noms de la région, du district et de la commune à chaque projet
+      const transformedData = data.map(item => ({
+        ...item,
+        region_name: item.region?.nom_region,
+        district_name: item.district?.nom_district,
+        commune_name: item.commune?.nom_commune,
+      }));
+
+      setProjects(transformedData);
+    } catch (error) {
+      console.error("Erreur lors de la récupération des projets:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de récupérer les projets.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   const [projects, setProjects] = useState<AgriculturalProject[]>([
     {
       id: "1",
