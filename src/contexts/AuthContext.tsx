@@ -100,7 +100,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) throw error;
       
       toast.success("Inscription réussie ! Vérifiez votre email pour confirmer.");
-      navigate("/");
+      navigate("/feed");
     } catch (error: any) {
       toast.error(error.message || "Erreur lors de l'inscription");
       console.error("Error signing up:", error);
@@ -120,7 +120,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) throw error;
       
       toast.success("Connexion réussie !");
-      navigate("/");
+      navigate("/feed");
     } catch (error: any) {
       toast.error(error.message || "Erreur lors de la connexion");
       console.error("Error signing in:", error);
