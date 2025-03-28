@@ -1,0 +1,20 @@
+name: Deploy to Lovable
+
+on:
+  push:
+    branches:
+      - main  # Déclenche le déploiement à chaque commit sur main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Deploy to Lovable
+        run: |
+          curl -X POST "https://api.lovable.tech/deploy" \
+          -H "Authorization: Bearer 6acfbd31-7c6a-4cb2-8ad5-1ccd0835ad02" \
+          -d '{ "repo": "maintsovola", "branch": "main" }'
