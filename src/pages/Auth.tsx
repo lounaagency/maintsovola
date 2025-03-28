@@ -25,7 +25,7 @@ const Auth: React.FC = () => {
         transition={{ duration: 0.5 }}
       >
         <div className="p-6">
-          <h1 className="text-2xl font-bold text-center mb-6">Bienvenue sur AgrInvest</h1>
+          <h1 className="text-2xl font-bold text-center mb-6">Bienvenue sur Maintso Vola</h1>
           
           <Tabs defaultValue="login" value={activeTab} onValueChange={(value) => setActiveTab(value as "login" | "register")}>
             <TabsList className="grid w-full grid-cols-2 mb-8">
