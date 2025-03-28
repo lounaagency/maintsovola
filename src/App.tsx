@@ -13,6 +13,7 @@ import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import { AnimatePresence } from "framer-motion";
 import Auth from "./pages/Auth";
+import Terrain from "./pages/Terrain";
 import { AuthProvider } from "./contexts/AuthContext";
 
 const queryClient = new QueryClient();
@@ -41,6 +42,11 @@ const App = () => (
               <Route path="/profile" element={
                 <Layout>
                   <Profile />
+                </Layout>
+              } />
+              <Route path="/terrain" element={
+                <Layout>
+                  <Terrain />
                 </Layout>
               } />
               <Route path="/settings" element={

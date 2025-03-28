@@ -1,7 +1,7 @@
 
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Home, MessageCircle, User, Settings } from "lucide-react";
+import { Home, MessageCircle, User, Settings, MapPin } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 const Navbar: React.FC = () => {
@@ -23,6 +23,16 @@ const Navbar: React.FC = () => {
             <Home size={20} strokeWidth={2} />
           </div>
           <span className="mt-1">Accueil</span>
+        </Link>
+        
+        <Link 
+          to="/terrain" 
+          className={`bottom-nav-item ${isActive("/terrain") ? "active" : ""}`}
+        >
+          <div className="relative">
+            <MapPin size={20} strokeWidth={2} />
+          </div>
+          <span className="mt-1">Terrain</span>
         </Link>
         
         <Link 
