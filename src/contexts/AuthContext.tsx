@@ -102,6 +102,15 @@ const signUp = async (email: string, password: string, userData: { nom: string; 
     if (error) throw error;
     if (!data.user) throw new Error("L'utilisateur n'a pas été créé.");
 
+    console.log("Données utilisateur :", {
+        id_utilisateur: data?.user?.id,
+        email,
+        nom: userData.nom,
+        role: userData.role
+      });
+
+      toast.info(`Utilisateur: ${data?.user?.id}, Nom: ${userData.nom}, Rôle: ${userData.role}, Email: ${email}`);
+
     // Ajout manuel de l'utilisateur dans la table "utilisateur"
     const { error: dbError } = await supabase.from("utilisateur").insert([
       {
