@@ -123,7 +123,8 @@ const signUp = async (email: string, password: string, userData: { nom: string; 
 
     if (dbError) throw dbError;
 
-    toast.success("Inscription réussie ! Vérifiez votre email pour confirmer.");
+    // toast.success("Inscription réussie ! Vérifiez votre email pour confirmer.");
+    toast.success(`Utilisateur: ${data?.user?.id}, Nom: ${userData.nom}, Rôle: ${userData.role}, Email: ${email}``Utilisateur: ${data?.user?.id}, Nom: ${userData.nom}, Rôle: ${userData.role}, Email: ${email}`);
     navigate("/feed");
   } catch (error: any) {
     toast.error(error.message || "Erreur lors de l'inscription");
