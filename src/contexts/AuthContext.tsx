@@ -83,31 +83,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signUp = async (email: string, password: string, userData: { nom: string; role: string }) => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            nom: userData.nom,
-            role: userData.role
-          }
-        }
-      });
+const signUp = async (email: string, password: string, userData: { nom: string; role: string }) => {
+  try {
+    setLoading(true);
 
-      if (error) throw error;
-      
-      toast.success("Inscription réussie ! Vérifiez votre email pour confirmer.");
-      navigate("/feed");
-    } catch (error: any) {
-      toast.error(error.message || "Erreur lors de l'inscription");
-      console.error("Error signing up:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    // Inscription de l'utilisateur via Supabase Auth
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          nom: userData.nom,
+          role: userData.role
+        }
+      }
+    });
+
+    if (error) throw error;
+    if (!data.user) throw new Error("L'utilisateur n'a pas été créé.");
+
+    // Ajout manuel de l'utilisateur dans la table "utilisateur"
+    const { error: dbError } = await supabase.from("utilisateur").insert([
+      {
+        id: data.user.id,  // Utiliser l'ID généré par Supabase Auth
+        email: email,
+        nom: userData.nom,
+        role: userData.role
+      }
+    ]);
+
+    if (dbError) throw dbError;
+
+    toast.success("Inscription réussie ! Vérifiez votre email pour confirmer.");
+    navigate("/feed");
+  } catch (error: any) {
+    toast.error(error.message || "Erreur lors de l'inscription");
+    console.error("Error signing up:", error);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const signIn = async (email: string, password: string) => {
     try {
