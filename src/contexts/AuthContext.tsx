@@ -105,7 +105,7 @@ const signUp = async (email: string, password: string, userData: { nom: string; 
     // Ajout manuel de l'utilisateur dans la table "utilisateur"
     const { error: dbError } = await supabase.from("utilisateur").insert([
       {
-        id: data.user.id,  // Utiliser l'ID généré par Supabase Auth
+        id_utilisateur: data.user.id,  // Utiliser l'ID généré par Supabase Auth
         email: email,
         nom: userData.nom,
         role: userData.role
