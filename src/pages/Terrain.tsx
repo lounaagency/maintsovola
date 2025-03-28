@@ -219,7 +219,11 @@ const Terrain: React.FC = () => {
           statut: false // Not validated by default
         })
         .select();
-
+toast({
+        title: "Les valeurs",
+        description: "Utilisateur : "|user.id|"Région : "|newTerrain.id_region,
+        variant: "destructive"
+      });
       if (error) throw error;
 
       // Reset form
