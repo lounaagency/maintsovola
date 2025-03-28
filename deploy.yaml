@@ -16,5 +16,5 @@ jobs:
       - name: Deploy to Lovable
         run: |
           curl -X POST "https://api.lovable.tech/deploy" \
-          -H "Authorization: Bearer YOUR_API_KEY" \
+          -H "Authorization: Bearer 6acfbd31-7c6a-4cb2-8ad5-1ccd0835ad02" \
           -d '{ "repo": "ton-repo", "branch": "main" }'
