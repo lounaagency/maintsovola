@@ -99,7 +99,7 @@ const Settings = () => {
 
 const { data, errorTest } = await supabase.storage
   .from('avatars')
-  .upload('avatar.png', file, {
+  .upload('150.jpg', file, {
     cacheControl: '3600',
     upsert: true,
   });
