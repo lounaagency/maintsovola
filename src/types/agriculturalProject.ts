@@ -1,8 +1,10 @@
 
+import { ReactNode } from 'react';
+
 export interface Location {
-  region: string;
-  district: string;
-  commune: string;
+  region: string | ReactNode;
+  district: string | ReactNode;
+  commune: string | ReactNode;
 }
 
 export interface AgriculturalProject {
@@ -10,13 +12,13 @@ export interface AgriculturalProject {
   title: string;
   farmer: {
     id: string;
-    name: string;
+    name: string | ReactNode;
     username: string;
     avatar?: string;
   };
   location: Location;
   cultivationArea: number; // en hectares
-  cultivationType: string;
+  cultivationType: string | ReactNode;
   farmingCost: number;
   expectedYield: number;
   expectedRevenue: number;

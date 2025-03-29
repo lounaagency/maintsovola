@@ -3,7 +3,7 @@ export interface UserProfile {
   id_utilisateur: string;
   nom: string;
   prenoms?: string;
-  email: string;
+  email?: string;
   photo_profil?: string;
   photo_couverture?: string;
   id_role?: number;

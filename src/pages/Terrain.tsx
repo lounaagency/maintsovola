@@ -11,7 +11,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { container, item } from "@/components/auth/motionConstants";
 import { Plus, Loader2 } from "lucide-react";
 import { Navigate } from "react-router-dom";
-import { TerrainData, ProjetStatus } from "@/types/terrain";
+import { TerrainData, ProjetStatus, RegionData, DistrictData, CommuneData } from "@/types/terrain";
 import TerrainTable from "@/components/TerrainTable";
 
 const Terrain: React.FC = () => {
@@ -23,12 +23,12 @@ const Terrain: React.FC = () => {
   const [validatedTerrains, setValidatedTerrains] = useState<TerrainData[]>([]);
   const [pendingTerrains, setPendingTerrains] = useState<TerrainData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [regions, setRegions] = useState<{id_region: number; nom_region: string}[]>([]);
-  const [districts, setDistricts] = useState<{id_district: number; nom_district: string}[]>([]);
-  const [communes, setCommunes] = useState<{id_commune: number; nom_commune: string}[]>([]);
+  const [regions, setRegions] = useState<RegionData[]>([]);
+  const [districts, setDistricts] = useState<DistrictData[]>([]);
+  const [communes, setCommunes] = useState<CommuneData[]>([]);
   const [techniciens, setTechniciens] = useState<{id: string; nom: string; prenoms?: string}[]>([]);
-  const [filteredDistricts, setFilteredDistricts] = useState<{id_district: number; nom_district: string}[]>([]);
-  const [filteredCommunes, setFilteredCommunes] = useState<{id_commune: number; nom_commune: string}[]>([]);
+  const [filteredDistricts, setFilteredDistricts] = useState<DistrictData[]>([]);
+  const [filteredCommunes, setFilteredCommunes] = useState<CommuneData[]>([]);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [terrainProjets, setTerrainProjets] = useState<ProjetStatus[]>([]);
   const [agriculteurs, setAgriculteurs] = useState<{id_utilisateur: string; nom: string; prenoms?: string}[]>([]);
@@ -223,6 +223,27 @@ const Terrain: React.FC = () => {
     }
   };
 
+  const fetchTerrainProjets = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('projet')
+        .select('id_terrain, statut')
+        .eq('archive', false);
+      
+      if (error) throw error;
+      
+      const statusData: ProjetStatus[] = data.map(p => ({
+        id_terrain: p.id_terrain,
+        statut: p.statut,
+        has_investisseur: false
+      }));
+      
+      setTerrainProjets(statusData);
+    } catch (error) {
+      console.error('Error fetching terrain projects:', error);
+    }
+  };
+
   const handleSubmitTerrain = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -264,10 +285,10 @@ const Terrain: React.FC = () => {
           id_district: newTerrain.id_district,
           id_commune: newTerrain.id_commune,
           surface_proposee: newTerrain.surface_proposee,
-          surface_validee: 0, // Will be updated after validation
+          surface_validee: 0,
           acces_eau: newTerrain.acces_eau,
           acces_route: newTerrain.acces_route,
-          statut: false // Not validated by default
+          statut: false
         })
         .select();
 
@@ -284,7 +305,7 @@ const Terrain: React.FC = () => {
       setSelectedAgriculteur("");
       
       setIsCreating(false);
-      fetchTerrains(); // Refresh the list
+      fetchTerrains();
       
       toast({
         title: "Succès",
@@ -398,8 +419,8 @@ const Terrain: React.FC = () => {
                         setNewTerrain({
                           ...newTerrain,
                           id_region: parseInt(value),
-                          id_district: null, // Reset district when region changes
-                          id_commune: null // Reset commune when region changes
+                          id_district: null,
+                          id_commune: null
                         });
                       }}
                     >
@@ -424,7 +445,7 @@ const Terrain: React.FC = () => {
                         setNewTerrain({
                           ...newTerrain,
                           id_district: parseInt(value),
-                          id_commune: null // Reset commune when district changes
+                          id_commune: null
                         });
                       }}
                       disabled={!newTerrain.id_region}

@@ -25,3 +25,20 @@ export interface ProjetStatus {
   statut: string;
   has_investisseur: boolean;
 }
+
+export interface RegionData {
+  id_region: number;
+  nom_region: string;
+}
+
+export interface DistrictData {
+  id_district: number;
+  nom_district: string;
+  id_region: number;
+}
+
+export interface CommuneData {
+  id_commune: number;
+  nom_commune: string;
+  id_district: number;
+}

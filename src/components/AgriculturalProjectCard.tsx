@@ -184,7 +184,10 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({
         )}
         
         <div className="mt-2 flex justify-end">
-          <TechnicienContactLink projetId={parseInt(project.id)} />
+          <TechnicienContactLink 
+            projetId={parseInt(project.id)} 
+            technicienId={project.technicienId} 
+          />
         </div>
         
         <div className="mt-4 mb-2">

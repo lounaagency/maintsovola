@@ -1,399 +1,489 @@
 
-import React, { useState } from "react";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { 
-  Bell, 
-  Lock, 
-  Shield, 
-  EyeOff, 
-  MessageCircle, 
-  HelpCircle, 
-  LogOut,
-  User,
-  ChevronRight
-} from "lucide-react";
-import { Separator } from "@/components/ui/separator";
-import { Switch } from "@/components/ui/switch";
-import UserAvatar from "@/components/UserAvatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { UserProfile, UserTelephone } from "@/types/userProfile";
 import { motion } from "framer-motion";
-import { toast } from "sonner";
+import { User, Phone, Upload, Plus, Trash2, Check, X } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
 
-const Settings: React.FC = () => {
-  const { user, profile } = useAuth();
-  const [saving, setSaving] = useState(false);
-  const [formData, setFormData] = useState({
-    nom: "",
-    prenoms: "",
-    email: "",
-    bio: "",
-    telephones: [] as {
-      id_telephone?: number;
-      numero: string;
-      type: 'principal' | 'whatsapp' | 'mobile_banking' | 'autre';
-      est_whatsapp: boolean;
-      est_mobile_banking: boolean;
-    }[]
+const Settings = () => {
+  const { user, profile, refreshProfile } = useAuth();
+  const { toast } = useToast();
+
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [profileImage, setProfileImage] = useState<File | null>(null);
+  const [coverImage, setCoverImage] = useState<File | null>(null);
+  const [profileImagePreview, setProfileImagePreview] = useState<string | null>(null);
+  const [coverImagePreview, setCoverImagePreview] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [nom, setNom] = useState("");
+  const [prenoms, setPrenoms] = useState("");
+  const [telephones, setTelephones] = useState<UserTelephone[]>([]);
+  const [newPhone, setNewPhone] = useState({
+    numero: "",
+    type: "principal" as const,
+    est_whatsapp: false,
+    est_mobile_banking: false
   });
-  
+
   useEffect(() => {
     if (profile) {
-      setFormData({
-        nom: profile.nom || "",
-        prenoms: profile.prenoms || "",
-        email: profile.email || "",
-        bio: "",
-        telephones: []
-      });
-      
-      // Charger les téléphones
-      fetchTelephones();
+      setUserProfile(profile);
+      setNom(profile.nom || "");
+      setPrenoms(profile.prenoms || "");
+      setProfileImagePreview(profile.photo_profil || null);
+      setCoverImagePreview(profile.photo_couverture || null);
+      fetchPhoneNumbers();
     }
   }, [profile]);
-  
-  const fetchTelephones = async () => {
+
+  const fetchPhoneNumbers = async () => {
     if (!user) return;
-    
+
     try {
       const { data, error } = await supabase
         .from('telephone')
         .select('*')
         .eq('id_utilisateur', user.id);
-        
+
       if (error) throw error;
-      
-      if (data && data.length > 0) {
-        setFormData(prev => ({
-          ...prev,
-          telephones: data.map(tel => ({
-            id_telephone: tel.id_telephone,
-            numero: tel.numero,
-            type: tel.type || 'principal',
-            est_whatsapp: tel.est_whatsapp || false,
-            est_mobile_banking: tel.est_mobile_banking || false
-          }))
-        }));
-      } else {
-        // Ajouter un téléphone vide par défaut
-        setFormData(prev => ({
-          ...prev,
-          telephones: [{
-            numero: "",
-            type: 'principal',
-            est_whatsapp: false,
-            est_mobile_banking: false
-          }]
-        }));
-      }
+      setTelephones(data || []);
     } catch (error) {
-      console.error("Erreur lors du chargement des téléphones:", error);
-      toast.error("Impossible de charger les numéros de téléphone");
+      console.error("Error fetching phone numbers:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de récupérer les numéros de téléphone",
+        variant: "destructive"
+      });
     }
-  };
-  
-  const handleSaveProfile = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
-    
-    setSaving(true);
-    
-    try {
-      // Mettre à jour le profil utilisateur
-      const { error: profileError } = await supabase
-        .from('utilisateur')
-        .update({
-          nom: formData.nom,
-          prenoms: formData.prenoms
-        })
-        .eq('id_utilisateur', user.id);
-        
-      if (profileError) throw profileError;
-      
-      // Gérer les téléphones
-      for (const telephone of formData.telephones) {
-        if (telephone.id_telephone) {
-          // Mettre à jour un téléphone existant
-          const { error: telError } = await supabase
-            .from('telephone')
-            .update({
-              numero: telephone.numero,
-              type: telephone.type,
-              est_whatsapp: telephone.est_whatsapp,
-              est_mobile_banking: telephone.est_mobile_banking
-            })
-            .eq('id_telephone', telephone.id_telephone);
-            
-          if (telError) throw telError;
-        } else if (telephone.numero.trim()) {
-          // Créer un nouveau téléphone
-          const { error: telError } = await supabase
-            .from('telephone')
-            .insert({
-              id_utilisateur: user.id,
-              numero: telephone.numero,
-              type: telephone.type,
-              est_whatsapp: telephone.est_whatsapp,
-              est_mobile_banking: telephone.est_mobile_banking
-            });
-            
-          if (telError) throw telError;
-        }
-      }
-      
-      toast.success("Profil mis à jour avec succès");
-    } catch (error) {
-      console.error("Erreur lors de la mise à jour du profil:", error);
-      toast.error("Impossible de mettre à jour le profil");
-    } finally {
-      setSaving(false);
-    }
-  };
-  
-  const addPhoneNumber = () => {
-    setFormData(prev => ({
-      ...prev,
-      telephones: [
-        ...prev.telephones,
-        {
-          numero: "",
-          type: 'autre',
-          est_whatsapp: false,
-          est_mobile_banking: false
-        }
-      ]
-    }));
-  };
-  
-  const removePhoneNumber = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      telephones: prev.telephones.filter((_, i) => i !== index)
-    }));
-  };
-  
-  const updatePhoneNumber = (index: number, field: string, value: any) => {
-    setFormData(prev => {
-      const telephones = [...prev.telephones];
-      telephones[index] = {
-        ...telephones[index],
-        [field]: value
-      };
-      return {
-        ...prev,
-        telephones
-      };
-    });
-  };
-  
-  const settingsGroups = [
-    {
-      title: "Account",
-      items: [
-        { icon: User, label: "Personal Information", action: () => {} },
-        { icon: Lock, label: "Security", action: () => {} },
-        { icon: Shield, label: "Privacy", action: () => {} },
-      ]
-    },
-    {
-      title: "Preferences",
-      items: [
-        { icon: Bell, label: "Notifications", action: () => {} },
-        { icon: MessageCircle, label: "Chat & Messages", action: () => {} },
-        { icon: EyeOff, label: "Blocking", action: () => {} },
-      ]
-    },
-    {
-      title: "Support",
-      items: [
-        { icon: HelpCircle, label: "Help Center", action: () => {} },
-        { icon: LogOut, label: "Log Out", action: () => {}, danger: true },
-      ]
-    }
-  ];
-  
-  const container = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
-  };
-  
-  const item = {
-    hidden: { opacity: 0, y: 10 },
-    show: { opacity: 1, y: 0 }
   };
 
-  return (
-    <div className="max-w-md mx-auto px-4 py-4">
-      <header className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
-      </header>
-      
-      <div className="space-y-6 mb-8">
-        <div className="flex items-center">
-          <UserAvatar
-            src={profile?.photo_profil || "https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&q=80&w=200"}
-            alt={profile?.nom || "User"}
-            size="lg"
-          />
-          
-          <div className="ml-4">
-            <p className="font-semibold">{profile?.nom} {profile?.prenoms || ''}</p>
-            <p className="text-sm text-gray-500">{profile?.email}</p>
-          </div>
-          
-          <Button variant="outline" size="sm" className="ml-auto">
-            Change
-          </Button>
-        </div>
+  const handleProfileImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setProfileImage(file);
+      setProfileImagePreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleCoverImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setCoverImage(file);
+      setCoverImagePreview(URL.createObjectURL(file));
+    }
+  };
+
+  const updateProfile = async () => {
+    if (!user) return;
+    
+    setIsLoading(true);
+    
+    try {
+      // Update profile info
+      const { error } = await supabase
+        .from('utilisateur')
+        .update({
+          nom,
+          prenoms
+        })
+        .eq('id_utilisateur', user.id);
+
+      if (error) throw error;
+
+      // Upload profile image if changed
+      if (profileImage) {
+        const fileExt = profileImage.name.split('.').pop();
+        const fileName = `${user.id}-profile-${Date.now()}.${fileExt}`;
         
-        <form onSubmit={handleSaveProfile}>
-          <div className="space-y-4">
-            <div className="grid gap-2">
-              <Label htmlFor="name">Nom</Label>
-              <Input 
-                id="name" 
-                value={formData.nom} 
-                onChange={(e) => setFormData({...formData, nom: e.target.value})} 
-              />
-            </div>
-            
-            <div className="grid gap-2">
-              <Label htmlFor="prenoms">Prénoms</Label>
-              <Input 
-                id="prenoms" 
-                value={formData.prenoms} 
-                onChange={(e) => setFormData({...formData, prenoms: e.target.value})} 
-              />
-            </div>
-            
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
-              <Input 
-                id="email" 
-                type="email" 
-                value={formData.email} 
-                readOnly 
-              />
-            </div>
-            
-            <div className="grid gap-2">
-              <div className="flex justify-between items-center">
-                <Label>Numéros de téléphone</Label>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={addPhoneNumber}
-                >
-                  Ajouter
-                </Button>
-              </div>
-              
-              {formData.telephones.map((telephone, index) => (
-                <div key={index} className="space-y-2 p-3 border rounded-md">
-                  <div className="flex justify-between items-start">
-                    <Label htmlFor={`phone-${index}`}>Numéro {index + 1}</Label>
-                    {formData.telephones.length > 1 && (
-                      <Button 
-                        type="button" 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => removePhoneNumber(index)}
-                      >
-                        ×
-                      </Button>
-                    )}
-                  </div>
-                  
-                  <Input
-                    id={`phone-${index}`}
-                    placeholder="Ex: 034 12 345 67"
-                    value={telephone.numero}
-                    onChange={(e) => updatePhoneNumber(index, 'numero', e.target.value)}
-                  />
-                  
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="flex items-center space-x-2">
+        const { error: uploadError } = await supabase.storage
+          .from('avatars')
+          .upload(fileName, profileImage);
+
+        if (uploadError) throw uploadError;
+        
+        const { data: publicUrlData } = supabase.storage
+          .from('avatars')
+          .getPublicUrl(fileName);
+          
+        // Update profile with new image URL
+        const { error: updateError } = await supabase
+          .from('utilisateur')
+          .update({
+            photo_profil: publicUrlData.publicUrl
+          })
+          .eq('id_utilisateur', user.id);
+          
+        if (updateError) throw updateError;
+      }
+      
+      // Upload cover image if changed
+      if (coverImage) {
+        const fileExt = coverImage.name.split('.').pop();
+        const fileName = `${user.id}-cover-${Date.now()}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('covers')
+          .upload(fileName, coverImage);
+
+        if (uploadError) throw uploadError;
+        
+        const { data: publicUrlData } = supabase.storage
+          .from('covers')
+          .getPublicUrl(fileName);
+          
+        // Update profile with new cover image URL
+        const { error: updateError } = await supabase
+          .from('utilisateur')
+          .update({
+            photo_couverture: publicUrlData.publicUrl
+          })
+          .eq('id_utilisateur', user.id);
+          
+        if (updateError) throw updateError;
+      }
+
+      await refreshProfile();
+      
+      toast({
+        title: "Succès",
+        description: "Votre profil a été mis à jour",
+      });
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour le profil",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const addPhoneNumber = async () => {
+    if (!user || !newPhone.numero) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('telephone')
+        .insert({
+          id_utilisateur: user.id,
+          numero: newPhone.numero,
+          type: newPhone.type,
+          est_whatsapp: newPhone.est_whatsapp,
+          est_mobile_banking: newPhone.est_mobile_banking
+        })
+        .select();
+
+      if (error) throw error;
+      
+      setTelephones([...telephones, data[0]]);
+      setNewPhone({
+        numero: "",
+        type: "principal",
+        est_whatsapp: false,
+        est_mobile_banking: false
+      });
+      
+      toast({
+        title: "Succès",
+        description: "Numéro de téléphone ajouté",
+      });
+    } catch (error) {
+      console.error("Error adding phone number:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible d'ajouter le numéro de téléphone",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const deletePhoneNumber = async (id: number) => {
+    try {
+      const { error } = await supabase
+        .from('telephone')
+        .delete()
+        .eq('id_telephone', id);
+
+      if (error) throw error;
+      
+      setTelephones(telephones.filter(phone => phone.id_telephone !== id));
+      
+      toast({
+        title: "Succès",
+        description: "Numéro de téléphone supprimé",
+      });
+    } catch (error) {
+      console.error("Error deleting phone number:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer le numéro de téléphone",
+        variant: "destructive"
+      });
+    }
+  };
+
+  if (!user) {
+    return (
+      <div className="flex justify-center items-center h-[calc(100vh-4rem)]">
+        <p>Veuillez vous connecter pour accéder aux paramètres</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container max-w-4xl py-8">
+      <motion.h1 
+        className="text-3xl font-bold mb-6"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        Paramètres du compte
+      </motion.h1>
+      
+      <Tabs defaultValue="profile" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="profile">Profil</TabsTrigger>
+          <TabsTrigger value="account">Compte</TabsTrigger>
+          <TabsTrigger value="notifications">Notifications</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="profile" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Photos de profil</CardTitle>
+              <CardDescription>
+                Mettez à jour votre photo de profil et votre photo de couverture.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Photo de couverture</Label>
+                <div className="relative h-40 bg-gray-100 rounded-lg overflow-hidden">
+                  {coverImagePreview && (
+                    <img 
+                      src={coverImagePreview} 
+                      alt="Cover preview" 
+                      className="w-full h-full object-cover"
+                    />
+                  )}
+                  <div className="absolute bottom-2 right-2">
+                    <Label htmlFor="cover-upload" className="cursor-pointer">
+                      <div className="h-10 w-10 bg-primary text-primary-foreground rounded-full flex items-center justify-center">
+                        <Upload size={18} />
+                      </div>
                       <input
-                        type="checkbox"
-                        id={`whatsapp-${index}`}
-                        checked={telephone.est_whatsapp}
-                        onChange={(e) => updatePhoneNumber(index, 'est_whatsapp', e.target.checked)}
-                        className="h-4 w-4"
+                        id="cover-upload"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleCoverImageChange}
                       />
-                      <Label htmlFor={`whatsapp-${index}`}>WhatsApp</Label>
-                    </div>
-                    
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id={`banking-${index}`}
-                        checked={telephone.est_mobile_banking}
-                        onChange={(e) => updatePhoneNumber(index, 'est_mobile_banking', e.target.checked)}
-                        className="h-4 w-4"
-                      />
-                      <Label htmlFor={`banking-${index}`}>Mobile Banking</Label>
-                    </div>
+                    </Label>
                   </div>
                 </div>
-              ))}
-            </div>
-            
-            <div className="pt-2">
-              <Button type="submit" className="w-full bg-maintso hover:bg-maintso-600" disabled={saving}>
-                {saving ? "Enregistrement..." : "Enregistrer les modifications"}
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Photo de profil</Label>
+                <div className="flex items-center gap-4">
+                  <div className="relative h-24 w-24 bg-gray-100 rounded-full overflow-hidden">
+                    {profileImagePreview && (
+                      <img 
+                        src={profileImagePreview} 
+                        alt="Profile preview" 
+                        className="w-full h-full object-cover"
+                      />
+                    )}
+                    <div className="absolute bottom-0 right-0">
+                      <Label htmlFor="profile-upload" className="cursor-pointer">
+                        <div className="h-8 w-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center">
+                          <Upload size={14} />
+                        </div>
+                        <input
+                          id="profile-upload"
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleProfileImageChange}
+                        />
+                      </Label>
+                    </div>
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    <p>Formats acceptés: JPG, PNG, GIF</p>
+                    <p>Taille maximale: 2Mo</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>Informations personnelles</CardTitle>
+              <CardDescription>
+                Mettez à jour vos informations personnelles.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="nom">Nom</Label>
+                  <Input 
+                    id="nom" 
+                    value={nom} 
+                    onChange={(e) => setNom(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="prenoms">Prénoms</Label>
+                  <Input 
+                    id="prenoms" 
+                    value={prenoms} 
+                    onChange={(e) => setPrenoms(e.target.value)}
+                  />
+                </div>
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Button onClick={updateProfile} disabled={isLoading}>
+                {isLoading ? "Mise à jour..." : "Enregistrer les modifications"}
               </Button>
-            </div>
-          </div>
-        </form>
-      </div>
-      
-      <Separator className="my-6" />
-      
-      <motion.div 
-        className="space-y-6"
-        variants={container}
-        initial="hidden"
-        animate="show"
-      >
-        {settingsGroups.map((group) => (
-          <div key={group.title} className="space-y-3">
-            <h3 className="text-sm font-medium text-gray-500">{group.title}</h3>
-            
-            <div className="space-y-1">
-              {group.items.map((settingItem) => (
-                <motion.div
-                  key={settingItem.label}
-                  variants={item}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={settingItem.action}
-                  className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
-                >
-                  <div className="flex items-center">
-                    <settingItem.icon 
-                      size={18} 
-                      className={settingItem.danger ? "text-red-500" : "text-gray-500"} 
-                    />
-                    <span 
-                      className={`ml-3 ${settingItem.danger ? "text-red-500" : "text-gray-800"}`}
+            </CardFooter>
+          </Card>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>Numéros de téléphone</CardTitle>
+              <CardDescription>
+                Gérez vos numéros de téléphone pour les communications et les transactions.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-4">
+                {telephones.map((phone) => (
+                  <div key={phone.id_telephone} className="flex items-center justify-between border p-3 rounded-md">
+                    <div className="flex items-center gap-3">
+                      <Phone size={18} />
+                      <div>
+                        <p className="font-medium">{phone.numero}</p>
+                        <div className="flex gap-2 text-xs">
+                          <span className="bg-muted px-2 py-0.5 rounded">{phone.type}</span>
+                          {phone.est_whatsapp && <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded">WhatsApp</span>}
+                          {phone.est_mobile_banking && <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded">Mobile Banking</span>}
+                        </div>
+                      </div>
+                    </div>
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      onClick={() => deletePhoneNumber(phone.id_telephone!)}
                     >
-                      {settingItem.label}
-                    </span>
+                      <Trash2 size={18} className="text-red-500" />
+                    </Button>
+                  </div>
+                ))}
+                
+                <div className="border p-4 rounded-md space-y-3">
+                  <h3 className="font-medium">Ajouter un numéro</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="numero">Numéro</Label>
+                      <Input 
+                        id="numero" 
+                        placeholder="03X XX XXX XX" 
+                        value={newPhone.numero}
+                        onChange={(e) => setNewPhone({...newPhone, numero: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="type">Type</Label>
+                      <select 
+                        id="type"
+                        className="w-full border rounded-md p-2"
+                        value={newPhone.type}
+                        onChange={(e) => setNewPhone({
+                          ...newPhone, 
+                          type: e.target.value as 'principal' | 'whatsapp' | 'mobile_banking' | 'autre'
+                        })}
+                      >
+                        <option value="principal">Principal</option>
+                        <option value="whatsapp">WhatsApp</option>
+                        <option value="mobile_banking">Mobile Banking</option>
+                        <option value="autre">Autre</option>
+                      </select>
+                    </div>
                   </div>
                   
-                  {!settingItem.danger && <ChevronRight size={18} className="text-gray-400" />}
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </motion.div>
+                  <div className="flex gap-4">
+                    <div className="flex items-center gap-2">
+                      <input 
+                        type="checkbox" 
+                        id="est_whatsapp" 
+                        checked={newPhone.est_whatsapp}
+                        onChange={(e) => setNewPhone({...newPhone, est_whatsapp: e.target.checked})}
+                      />
+                      <Label htmlFor="est_whatsapp">WhatsApp</Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input 
+                        type="checkbox" 
+                        id="est_mobile_banking" 
+                        checked={newPhone.est_mobile_banking}
+                        onChange={(e) => setNewPhone({...newPhone, est_mobile_banking: e.target.checked})}
+                      />
+                      <Label htmlFor="est_mobile_banking">Mobile Banking</Label>
+                    </div>
+                  </div>
+                  
+                  <Button onClick={addPhoneNumber} disabled={!newPhone.numero}>
+                    <Plus size={16} className="mr-2" />
+                    Ajouter
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="account">
+          <Card>
+            <CardHeader>
+              <CardTitle>Paramètres du compte</CardTitle>
+              <CardDescription>
+                Gérez les paramètres de votre compte et de confidentialité.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-gray-500">Cette section sera disponible prochainement.</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="notifications">
+          <Card>
+            <CardHeader>
+              <CardTitle>Préférences de notification</CardTitle>
+              <CardDescription>
+                Personnalisez vos préférences de notification.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-gray-500">Cette section sera disponible prochainement.</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
