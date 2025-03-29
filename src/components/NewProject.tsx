@@ -19,9 +19,33 @@ const NewProject: React.FC<NewProjectProps> = ({ onProjectCreated }) => {
   const [isPosting, setIsPosting] = useState(false);
   const [cultures, setCultures] = useState<{id: number, nom: string}[]>([]);
   const [selectedCulture, setSelectedCulture] = useState<number | null>(null);
+  const [terrains, setTerrains] = useState<{id: number, nom: string, surface: number}[]>([]);
+  const [selectedTerrain, setSelectedTerrain] = useState<number | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const { user, profile } = useAuth();
   
   useEffect(() => {
+    // Récupérer le rôle de l'utilisateur
+    const fetchUserRole = async () => {
+      if (user) {
+        try {
+          const { data, error } = await supabase
+            .from('utilisateurs_par_role')
+            .select('nom_role')
+            .eq('id_utilisateur', user.id)
+            .single();
+            
+          if (error) throw error;
+          
+          if (data) {
+            setUserRole(data.nom_role);
+          }
+        } catch (error) {
+          console.error("Erreur lors de la récupération du rôle de l'utilisateur:", error);
+        }
+      }
+    };
+    
     // Récupérer la liste des cultures disponibles
     const fetchCultures = async () => {
       try {
@@ -44,8 +68,51 @@ const NewProject: React.FC<NewProjectProps> = ({ onProjectCreated }) => {
       }
     };
     
+    // Récupérer la liste des terrains validés de l'utilisateur
+    const fetchTerrains = async () => {
+      if (user) {
+        try {
+          // Pour les agriculteurs et investisseurs, récupérer leurs propres terrains
+          // Pour les superviseurs, récupérer tous les terrains validés
+          // Pour les techniciens, récupérer les terrains qui leur sont assignés
+          let query = supabase
+            .from('terrain')
+            .select('id_terrain, surface_validee');
+          
+          if (userRole === 'superviseur') {
+            query = query.eq('statut', true);
+          } else if (userRole === 'technicien') {
+            query = query.eq('id_technicien', user.id);
+          } else {
+            // Agriculteurs et investisseurs
+            query = query.eq('id_tantsaha', user.id).eq('statut', true);
+          }
+          
+          const { data, error } = await query;
+          
+          if (error) throw error;
+          
+          if (data && data.length > 0) {
+            setTerrains(data.map(t => ({
+              id: t.id_terrain,
+              nom: `Terrain #${t.id_terrain}`,
+              surface: t.surface_validee
+            })));
+            setSelectedTerrain(data[0].id_terrain);
+          }
+        } catch (error) {
+          console.error("Erreur lors de la récupération des terrains:", error);
+        }
+      }
+    };
+    
+    fetchUserRole();
     fetchCultures();
-  }, []);
+    
+    if (user) {
+      fetchTerrains();
+    }
+  }, [user, userRole]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,6 +132,11 @@ const NewProject: React.FC<NewProjectProps> = ({ onProjectCreated }) => {
       return;
     }
     
+    if (!selectedTerrain) {
+      toast.error("Veuillez sélectionner un terrain");
+      return;
+    }
+    
     setIsPosting(true);
     
     try {
@@ -77,9 +149,48 @@ const NewProject: React.FC<NewProjectProps> = ({ onProjectCreated }) => {
         
       if (cultureError) throw cultureError;
       
+      // Récupérer les informations du terrain sélectionné
+      const { data: terrainData, error: terrainError } = await supabase
+        .from('terrain')
+        .select('*')
+        .eq('id_terrain', selectedTerrain)
+        .single();
+        
+      if (terrainError) throw terrainError;
+      
       // Créer un nouveau projet
+      const { data: projetData, error: projetError } = await supabase
+        .from('projet')
+        .insert({
+          id_terrain: selectedTerrain,
+          id_tantsaha: user.id,
+          surface_ha: terrainData.surface_validee,
+          statut: 'en attente',
+          id_region: terrainData.id_region,
+          id_district: terrainData.id_district,
+          id_commune: terrainData.id_commune
+        })
+        .select('id_projet')
+        .single();
+        
+      if (projetError) throw projetError;
+      
+      // Ajouter la culture au projet
+      const { error: projetCultureError } = await supabase
+        .from('projet_culture')
+        .insert({
+          id_projet: projetData.id_projet,
+          id_culture: selectedCulture,
+          cout_exploitation_previsionnel: cultureData.cout_exploitation_ha,
+          rendement_previsionnel: cultureData.rendement_ha,
+          date_debut_previsionnelle: new Date().toISOString().split('T')[0]
+        });
+        
+      if (projetCultureError) throw projetCultureError;
+      
+      // Pour l'interface utilisateur, créer un objet AgriculturalProject
       const newProject: AgriculturalProject = {
-        id: Date.now().toString(),
+        id: projetData.id_projet.toString(),
         title: `Projet de culture de ${cultureData.nom_culture}`,
         farmer: {
           id: user.id,
@@ -88,25 +199,26 @@ const NewProject: React.FC<NewProjectProps> = ({ onProjectCreated }) => {
           avatar: profile?.photo_profil,
         },
         location: {
-          region: "À définir",
-          district: "À définir",
-          commune: "À définir"
+          region: terrainData.id_region ? "À définir" : "À définir",
+          district: terrainData.id_district ? "À définir" : "À définir",
+          commune: terrainData.id_commune ? "À définir" : "À définir"
         },
-        cultivationArea: 2, // Valeur par défaut
+        cultivationArea: terrainData.surface_validee,
         cultivationType: cultureData.nom_culture,
         farmingCost: cultureData.cout_exploitation_ha || 3000,
         expectedYield: cultureData.rendement_ha || 2,
-        expectedRevenue: (cultureData.rendement_ha || 2) * 2 * (cultureData.prix_tonne || 1000),
+        expectedRevenue: (cultureData.rendement_ha || 2) * terrainData.surface_validee * (cultureData.prix_tonne || 1000),
         creationDate: new Date().toISOString().split('T')[0],
         images: [],
         description: content,
-        fundingGoal: (cultureData.cout_exploitation_ha || 3000) * 2, // Surface par défaut * coût
+        fundingGoal: (cultureData.cout_exploitation_ha || 3000) * terrainData.surface_validee,
         currentFunding: 0,
         likes: 0,
         comments: 0,
         shares: 0,
       };
       
+      // Notifier la création du projet
       if (onProjectCreated) {
         onProjectCreated(newProject);
       }
@@ -139,6 +251,23 @@ const NewProject: React.FC<NewProjectProps> = ({ onProjectCreated }) => {
                 className="resize-none border-0 bg-transparent p-0 text-sm focus-visible:ring-0 focus-visible:ring-offset-0"
                 rows={3}
               />
+              
+              {terrains.length > 0 && (
+                <div className="mt-2">
+                  <select 
+                    value={selectedTerrain || ''} 
+                    onChange={(e) => setSelectedTerrain(parseInt(e.target.value))}
+                    className="w-full p-2 border rounded text-sm mb-2"
+                  >
+                    <option value="">Sélectionnez un terrain</option>
+                    {terrains.map(terrain => (
+                      <option key={terrain.id} value={terrain.id}>
+                        {terrain.nom} ({terrain.surface} ha)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               
               {cultures.length > 0 && (
                 <div className="mt-2">
@@ -179,7 +308,7 @@ const NewProject: React.FC<NewProjectProps> = ({ onProjectCreated }) => {
               type="submit" 
               size="sm" 
               className="rounded-full px-4"
-              disabled={!content.trim() || isPosting || !user || !selectedCulture}
+              disabled={!content.trim() || isPosting || !user || !selectedCulture || !selectedTerrain}
             >
               {isPosting ? "Publication..." : "Publier"}
             </Button>

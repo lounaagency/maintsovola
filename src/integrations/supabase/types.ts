@@ -49,6 +49,13 @@ export type Database = {
             referencedRelation: "utilisateur"
             referencedColumns: ["id_utilisateur"]
           },
+          {
+            foreignKeyName: "fk_aimer_commentaire_id_utilisateur_utilisateur"
+            columns: ["id_utilisateur"]
+            isOneToOne: false
+            referencedRelation: "utilisateurs_par_role"
+            referencedColumns: ["id_utilisateur"]
+          },
         ]
       }
       aimer_projet: {
@@ -89,6 +96,13 @@ export type Database = {
             columns: ["id_utilisateur"]
             isOneToOne: false
             referencedRelation: "utilisateur"
+            referencedColumns: ["id_utilisateur"]
+          },
+          {
+            foreignKeyName: "fk_aimer_projet_id_utilisateur_utilisateur"
+            columns: ["id_utilisateur"]
+            isOneToOne: false
+            referencedRelation: "utilisateurs_par_role"
             referencedColumns: ["id_utilisateur"]
           },
         ]
@@ -147,6 +161,13 @@ export type Database = {
             columns: ["id_utilisateur"]
             isOneToOne: false
             referencedRelation: "utilisateur"
+            referencedColumns: ["id_utilisateur"]
+          },
+          {
+            foreignKeyName: "fk_commentaire_id_utilisateur_utilisateur"
+            columns: ["id_utilisateur"]
+            isOneToOne: false
+            referencedRelation: "utilisateurs_par_role"
             referencedColumns: ["id_utilisateur"]
           },
         ]
@@ -300,6 +321,13 @@ export type Database = {
             referencedColumns: ["id_utilisateur"]
           },
           {
+            foreignKeyName: "fk_projet_id_investisseur_utilisateur"
+            columns: ["id_investisseur"]
+            isOneToOne: false
+            referencedRelation: "utilisateurs_par_role"
+            referencedColumns: ["id_utilisateur"]
+          },
+          {
             foreignKeyName: "investissement_id_projet_fkey"
             columns: ["id_projet"]
             isOneToOne: false
@@ -361,6 +389,7 @@ export type Database = {
           id_superviseur: string | null
           id_tantsaha: string | null
           id_technicien: string | null
+          id_terrain: number | null
           modified_at: string | null
           statut: string | null
           surface_ha: number
@@ -376,6 +405,7 @@ export type Database = {
           id_superviseur?: string | null
           id_tantsaha?: string | null
           id_technicien?: string | null
+          id_terrain?: number | null
           modified_at?: string | null
           statut?: string | null
           surface_ha: number
@@ -391,6 +421,7 @@ export type Database = {
           id_superviseur?: string | null
           id_tantsaha?: string | null
           id_technicien?: string | null
+          id_terrain?: number | null
           modified_at?: string | null
           statut?: string | null
           surface_ha?: number
@@ -404,8 +435,29 @@ export type Database = {
             referencedColumns: ["id_utilisateur"]
           },
           {
+            foreignKeyName: "fk_projet_id_superviseur_utilisateur"
+            columns: ["id_superviseur"]
+            isOneToOne: false
+            referencedRelation: "utilisateurs_par_role"
+            referencedColumns: ["id_utilisateur"]
+          },
+          {
             foreignKeyName: "fk_projet_id_tantsaha_utilisateur"
             columns: ["id_tantsaha"]
+            isOneToOne: false
+            referencedRelation: "utilisateur"
+            referencedColumns: ["id_utilisateur"]
+          },
+          {
+            foreignKeyName: "fk_projet_id_tantsaha_utilisateur"
+            columns: ["id_tantsaha"]
+            isOneToOne: false
+            referencedRelation: "utilisateurs_par_role"
+            referencedColumns: ["id_utilisateur"]
+          },
+          {
+            foreignKeyName: "fk_projet_id_technicien_utilisateur"
+            columns: ["id_technicien"]
             isOneToOne: false
             referencedRelation: "utilisateur"
             referencedColumns: ["id_utilisateur"]
@@ -414,7 +466,7 @@ export type Database = {
             foreignKeyName: "fk_projet_id_technicien_utilisateur"
             columns: ["id_technicien"]
             isOneToOne: false
-            referencedRelation: "utilisateur"
+            referencedRelation: "utilisateurs_par_role"
             referencedColumns: ["id_utilisateur"]
           },
           {
@@ -437,6 +489,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "region"
             referencedColumns: ["id_region"]
+          },
+          {
+            foreignKeyName: "projet_id_terrain_fkey"
+            columns: ["id_terrain"]
+            isOneToOne: false
+            referencedRelation: "terrain"
+            referencedColumns: ["id_terrain"]
           },
         ]
       }
@@ -598,6 +657,27 @@ export type Database = {
           },
         ]
       }
+      role: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id_role: number
+          nom_role: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id_role?: number
+          nom_role: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id_role?: number
+          nom_role?: string
+        }
+        Relationships: []
+      }
       spatial_ref_sys: {
         Row: {
           auth_name: string | null
@@ -686,8 +766,29 @@ export type Database = {
             referencedColumns: ["id_utilisateur"]
           },
           {
+            foreignKeyName: "fk_terrain_id_superviseur_utilisateur"
+            columns: ["id_superviseur"]
+            isOneToOne: false
+            referencedRelation: "utilisateurs_par_role"
+            referencedColumns: ["id_utilisateur"]
+          },
+          {
             foreignKeyName: "fk_terrain_id_tantsaha_utilisateur"
             columns: ["id_tantsaha"]
+            isOneToOne: false
+            referencedRelation: "utilisateur"
+            referencedColumns: ["id_utilisateur"]
+          },
+          {
+            foreignKeyName: "fk_terrain_id_tantsaha_utilisateur"
+            columns: ["id_tantsaha"]
+            isOneToOne: false
+            referencedRelation: "utilisateurs_par_role"
+            referencedColumns: ["id_utilisateur"]
+          },
+          {
+            foreignKeyName: "fk_terrain_id_technicien_utilisateur"
+            columns: ["id_technicien"]
             isOneToOne: false
             referencedRelation: "utilisateur"
             referencedColumns: ["id_utilisateur"]
@@ -696,7 +797,7 @@ export type Database = {
             foreignKeyName: "fk_terrain_id_technicien_utilisateur"
             columns: ["id_technicien"]
             isOneToOne: false
-            referencedRelation: "utilisateur"
+            referencedRelation: "utilisateurs_par_role"
             referencedColumns: ["id_utilisateur"]
           },
           {
@@ -777,6 +878,7 @@ export type Database = {
         Row: {
           created_at: string | null
           email: string
+          id_role: number | null
           id_utilisateur: string
           nom: string
           photo_courant: boolean | null
@@ -787,6 +889,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           email: string
+          id_role?: number | null
           id_utilisateur: string
           nom: string
           photo_courant?: boolean | null
@@ -797,6 +900,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           email?: string
+          id_role?: number | null
           id_utilisateur?: string
           nom?: string
           photo_courant?: boolean | null
@@ -804,7 +908,22 @@ export type Database = {
           prenoms?: string | null
           role?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "utilisateur_id_role_fkey"
+            columns: ["id_role"]
+            isOneToOne: false
+            referencedRelation: "role"
+            referencedColumns: ["id_role"]
+          },
+          {
+            foreignKeyName: "utilisateur_id_role_fkey"
+            columns: ["id_role"]
+            isOneToOne: false
+            referencedRelation: "utilisateurs_par_role"
+            referencedColumns: ["id_role"]
+          },
+        ]
       }
     }
     Views: {
@@ -847,6 +966,18 @@ export type Database = {
           f_table_schema?: unknown | null
           srid?: number | null
           type?: string | null
+        }
+        Relationships: []
+      }
+      utilisateurs_par_role: {
+        Row: {
+          email: string | null
+          id_role: number | null
+          id_utilisateur: string | null
+          nom: string | null
+          nom_role: string | null
+          photo_profil: string | null
+          prenoms: string | null
         }
         Relationships: []
       }
