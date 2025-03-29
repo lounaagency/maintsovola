@@ -37,6 +37,7 @@ const Terrain: React.FC = () => {
   const [newTerrain, setNewTerrain] = useState<TerrainData>({
     surface_proposee: 0,
     id_region: null,
+    nom_terrain: null,
     id_district: null,
     id_commune: null,
     acces_eau: false,
@@ -256,7 +257,7 @@ const Terrain: React.FC = () => {
       return;
     }
 
-    if (!newTerrain.id_region || !newTerrain.id_district || !newTerrain.id_commune || newTerrain.surface_proposee <= 0) {
+    if (!newTerrain.id_region || !newTerrain.nom_terrain || !newTerrain.id_district || !newTerrain.id_commune || newTerrain.surface_proposee <= 0) {
       toast({
         title: "Champs manquants",
         description: "Tous les champs sont obligatoires et la surface doit être supérieure à 0",
@@ -288,6 +289,7 @@ const Terrain: React.FC = () => {
           surface_validee: 0,
           acces_eau: newTerrain.acces_eau,
           acces_route: newTerrain.acces_route,
+          nom_terrain: newTerrain.nom_terrain,
           statut: false
         })
         .select();
@@ -297,6 +299,7 @@ const Terrain: React.FC = () => {
       setNewTerrain({
         surface_proposee: 0,
         id_region: null,
+        nom_terrain: null,
         id_district: null,
         id_commune: null,
         acces_eau: false,
@@ -488,6 +491,21 @@ const Terrain: React.FC = () => {
                     </Select>
                   </div>
 
+                  <div className="space-y-2">
+                    <Label htmlFor="surface">Nom du terrain </Label>
+                    <Input 
+                      id="nom_terrain"
+                      type="texte" 
+                      value={newTerrain.surface_proposee || ''} 
+                      onChange={(e) => setNewTerrain({
+                        ...newTerrain,
+                        nom_terrain: e.target.value
+                      })}
+                      placeholder="Nom du terrain"
+                    />
+                  </div>
+                </div>
+                
                   <div className="space-y-2">
                     <Label htmlFor="surface">Surface proposée (hectares)</Label>
                     <Input 
