@@ -504,7 +504,6 @@ const Terrain: React.FC = () => {
                       placeholder="Nom du terrain"
                     />
                   </div>
-                </div>
                 
                   <div className="space-y-2">
                     <Label htmlFor="surface">Surface proposée (hectares)</Label>
