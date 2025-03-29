@@ -419,8 +419,11 @@ const Terrain: React.FC = () => {
                     <Label htmlFor="nom_terrain">Nom du terrain </Label>
                     <Input 
                       id="nom_terrain"
-                      type="texte" 
-                      value={newTerrain.nom_terrain || ''} 
+                      value={newTerrain.nom_terrain}  
+                      onChange={(e) => setNewTerrain({
+                        ...newTerrain,
+                        nom_terrain: e.target.value
+                      })}
                       placeholder="Nom du terrain"
                     />
                   </div>
