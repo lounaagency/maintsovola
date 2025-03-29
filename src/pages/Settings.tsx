@@ -96,7 +96,7 @@ const Settings = () => {
         .eq('id_utilisateur', user.id);
 
       if (error) throw error;
-/*
+
       // Upload profile image if changed
       if (profileImage) {
         const fileExt = profileImage.name.split('.').pop();
@@ -141,8 +141,8 @@ const Settings = () => {
         if (updateError) throw updateError;
 
       }
-      await refreshProfile();
-*/
+   //   await refreshProfile();
+
       
       toast({
         title: "Succès",
