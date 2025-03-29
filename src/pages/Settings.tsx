@@ -96,14 +96,9 @@ const Settings = () => {
         .eq('id_utilisateur', user.id);
 
       if (error) throw error;
+console.log(user);  // Vérifie que l'utilisateur est authentifié
+console.log(profileImage);  // Vérifie que l'utilisateur est authentifié
 
-const { data, errorTest } = await supabase.storage
-  .from('avatars')
-  .upload('autres.jpg', profileImage, {
-    cacheControl: '3600',
-    upsert: true,
-  });
-if (errorTest) throw errorTest;
 
 
       
