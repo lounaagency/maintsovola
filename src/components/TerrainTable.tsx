@@ -103,6 +103,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
         <TableHeader>
           <TableRow>
             <TableHead>ID</TableHead>
+            <TableHead>Nom</TableHead>
             <TableHead>Région</TableHead>
             <TableHead>District</TableHead>
             <TableHead>Commune</TableHead>
@@ -123,6 +124,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
             terrains.map((terrain) => (
               <TableRow key={terrain.id_terrain}>
                 <TableCell>{terrain.id_terrain}</TableCell>
+                <TableCell>{terrain.nom_terrain}</TableCell>
                 <TableCell>{terrain.region_name}</TableCell>
                 <TableCell>{terrain.district_name}</TableCell>
                 <TableCell>{terrain.commune_name}</TableCell>
