@@ -415,7 +415,7 @@ const Terrain: React.FC = () => {
 
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
                     <Label htmlFor="nom_terrain">Nom du terrain </Label>
                     <Input 
                       id="nom_terrain"
@@ -424,7 +424,8 @@ const Terrain: React.FC = () => {
                       placeholder="Nom du terrain"
                     />
                   </div>
-                  <div className="space-y-2">
+
+                  <div className="flex items-center space-x-2">
                     <Label htmlFor="surface">Surface proposée (hectares)</Label>
                     <Input 
                       id="surface"
@@ -439,6 +440,8 @@ const Terrain: React.FC = () => {
                       placeholder="Surface en hectares"
                     />
                   </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="region">Région</Label>
                     <Select 
