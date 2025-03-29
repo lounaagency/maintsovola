@@ -1,102 +1,94 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { MessageSquare } from "lucide-react";
-import MessageDialog from "@/components/MessageDialog";
+import { MessageCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import MessageDialog from "@/components/MessageDialog";
 
 interface TechnicienContactLinkProps {
+  technicienId: string | null | undefined;
   projetId: number;
 }
 
-const TechnicienContactLink: React.FC<TechnicienContactLinkProps> = ({ projetId }) => {
+interface TechnicienInfo {
+  id_utilisateur: string;
+  nom: string;
+  prenoms?: string;
+  photo_profil?: string;
+}
+
+const TechnicienContactLink: React.FC<TechnicienContactLinkProps> = ({ 
+  technicienId,
+  projetId 
+}) => {
+  const { user } = useAuth();
+  const [technicien, setTechnicien] = useState<TechnicienInfo | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [technicien, setTechnicien] = useState<{
-    id: string;
-    nom: string;
-    prenoms?: string;
-    photo?: string;
-  } | null>(null);
-  const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
 
-  const fetchTechnicien = async () => {
-    if (technicien) {
-      setIsDialogOpen(true);
-      return;
+  useEffect(() => {
+    if (technicienId) {
+      fetchTechnicienInfo();
+    } else {
+      setIsLoading(false);
     }
+  }, [technicienId]);
 
+  const fetchTechnicienInfo = async () => {
     try {
-      setLoading(true);
       const { data, error } = await supabase
-        .from('projet')
-        .select(`
-          id_technicien,
-          technicien:id_technicien(id_utilisateur, nom, prenoms, photo_profil)
-        `)
-        .eq('id_projet', projetId)
+        .from('utilisateur')
+        .select('id_utilisateur, nom, prenoms, photo_profil')
+        .eq('id_utilisateur', technicienId)
         .single();
 
       if (error) throw error;
-      
-      if (data?.technicien) {
-        setTechnicien({
-          id: data.technicien.id_utilisateur,
-          nom: data.technicien.nom,
-          prenoms: data.technicien.prenoms,
-          photo: data.technicien.photo_profil
-        });
-        setIsDialogOpen(true);
-      } else {
-        toast({
-          title: "Information",
-          description: "Aucun technicien n'est assigné à ce projet pour le moment."
-        });
-      }
+      setTechnicien(data);
     } catch (error) {
-      console.error('Erreur lors de la récupération du technicien:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de récupérer les informations du technicien",
-        variant: "destructive"
-      });
+      console.error("Erreur lors de la récupération des informations du technicien:", error);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  if (!technicien && loading) {
-    return (
-      <Button variant="outline" size="sm" disabled>
-        <div className="animate-spin h-4 w-4 mr-2 border-2 border-primary rounded-full border-t-transparent"></div>
-        Chargement...
-      </Button>
-    );
+  if (isLoading) {
+    return <div className="text-sm text-gray-500">Chargement...</div>;
+  }
+
+  if (!technicien) {
+    return <div className="text-sm text-gray-500">Aucun technicien assigné</div>;
   }
 
   return (
-    <>
-      <Button 
-        variant="outline" 
-        size="sm" 
-        onClick={fetchTechnicien}
-        className="flex items-center gap-1"
-      >
-        <MessageSquare className="h-4 w-4" />
-        Contacter le technicien
-      </Button>
+    <div>
+      <div className="flex items-center mb-2">
+        <div className="mr-2">
+          <span className="font-medium">Technicien:</span>{" "}
+          <span>{technicien.nom} {technicien.prenoms || ''}</span>
+        </div>
+        
+        {user && user.id !== technicienId && (
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => setIsDialogOpen(true)}
+            title="Contacter le technicien"
+          >
+            <MessageCircle className="h-4 w-4 mr-1" />
+            <span className="text-xs">Contacter</span>
+          </Button>
+        )}
+      </div>
 
-      {technicien && (
-        <MessageDialog
-          isOpen={isDialogOpen}
-          onClose={() => setIsDialogOpen(false)}
-          recipientId={technicien.id}
-          recipientName={`${technicien.nom} ${technicien.prenoms || ""}`}
-          recipientPhoto={technicien.photo}
-        />
-      )}
-    </>
+      <MessageDialog
+        isOpen={isDialogOpen}
+        onClose={() => setIsDialogOpen(false)}
+        recipientId={technicien.id_utilisateur}
+        recipientName={`${technicien.nom} ${technicien.prenoms || ''}`}
+        recipientPhoto={technicien.photo_profil}
+      />
+    </div>
   );
 };
 

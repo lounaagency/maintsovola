@@ -21,8 +21,8 @@ const Profile: React.FC = () => {
     name: profile?.nom || "Utilisateur",
     username: profile?.email?.split('@')[0] || "utilisateur",
     avatar: profile?.photo_profil || "https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&q=80&w=200",
-    cover: "https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&q=80&w=1200",
-    bio: `${profile?.role || "Utilisateur"} | Plateforme AgrInvest`,
+    cover: profile?.photo_couverture || "https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&q=80&w=1200",
+    bio: `${profile?.nom_role || "Utilisateur"} | Plateforme AgrInvest`,
     location: "Madagascar",
     website: "agrinvest.mg",
     followers: 1425,
@@ -117,7 +117,7 @@ const Profile: React.FC = () => {
             <h1 className="text-xl font-bold">{profileData.name}</h1>
             <p className="text-sm text-gray-500">@{profileData.username}</p>
             <div className="mt-1 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-              {profile?.role || "Utilisateur"}
+              {profile?.nom_role || "Utilisateur"}
             </div>
           </div>
           

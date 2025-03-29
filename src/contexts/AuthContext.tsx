@@ -4,14 +4,7 @@ import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-
-interface UserProfile {
-  id_utilisateur: string;
-  nom: string;
-  email: string;
-  role: string;
-  photo_profil?: string;
-}
+import { UserProfile } from "@/types/userProfile";
 
 interface AuthContextType {
   session: Session | null;

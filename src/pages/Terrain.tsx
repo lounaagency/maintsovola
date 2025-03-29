@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
@@ -32,6 +31,8 @@ const Terrain: React.FC = () => {
   const [filteredCommunes, setFilteredCommunes] = useState<{id_commune: number; nom_commune: string}[]>([]);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [terrainProjets, setTerrainProjets] = useState<ProjetStatus[]>([]);
+  const [agriculteurs, setAgriculteurs] = useState<{id_utilisateur: string; nom: string; prenoms?: string}[]>([]);
+  const [selectedAgriculteur, setSelectedAgriculteur] = useState<string>("");
 
   const [newTerrain, setNewTerrain] = useState<TerrainData>({
     surface_proposee: 0,
@@ -42,7 +43,6 @@ const Terrain: React.FC = () => {
     acces_route: false
   });
 
-  // Redirect if not logged in
   if (!user) {
     return <Navigate to="/auth" />;
   }
@@ -55,6 +55,7 @@ const Terrain: React.FC = () => {
     fetchCommunes();
     fetchTechniciens();
     fetchTerrainProjets();
+    fetchAgriculteurs();
   }, [user]);
 
   useEffect(() => {
@@ -95,30 +96,18 @@ const Terrain: React.FC = () => {
     }
   };
 
-  const fetchTerrainProjets = async () => {
+  const fetchAgriculteurs = async () => {
     try {
-      // Récupérer les projets associés aux terrains pour vérifier s'ils peuvent être modifiés
       const { data, error } = await supabase
-        .from('projet')
-        .select(`
-          id_terrain,
-          statut,
-          has_investisseur:investissement(count)
-        `)
-        .or('statut.eq.En cours de financement,statut.eq.Culture en cours,statut.eq.Récolte en cours');
-        
+        .from('utilisateurs_par_role')
+        .select('id_utilisateur, nom, prenoms')
+        .eq('nom_role', 'agriculteur');
+      
       if (error) throw error;
       
-      // Transformer les données pour faciliter la vérification
-      const projetsStatus = data.map((projet) => ({
-        id_terrain: projet.id_terrain,
-        statut: projet.statut,
-        has_investisseur: (projet.has_investisseur as any)?.count > 0
-      }));
-      
-      setTerrainProjets(projetsStatus);
+      setAgriculteurs(data);
     } catch (error) {
-      console.error('Erreur lors de la récupération des projets:', error);
+      console.error('Error fetching agriculteurs:', error);
     }
   };
 
@@ -126,7 +115,6 @@ const Terrain: React.FC = () => {
     try {
       setLoading(true);
       
-      // Construire la requête en fonction du rôle de l'utilisateur
       let query = supabase
         .from('terrain')
         .select(`
@@ -138,19 +126,15 @@ const Terrain: React.FC = () => {
         `);
       
       if (userRole === 'agriculteur' || userRole === 'investisseur') {
-        // Pour agriculteurs et investisseurs, seulement leurs terrains
         query = query.eq('id_tantsaha', user?.id);
       } else if (userRole === 'technicien') {
-        // Pour techniciens, seulement les terrains qui leur sont assignés
         query = query.eq('id_technicien', user?.id);
       }
-      // Pour superviseur, tous les terrains (aucun filtre)
       
       const { data, error } = await query.order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      // Transform data to include region/district/commune names
       const transformedData = data.map(item => ({
         ...item,
         id_tantsaha: item.id_tantsaha,
@@ -161,7 +145,6 @@ const Terrain: React.FC = () => {
         techniquePrenoms: item.technicien?.prenoms
       }));
 
-      // Séparer les terrains validés et en attente
       const validated = transformedData.filter(terrain => terrain.statut);
       const pending = transformedData.filter(terrain => !terrain.statut);
       
@@ -261,13 +244,22 @@ const Terrain: React.FC = () => {
       return;
     }
 
+    if ((userRole === 'superviseur' || userRole === 'technicien') && !selectedAgriculteur) {
+      toast({
+        title: "Champ manquant",
+        description: "Veuillez sélectionner un agriculteur propriétaire du terrain",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       setIsSubmitting(true);
       
       const { data, error } = await supabase
         .from('terrain')
         .insert({
-          id_tantsaha: user.id,
+          id_tantsaha: userRole === 'agriculteur' ? user.id : selectedAgriculteur,
           id_region: newTerrain.id_region,
           id_district: newTerrain.id_district,
           id_commune: newTerrain.id_commune,
@@ -281,7 +273,6 @@ const Terrain: React.FC = () => {
 
       if (error) throw error;
 
-      // Reset form
       setNewTerrain({
         surface_proposee: 0,
         id_region: null,
@@ -290,6 +281,7 @@ const Terrain: React.FC = () => {
         acces_eau: false,
         acces_route: false
       });
+      setSelectedAgriculteur("");
       
       setIsCreating(false);
       fetchTerrains(); // Refresh the list
@@ -347,19 +339,17 @@ const Terrain: React.FC = () => {
         className="flex justify-between items-center mb-6"
       >
         <h1 className="text-2xl font-bold">Gestion des Terrains</h1>
-        {['agriculteur', 'investisseur'].includes(userRole || '') && (
-          <Button 
-            onClick={() => setIsCreating(!isCreating)} 
-            variant={isCreating ? "outline" : "default"}
-          >
-            {isCreating ? "Annuler" : (
-              <>
-                <Plus className="mr-2 h-4 w-4" />
-                Ajouter un terrain
-              </>
-            )}
-          </Button>
-        )}
+        <Button 
+          onClick={() => setIsCreating(!isCreating)} 
+          variant={isCreating ? "outline" : "default"}
+        >
+          {isCreating ? "Annuler" : (
+            <>
+              <Plus className="mr-2 h-4 w-4" />
+              Ajouter un terrain
+            </>
+          )}
+        </Button>
       </motion.div>
 
       {isCreating && (
@@ -373,11 +363,32 @@ const Terrain: React.FC = () => {
             <CardHeader>
               <CardTitle>Nouvel enregistrement de terrain</CardTitle>
               <CardDescription>
-                Enregistrez votre terrain pour pouvoir y créer des projets agricoles.
+                Enregistrez un terrain pour pouvoir y créer des projets agricoles.
               </CardDescription>
             </CardHeader>
             <form onSubmit={handleSubmitTerrain}>
               <CardContent className="space-y-4">
+                {(userRole === 'superviseur' || userRole === 'technicien') && (
+                  <div className="space-y-2">
+                    <Label htmlFor="agriculteur">Agriculteur propriétaire</Label>
+                    <Select 
+                      value={selectedAgriculteur} 
+                      onValueChange={setSelectedAgriculteur}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner un agriculteur" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {agriculteurs.map(agriculteur => (
+                          <SelectItem key={agriculteur.id_utilisateur} value={agriculteur.id_utilisateur}>
+                            {agriculteur.nom} {agriculteur.prenoms || ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="region">Région</Label>

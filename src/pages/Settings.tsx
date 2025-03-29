@@ -22,17 +22,169 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 
 const Settings: React.FC = () => {
+  const { user, profile } = useAuth();
   const [saving, setSaving] = useState(false);
+  const [formData, setFormData] = useState({
+    nom: "",
+    prenoms: "",
+    email: "",
+    bio: "",
+    telephones: [] as {
+      id_telephone?: number;
+      numero: string;
+      type: 'principal' | 'whatsapp' | 'mobile_banking' | 'autre';
+      est_whatsapp: boolean;
+      est_mobile_banking: boolean;
+    }[]
+  });
   
-  const handleSaveProfile = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (profile) {
+      setFormData({
+        nom: profile.nom || "",
+        prenoms: profile.prenoms || "",
+        email: profile.email || "",
+        bio: "",
+        telephones: []
+      });
+      
+      // Charger les téléphones
+      fetchTelephones();
+    }
+  }, [profile]);
+  
+  const fetchTelephones = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('telephone')
+        .select('*')
+        .eq('id_utilisateur', user.id);
+        
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        setFormData(prev => ({
+          ...prev,
+          telephones: data.map(tel => ({
+            id_telephone: tel.id_telephone,
+            numero: tel.numero,
+            type: tel.type || 'principal',
+            est_whatsapp: tel.est_whatsapp || false,
+            est_mobile_banking: tel.est_mobile_banking || false
+          }))
+        }));
+      } else {
+        // Ajouter un téléphone vide par défaut
+        setFormData(prev => ({
+          ...prev,
+          telephones: [{
+            numero: "",
+            type: 'principal',
+            est_whatsapp: false,
+            est_mobile_banking: false
+          }]
+        }));
+      }
+    } catch (error) {
+      console.error("Erreur lors du chargement des téléphones:", error);
+      toast.error("Impossible de charger les numéros de téléphone");
+    }
+  };
+  
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) return;
+    
     setSaving(true);
     
-    // Simulate saving
-    setTimeout(() => {
+    try {
+      // Mettre à jour le profil utilisateur
+      const { error: profileError } = await supabase
+        .from('utilisateur')
+        .update({
+          nom: formData.nom,
+          prenoms: formData.prenoms
+        })
+        .eq('id_utilisateur', user.id);
+        
+      if (profileError) throw profileError;
+      
+      // Gérer les téléphones
+      for (const telephone of formData.telephones) {
+        if (telephone.id_telephone) {
+          // Mettre à jour un téléphone existant
+          const { error: telError } = await supabase
+            .from('telephone')
+            .update({
+              numero: telephone.numero,
+              type: telephone.type,
+              est_whatsapp: telephone.est_whatsapp,
+              est_mobile_banking: telephone.est_mobile_banking
+            })
+            .eq('id_telephone', telephone.id_telephone);
+            
+          if (telError) throw telError;
+        } else if (telephone.numero.trim()) {
+          // Créer un nouveau téléphone
+          const { error: telError } = await supabase
+            .from('telephone')
+            .insert({
+              id_utilisateur: user.id,
+              numero: telephone.numero,
+              type: telephone.type,
+              est_whatsapp: telephone.est_whatsapp,
+              est_mobile_banking: telephone.est_mobile_banking
+            });
+            
+          if (telError) throw telError;
+        }
+      }
+      
+      toast.success("Profil mis à jour avec succès");
+    } catch (error) {
+      console.error("Erreur lors de la mise à jour du profil:", error);
+      toast.error("Impossible de mettre à jour le profil");
+    } finally {
       setSaving(false);
-      toast.success("Profile updated successfully!");
-    }, 1500);
+    }
+  };
+  
+  const addPhoneNumber = () => {
+    setFormData(prev => ({
+      ...prev,
+      telephones: [
+        ...prev.telephones,
+        {
+          numero: "",
+          type: 'autre',
+          est_whatsapp: false,
+          est_mobile_banking: false
+        }
+      ]
+    }));
+  };
+  
+  const removePhoneNumber = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      telephones: prev.telephones.filter((_, i) => i !== index)
+    }));
+  };
+  
+  const updatePhoneNumber = (index: number, field: string, value: any) => {
+    setFormData(prev => {
+      const telephones = [...prev.telephones];
+      telephones[index] = {
+        ...telephones[index],
+        [field]: value
+      };
+      return {
+        ...prev,
+        telephones
+      };
+    });
   };
   
   const settingsGroups = [
@@ -85,14 +237,14 @@ const Settings: React.FC = () => {
       <div className="space-y-6 mb-8">
         <div className="flex items-center">
           <UserAvatar
-            src="https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&q=80&w=200"
-            alt="Alex Morgan"
+            src={profile?.photo_profil || "https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&q=80&w=200"}
+            alt={profile?.nom || "User"}
             size="lg"
           />
           
           <div className="ml-4">
-            <p className="font-semibold">Alex Morgan</p>
-            <p className="text-sm text-gray-500">@alexmorgan</p>
+            <p className="font-semibold">{profile?.nom} {profile?.prenoms || ''}</p>
+            <p className="text-sm text-gray-500">{profile?.email}</p>
           </div>
           
           <Button variant="outline" size="sm" className="ml-auto">
@@ -103,39 +255,99 @@ const Settings: React.FC = () => {
         <form onSubmit={handleSaveProfile}>
           <div className="space-y-4">
             <div className="grid gap-2">
-              <Label htmlFor="name">Display Name</Label>
-              <Input id="name" defaultValue="Alex Morgan" />
+              <Label htmlFor="name">Nom</Label>
+              <Input 
+                id="name" 
+                value={formData.nom} 
+                onChange={(e) => setFormData({...formData, nom: e.target.value})} 
+              />
             </div>
             
             <div className="grid gap-2">
-              <Label htmlFor="username">Username</Label>
-              <Input id="username" defaultValue="alexmorgan" />
-            </div>
-            
-            <div className="grid gap-2">
-              <Label htmlFor="bio">Bio</Label>
-              <Textarea 
-                id="bio" 
-                rows={3}
-                defaultValue="Product Designer & Developer | Creating digital experiences that people love"
+              <Label htmlFor="prenoms">Prénoms</Label>
+              <Input 
+                id="prenoms" 
+                value={formData.prenoms} 
+                onChange={(e) => setFormData({...formData, prenoms: e.target.value})} 
               />
             </div>
             
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" defaultValue="alex@example.com" />
+              <Input 
+                id="email" 
+                type="email" 
+                value={formData.email} 
+                readOnly 
+              />
             </div>
             
-            <div className="flex items-center justify-between pt-2">
-              <Label htmlFor="marketing" className="text-sm font-medium text-gray-700">
-                Receive marketing emails
-              </Label>
-              <Switch id="marketing" defaultChecked />
+            <div className="grid gap-2">
+              <div className="flex justify-between items-center">
+                <Label>Numéros de téléphone</Label>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={addPhoneNumber}
+                >
+                  Ajouter
+                </Button>
+              </div>
+              
+              {formData.telephones.map((telephone, index) => (
+                <div key={index} className="space-y-2 p-3 border rounded-md">
+                  <div className="flex justify-between items-start">
+                    <Label htmlFor={`phone-${index}`}>Numéro {index + 1}</Label>
+                    {formData.telephones.length > 1 && (
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => removePhoneNumber(index)}
+                      >
+                        ×
+                      </Button>
+                    )}
+                  </div>
+                  
+                  <Input
+                    id={`phone-${index}`}
+                    placeholder="Ex: 034 12 345 67"
+                    value={telephone.numero}
+                    onChange={(e) => updatePhoneNumber(index, 'numero', e.target.value)}
+                  />
+                  
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id={`whatsapp-${index}`}
+                        checked={telephone.est_whatsapp}
+                        onChange={(e) => updatePhoneNumber(index, 'est_whatsapp', e.target.checked)}
+                        className="h-4 w-4"
+                      />
+                      <Label htmlFor={`whatsapp-${index}`}>WhatsApp</Label>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id={`banking-${index}`}
+                        checked={telephone.est_mobile_banking}
+                        onChange={(e) => updatePhoneNumber(index, 'est_mobile_banking', e.target.checked)}
+                        className="h-4 w-4"
+                      />
+                      <Label htmlFor={`banking-${index}`}>Mobile Banking</Label>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
             
             <div className="pt-2">
               <Button type="submit" className="w-full bg-maintso hover:bg-maintso-600" disabled={saving}>
-                {saving ? "Saving..." : "Save Changes"}
+                {saving ? "Enregistrement..." : "Enregistrer les modifications"}
               </Button>
             </div>
           </div>

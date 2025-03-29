@@ -2,6 +2,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Message, Conversation } from "@/types/message";
 import { useAuth } from "@/contexts/AuthContext";
+import { useEffect } from "react";
 
 export const createConversation = async (userId1: string, userId2: string) => {
   try {
@@ -142,7 +143,7 @@ export const updateConversationActivity = async (userId1: string, userId2: strin
 export const useGetMessagesRealTime = (conversationId: number, callback: (messages: any[]) => void) => {
   const { user } = useAuth();
   
-  React.useEffect(() => {
+  useEffect(() => {
     if (!conversationId || !user) return;
     
     const channel = supabase

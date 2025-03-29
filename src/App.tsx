@@ -27,7 +27,7 @@ const App = () => (
         <AuthProvider>
           <AnimatePresence mode="wait">
             <Routes>
-              <Route path="/" element={<Index />} />
+              <Route path="/" element={<Navigate to="/feed" replace />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/feed" element={
                 <Layout>
@@ -59,7 +59,7 @@ const App = () => (
                   <NotFound />
                 </Layout>
               } />
-              <Route path="*" element={<Navigate to="/" replace />} />
+              <Route path="*" element={<Navigate to="/feed" replace />} />
             </Routes>
           </AnimatePresence>
         </AuthProvider>

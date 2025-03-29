@@ -207,6 +207,30 @@ export type Database = {
           },
         ]
       }
+      conversation: {
+        Row: {
+          created_at: string | null
+          derniere_activite: string | null
+          id_conversation: number
+          id_utilisateur1: string
+          id_utilisateur2: string
+        }
+        Insert: {
+          created_at?: string | null
+          derniere_activite?: string | null
+          id_conversation?: number
+          id_utilisateur1: string
+          id_utilisateur2: string
+        }
+        Update: {
+          created_at?: string | null
+          derniere_activite?: string | null
+          id_conversation?: number
+          id_utilisateur1?: string
+          id_utilisateur2?: string
+        }
+        Relationships: []
+      }
       culture: {
         Row: {
           cout_exploitation_ha: number | null
@@ -374,6 +398,53 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "culture"
             referencedColumns: ["id_culture"]
+          },
+        ]
+      }
+      message: {
+        Row: {
+          contenu: string
+          created_at: string | null
+          created_by: string | null
+          date_envoi: string | null
+          id_conversation: number | null
+          id_destinataire: string
+          id_expediteur: string
+          id_message: number
+          lu: boolean | null
+          modified_at: string | null
+        }
+        Insert: {
+          contenu: string
+          created_at?: string | null
+          created_by?: string | null
+          date_envoi?: string | null
+          id_conversation?: number | null
+          id_destinataire: string
+          id_expediteur: string
+          id_message?: number
+          lu?: boolean | null
+          modified_at?: string | null
+        }
+        Update: {
+          contenu?: string
+          created_at?: string | null
+          created_by?: string | null
+          date_envoi?: string | null
+          id_conversation?: number | null
+          id_destinataire?: string
+          id_expediteur?: string
+          id_message?: number
+          lu?: boolean | null
+          modified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_id_conversation_fkey"
+            columns: ["id_conversation"]
+            isOneToOne: false
+            referencedRelation: "conversation"
+            referencedColumns: ["id_conversation"]
           },
         ]
       }
