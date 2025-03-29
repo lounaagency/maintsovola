@@ -97,6 +97,16 @@ const Settings = () => {
 
       if (error) throw error;
 
+const { data, error } = await supabase.storage
+  .from('avatars')
+  .upload('avatar.png', file, {
+    cacheControl: '3600',
+    upsert: true,
+  });
+
+
+
+      
       // Upload profile image if changed
       if (profileImage) {
         const fileExt = profileImage.name.split('.').pop();
