@@ -96,32 +96,12 @@ const Settings = () => {
         .eq('id_utilisateur', user.id);
 
       if (error) throw error;
-
+/*
       // Upload profile image if changed
       if (profileImage) {
         const fileExt = profileImage.name.split('.').pop();
         const fileName = `${user.id}-profile-${Date.now()}.${fileExt}`;
 
-        
-       // const { error: uploadError } = await supabase.storage
-          //.from('avatars')
-          //.upload(fileName, profileImage);
-
-        //if (uploadError) throw uploadError;
-        
-        //const { data: publicUrlData } = supabase.storage
-          //.from('avatars')
-          //.getPublicUrl(fileName);
-          
-        // Update profile with new image URL
-        //const { error: updateError } = await supabase
-          //.from('utilisateur')
-          //.update({
-            //photo_profil: publicUrlData.publicUrl
-          //})
-          //.eq('id_utilisateur', user.id);
-          
-        //if (updateError) throw updateError;
 // Modification apportée pour bien uploader les photos de profils et mettre à jour la table utilisateur
         const { data, error: uploadError } = await supabase.storage
           .from('avatars')
@@ -136,14 +116,7 @@ const Settings = () => {
           .from('utilisateur')
           .update({ photo_profil: publicUrl.publicUrl })
           .eq('id_utilisateur', user.id);
-        
-        if (updateError) throw updateError;
-
-
-
-
-
-        
+         if (updateError) throw updateError; 
       }
       
       // Upload cover image if changed
@@ -167,29 +140,8 @@ const Settings = () => {
         
         if (updateError) throw updateError;
 
-
-        
-        //const { error: uploadError } = await supabase.storage
-          //.from('covers')
-         // .upload(fileName, coverImage);
-
-        //if (uploadError) throw uploadError;
-        
-        //const { data: publicUrlData } = supabase.storage
-          //.from('covers')
-          //.getPublicUrl(fileName);
-          
-        // Update profile with new cover image URL
-        //const { error: updateError } = await supabase
-          //.from('utilisateur')
-          //.update({
-            //photo_couverture: publicUrlData.publicUrl
-         // })
-          //.eq('id_utilisateur', user.id);
-          
-        //if (updateError) throw updateError;
       }
-
+*/
       await refreshProfile();
       
       toast({
