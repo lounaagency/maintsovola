@@ -35,13 +35,16 @@ const UserAvatar: React.FC<UserAvatarProps> = ({
       default: return "hidden";
     }
   };
-  
+ 
   const initialsFromName = (name: string) => {
-    const parts = name.split(" ");
-    if (parts.length > 1) {
-      return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+    if (typeof name !== "string") {
+        console.error("Invalid name value:", name);
+        return "?"; // Valeur par défaut
     }
-    return name.substring(0, 2).toUpperCase();
+    const parts = name.trim().split(" ");
+    return parts.length > 1 
+        ? `${parts[0][0]}${parts[1][0]}`.toUpperCase()
+        : parts[0][0].toUpperCase();
   };
 
   return (
