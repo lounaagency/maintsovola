@@ -97,13 +97,13 @@ const Settings = () => {
 
       if (error) throw error;
 
-const { data, error } = await supabase.storage
+const { data, errorTest } = await supabase.storage
   .from('avatars')
   .upload('avatar.png', file, {
     cacheControl: '3600',
     upsert: true,
   });
-
+if (errorTest) throw errorTest;
 
 
       
