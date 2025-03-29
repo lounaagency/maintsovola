@@ -32,7 +32,8 @@ const Feed: React.FC = () => {
           created_at,
           id_tantsaha,
           id_commune,
-          utilisateur(id_utilisateur, nom, prenoms, photo_profil),
+          id_technicien,
+          tantsaha:id_tantsaha(id_utilisateur, nom, prenoms, photo_profil),
           commune(nom_commune, district(nom_district, region(nom_region)))
         `)
         .order('created_at', { ascending: false });
@@ -80,20 +81,21 @@ const Feed: React.FC = () => {
         throw likesError;
       }
       
-      // Récupération des commentaires pour chaque projet
-      const { data: commentsData, error: commentsError } = await supabase
+      // Récupération du nombre de commentaires pour chaque projet
+      const { data: commentsCountData, error: commentsError } = await supabase
         .from('commentaire')
-        .select(`
-          id_commentaire,
-          id_projet,
-          count
-        `)
-        .select('id_projet')
-        .count();
+        .select('id_projet');
         
       if (commentsError) {
         throw commentsError;
       }
+      
+      // Regroupement des commentaires par projet
+      const commentsCount: Record<string, number> = {};
+      commentsCountData.forEach(comment => {
+        const projectId = comment.id_projet.toString();
+        commentsCount[projectId] = (commentsCount[projectId] || 0) + 1;
+      });
       
       // Traitement des données pour créer les objets AgriculturalProject
       const transformedProjects = projetsData.map(projet => {
@@ -114,9 +116,7 @@ const Feed: React.FC = () => {
           false;
         
         // Nombre de commentaires pour ce projet
-        const comments = commentsData
-          .filter(comment => comment.id_projet === projet.id_projet)
-          .length;
+        const commentCount = commentsCount[projet.id_projet.toString()] || 0;
         
         // Pour un exemple simple, on va considérer le coût d'exploitation comme objectif de financement
         const cultivationType = projetCultures.length > 0 
@@ -135,15 +135,23 @@ const Feed: React.FC = () => {
         // Dans un cas réel, ce calcul serait plus complexe
         const expectedRevenue = expectedYield * projet.surface_ha * 1.5 * farmingCost;
         
+        // Vérifier que l'agriculteur existe avant d'accéder à ses propriétés
+        const farmer = projet.tantsaha ? {
+          id: projet.tantsaha.id_utilisateur,
+          name: `${projet.tantsaha.nom} ${projet.tantsaha.prenoms || ''}`.trim(),
+          username: projet.tantsaha.nom.toLowerCase().replace(/\s+/g, ''),
+          avatar: projet.tantsaha.photo_profil,
+        } : {
+          id: "",
+          name: "Utilisateur inconnu",
+          username: "inconnu",
+          avatar: undefined,
+        };
+        
         return {
           id: projet.id_projet.toString(),
           title: `Projet de culture de ${cultivationType}`,
-          farmer: {
-            id: projet.utilisateur.id_utilisateur,
-            name: `${projet.utilisateur.nom} ${projet.utilisateur.prenoms || ''}`.trim(),
-            username: projet.utilisateur.nom.toLowerCase().replace(' ', ''),
-            avatar: projet.utilisateur.photo_profil,
-          },
+          farmer,
           location: {
             region: projet.commune?.district?.region?.nom_region || "Non spécifié",
             district: projet.commune?.district?.nom_district || "Non spécifié",
@@ -160,9 +168,10 @@ const Feed: React.FC = () => {
           fundingGoal: farmingCost * projet.surface_ha,
           currentFunding,
           likes,
-          comments,
+          comments: commentCount,
           shares: 0, // À implémenter
           isLiked,
+          technicienId: projet.id_technicien,
         };
       });
       
@@ -175,39 +184,9 @@ const Feed: React.FC = () => {
     }
   };
   
-  const handleNewProject = async (newProject: AgriculturalProject) => {
-    try {
-      // Insérer le nouveau projet dans la base de données
-      const { data, error } = await supabase
-        .from('projet')
-        .insert({
-          surface_ha: newProject.cultivationArea,
-          id_tantsaha: user?.id,
-          statut: 'En attente de financement',
-        })
-        .select('id_projet')
-        .single();
-        
-      if (error) throw error;
-      
-      // Insérer la relation projet-culture
-      const { error: cultureError } = await supabase
-        .from('projet_culture')
-        .insert({
-          id_projet: data.id_projet,
-          id_culture: 1, // À modifier pour utiliser l'ID réel de la culture
-          cout_exploitation_previsionnel: newProject.farmingCost,
-          rendement_previsionnel: newProject.expectedYield,
-        });
-        
-      if (cultureError) throw cultureError;
-      
-      toast.success("Projet créé avec succès!");
-      fetchProjects(); // Rafraîchir la liste des projets
-    } catch (error) {
-      console.error("Erreur lors de la création du projet:", error);
-      toast.error("Erreur lors de la création du projet");
-    }
+  const handleNewProject = (newProject: AgriculturalProject) => {
+    setProjects(prevProjects => [newProject, ...prevProjects]);
+    toast.success("Projet créé avec succès!");
   };
   
   const handleToggleLike = async (projectId: string, isCurrentlyLiked: boolean) => {

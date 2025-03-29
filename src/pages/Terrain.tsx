@@ -12,53 +12,26 @@ import { useToast } from "@/components/ui/use-toast";
 import { container, item } from "@/components/auth/motionConstants";
 import { Plus, Loader2 } from "lucide-react";
 import { Navigate } from "react-router-dom";
-
-type TerrainData = {
-  id_terrain?: number;
-  id_tantsaha?: number;
-  id_region?: number | null;
-  id_district?: number | null;
-  id_commune?: number | null;
-  surface_proposee: number;
-  acces_eau?: boolean | null;
-  acces_route?: boolean | null;
-  statut?: boolean;
-  region_name?: string;
-  district_name?: string;
-  commune_name?: string;
-  created_at?: string;
-};
-
-type Region = {
-  id_region: number;
-  nom_region: string;
-};
-
-type District = {
-  id_district: number;
-  nom_district: string;
-  id_region: number;
-};
-
-type Commune = {
-  id_commune: number;
-  nom_commune: string;
-  id_district: number;
-};
+import { TerrainData, ProjetStatus } from "@/types/terrain";
+import TerrainTable from "@/components/TerrainTable";
 
 const Terrain: React.FC = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { toast } = useToast();
 
   const [isCreating, setIsCreating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [terrains, setTerrains] = useState<TerrainData[]>([]);
+  const [validatedTerrains, setValidatedTerrains] = useState<TerrainData[]>([]);
+  const [pendingTerrains, setPendingTerrains] = useState<TerrainData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [regions, setRegions] = useState<Region[]>([]);
-  const [districts, setDistricts] = useState<District[]>([]);
-  const [communes, setCommunes] = useState<Commune[]>([]);
-  const [filteredDistricts, setFilteredDistricts] = useState<District[]>([]);
-  const [filteredCommunes, setFilteredCommunes] = useState<Commune[]>([]);
+  const [regions, setRegions] = useState<{id_region: number; nom_region: string}[]>([]);
+  const [districts, setDistricts] = useState<{id_district: number; nom_district: string}[]>([]);
+  const [communes, setCommunes] = useState<{id_commune: number; nom_commune: string}[]>([]);
+  const [techniciens, setTechniciens] = useState<{id: string; nom: string; prenoms?: string}[]>([]);
+  const [filteredDistricts, setFilteredDistricts] = useState<{id_district: number; nom_district: string}[]>([]);
+  const [filteredCommunes, setFilteredCommunes] = useState<{id_commune: number; nom_commune: string}[]>([]);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [terrainProjets, setTerrainProjets] = useState<ProjetStatus[]>([]);
 
   const [newTerrain, setNewTerrain] = useState<TerrainData>({
     surface_proposee: 0,
@@ -75,10 +48,13 @@ const Terrain: React.FC = () => {
   }
 
   useEffect(() => {
+    fetchUserRole();
     fetchTerrains();
     fetchRegions();
     fetchDistricts();
     fetchCommunes();
+    fetchTechniciens();
+    fetchTerrainProjets();
   }, [user]);
 
   useEffect(() => {
@@ -101,32 +77,96 @@ const Terrain: React.FC = () => {
     }
   }, [newTerrain.id_district, communes]);
 
+  const fetchUserRole = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('utilisateurs_par_role')
+        .select('nom_role')
+        .eq('id_utilisateur', user?.id)
+        .single();
+        
+      if (error) throw error;
+      
+      if (data) {
+        setUserRole(data.nom_role);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la récupération du rôle:', error);
+    }
+  };
+
+  const fetchTerrainProjets = async () => {
+    try {
+      // Récupérer les projets associés aux terrains pour vérifier s'ils peuvent être modifiés
+      const { data, error } = await supabase
+        .from('projet')
+        .select(`
+          id_terrain,
+          statut,
+          has_investisseur:investissement(count)
+        `)
+        .or('statut.eq.En cours de financement,statut.eq.Culture en cours,statut.eq.Récolte en cours');
+        
+      if (error) throw error;
+      
+      // Transformer les données pour faciliter la vérification
+      const projetsStatus = data.map((projet) => ({
+        id_terrain: projet.id_terrain,
+        statut: projet.statut,
+        has_investisseur: (projet.has_investisseur as any)?.count > 0
+      }));
+      
+      setTerrainProjets(projetsStatus);
+    } catch (error) {
+      console.error('Erreur lors de la récupération des projets:', error);
+    }
+  };
+
   const fetchTerrains = async () => {
     try {
       setLoading(true);
       
-      const { data, error } = await supabase
+      // Construire la requête en fonction du rôle de l'utilisateur
+      let query = supabase
         .from('terrain')
         .select(`
           *,
           region:id_region(nom_region),
           district:id_district(nom_district),
-          commune:id_commune(nom_commune)
-        `)
-        .eq('id_tantsaha', user?.id)
-        .order('created_at', { ascending: false });
+          commune:id_commune(nom_commune),
+          technicien:id_technicien(nom, prenoms)
+        `);
+      
+      if (userRole === 'agriculteur' || userRole === 'investisseur') {
+        // Pour agriculteurs et investisseurs, seulement leurs terrains
+        query = query.eq('id_tantsaha', user?.id);
+      } else if (userRole === 'technicien') {
+        // Pour techniciens, seulement les terrains qui leur sont assignés
+        query = query.eq('id_technicien', user?.id);
+      }
+      // Pour superviseur, tous les terrains (aucun filtre)
+      
+      const { data, error } = await query.order('created_at', { ascending: false });
 
       if (error) throw error;
 
       // Transform data to include region/district/commune names
       const transformedData = data.map(item => ({
         ...item,
+        id_tantsaha: item.id_tantsaha,
         region_name: item.region?.nom_region,
         district_name: item.district?.nom_district,
-        commune_name: item.commune?.nom_commune
+        commune_name: item.commune?.nom_commune,
+        techniqueNom: item.technicien?.nom,
+        techniquePrenoms: item.technicien?.prenoms
       }));
 
-      setTerrains(transformedData);
+      // Séparer les terrains validés et en attente
+      const validated = transformedData.filter(terrain => terrain.statut);
+      const pending = transformedData.filter(terrain => !terrain.statut);
+      
+      setValidatedTerrains(validated);
+      setPendingTerrains(pending);
     } catch (error) {
       console.error('Error fetching terrains:', error);
       toast({
@@ -181,6 +221,25 @@ const Terrain: React.FC = () => {
     }
   };
 
+  const fetchTechniciens = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('utilisateurs_par_role')
+        .select('id_utilisateur, nom, prenoms')
+        .eq('nom_role', 'technicien');
+      
+      if (error) throw error;
+      
+      setTechniciens(data.map(tech => ({
+        id: tech.id_utilisateur,
+        nom: tech.nom,
+        prenoms: tech.prenoms
+      })));
+    } catch (error) {
+      console.error('Error fetching techniciens:', error);
+    }
+  };
+
   const handleSubmitTerrain = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -219,11 +278,7 @@ const Terrain: React.FC = () => {
           statut: false // Not validated by default
         })
         .select();
-toast({
-        title: "Les valeurs",
-        description: "Utilisateur : "|user.id|"Région : "|newTerrain.id_region,
-        variant: "destructive"
-      });
+
       if (error) throw error;
 
       // Reset form
@@ -255,26 +310,56 @@ toast({
     }
   };
 
+  const getTerrainsTableTitle = () => {
+    switch (userRole) {
+      case 'agriculteur':
+      case 'investisseur':
+        return "Mes terrains validés";
+      case 'superviseur':
+        return "Terrains validés";
+      case 'technicien':
+        return "Terrains validés qui me sont assignés";
+      default:
+        return "Terrains validés";
+    }
+  };
+
+  const getPendingTerrainsTableTitle = () => {
+    switch (userRole) {
+      case 'agriculteur':
+      case 'investisseur':
+        return "Mes terrains en attente de validation";
+      case 'superviseur':
+        return "Terrains en attente de validation";
+      case 'technicien':
+        return "Terrains en attente de validation qui me sont assignés";
+      default:
+        return "Terrains en attente de validation";
+    }
+  };
+
   return (
-    <div className="container max-w-4xl py-8 px-4 mb-16">
+    <div className="container max-w-7xl py-8 px-4 mb-16">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
         className="flex justify-between items-center mb-6"
       >
-        <h1 className="text-2xl font-bold">Mes Terrains</h1>
-        <Button 
-          onClick={() => setIsCreating(!isCreating)} 
-          variant={isCreating ? "outline" : "default"}
-        >
-          {isCreating ? "Annuler" : (
-            <>
-              <Plus className="mr-2 h-4 w-4" />
-              Ajouter un terrain
-            </>
-          )}
-        </Button>
+        <h1 className="text-2xl font-bold">Gestion des Terrains</h1>
+        {['agriculteur', 'investisseur'].includes(userRole || '') && (
+          <Button 
+            onClick={() => setIsCreating(!isCreating)} 
+            variant={isCreating ? "outline" : "default"}
+          >
+            {isCreating ? "Annuler" : (
+              <>
+                <Plus className="mr-2 h-4 w-4" />
+                Ajouter un terrain
+              </>
+            )}
+          </Button>
+        )}
       </motion.div>
 
       {isCreating && (
@@ -437,73 +522,29 @@ toast({
         <div className="flex justify-center items-center p-8">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
-      ) : terrains.length === 0 ? (
-        <div className="text-center p-8 bg-muted rounded-lg">
-          <p className="text-lg mb-4">Vous n'avez pas encore enregistré de terrain</p>
-          <Button onClick={() => setIsCreating(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Ajouter votre premier terrain
-          </Button>
-        </div>
       ) : (
-        <motion.div
-          variants={container}
-          initial="hidden"
-          animate="show"
-          className="grid grid-cols-1 gap-4"
-        >
-          {terrains.map((terrain) => (
-            <motion.div key={terrain.id_terrain} variants={item}>
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex justify-between">
-                    <span>Terrain {terrain.id_terrain}</span>
-                    <span className={`px-2 py-1 text-xs rounded-full ${terrain.statut ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}`}>
-                      {terrain.statut ? 'Validé' : 'En attente de validation'}
-                    </span>
-                  </CardTitle>
-                  <CardDescription>
-                    Enregistré le {new Date(terrain.created_at || '').toLocaleDateString()}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-y-2">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Région:</p>
-                      <p>{terrain.region_name}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">District:</p>
-                      <p>{terrain.district_name}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Commune:</p>
-                      <p>{terrain.commune_name}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Surface proposée:</p>
-                      <p>{terrain.surface_proposee} hectares</p>
-                    </div>
-                    {terrain.statut && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">Surface validée:</p>
-                        <p>{terrain.surface_validee} hectares</p>
-                      </div>
-                    )}
-                  </div>
-                  <div className="mt-4 flex gap-3">
-                    <div className={`text-xs px-2 py-1 rounded-full ${terrain.acces_eau ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}`}>
-                      {terrain.acces_eau ? 'Accès à l\'eau' : 'Pas d\'accès à l\'eau'}
-                    </div>
-                    <div className={`text-xs px-2 py-1 rounded-full ${terrain.acces_route ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}`}>
-                      {terrain.acces_route ? 'Accès routier' : 'Pas d\'accès routier'}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
-        </motion.div>
+        <div className="space-y-6">
+          <div>
+            <h2 className="text-xl font-semibold mb-4">{getPendingTerrainsTableTitle()}</h2>
+            <TerrainTable 
+              terrains={pendingTerrains} 
+              type="pending" 
+              userRole={userRole || undefined}
+              onTerrainUpdate={fetchTerrains}
+              techniciens={techniciens}
+            />
+          </div>
+
+          <div>
+            <h2 className="text-xl font-semibold mb-4">{getTerrainsTableTitle()}</h2>
+            <TerrainTable 
+              terrains={validatedTerrains} 
+              type="validated" 
+              userRole={userRole || undefined}
+              onTerrainUpdate={fetchTerrains}
+            />
+          </div>
+        </div>
       )}
     </div>
   );

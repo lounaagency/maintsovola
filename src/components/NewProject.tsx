@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import UserAvatar from "./UserAvatar";
 import { Button } from "@/components/ui/button";
@@ -25,7 +24,6 @@ const NewProject: React.FC<NewProjectProps> = ({ onProjectCreated }) => {
   const { user, profile } = useAuth();
   
   useEffect(() => {
-    // Récupérer le rôle de l'utilisateur
     const fetchUserRole = async () => {
       if (user) {
         try {
@@ -46,7 +44,6 @@ const NewProject: React.FC<NewProjectProps> = ({ onProjectCreated }) => {
       }
     };
     
-    // Récupérer la liste des cultures disponibles
     const fetchCultures = async () => {
       try {
         const { data, error } = await supabase
@@ -68,13 +65,9 @@ const NewProject: React.FC<NewProjectProps> = ({ onProjectCreated }) => {
       }
     };
     
-    // Récupérer la liste des terrains validés de l'utilisateur
     const fetchTerrains = async () => {
       if (user) {
         try {
-          // Pour les agriculteurs et investisseurs, récupérer leurs propres terrains
-          // Pour les superviseurs, récupérer tous les terrains validés
-          // Pour les techniciens, récupérer les terrains qui leur sont assignés
           let query = supabase
             .from('terrain')
             .select('id_terrain, surface_validee');
@@ -84,7 +77,6 @@ const NewProject: React.FC<NewProjectProps> = ({ onProjectCreated }) => {
           } else if (userRole === 'technicien') {
             query = query.eq('id_technicien', user.id);
           } else {
-            // Agriculteurs et investisseurs
             query = query.eq('id_tantsaha', user.id).eq('statut', true);
           }
           
@@ -140,7 +132,6 @@ const NewProject: React.FC<NewProjectProps> = ({ onProjectCreated }) => {
     setIsPosting(true);
     
     try {
-      // Récupérer les informations de la culture sélectionnée
       const { data: cultureData, error: cultureError } = await supabase
         .from('culture')
         .select('*')
@@ -149,7 +140,6 @@ const NewProject: React.FC<NewProjectProps> = ({ onProjectCreated }) => {
         
       if (cultureError) throw cultureError;
       
-      // Récupérer les informations du terrain sélectionné
       const { data: terrainData, error: terrainError } = await supabase
         .from('terrain')
         .select('*')
@@ -158,7 +148,6 @@ const NewProject: React.FC<NewProjectProps> = ({ onProjectCreated }) => {
         
       if (terrainError) throw terrainError;
       
-      // Créer un nouveau projet
       const { data: projetData, error: projetError } = await supabase
         .from('projet')
         .insert({
@@ -175,7 +164,6 @@ const NewProject: React.FC<NewProjectProps> = ({ onProjectCreated }) => {
         
       if (projetError) throw projetError;
       
-      // Ajouter la culture au projet
       const { error: projetCultureError } = await supabase
         .from('projet_culture')
         .insert({
@@ -188,14 +176,13 @@ const NewProject: React.FC<NewProjectProps> = ({ onProjectCreated }) => {
         
       if (projetCultureError) throw projetCultureError;
       
-      // Pour l'interface utilisateur, créer un objet AgriculturalProject
       const newProject: AgriculturalProject = {
         id: projetData.id_projet.toString(),
         title: `Projet de culture de ${cultureData.nom_culture}`,
         farmer: {
           id: user.id,
           name: profile ? `${profile.nom} ${profile.prenoms || ''}`.trim() : 'Utilisateur',
-          username: profile ? profile.nom.toLowerCase().replace(' ', '') : 'utilisateur',
+          username: profile ? profile.nom.toLowerCase().replace(/\s+/g, '') : 'utilisateur',
           avatar: profile?.photo_profil,
         },
         location: {
@@ -218,7 +205,6 @@ const NewProject: React.FC<NewProjectProps> = ({ onProjectCreated }) => {
         shares: 0,
       };
       
-      // Notifier la création du projet
       if (onProjectCreated) {
         onProjectCreated(newProject);
       }

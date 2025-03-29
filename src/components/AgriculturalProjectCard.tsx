@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Heart, MessageCircle, Share, MoreHorizontal, MapPin, Calendar, Image } from "lucide-react";
 import UserAvatar from "./UserAvatar";
@@ -11,6 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import TechnicienContactLink from "./TechnicienContactLink";
 
 interface AgriculturalProjectCardProps {
   project: AgriculturalProject;
@@ -41,7 +41,6 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({
     }
     setLiked(!liked);
     
-    // Appel de la fonction parent pour gérer le like au niveau de la base de données
     if (onLikeToggle) {
       onLikeToggle(liked);
     }
@@ -67,8 +66,7 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({
       return;
     }
     
-    // Dans un cas réel, cela ouvrirait probablement un modal pour définir le montant
-    const investmentAmount = 500; // Montant fictif pour l'exemple
+    const investmentAmount = 500;
     
     try {
       const { error } = await supabase
@@ -184,6 +182,10 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({
             )}
           </div>
         )}
+        
+        <div className="mt-2 flex justify-end">
+          <TechnicienContactLink projetId={parseInt(project.id)} />
+        </div>
         
         <div className="mt-4 mb-2">
           <div className="flex justify-between text-sm mb-1">

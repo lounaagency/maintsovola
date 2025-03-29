@@ -29,4 +29,5 @@ export interface AgriculturalProject {
   comments: number;
   shares: number;
   isLiked?: boolean;
+  technicienId?: string; // ID du technicien responsable du projet
 }
