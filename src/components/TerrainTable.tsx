@@ -104,10 +104,8 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
           <TableRow>
             <TableHead>ID</TableHead>
             <TableHead>Nom</TableHead>
-            <TableHead>Région</TableHead>
-            <TableHead>District</TableHead>
-            <TableHead>Commune</TableHead>
             <TableHead>Surface</TableHead>
+            <TableHead>Zone géographique</TableHead>
             <TableHead>Accès eau</TableHead>
             <TableHead>Accès route</TableHead>
             {type === 'pending' && userRole === 'superviseur' && (
@@ -116,7 +114,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
             {type === 'validated' && (
               <TableHead>Surface validée</TableHead>
             )}
-            <TableHead>Actions</TableHead>
+            <TableHead></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -125,10 +123,8 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
               <TableRow key={terrain.id_terrain}>
                 <TableCell>{terrain.id_terrain}</TableCell>
                 <TableCell>{terrain.nom_terrain}</TableCell>
-                <TableCell>{terrain.region_name}, {terrain.district_name}, {terrain.commune_name}</TableCell>
-                <TableCell>{terrain.district_name}</TableCell>
-                <TableCell>{terrain.commune_name}</TableCell>
                 <TableCell>{terrain.surface_proposee} ha</TableCell>
+                <TableCell>{terrain.region_name}, {terrain.district_name}, {terrain.commune_name}</TableCell>
                 <TableCell>{terrain.acces_eau ? "Oui" : "Non"}</TableCell>
                 <TableCell>{terrain.acces_route ? "Oui" : "Non"}</TableCell>
                 {type === 'pending' && userRole === 'superviseur' && (
