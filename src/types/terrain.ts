@@ -18,6 +18,7 @@ export interface TerrainData {
   created_at?: string;
   techniqueNom?: string;
   techniquePrenoms?: string;
+  nom_terrain?: string;
 }
 
 export interface ProjetStatus {
