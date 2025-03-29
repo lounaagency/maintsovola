@@ -37,16 +37,16 @@ VALUES
 ON CONFLICT DO NOTHING;
 
 -- Insertion de terrains de test
-INSERT INTO terrain (id_terrain, id_tantsaha, id_region, id_district, id_commune, surface_proposee, surface_validee, acces_eau, acces_route, statut, id_technicien)
+INSERT INTO terrain (id_tantsaha, id_region, id_district, id_commune, surface_proposee, surface_validee, acces_eau, acces_route, statut, id_technicien)
 VALUES
-  (1, 'user1', 1, 101, 10101, 5.5, 5.0, true, true, true, 'user3'),
-  (2, 'user1', 1, 102, 10201, 3.2, 3.0, true, false, true, 'user3'),
-  (3, 'user2', 2, 201, 20101, 8.0, 7.5, true, true, true, 'user4'),
-  (4, 'user2', 2, 202, 20201, 4.7, 4.5, false, true, true, 'user4'),
-  (5, 'user8', 3, 301, 30101, 6.3, null, true, true, false, 'user3'),
-  (6, 'user8', 3, 302, 30201, 2.8, null, false, false, false, 'user4'),
-  (7, 'user1', 4, 401, 40101, 10.0, null, true, true, false, null),
-  (8, 'user2', 4, 402, 40201, 7.2, null, true, false, false, null)
+  ('f0b6ad5e-2190-47ef-9320-556fc84239c4', 19, 96, 1183, 5.5, 5.0, true, true, true, '71b883a3-9b70-4bbb-b3f4-97c0234a4493'),
+  ('f0b6ad5e-2190-47ef-9320-556fc84239c4', 19, 100, 1232, 3.2, 3.0, true, false, true, '71b883a3-9b70-4bbb-b3f4-97c0234a4493'),
+  ('28ff57b7-fb92-4593-b239-5c56b0f44560', 19, 96, 1190, 8.0, 7.5, true, true, true, 'a624b2e6-4c2d-412a-bdbf-923f87883348'),
+  ( '28ff57b7-fb92-4593-b239-5c56b0f44560',19, 100, 1229, 4.7, 4.5, false, true, true, 'a624b2e6-4c2d-412a-bdbf-923f87883348'),
+  ('28ff57b7-fb92-4593-b239-5c56b0f44560', 19, 96, 1185, 6.3, 0.0, true, true, false, '71b883a3-9b70-4bbb-b3f4-97c0234a4493'),
+  ('28ff57b7-fb92-4593-b239-5c56b0f44560', 19, 96, 1183, 2.8, 0.0, false, false, false, 'a624b2e6-4c2d-412a-bdbf-923f87883348'),
+  ('f0b6ad5e-2190-47ef-9320-556fc84239c4', 19, 100, 1227, 10.0, 0.0, true, true, false, null),
+  ('f0b6ad5e-2190-47ef-9320-556fc84239c4', 19, 96, 1185, 7.2, 0.0, true, false, false, null)
 ON CONFLICT (id_terrain) DO NOTHING;
 
 -- Insertion de projets de test
