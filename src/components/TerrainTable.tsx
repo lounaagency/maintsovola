@@ -125,7 +125,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
               <TableRow key={terrain.id_terrain}>
                 <TableCell>{terrain.id_terrain}</TableCell>
                 <TableCell>{terrain.nom_terrain}</TableCell>
-                <TableCell>{terrain.region_name}</TableCell>
+                <TableCell>{terrain.region_name}, {terrain.district_name}, {terrain.commune_name}</TableCell>
                 <TableCell>{terrain.district_name}</TableCell>
                 <TableCell>{terrain.commune_name}</TableCell>
                 <TableCell>{terrain.surface_proposee} ha</TableCell>
