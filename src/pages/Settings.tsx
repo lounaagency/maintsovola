@@ -141,8 +141,8 @@ const Settings = () => {
         if (updateError) throw updateError;
 
       }
-*/
       await refreshProfile();
+*/
       
       toast({
         title: "Succès",
