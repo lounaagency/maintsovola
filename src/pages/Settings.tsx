@@ -122,7 +122,7 @@ const Settings = () => {
       // Upload cover image if changed
       if (coverImage) {
         const fileExt = coverImage.name.split('.').pop();
-        const fileName = `${user.id}-cover-${Date.now()}.${fileExt}`;
+        const coverFileName = `${user.id}-cover-${Date.now()}.${fileExt}`;
 
         const { data, error: uploadError } = await supabase.storage
           .from('covers')
