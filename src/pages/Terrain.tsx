@@ -490,7 +490,15 @@ const Terrain: React.FC = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                
+                 <div className="space-y-2">
+                    <Label htmlFor="nom_terrain">Nom du terrain </Label>
+                    <Input 
+                      id="nom_terrain"
+                      type="texte" 
+                      value={newTerrain.nom_terrain || ''} 
+                      placeholder="Nom du terrain"
+                    />
+                  </div>
                 
                   <div className="space-y-2">
                     <Label htmlFor="surface">Surface proposée (hectares)</Label>
