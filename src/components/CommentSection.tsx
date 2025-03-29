@@ -1,21 +1,25 @@
 
-import React, { useState } from "react";
-import UserAvatar from "./UserAvatar";
+import React, { useState, useEffect } from "react";
+import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Heart, MoreHorizontal, Send } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Heart, Reply } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 interface Comment {
   id: string;
+  text: string;
   author: {
+    id: string;
     name: string;
-    username: string;
     avatar?: string;
   };
-  content: string;
-  timestamp: string;
+  createdAt: string;
   likes: number;
-  isLiked?: boolean;
+  isLiked: boolean;
+  parentId: string | null;
 }
 
 interface CommentSectionProps {
@@ -23,127 +27,300 @@ interface CommentSectionProps {
 }
 
 const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
-  const [comments, setComments] = useState<Comment[]>([
-    {
-      id: "1",
-      author: {
-        name: "Jane Cooper",
-        username: "jane_cooper",
-        avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&q=80&w=200",
-      },
-      content: "This is amazing! Thanks for sharing.",
-      timestamp: "15m ago",
-      likes: 3,
-      isLiked: false,
-    },
-    {
-      id: "2",
-      author: {
-        name: "Alex Morgan",
-        username: "alex_m",
-        avatar: "https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&q=80&w=200",
-      },
-      content: "I've been waiting for this update!",
-      timestamp: "1h ago",
-      likes: 7,
-      isLiked: true,
-    },
-  ]);
-  
+  const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
-  
-  const handleLikeComment = (id: string) => {
-    setComments(
-      comments.map((comment) => {
-        if (comment.id === id) {
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const { user, profile } = useAuth();
+
+  useEffect(() => {
+    fetchComments();
+  }, [postId]);
+
+  const fetchComments = async () => {
+    try {
+      setLoading(true);
+      
+      // Récupération des commentaires pour ce projet
+      const { data: commentsData, error: commentsError } = await supabase
+        .from('commentaire')
+        .select(`
+          id_commentaire,
+          texte,
+          date_creation,
+          id_utilisateur,
+          id_parent_commentaire,
+          utilisateur:id_utilisateur(id_utilisateur, nom, prenoms, photo_profil)
+        `)
+        .eq('id_projet', parseInt(postId))
+        .order('date_creation', { ascending: true });
+        
+      if (commentsError) throw commentsError;
+      
+      // Récupération des likes pour chaque commentaire
+      const { data: likesData, error: likesError } = await supabase
+        .from('aimer_commentaire')
+        .select(`
+          id_commentaire,
+          id_utilisateur
+        `);
+        
+      if (likesError) throw likesError;
+      
+      // Traitement des données pour créer les objets Comment
+      const transformedComments = commentsData.map(comment => {
+        // Nombre de likes pour ce commentaire
+        const likes = likesData.filter(like => like.id_commentaire === comment.id_commentaire).length;
+        
+        // Vérifier si l'utilisateur connecté a aimé ce commentaire
+        const isLiked = user ? 
+          likesData.some(like => like.id_commentaire === comment.id_commentaire && like.id_utilisateur === user.id) : 
+          false;
+        
+        return {
+          id: comment.id_commentaire.toString(),
+          text: comment.texte,
+          author: {
+            id: comment.utilisateur.id_utilisateur,
+            name: `${comment.utilisateur.nom} ${comment.utilisateur.prenoms || ''}`.trim(),
+            avatar: comment.utilisateur.photo_profil,
+          },
+          createdAt: comment.date_creation,
+          likes,
+          isLiked,
+          parentId: comment.id_parent_commentaire ? comment.id_parent_commentaire.toString() : null,
+        };
+      });
+      
+      setComments(transformedComments);
+    } catch (error) {
+      console.error("Erreur lors de la récupération des commentaires:", error);
+      toast.error("Impossible de charger les commentaires");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmitComment = async () => {
+    if (!user) {
+      toast.error("Vous devez être connecté pour commenter");
+      return;
+    }
+    
+    if (!newComment.trim()) {
+      toast.error("Le commentaire ne peut pas être vide");
+      return;
+    }
+    
+    try {
+      const { data, error } = await supabase
+        .from('commentaire')
+        .insert({
+          texte: newComment,
+          id_projet: parseInt(postId),
+          id_utilisateur: user.id,
+          id_parent_commentaire: replyingTo ? parseInt(replyingTo) : null,
+          date_creation: new Date().toISOString(),
+        })
+        .select('id_commentaire')
+        .single();
+        
+      if (error) throw error;
+      
+      // Ajouter le nouveau commentaire à la liste
+      const newCommentObj: Comment = {
+        id: data.id_commentaire.toString(),
+        text: newComment,
+        author: {
+          id: user.id,
+          name: profile ? `${profile.nom} ${profile.prenoms || ''}`.trim() : 'Utilisateur',
+          avatar: profile?.photo_profil,
+        },
+        createdAt: new Date().toISOString(),
+        likes: 0,
+        isLiked: false,
+        parentId: replyingTo,
+      };
+      
+      setComments([...comments, newCommentObj]);
+      setNewComment("");
+      setReplyingTo(null);
+      
+      toast.success("Commentaire ajouté avec succès");
+    } catch (error) {
+      console.error("Erreur lors de l'ajout du commentaire:", error);
+      toast.error("Erreur lors de l'ajout du commentaire");
+    }
+  };
+
+  const handleToggleLike = async (commentId: string, isCurrentlyLiked: boolean) => {
+    if (!user) {
+      toast.error("Vous devez être connecté pour aimer un commentaire");
+      return;
+    }
+    
+    try {
+      if (isCurrentlyLiked) {
+        // Supprimer le like
+        const { error } = await supabase
+          .from('aimer_commentaire')
+          .delete()
+          .match({ 
+            id_commentaire: parseInt(commentId), 
+            id_utilisateur: user.id 
+          });
+          
+        if (error) throw error;
+      } else {
+        // Ajouter un like
+        const { error } = await supabase
+          .from('aimer_commentaire')
+          .insert({ 
+            id_commentaire: parseInt(commentId), 
+            id_utilisateur: user.id 
+          });
+          
+        if (error) throw error;
+      }
+      
+      // Mettre à jour l'état local
+      setComments(comments.map(comment => {
+        if (comment.id === commentId) {
           return {
             ...comment,
-            likes: comment.isLiked ? comment.likes - 1 : comment.likes + 1,
-            isLiked: !comment.isLiked,
+            likes: isCurrentlyLiked ? comment.likes - 1 : comment.likes + 1,
+            isLiked: !isCurrentlyLiked
           };
         }
         return comment;
-      })
-    );
-  };
-  
-  const handleSubmitComment = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!newComment.trim()) return;
-    
-    const comment: Comment = {
-      id: Date.now().toString(),
-      author: {
-        name: "You",
-        username: "user",
-      },
-      content: newComment,
-      timestamp: "Just now",
-      likes: 0,
-      isLiked: false,
-    };
-    
-    setComments([...comments, comment]);
-    setNewComment("");
+      }));
+    } catch (error) {
+      console.error("Erreur lors de la gestion du like:", error);
+      toast.error("Erreur lors de la gestion du like");
+    }
   };
 
-  return (
-    <div className="border-t border-border px-4 py-3 bg-gray-50">
-      <div className="space-y-3 mb-4">
-        {comments.map((comment) => (
-          <div key={comment.id} className="flex">
-            <UserAvatar
-              src={comment.author.avatar}
-              alt={comment.author.name}
-              size="sm"
-            />
-            <div className="ml-2 flex-1">
-              <div className="bg-white rounded-lg px-3 py-2 shadow-sm">
-                <div className="flex justify-between mb-1">
-                  <div>
-                    <span className="font-semibold text-xs">{comment.author.name}</span>
-                    <span className="text-xs text-gray-500 ml-1">@{comment.author.username}</span>
-                  </div>
-                  <Button variant="ghost" size="icon" className="h-6 w-6 -mt-1 -mr-1">
-                    <MoreHorizontal size={14} className="text-gray-500" />
+  const renderComment = (comment: Comment, isReply: boolean = false) => {
+    const replies = comments.filter(c => c.parentId === comment.id);
+    
+    return (
+      <div key={comment.id} className={`${isReply ? 'ml-8 mt-2' : 'mt-3'}`}>
+        <div className="flex">
+          <Avatar className="h-8 w-8">
+            {comment.author.avatar && (
+              <img src={comment.author.avatar} alt={comment.author.name} className="object-cover" />
+            )}
+          </Avatar>
+          <div className="ml-2 flex-1">
+            <div className="bg-muted p-2 rounded-lg">
+              <div className="font-medium text-xs">{comment.author.name}</div>
+              <div className="text-sm mt-1">{comment.text}</div>
+            </div>
+            <div className="flex items-center mt-1 text-xs text-gray-500">
+              <span>{new Date(comment.createdAt).toLocaleString()}</span>
+              <button 
+                className={`ml-3 flex items-center ${comment.isLiked ? 'text-red-500' : ''}`}
+                onClick={() => handleToggleLike(comment.id, comment.isLiked)}
+              >
+                <Heart size={12} className={`mr-1 ${comment.isLiked ? 'fill-red-500' : ''}`} />
+                <span>{comment.likes > 0 ? comment.likes : ''}</span>
+              </button>
+              <button 
+                className="ml-3 flex items-center"
+                onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
+              >
+                <Reply size={12} className="mr-1" />
+                <span>Répondre</span>
+              </button>
+            </div>
+            
+            {replyingTo === comment.id && (
+              <div className="mt-2">
+                <Textarea 
+                  value={newComment} 
+                  onChange={(e) => setNewComment(e.target.value)} 
+                  placeholder="Écrire une réponse..."
+                  className="min-h-[60px] text-sm"
+                />
+                <div className="flex justify-end mt-1">
+                  <Button 
+                    size="sm" 
+                    variant="ghost" 
+                    className="mr-2"
+                    onClick={() => setReplyingTo(null)}
+                  >
+                    Annuler
+                  </Button>
+                  <Button 
+                    size="sm"
+                    onClick={handleSubmitComment}
+                    disabled={!newComment.trim()}
+                  >
+                    Répondre
                   </Button>
                 </div>
-                <p className="text-xs text-gray-800">{comment.content}</p>
               </div>
-              <div className="flex items-center mt-1 ml-1">
-                <button
-                  className={`flex items-center text-xs ${comment.isLiked ? 'text-red-500' : 'text-gray-500'}`}
-                  onClick={() => handleLikeComment(comment.id)}
-                >
-                  <Heart
-                    size={12}
-                    className={`mr-1 ${comment.isLiked ? 'fill-red-500' : ''}`}
-                  />
-                  <span>{comment.likes}</span>
-                </button>
-                <span className="text-xs text-gray-500 ml-3">{comment.timestamp}</span>
+            )}
+            
+            {replies.length > 0 && (
+              <div className="mt-1">
+                {replies.map(reply => renderComment(reply, true))}
               </div>
-            </div>
+            )}
           </div>
-        ))}
+        </div>
+      </div>
+    );
+  };
+
+  const rootComments = comments.filter(comment => !comment.parentId);
+
+  return (
+    <div className="px-4 pb-4 border-t border-border pt-3">
+      <div className="flex items-start mb-4">
+        {user && profile ? (
+          <Avatar className="h-8 w-8 mr-2">
+            {profile.photo_profil && (
+              <img src={profile.photo_profil} alt={profile.nom} className="object-cover" />
+            )}
+          </Avatar>
+        ) : (
+          <Avatar className="h-8 w-8 mr-2" />
+        )}
+        <div className="flex-1">
+          <Textarea 
+            value={newComment} 
+            onChange={(e) => setNewComment(e.target.value)} 
+            placeholder="Ajouter un commentaire..."
+            className="min-h-[60px] text-sm"
+          />
+          <div className="flex justify-end mt-1">
+            <Button 
+              size="sm"
+              onClick={handleSubmitComment}
+              disabled={!newComment.trim() || !user}
+            >
+              Commenter
+            </Button>
+          </div>
+        </div>
       </div>
       
-      <form onSubmit={handleSubmitComment} className="flex items-center">
-        <UserAvatar alt="You" size="sm" />
-        <div className="flex-1 mx-2">
-          <Input
-            type="text"
-            placeholder="Add a comment..."
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            className="text-sm bg-white"
-          />
+      {loading ? (
+        <div className="flex items-center justify-center py-4">
+          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
         </div>
-        <Button type="submit" size="sm" variant="ghost" className="text-primary">
-          <Send size={18} />
-        </Button>
-      </form>
+      ) : (
+        <div className="space-y-1">
+          {rootComments.length > 0 ? (
+            rootComments.map(comment => renderComment(comment))
+          ) : (
+            <div className="text-center text-gray-500 text-sm py-3">
+              Soyez le premier à commenter
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

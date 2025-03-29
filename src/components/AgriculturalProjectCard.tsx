@@ -8,27 +8,43 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { AgriculturalProject } from "@/types/agriculturalProject";
 import { Progress } from "@/components/ui/progress";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 interface AgriculturalProjectCardProps {
   project: AgriculturalProject;
+  onLikeToggle?: (isCurrentlyLiked: boolean) => void;
 }
 
 const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({
-  project
+  project,
+  onLikeToggle
 }) => {
   const [liked, setLiked] = useState(project.isLiked);
   const [likeCount, setLikeCount] = useState(project.likes);
   const [showComments, setShowComments] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const { user } = useAuth();
 
-  const handleLike = () => {
+  const handleLike = async () => {
+    if (!user) {
+      toast.error("Vous devez être connecté pour aimer ce projet");
+      return;
+    }
+
     if (liked) {
       setLikeCount(likeCount - 1);
     } else {
       setLikeCount(likeCount + 1);
     }
     setLiked(!liked);
+    
+    // Appel de la fonction parent pour gérer le like au niveau de la base de données
+    if (onLikeToggle) {
+      onLikeToggle(liked);
+    }
   };
 
   const toggleComments = () => {
@@ -43,6 +59,34 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({
   const handlePrevImage = () => {
     setImageLoaded(false);
     setCurrentImageIndex((prev) => (prev - 1 + project.images.length) % project.images.length);
+  };
+
+  const handleInvest = async () => {
+    if (!user) {
+      toast.error("Vous devez être connecté pour investir dans ce projet");
+      return;
+    }
+    
+    // Dans un cas réel, cela ouvrirait probablement un modal pour définir le montant
+    const investmentAmount = 500; // Montant fictif pour l'exemple
+    
+    try {
+      const { error } = await supabase
+        .from('investissement')
+        .insert({
+          id_projet: parseInt(project.id),
+          id_investisseur: user.id,
+          montant: investmentAmount,
+          date_decision_investir: new Date().toISOString()
+        });
+        
+      if (error) throw error;
+      
+      toast.success(`Investissement de ${investmentAmount} € effectué avec succès!`);
+    } catch (error) {
+      console.error("Erreur lors de l'investissement:", error);
+      toast.error("Erreur lors de l'investissement");
+    }
   };
 
   const fundingPercentage = (project.currentFunding / project.fundingGoal) * 100;
@@ -154,7 +198,7 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({
         </div>
         
         <div className="mt-4">
-          <Button className="w-full" size="sm">
+          <Button className="w-full" size="sm" onClick={handleInvest}>
             Investir dans ce projet
           </Button>
         </div>

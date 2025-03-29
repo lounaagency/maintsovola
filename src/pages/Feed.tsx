@@ -1,109 +1,260 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AgriculturalProjectCard from "@/components/AgriculturalProjectCard";
 import NewProject from "@/components/NewProject";
 import { motion } from "framer-motion";
 import { AgriculturalProject } from "@/types/agriculturalProject";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 const Feed: React.FC = () => {
-  const [projects, setProjects] = useState<AgriculturalProject[]>([
-    {
-      id: "1",
-      title: "Culture de riz biologique",
-      farmer: {
-        id: "1",
-        name: "Jean Dupont",
-        username: "jdupont",
-        avatar: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&q=80&w=200",
-      },
-      location: {
-        region: "Analamanga",
-        district: "Antananarivo",
-        commune: "Ambohidratrimo"
-      },
-      cultivationArea: 5, // 5 hectares
-      cultivationType: "Riz biologique",
-      farmingCost: 3500,
-      expectedYield: 4.5, // tonnes par hectare
-      expectedRevenue: 7500,
-      creationDate: "2023-11-15",
-      images: [
-        "https://images.unsplash.com/photo-1465379944081-7f47de8d74ac?auto=format&fit=crop&q=80&w=1200",
-        "https://images.unsplash.com/photo-1485833077593-4278bba3f11f?auto=format&fit=crop&q=80&w=1200"
-      ],
-      description: "Projet de culture de riz biologique sur un terrain fertile de 5 hectares. L'irrigation est déjà en place et nous cherchons des investisseurs pour financer les semences et les équipements.",
-      fundingGoal: 3500,
-      currentFunding: 1200,
-      likes: 42,
-      comments: 8,
-      shares: 3,
-    },
-    {
-      id: "2",
-      title: "Plantation de café arabica",
-      farmer: {
-        id: "2",
-        name: "Marie Rakoto",
-        username: "mrakoto",
-        avatar: "https://images.unsplash.com/photo-1649972904349-6e44c42644a7?auto=format&fit=crop&q=80&w=200",
-      },
-      location: {
-        region: "Vakinankaratra",
-        district: "Antsirabe",
-        commune: "Betafo"
-      },
-      cultivationArea: 3,
-      cultivationType: "Café arabica",
-      farmingCost: 4200,
-      expectedYield: 0.8, // tonnes par hectare
-      expectedRevenue: 9600,
-      creationDate: "2023-12-05",
-      images: [
-        "https://images.unsplash.com/photo-1493962853295-0fd70327578a?auto=format&fit=crop&q=80&w=1200"
-      ],
-      description: "Projet de plantation de café arabica d'altitude. Le terrain bénéficie d'un microclimat idéal pour cette culture. Recherche de financement pour l'achat de plants et la mise en place du système d'irrigation.",
-      fundingGoal: 4200,
-      currentFunding: 2800,
-      likes: 87,
-      comments: 14,
-      shares: 9,
-      isLiked: true,
-    },
-    {
-      id: "3",
-      title: "Culture de légumes maraîchers",
-      farmer: {
-        id: "3",
-        name: "Paul Randriamanana",
-        username: "prandriamanana",
-        avatar: "https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&q=80&w=200",
-      },
-      location: {
-        region: "Itasy",
-        district: "Miarinarivo",
-        commune: "Soavinandriana"
-      },
-      cultivationArea: 1.5,
-      cultivationType: "Légumes variés",
-      farmingCost: 2000,
-      expectedYield: 15, // tonnes par hectare
-      expectedRevenue: 6000,
-      creationDate: "2024-01-10",
-      images: [
-        "https://images.unsplash.com/photo-1472396961693-142e6e269027?auto=format&fit=crop&q=80&w=1200"
-      ],
-      description: "Projet de maraîchage biologique sur un terrain proche d'une source d'eau permanente. Les légumes produits seront vendus sur les marchés locaux. Recherche de financement pour les semences et le petit outillage.",
-      fundingGoal: 2000,
-      currentFunding: 800,
-      likes: 124,
-      comments: 32,
-      shares: 18,
-    },
-  ]);
+  const [projects, setProjects] = useState<AgriculturalProject[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
   
-  const handleNewProject = (newProject: AgriculturalProject) => {
-    setProjects([newProject, ...projects]);
+  useEffect(() => {
+    fetchProjects();
+  }, []);
+  
+  const fetchProjects = async () => {
+    try {
+      setLoading(true);
+      
+      // Récupération des projets depuis Supabase
+      const { data: projetsData, error: projetsError } = await supabase
+        .from('projet')
+        .select(`
+          id_projet,
+          surface_ha,
+          statut,
+          created_at,
+          id_tantsaha,
+          id_commune,
+          utilisateur(id_utilisateur, nom, prenoms, photo_profil),
+          commune(nom_commune, district(nom_district, region(nom_region)))
+        `)
+        .order('created_at', { ascending: false });
+        
+      if (projetsError) {
+        throw projetsError;
+      }
+      
+      // Récupération des cultures associées aux projets
+      const { data: culturesData, error: culturesError } = await supabase
+        .from('projet_culture')
+        .select(`
+          id_projet,
+          id_culture,
+          cout_exploitation_previsionnel,
+          rendement_previsionnel,
+          culture(nom_culture)
+        `);
+        
+      if (culturesError) {
+        throw culturesError;
+      }
+      
+      // Récupération des investissements
+      const { data: investissementsData, error: investissementsError } = await supabase
+        .from('investissement')
+        .select(`
+          id_projet,
+          montant
+        `);
+        
+      if (investissementsError) {
+        throw investissementsError;
+      }
+      
+      // Récupération des likes pour chaque projet
+      const { data: likesData, error: likesError } = await supabase
+        .from('aimer_projet')
+        .select(`
+          id_projet,
+          id_utilisateur
+        `);
+        
+      if (likesError) {
+        throw likesError;
+      }
+      
+      // Récupération des commentaires pour chaque projet
+      const { data: commentsData, error: commentsError } = await supabase
+        .from('commentaire')
+        .select(`
+          id_commentaire,
+          id_projet,
+          count
+        `)
+        .select('id_projet')
+        .count();
+        
+      if (commentsError) {
+        throw commentsError;
+      }
+      
+      // Traitement des données pour créer les objets AgriculturalProject
+      const transformedProjects = projetsData.map(projet => {
+        // Recherche des cultures associées au projet
+        const projetCultures = culturesData.filter(pc => pc.id_projet === projet.id_projet);
+        
+        // Calcul du financement total pour ce projet
+        const currentFunding = investissementsData
+          .filter(inv => inv.id_projet === projet.id_projet)
+          .reduce((sum, inv) => sum + inv.montant, 0);
+        
+        // Nombre de likes pour ce projet
+        const likes = likesData.filter(like => like.id_projet === projet.id_projet).length;
+        
+        // Vérifier si l'utilisateur connecté a aimé ce projet
+        const isLiked = user ? 
+          likesData.some(like => like.id_projet === projet.id_projet && like.id_utilisateur === user.id) : 
+          false;
+        
+        // Nombre de commentaires pour ce projet
+        const comments = commentsData
+          .filter(comment => comment.id_projet === projet.id_projet)
+          .length;
+        
+        // Pour un exemple simple, on va considérer le coût d'exploitation comme objectif de financement
+        const cultivationType = projetCultures.length > 0 
+          ? projetCultures[0].culture.nom_culture 
+          : "Non spécifié";
+        
+        const farmingCost = projetCultures.length > 0 
+          ? projetCultures[0].cout_exploitation_previsionnel || 0 
+          : 0;
+        
+        const expectedYield = projetCultures.length > 0 
+          ? projetCultures[0].rendement_previsionnel || 0 
+          : 0;
+        
+        // Calculer revenus attendus (exemple simple: rendement * surface * prix estimé)
+        // Dans un cas réel, ce calcul serait plus complexe
+        const expectedRevenue = expectedYield * projet.surface_ha * 1.5 * farmingCost;
+        
+        return {
+          id: projet.id_projet.toString(),
+          title: `Projet de culture de ${cultivationType}`,
+          farmer: {
+            id: projet.utilisateur.id_utilisateur,
+            name: `${projet.utilisateur.nom} ${projet.utilisateur.prenoms || ''}`.trim(),
+            username: projet.utilisateur.nom.toLowerCase().replace(' ', ''),
+            avatar: projet.utilisateur.photo_profil,
+          },
+          location: {
+            region: projet.commune?.district?.region?.nom_region || "Non spécifié",
+            district: projet.commune?.district?.nom_district || "Non spécifié",
+            commune: projet.commune?.nom_commune || "Non spécifié"
+          },
+          cultivationArea: projet.surface_ha,
+          cultivationType,
+          farmingCost,
+          expectedYield,
+          expectedRevenue,
+          creationDate: new Date(projet.created_at).toISOString().split('T')[0],
+          images: [], // À implémenter avec le stockage Supabase
+          description: `Projet de culture de ${cultivationType} sur un terrain de ${projet.surface_ha} hectares.`,
+          fundingGoal: farmingCost * projet.surface_ha,
+          currentFunding,
+          likes,
+          comments,
+          shares: 0, // À implémenter
+          isLiked,
+        };
+      });
+      
+      setProjects(transformedProjects);
+    } catch (error) {
+      console.error("Erreur lors de la récupération des projets:", error);
+      toast.error("Erreur lors du chargement des projets");
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const handleNewProject = async (newProject: AgriculturalProject) => {
+    try {
+      // Insérer le nouveau projet dans la base de données
+      const { data, error } = await supabase
+        .from('projet')
+        .insert({
+          surface_ha: newProject.cultivationArea,
+          id_tantsaha: user?.id,
+          statut: 'En attente de financement',
+        })
+        .select('id_projet')
+        .single();
+        
+      if (error) throw error;
+      
+      // Insérer la relation projet-culture
+      const { error: cultureError } = await supabase
+        .from('projet_culture')
+        .insert({
+          id_projet: data.id_projet,
+          id_culture: 1, // À modifier pour utiliser l'ID réel de la culture
+          cout_exploitation_previsionnel: newProject.farmingCost,
+          rendement_previsionnel: newProject.expectedYield,
+        });
+        
+      if (cultureError) throw cultureError;
+      
+      toast.success("Projet créé avec succès!");
+      fetchProjects(); // Rafraîchir la liste des projets
+    } catch (error) {
+      console.error("Erreur lors de la création du projet:", error);
+      toast.error("Erreur lors de la création du projet");
+    }
+  };
+  
+  const handleToggleLike = async (projectId: string, isCurrentlyLiked: boolean) => {
+    if (!user) {
+      toast.error("Vous devez être connecté pour aimer un projet");
+      return;
+    }
+    
+    try {
+      if (isCurrentlyLiked) {
+        // Supprimer le like
+        const { error } = await supabase
+          .from('aimer_projet')
+          .delete()
+          .match({ 
+            id_projet: parseInt(projectId), 
+            id_utilisateur: user.id 
+          });
+          
+        if (error) throw error;
+      } else {
+        // Ajouter un like
+        const { error } = await supabase
+          .from('aimer_projet')
+          .insert({ 
+            id_projet: parseInt(projectId), 
+            id_utilisateur: user.id 
+          });
+          
+        if (error) throw error;
+      }
+      
+      // Mettre à jour l'état local
+      setProjects(projects.map(project => {
+        if (project.id === projectId) {
+          return {
+            ...project,
+            likes: isCurrentlyLiked ? project.likes - 1 : project.likes + 1,
+            isLiked: !isCurrentlyLiked
+          };
+        }
+        return project;
+      }));
+    } catch (error) {
+      console.error("Erreur lors de la gestion du like:", error);
+      toast.error("Erreur lors de la gestion du like");
+    }
   };
   
   const container = {
@@ -136,18 +287,33 @@ const Feed: React.FC = () => {
         <TabsContent value="for-you" className="mt-4">
           <NewProject onProjectCreated={handleNewProject} />
           
-          <motion.div
-            className="space-y-4"
-            variants={container}
-            initial="hidden"
-            animate="show"
-          >
-            {projects.map((project) => (
-              <motion.div key={project.id} variants={item}>
-                <AgriculturalProjectCard project={project} />
-              </motion.div>
-            ))}
-          </motion.div>
+          {loading ? (
+            <div className="flex items-center justify-center h-40">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : (
+            <motion.div
+              className="space-y-4"
+              variants={container}
+              initial="hidden"
+              animate="show"
+            >
+              {projects.length > 0 ? (
+                projects.map((project) => (
+                  <motion.div key={project.id} variants={item}>
+                    <AgriculturalProjectCard 
+                      project={project} 
+                      onLikeToggle={(isLiked) => handleToggleLike(project.id, isLiked)}
+                    />
+                  </motion.div>
+                ))
+              ) : (
+                <div className="flex items-center justify-center h-40 border rounded-lg border-dashed text-gray-500">
+                  Aucun projet disponible pour le moment
+                </div>
+              )}
+            </motion.div>
+          )}
         </TabsContent>
         
         <TabsContent value="following" className="mt-4">
