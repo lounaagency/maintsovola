@@ -37,8 +37,8 @@ const RegisterForm: React.FC = () => {
     
     await signUp(registerEmail, registerPassword, { 
       nom: name, 
-      prenoms: prenoms,
-      role: role 
+      prenoms,
+      role 
     });
   };
   

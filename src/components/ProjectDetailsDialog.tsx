@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -11,6 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -306,7 +306,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
                       project.statut === 'en attente' ? 'outline' : 
                       project.statut === 'validé' ? 'secondary' :
                       project.statut === 'en cours' ? 'default' :
-                      project.statut === 'terminé' ? 'success' : 'outline'
+                      project.statut === 'terminé' ? 'secondary' : 'outline'
                     }
                   >
                     {project.statut}

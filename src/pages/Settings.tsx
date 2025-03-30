@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +12,7 @@ import { User, Phone, Upload, Plus, Trash2, Check, X } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
 const Settings = () => {
-  const { user, profile, refreshProfile } = useAuth();
+  const { user, profile } = useAuth();
   const { toast } = useToast();
 
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -25,9 +24,10 @@ const Settings = () => {
   const [nom, setNom] = useState("");
   const [prenoms, setPrenoms] = useState("");
   const [telephones, setTelephones] = useState<UserTelephone[]>([]);
-  const [newPhone, setNewPhone] = useState({
+  const [newPhone, setNewPhone] = useState<UserTelephone>({
     numero: "",
-    type: "principal" as const,
+    id_utilisateur: "",
+    type: "principal",
     est_whatsapp: false,
     est_mobile_banking: false
   });
@@ -53,7 +53,19 @@ const Settings = () => {
         .eq('id_utilisateur', user.id);
 
       if (error) throw error;
-      setTelephones(data || []);
+      
+      const typedData: UserTelephone[] = data?.map(item => ({
+        id_telephone: item.id_telephone,
+        id_utilisateur: item.id_utilisateur,
+        numero: item.numero,
+        type: item.type as "principal" | "whatsapp" | "mobile_banking" | "autre",
+        est_whatsapp: item.est_whatsapp,
+        est_mobile_banking: item.est_mobile_banking,
+        created_at: item.created_at,
+        modified_at: item.modified_at
+      })) || [];
+      
+      setTelephones(typedData);
     } catch (error) {
       console.error("Error fetching phone numbers:", error);
       toast({
@@ -86,7 +98,6 @@ const Settings = () => {
     setIsLoading(true);
     
     try {
-      // Update profile info
       const { error } = await supabase
         .from('utilisateur')
         .update({
@@ -96,58 +107,56 @@ const Settings = () => {
         .eq('id_utilisateur', user.id);
 
       if (error) throw error;
-console.log(user);  // Vérifie que l'utilisateur est authentifié
-console.log(profileImage);  // Vérifie que l'utilisateur est authentifié
 
-
-
-      
-      // Upload profile image if changed
       if (profileImage) {
         const fileExt = profileImage.name.split('.').pop();
         const fileName = `${user.id}-profile-${Date.now()}.${fileExt}`;
 
-// Modification apportée pour bien uploader les photos de profils et mettre à jour la table utilisateur
-        const { data, error: uploadError } = await supabase.storage
+        const { error: uploadError } = await supabase.storage
           .from('avatars')
           .upload(fileName, profileImage, { upsert: true });
         
         if (uploadError) throw uploadError;
         
-        // Récupérer l'URL publique correcte
-        const publicUrl = supabase.storage.from('avatars').getPublicUrl(fileName);
+        const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(fileName);
         
         const { error: updateError } = await supabase
           .from('utilisateur')
-          .update({ photo_profil: publicUrl.publicUrl })
+          .update({ photo_profil: publicUrlData.publicUrl })
           .eq('id_utilisateur', user.id);
-         if (updateError) throw updateError; 
+         
+        if (updateError) throw updateError; 
       }
       
-      // Upload cover image if changed
       if (coverImage) {
         const fileExt = coverImage.name.split('.').pop();
         const coverFileName = `${user.id}-cover-${Date.now()}.${fileExt}`;
 
-        const { data, error: uploadError } = await supabase.storage
+        const { error: uploadError } = await supabase.storage
           .from('covers')
           .upload(coverFileName, coverImage, { upsert: true });
         
         if (uploadError) throw uploadError;
         
-        // Récupérer l'URL publique correcte
-        const publicUrl = supabase.storage.from('covers').getPublicUrl(coverFileName);
+        const { data: publicUrlData } = supabase.storage.from('covers').getPublicUrl(coverFileName);
         
         const { error: updateError } = await supabase
           .from('utilisateur')
-          .update({ photo_couverture: publicUrl.publicUrl })
+          .update({ photo_couverture: publicUrlData.publicUrl })
           .eq('id_utilisateur', user.id);
         
         if (updateError) throw updateError;
-
       }
-   //   await refreshProfile();
-
+      
+      const { data: refreshedProfile } = await supabase
+        .from('utilisateur')
+        .select('*')
+        .eq('id_utilisateur', user.id)
+        .single();
+        
+      if (refreshedProfile) {
+        setUserProfile(refreshedProfile);
+      }
       
       toast({
         title: "Succès",
@@ -169,22 +178,34 @@ console.log(profileImage);  // Vérifie que l'utilisateur est authentifié
     if (!user || !newPhone.numero) return;
     
     try {
+      const phoneToAdd = {
+        ...newPhone,
+        id_utilisateur: user.id
+      };
+      
       const { data, error } = await supabase
         .from('telephone')
-        .insert({
-          id_utilisateur: user.id,
-          numero: newPhone.numero,
-          type: newPhone.type,
-          est_whatsapp: newPhone.est_whatsapp,
-          est_mobile_banking: newPhone.est_mobile_banking
-        })
+        .insert(phoneToAdd)
         .select();
 
       if (error) throw error;
       
-      setTelephones([...telephones, data[0]]);
+      if (data && data[0]) {
+        const newPhoneWithId: UserTelephone = {
+          id_telephone: data[0].id_telephone,
+          id_utilisateur: data[0].id_utilisateur,
+          numero: data[0].numero,
+          type: data[0].type as "principal" | "whatsapp" | "mobile_banking" | "autre",
+          est_whatsapp: data[0].est_whatsapp,
+          est_mobile_banking: data[0].est_mobile_banking
+        };
+        
+        setTelephones([...telephones, newPhoneWithId]);
+      }
+      
       setNewPhone({
         numero: "",
+        id_utilisateur: "",
         type: "principal",
         est_whatsapp: false,
         est_mobile_banking: false
@@ -412,7 +433,7 @@ console.log(profileImage);  // Vérifie que l'utilisateur est authentifié
                         value={newPhone.type}
                         onChange={(e) => setNewPhone({
                           ...newPhone, 
-                          type: e.target.value as 'principal' | 'whatsapp' | 'mobile_banking' | 'autre'
+                          type: e.target.value as "principal" | "whatsapp" | "mobile_banking" | "autre"
                         })}
                       >
                         <option value="principal">Principal</option>

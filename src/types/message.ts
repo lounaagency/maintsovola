@@ -1,4 +1,3 @@
-
 export interface Message {
   id_message?: number;
   id_expediteur: string;
@@ -15,4 +14,10 @@ export interface Conversation {
   id_utilisateur2: string;
   derniere_activite?: string;
   created_at?: string;
+}
+
+export interface UserInfo {
+  id: string;
+  name: string;
+  avatar?: string;
 }
