@@ -639,6 +639,8 @@ export type Database = {
           id_jalon: number
           id_projet: number
           modified_at: string | null
+          photos_sur_terrain: string | null
+          rapport_terrain: string | null
         }
         Insert: {
           created_at?: string | null
@@ -648,6 +650,8 @@ export type Database = {
           id_jalon: number
           id_projet: number
           modified_at?: string | null
+          photos_sur_terrain?: string | null
+          rapport_terrain?: string | null
         }
         Update: {
           created_at?: string | null
@@ -657,6 +661,8 @@ export type Database = {
           id_jalon?: number
           id_projet?: number
           modified_at?: string | null
+          photos_sur_terrain?: string | null
+          rapport_terrain?: string | null
         }
         Relationships: [
           {
@@ -731,19 +737,19 @@ export type Database = {
       role: {
         Row: {
           created_at: string | null
-          description: string | null
+          description_role: string | null
           id_role: number
           nom_role: string
         }
         Insert: {
           created_at?: string | null
-          description?: string | null
+          description_role?: string | null
           id_role?: number
           nom_role: string
         }
         Update: {
           created_at?: string | null
-          description?: string | null
+          description_role?: string | null
           id_role?: number
           nom_role?: string
         }
@@ -773,10 +779,44 @@ export type Database = {
         }
         Relationships: []
       }
+      telephone: {
+        Row: {
+          created_at: string | null
+          est_mobile_banking: boolean | null
+          est_whatsapp: boolean | null
+          id_telephone: number
+          id_utilisateur: string
+          modified_at: string | null
+          numero: string
+          type: string
+        }
+        Insert: {
+          created_at?: string | null
+          est_mobile_banking?: boolean | null
+          est_whatsapp?: boolean | null
+          id_telephone?: number
+          id_utilisateur: string
+          modified_at?: string | null
+          numero: string
+          type?: string
+        }
+        Update: {
+          created_at?: string | null
+          est_mobile_banking?: boolean | null
+          est_whatsapp?: boolean | null
+          id_telephone?: number
+          id_utilisateur?: string
+          modified_at?: string | null
+          numero?: string
+          type?: string
+        }
+        Relationships: []
+      }
       terrain: {
         Row: {
           acces_eau: boolean | null
           acces_route: boolean | null
+          archive: boolean
           created_at: string | null
           created_by: string | null
           geom: unknown | null
@@ -788,13 +828,15 @@ export type Database = {
           id_technicien: string | null
           id_terrain: number
           modified_at: string | null
-          statut: boolean | null
+          nom_terrain: string | null
+          statut: boolean
           surface_proposee: number
-          surface_validee: number
+          surface_validee: number | null
         }
         Insert: {
           acces_eau?: boolean | null
           acces_route?: boolean | null
+          archive?: boolean
           created_at?: string | null
           created_by?: string | null
           geom?: unknown | null
@@ -806,13 +848,15 @@ export type Database = {
           id_technicien?: string | null
           id_terrain?: number
           modified_at?: string | null
-          statut?: boolean | null
+          nom_terrain?: string | null
+          statut?: boolean
           surface_proposee: number
-          surface_validee: number
+          surface_validee?: number | null
         }
         Update: {
           acces_eau?: boolean | null
           acces_route?: boolean | null
+          archive?: boolean
           created_at?: string | null
           created_by?: string | null
           geom?: unknown | null
@@ -824,9 +868,10 @@ export type Database = {
           id_technicien?: string | null
           id_terrain?: number
           modified_at?: string | null
-          statut?: boolean | null
+          nom_terrain?: string | null
+          statut?: boolean
           surface_proposee?: number
-          surface_validee?: number
+          surface_validee?: number | null
         }
         Relationships: [
           {
@@ -952,7 +997,7 @@ export type Database = {
           id_role: number | null
           id_utilisateur: string
           nom: string
-          photo_courant: boolean | null
+          photo_couverture: string | null
           photo_profil: string | null
           prenoms: string | null
           role: string | null
@@ -963,7 +1008,7 @@ export type Database = {
           id_role?: number | null
           id_utilisateur: string
           nom: string
-          photo_courant?: boolean | null
+          photo_couverture?: string | null
           photo_profil?: string | null
           prenoms?: string | null
           role?: string | null
@@ -974,7 +1019,7 @@ export type Database = {
           id_role?: number | null
           id_utilisateur?: string
           nom?: string
-          photo_courant?: boolean | null
+          photo_couverture?: string | null
           photo_profil?: string | null
           prenoms?: string | null
           role?: string | null

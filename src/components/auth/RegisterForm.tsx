@@ -14,6 +14,7 @@ const RegisterForm: React.FC = () => {
   const [registerPassword, setRegisterPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
+  const [prenoms, setPrenoms] = useState("");
   const [role, setRole] = useState("agriculteur");
   const [errors, setErrors] = useState<{[key: string]: string}>({});
   
@@ -36,6 +37,7 @@ const RegisterForm: React.FC = () => {
     
     await signUp(registerEmail, registerPassword, { 
       nom: name, 
+      prenoms: prenoms,
       role: role 
     });
   };
@@ -49,7 +51,7 @@ const RegisterForm: React.FC = () => {
       className="space-y-4"
     >
       <motion.div variants={item} className="space-y-2">
-        <Label htmlFor="name">Nom complet</Label>
+        <Label htmlFor="name">Nom</Label>
         <Input 
           id="name" 
           type="text" 
@@ -58,6 +60,17 @@ const RegisterForm: React.FC = () => {
           onChange={(e) => setName(e.target.value)}
         />
         {errors.name && <p className="text-sm text-red-500">{errors.name}</p>}
+      </motion.div>
+      
+      <motion.div variants={item} className="space-y-2">
+        <Label htmlFor="prenoms">Prénoms</Label>
+        <Input 
+          id="prenoms" 
+          type="text" 
+          placeholder="Vos prénoms" 
+          value={prenoms}
+          onChange={(e) => setPrenoms(e.target.value)}
+        />
       </motion.div>
       
       <motion.div variants={item} className="space-y-2">

@@ -21,6 +21,7 @@ interface TerrainTableProps {
   userRole?: string;
   onTerrainUpdate?: () => void;
   techniciens?: { id: string; nom: string; prenoms?: string }[];
+  onEditTerrain?: (terrain: TerrainData) => void;
 }
 
 const TerrainTable: React.FC<TerrainTableProps> = ({ 
@@ -28,7 +29,8 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
   type, 
   userRole, 
   onTerrainUpdate,
-  techniciens 
+  techniciens,
+  onEditTerrain
 }) => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -87,14 +89,19 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
   };
 
   const canEdit = (terrain: TerrainData): boolean => {
+    if (!user) return false;
     if (userRole === 'superviseur') return true;
     if (userRole === 'technicien' && terrain.id_technicien === user?.id) return true;
     if (['agriculteur', 'investisseur'].includes(userRole || '') && terrain.id_tantsaha === user?.id) {
-      // Vérifier si le terrain n'est pas dans un projet en cours
-      // Cette logique serait idéalement implémentée avec une requête à la base de données
-      return true; // Simplifié pour l'instant
+      return true; 
     }
     return false;
+  };
+
+  const handleEdit = (terrain: TerrainData) => {
+    if (onEditTerrain) {
+      onEditTerrain(terrain);
+    }
   };
 
   return (
@@ -162,7 +169,11 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                     </Button>
                   )}
                   {canEdit(terrain) && (
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleEdit(terrain)}
+                    >
                       <Edit className="h-4 w-4 mr-1" />
                       Modifier
                     </Button>
