@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { ChatBubbleIcon, HeartIcon, ShareIcon } from "lucide-react";
+import { MessageCircle, Heart, Share } from "lucide-react";
 import { AgriculturalProject } from "@/types/agriculturalProject";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -251,15 +251,15 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({
           onClick={handleLike}
           className={isLiked ? "text-red-500" : ""}
         >
-          <HeartIcon className="mr-1 h-4 w-4" />
+          <Heart className="mr-1 h-4 w-4" />
           <span>{project.likes + (isLiked !== project.isLiked ? (isLiked ? 1 : -1) : 0)}</span>
         </Button>
         <Badge variant="outline" className="flex gap-1 items-center">
-          <ChatBubbleIcon className="h-3.5 w-3.5" />
+          <MessageCircle className="h-3.5 w-3.5" />
           <span>{project.comments}</span>
         </Badge>
         <Badge variant="outline" className="flex gap-1 items-center">
-          <ShareIcon className="h-3.5 w-3.5" />
+          <Share className="h-3.5 w-3.5" />
           <span>{project.shares}</span>
         </Badge>
       </CardFooter>
