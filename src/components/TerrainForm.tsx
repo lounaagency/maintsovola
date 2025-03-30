@@ -9,11 +9,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { MapContainer, TileLayer, FeatureGroup } from "react-leaflet";
+import { MapContainer, TileLayer, FeatureGroup, GeoJSON } from "react-leaflet";
 import { EditControl } from "react-leaflet-draw";
 import "leaflet/dist/leaflet.css";
 import "leaflet-draw/dist/leaflet.draw.css";
 import L from "leaflet";
+import { wktToGeoJSON } from "@/lib/utils";
 
 // Fix Leaflet icon issues
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -78,8 +79,10 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
   const [filteredCommunes, setFilteredCommunes] = useState<CommuneData[]>([]);
   const [selectedAgriculteur, setSelectedAgriculteur] = useState<string>("");
   const [geomPolygon, setGeomPolygon] = useState<GeoJSON.Feature | null>(null);
-  const mapRef = useRef<any>(null);
+  const [isMapReady, setIsMapReady] = useState(false);
+  const mapRef = useRef<L.Map | null>(null);
   const featureGroupRef = useRef<any>(null);
+  const geoJSONLayerRef = useRef<any>(null);
   
   const [terrainData, setTerrainData] = useState<TerrainData>({
     surface_proposee: 0,
@@ -91,11 +94,42 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     acces_route: false
   });
 
+  // Fetch initial geom data if editing
+  useEffect(() => {
+    const fetchGeomData = async () => {
+      if (isEditing && initialData?.id_terrain) {
+        try {
+          const { data, error } = await supabase
+            .from('terrain')
+            .select('geom')
+            .eq('id_terrain', initialData.id_terrain)
+            .single();
+          
+          if (error) throw error;
+          
+          if (data && data.geom) {
+            const geoJSON = wktToGeoJSON(data.geom);
+            if (geoJSON) {
+              setGeomPolygon(geoJSON);
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching terrain geometry:', error);
+        }
+      }
+    };
+    
+    fetchGeomData();
+  }, [isEditing, initialData?.id_terrain]);
+
   useEffect(() => {
     if (initialData) {
       setTerrainData({
         ...initialData,
         nom_terrain: initialData.nom_terrain || "",
+        id_region: initialData.id_region || null,
+        id_district: initialData.id_district || null,
+        id_commune: initialData.id_commune || null,
       });
       
       if (userRole === 'superviseur' || userRole === 'technicien') {
@@ -104,7 +138,6 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     }
   }, [initialData, userRole]);
 
-  
   useEffect(() => {
     fetchRegions();
     fetchDistricts();
@@ -130,6 +163,53 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       setFilteredCommunes([]);
     }
   }, [terrainData.id_district, communes]);
+
+  // Effect to handle map initialization and zoom to terrain when geomPolygon changes
+  useEffect(() => {
+    if (!isMapReady || !mapRef.current) return;
+    
+    if (geomPolygon && geoJSONLayerRef.current) {
+      try {
+        // Clear any existing drawn items
+        if (featureGroupRef.current) {
+          featureGroupRef.current.clearLayers();
+        }
+        
+        // Add the GeoJSON to the map and zoom to its bounds
+        const layer = L.geoJSON(geomPolygon);
+        const bounds = layer.getBounds();
+        
+        if (bounds.isValid()) {
+          mapRef.current.fitBounds(bounds, {
+            padding: [50, 50],
+            maxZoom: 16
+          });
+        }
+        
+        // Draw the polygon on the editable layer
+        if (featureGroupRef.current && geomPolygon.geometry.type === 'Polygon') {
+          const coordinates = geomPolygon.geometry.coordinates[0];
+          const latlngs = coordinates.map(([lng, lat]) => L.latLng(lat, lng));
+          const polygon = L.polygon(latlngs);
+          featureGroupRef.current.addLayer(polygon);
+          
+          // Calculate area
+          const area = GeometryUtil.geodesicArea(latlngs);
+          const areaInHectares = area / 10000;
+          
+          setTerrainData(prev => ({
+            ...prev,
+            surface_proposee: parseFloat(areaInHectares.toFixed(2))
+          }));
+        }
+      } catch (error) {
+        console.error('Error handling GeoJSON on map:', error);
+      }
+    } else if (mapRef.current && !geomPolygon) {
+      // If no geometry, center on Madagascar
+      mapRef.current.setView([-18.8792, 47.5079], 6);
+    }
+  }, [geomPolygon, isMapReady]);
 
   const fetchRegions = async () => {
     try {
@@ -329,6 +409,11 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     setGeomPolygon(null);
   };
 
+  const handleMapReady = (mapInstance: L.Map) => {
+    mapRef.current = mapInstance;
+    setIsMapReady(true);
+  };
+
   return (
     <Card className="w-full">
       <CardHeader>
@@ -503,8 +588,8 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
               <MapContainer 
                 center={[-18.8792, 47.5079]} // Center on Madagascar
                 zoom={6} 
-                ref={mapRef}
                 style={{ height: "100%", width: "100%" }}
+                whenReady={(map) => handleMapReady(map.target)}
               >
                 <TileLayer
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -525,6 +610,13 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
                     }}
                   />
                 </FeatureGroup>
+                {geomPolygon && (
+                  <GeoJSON 
+                    data={geomPolygon} 
+                    ref={geoJSONLayerRef}
+                    style={{ display: 'none' }} // Hide it, just using for bounds
+                  />
+                )}
               </MapContainer>
             </div>
             <p className="text-sm text-muted-foreground">Dessinez le contour de votre terrain sur la carte pour calculer automatiquement la surface.</p>

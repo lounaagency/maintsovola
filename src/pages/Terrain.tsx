@@ -24,9 +24,27 @@ export const Terrain = () => {
   const [isNewTerrain, setIsNewTerrain] = useState(true);
   const [isProjectDialogOpen, setIsProjectDialogOpen] = useState(false);
   const [isAlertDialogOpen, setIsAlertDialogOpen] = useState(false);
+  const [agriculteurs, setAgriculteurs] = useState<{id_utilisateur: string; nom: string; prenoms?: string}[]>([]);
   const [techniciens, setTechniciens] = useState([]);
   
   const userRole = profile?.nom_role?.toLowerCase() || 'agriculteur';
+
+  // Function to fetch agriculteurs for technicians and supervisors
+  const fetchAgriculteurs = useCallback(async () => {
+    if (userRole !== 'technicien' && userRole !== 'superviseur') return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('utilisateur')
+        .select('id_utilisateur, nom, prenoms')
+        .eq('id_role', 2); // ID du rôle agriculteur
+        
+      if (error) throw error;
+      setAgriculteurs(data || []);
+    } catch (error) {
+      console.error('Error fetching agriculteurs:', error);
+    }
+  }, [userRole]);
 
   // Function to fetch terrains
   const fetchTerrains = useCallback(async () => {
@@ -149,8 +167,9 @@ export const Terrain = () => {
       fetchTerrains();
       fetchProjects();
       fetchTechniciens();
+      fetchAgriculteurs();
     }
-  }, [user, fetchTerrains, fetchProjects, fetchTechniciens]);
+  }, [user, fetchTerrains, fetchProjects, fetchTechniciens, fetchAgriculteurs]);
 
   const handleCreateTerrain = () => {
     setSelectedTerrain(null);
@@ -247,6 +266,7 @@ export const Terrain = () => {
               onSubmitSuccess={handleTerrainSaved}
               userId={user.id}
               userRole={userRole}
+              agriculteurs={agriculteurs}
             />
           )}
         </TabsContent>
@@ -389,13 +409,9 @@ export const Terrain = () => {
               isOpen={isProjectDialogOpen}
               onClose={() => setIsProjectDialogOpen(false)}
               onSubmitSuccess={handleProjectSaved}
-              terrain={validatedTerrains.find(terrain => 
-                terrain.id_tantsaha === user.id && 
-                !projects.some((project: any) => 
-                  project.id_terrain === terrain.id_terrain && 
-                  project.statut !== 'terminé'
-                )
-              )}
+              project={null}
+              userId={user.id}
+              userRole={userRole}
             />
           )}
           

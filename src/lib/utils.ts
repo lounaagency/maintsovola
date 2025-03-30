@@ -1,3 +1,4 @@
+
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 
@@ -12,4 +13,32 @@ export const formatCurrency = (amount: number, currency: string = "MGA") => {
   }).format(amount);
 };
 
+// Function to convert WKT format to GeoJSON
+export const wktToGeoJSON = (wktString: string | null): GeoJSON.Feature | null => {
+  if (!wktString) return null;
+  
+  try {
+    // Simple WKT POLYGON parser
+    const match = wktString.match(/POLYGON\s*\(\((.*)\)\)/i);
+    if (!match || !match[1]) return null;
+
+    const coordsPairs = match[1].split(',').map(pair => pair.trim());
+    const coordinates = coordsPairs.map(pair => {
+      const [lng, lat] = pair.split(' ').map(Number);
+      return [lng, lat];
+    });
+
+    return {
+      type: 'Feature',
+      geometry: {
+        type: 'Polygon',
+        coordinates: [coordinates]
+      },
+      properties: {}
+    };
+  } catch (error) {
+    console.error('Error parsing WKT:', error);
+    return null;
+  }
+};
 
