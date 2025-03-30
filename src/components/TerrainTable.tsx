@@ -10,27 +10,27 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { Check, User, Edit } from "lucide-react";
+import { Check, Edit } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 
 interface TerrainTableProps {
   terrains: TerrainData[];
-  type: 'validated' | 'pending';
+  type?: 'validated' | 'pending';
   userRole?: string;
   onTerrainUpdate?: () => void;
   techniciens?: { id: string; nom: string; prenoms?: string }[];
-  onEditTerrain?: (terrain: TerrainData) => void;
+  onEdit?: (terrain: TerrainData) => void;
 }
 
 const TerrainTable: React.FC<TerrainTableProps> = ({ 
   terrains, 
-  type, 
+  type = 'pending', 
   userRole, 
   onTerrainUpdate,
   techniciens,
-  onEditTerrain
+  onEdit
 }) => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -99,8 +99,8 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
   };
 
   const handleEdit = (terrain: TerrainData) => {
-    if (onEditTerrain) {
-      onEditTerrain(terrain);
+    if (onEdit) {
+      onEdit(terrain);
     }
   };
 

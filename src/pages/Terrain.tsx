@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import TerrainTable from '@/components/TerrainTable';
 import { Button } from '@/components/ui/button';
@@ -165,17 +165,18 @@ export const Terrain = () => {
           </div>
           
           <TerrainTable 
-            terrains={terrains} 
-            onEdit={handleEditTerrain} 
+            terrains={terrains}
+            onEdit={handleEditTerrain}
           />
           
           {isTerrainDialogOpen && (
             <TerrainEditDialog
-              open={isTerrainDialogOpen}
-              onOpenChange={setIsTerrainDialogOpen}
+              isOpen={isTerrainDialogOpen}
+              onClose={() => setIsTerrainDialogOpen(false)}
               terrain={selectedTerrain}
-              isNew={isNewTerrain}
-              onSaved={handleTerrainSaved}
+              onSubmitSuccess={handleTerrainSaved}
+              userId={user.id}
+              userRole={userRole}
             />
           )}
         </TabsContent>
@@ -316,9 +317,9 @@ export const Terrain = () => {
           
           {isProjectDialogOpen && (
             <ProjectEditDialog
-              open={isProjectDialogOpen}
-              onOpenChange={setIsProjectDialogOpen}
-              onSaved={handleProjectSaved}
+              isOpen={isProjectDialogOpen}
+              onClose={() => setIsProjectDialogOpen(false)}
+              onSubmitSuccess={handleProjectSaved}
               availableTerrains={terrains.filter(terrain => 
                 terrain.id_tantsaha === user.id && 
                 terrain.statut === 'validé' && 

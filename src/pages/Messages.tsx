@@ -46,86 +46,81 @@ const Messages: React.FC = () => {
     if (!user) return;
     
     try {
-      const { data, error } = await supabase
+      // First get all conversations for the current user
+      const { data: conversationsData, error: conversationsError } = await supabase
         .from('conversation')
-        .select(`
-          id_conversation,
-          derniere_activite,
-          id_utilisateur1,
-          id_utilisateur2,
-          utilisateur1:id_utilisateur1(id_utilisateur, nom, prenoms, photo_profil),
-          utilisateur2:id_utilisateur2(id_utilisateur, nom, prenoms, photo_profil)
-        `)
-        .or(`id_utilisateur1.eq.${user?.id},id_utilisateur2.eq.${user?.id}`);
+        .select('id_conversation, id_utilisateur1, id_utilisateur2, derniere_activite')
+        .or(`id_utilisateur1.eq.${user.id},id_utilisateur2.eq.${user.id}`);
       
-      if (error) {
-        console.error("Error fetching conversations:", error);
+      if (conversationsError) {
+        console.error("Error fetching conversations:", conversationsError);
         return;
       }
       
-      // Get all conversation IDs
-      const conversationIds = data.map(conv => conv.id_conversation);
-      
-      // If no conversations, return empty array
-      if (conversationIds.length === 0) {
+      if (!conversationsData || conversationsData.length === 0) {
         setMessages([]);
         return;
       }
       
-      // Get last messages for each conversation
-      const { data: lastMessages, error: lastMsgError } = await supabase
-        .from('message')
-        .select('id_message, id_conversation, contenu, date_envoi, lu, id_expediteur, id_destinataire')
-        .in('id_conversation', conversationIds)
-        .order('date_envoi', { ascending: false });
+      // Get user details for conversation participants
+      const conversationIds = conversationsData.map(conv => conv.id_conversation);
+      let formattedMessages: ConversationMessage[] = [];
+      
+      for (const conv of conversationsData) {
+        // Determine the other user in the conversation
+        const otherUserId = conv.id_utilisateur1 === user.id ? conv.id_utilisateur2 : conv.id_utilisateur1;
         
-      if (lastMsgError) {
-        console.error("Error fetching messages:", lastMsgError);
-        return;
-      }
-      
-      // Group by conversation and find last message
-      const conversationToLastMessage: Record<number, any> = {};
-      lastMessages.forEach(msg => {
-        if (!conversationToLastMessage[msg.id_conversation] || 
-            new Date(msg.date_envoi) > new Date(conversationToLastMessage[msg.id_conversation].date_envoi)) {
-          conversationToLastMessage[msg.id_conversation] = msg;
-        }
-      });
-      
-      // Count unread messages
-      const unreadCounts: Record<number, number> = {};
-      lastMessages.forEach(msg => {
-        if (!msg.lu && msg.id_destinataire === user?.id) {
-          unreadCounts[msg.id_conversation] = (unreadCounts[msg.id_conversation] || 0) + 1;
-        }
-      });
-      
-      // Transform data into the expected format
-      const formattedMessages: ConversationMessage[] = data.map(conv => {
-        // Determine if the current user is utilisateur1 or utilisateur2
-        const isUser1 = conv.utilisateur1?.id_utilisateur === user?.id;
-        const otherUser = isUser1 ? conv.utilisateur2 : conv.utilisateur1;
-        const lastMsg = conversationToLastMessage[conv.id_conversation];
+        // Get user details
+        const { data: userData, error: userError } = await supabase
+          .from('utilisateur')
+          .select('id_utilisateur, nom, prenoms, photo_profil')
+          .eq('id_utilisateur', otherUserId)
+          .single();
         
-        if (!otherUser) {
-          console.error("User not found in conversation:", conv);
-          return null;
+        if (userError) {
+          console.error("Error fetching user details:", userError);
+          continue;
         }
         
-        return {
+        // Get last message in the conversation
+        const { data: lastMessageData, error: lastMessageError } = await supabase
+          .from('message')
+          .select('*')
+          .eq('id_conversation', conv.id_conversation)
+          .order('date_envoi', { ascending: false })
+          .limit(1)
+          .single();
+        
+        if (lastMessageError && lastMessageError.code !== 'PGRST116') { // PGRST116 is "no rows returned"
+          console.error("Error fetching last message:", lastMessageError);
+          continue;
+        }
+        
+        // Count unread messages
+        const { count: unreadCount, error: unreadError } = await supabase
+          .from('message')
+          .select('*', { count: 'exact', head: true })
+          .eq('id_conversation', conv.id_conversation)
+          .eq('id_destinataire', user.id)
+          .eq('lu', false);
+        
+        if (unreadError) {
+          console.error("Error counting unread messages:", unreadError);
+        }
+        
+        formattedMessages.push({
           id: conv.id_conversation.toString(),
           user: {
-            id: otherUser.id_utilisateur,
-            name: `${otherUser.nom} ${otherUser.prenoms || ''}`.trim(),
-            avatar: otherUser.photo_profil,
-            status: "online" // Default status, can be updated later
+            id: userData.id_utilisateur,
+            name: `${userData.nom} ${userData.prenoms || ''}`.trim(),
+            avatar: userData.photo_profil,
+            status: "online" // Default status
           },
-          lastMessage: lastMsg?.contenu || "Aucun message",
-          timestamp: lastMsg?.date_envoi || conv.derniere_activite,
-          unread: unreadCounts[conv.id_conversation] || 0
-        };
-      }).filter(Boolean) as ConversationMessage[];
+          lastMessage: lastMessageData?.contenu || "Nouvelle conversation",
+          timestamp: lastMessageData?.date_envoi || conv.derniere_activite,
+          unread: unreadCount || 0
+        });
+      }
       
       setMessages(formattedMessages);
       setFilteredMessages(formattedMessages);
@@ -150,7 +145,9 @@ const Messages: React.FC = () => {
         .neq('id_utilisateur', user?.id);
       
       if (error) throw error;
-      setSearchResults(data || []);
+      
+      const typedData = data as UserProfile[];
+      setSearchResults(typedData || []);
     } catch (error) {
       console.error("Error searching for users:", error);
       toast({
@@ -168,8 +165,6 @@ const Messages: React.FC = () => {
   };
   
   const onMessageSent = () => {
-    setIsDialogOpen(false);
-    setSelectedUser(null);
     fetchConversations();
   };
   
@@ -220,7 +215,7 @@ const Messages: React.FC = () => {
                   </div>
                   <div>
                     <div className="font-medium">
-                      {result.nom} {result.prenoms}
+                      {result.nom} {result.prenoms || ''}
                     </div>
                   </div>
                 </div>

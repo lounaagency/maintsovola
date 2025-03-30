@@ -31,24 +31,25 @@ L.Marker.prototype.options.icon = DefaultIcon;
 
 // Add geometry util for area calculation
 if (!L.GeometryUtil) {
-  L.GeometryUtil = {
-    // Simple implementation of geodesic area calculation
-    geodesicArea: function(latLngs) {
-      let area = 0;
-      if (latLngs.length > 2) {
-        const R = 6371000; // Earth radius in meters
-        let p1, p2;
-        for (let i = 0; i < latLngs.length; i++) {
-          p1 = latLngs[i];
-          p2 = latLngs[(i + 1) % latLngs.length];
-          area += ((p2.lng - p1.lng) * Math.PI / 180) * 
-                  (2 + Math.sin(p1.lat * Math.PI / 180) + 
-                   Math.sin(p2.lat * Math.PI / 180));
-        }
-        area = Math.abs(area * R * R / 2);
+  L.GeometryUtil = {} as any;
+}
+
+if (!L.GeometryUtil.geodesicArea) {
+  L.GeometryUtil.geodesicArea = function(latLngs: L.LatLng[]) {
+    let area = 0;
+    if (latLngs.length > 2) {
+      const R = 6371000; // Earth radius in meters
+      let p1, p2;
+      for (let i = 0; i < latLngs.length; i++) {
+        p1 = latLngs[i];
+        p2 = latLngs[(i + 1) % latLngs.length];
+        area += ((p2.lng - p1.lng) * Math.PI / 180) * 
+                (2 + Math.sin(p1.lat * Math.PI / 180) + 
+                 Math.sin(p2.lat * Math.PI / 180));
       }
-      return area;
+      area = Math.abs(area * R * R / 2);
     }
+    return area;
   };
 }
 
@@ -211,13 +212,13 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       let geomValue = null;
       if (geomPolygon && geomPolygon.geometry) {
         // Convert GeoJSON to WKT format
-        const coordinates = geomPolygon.geometry.type === 'Polygon' ? 
-          geomPolygon.geometry.coordinates[0] : 
-          [];
+        if (geomPolygon.geometry.type === 'Polygon' && geomPolygon.geometry.coordinates) {
+          const coordinates = geomPolygon.geometry.coordinates[0];
           
-        if (coordinates.length > 0) {
-          const wktPoints = coordinates.map((coord: number[]) => `${coord[0]} ${coord[1]}`).join(',');
-          geomValue = `POLYGON((${wktPoints}))`;
+          if (coordinates && coordinates.length > 0) {
+            const wktPoints = coordinates.map((coord: number[]) => `${coord[0]} ${coord[1]}`).join(',');
+            geomValue = `POLYGON((${wktPoints}))`;
+          }
         }
       }
       

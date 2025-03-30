@@ -63,11 +63,14 @@ const MessageDialog: React.FC<MessageDialogProps> = ({
     }
   };
 
-  const handleSendMessage = async () => {
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
     if (!message.trim() || !user || !conversationId) return;
 
     try {
       await sendMessage({
+        id_conversation: conversationId,
         id_expediteur: user.id,
         id_destinataire: recipientId,
         contenu: message,
@@ -142,10 +145,7 @@ const MessageDialog: React.FC<MessageDialogProps> = ({
           
           <div className="p-4 border-t">
             <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleSendMessage();
-              }}
+              onSubmit={handleSendMessage}
               className="flex gap-2"
             >
               <Input

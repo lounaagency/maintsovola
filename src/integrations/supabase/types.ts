@@ -229,7 +229,36 @@ export type Database = {
           id_utilisateur1?: string
           id_utilisateur2?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "conversation_id_utilisateur1_fkey1"
+            columns: ["id_utilisateur1"]
+            isOneToOne: false
+            referencedRelation: "utilisateur"
+            referencedColumns: ["id_utilisateur"]
+          },
+          {
+            foreignKeyName: "conversation_id_utilisateur1_fkey1"
+            columns: ["id_utilisateur1"]
+            isOneToOne: false
+            referencedRelation: "utilisateurs_par_role"
+            referencedColumns: ["id_utilisateur"]
+          },
+          {
+            foreignKeyName: "conversation_id_utilisateur2_fkey1"
+            columns: ["id_utilisateur2"]
+            isOneToOne: false
+            referencedRelation: "utilisateur"
+            referencedColumns: ["id_utilisateur"]
+          },
+          {
+            foreignKeyName: "conversation_id_utilisateur2_fkey1"
+            columns: ["id_utilisateur2"]
+            isOneToOne: false
+            referencedRelation: "utilisateurs_par_role"
+            referencedColumns: ["id_utilisateur"]
+          },
+        ]
       }
       culture: {
         Row: {
@@ -445,6 +474,34 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "conversation"
             referencedColumns: ["id_conversation"]
+          },
+          {
+            foreignKeyName: "message_id_destinataire_fkey1"
+            columns: ["id_destinataire"]
+            isOneToOne: false
+            referencedRelation: "utilisateur"
+            referencedColumns: ["id_utilisateur"]
+          },
+          {
+            foreignKeyName: "message_id_destinataire_fkey1"
+            columns: ["id_destinataire"]
+            isOneToOne: false
+            referencedRelation: "utilisateurs_par_role"
+            referencedColumns: ["id_utilisateur"]
+          },
+          {
+            foreignKeyName: "message_id_expediteur_fkey1"
+            columns: ["id_expediteur"]
+            isOneToOne: false
+            referencedRelation: "utilisateur"
+            referencedColumns: ["id_utilisateur"]
+          },
+          {
+            foreignKeyName: "message_id_expediteur_fkey1"
+            columns: ["id_expediteur"]
+            isOneToOne: false
+            referencedRelation: "utilisateurs_par_role"
+            referencedColumns: ["id_utilisateur"]
           },
         ]
       }
