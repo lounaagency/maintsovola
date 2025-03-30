@@ -1,297 +1,263 @@
 
-import React, { useState } from "react";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import React, { useState } from 'react';
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Heart, MessageCircle, Share, Edit, Info } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils';
+import UserAvatar from './UserAvatar';
 import { Badge } from "@/components/ui/badge";
+import { AgriculturalProject } from "@/types/agriculturalProject";
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
-import { MessageCircle, Heart } from "lucide-react";
-import { ProjectData } from "@/types/agriculturalProject";
-import UserAvatar from "./UserAvatar";
-import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
+import { Label } from "@/components/ui/label";
 
 interface AgriculturalProjectCardProps {
-  project: ProjectData;
-  onMessageClick?: (userId: string, userName: string) => void;
-  onDetailsClick?: (project: ProjectData) => void;
-  onInvestSuccess?: () => void;
+  project: AgriculturalProject;
+  onLikeToggle: (isLiked: boolean) => void;
 }
 
-const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({
-  project,
-  onMessageClick,
-  onDetailsClick,
-  onInvestSuccess,
-}) => {
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const [liked, setLiked] = useState(false);
-  const [likes, setLikes] = useState(project.likes || 0);
-  const [showInvestmentForm, setShowInvestmentForm] = useState(false);
-  const [investmentAmount, setInvestmentAmount] = useState<number>(0);
-
-  const coutTotal = project.cout_total || 0;
-  const financementActuel = project.financement_actuel || 0;
-  const gap = Math.max(0, coutTotal - financementActuel);
-  const progressPercentage = coutTotal > 0 ? Math.min(100, (financementActuel / coutTotal) * 100) : 0;
-
-  const handleLikeClick = () => {
-    setLiked(!liked);
-    setLikes(liked ? likes - 1 : likes + 1);
-    // TODO: Implement like functionality with API
+const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ project, onLikeToggle }) => {
+  const [liked, setLiked] = useState<boolean>(project.isLiked || false);
+  const [showInvestModal, setShowInvestModal] = useState<boolean>(false);
+  const [investAmount, setInvestAmount] = useState<number>(0);
+  const { user, profile } = useAuth();
+  const userRole = profile?.nom_role?.toLowerCase() || '';
+  
+  const isInvestor = userRole === 'investisseur';
+  const isFarmer = userRole === 'agriculteur';
+  const canInvest = isInvestor || isFarmer;
+  
+  const fundingGap = Math.max(0, project.fundingGoal - project.currentFunding);
+  
+  // Initialiser le montant d'investissement au gap restant lors de l'ouverture du modal
+  const handleOpenInvestModal = () => {
+    setInvestAmount(fundingGap);
+    setShowInvestModal(true);
   };
-
-  const handleMessageClick = () => {
-    if (onMessageClick && project.agriculteur) {
-      onMessageClick(
-        project.agriculteur.id_utilisateur,
-        `${project.agriculteur.nom} ${project.agriculteur.prenoms || ""}`
-      );
-    }
+  
+  const handleInvestAmountChange = (value: number[]) => {
+    setInvestAmount(value[0]);
   };
-
-  const handleInvestClick = () => {
-    if (gap > 0) {
-      setInvestmentAmount(gap);
-      setShowInvestmentForm(true);
+  
+  const handleInvestAmountInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseFloat(e.target.value);
+    if (isNaN(value)) {
+      setInvestAmount(0);
     } else {
-      toast({
-        title: "Financement complet",
-        description: "Ce projet a déjà atteint son objectif de financement.",
-      });
+      setInvestAmount(Math.min(Math.max(0, value), fundingGap));
     }
   };
-
-  const handleInvestmentSubmit = async () => {
+  
+  const handleInvest = async () => {
     if (!user) {
-      toast({
-        title: "Non connecté",
-        description: "Vous devez être connecté pour investir.",
-        variant: "destructive",
-      });
+      toast.error("Vous devez être connecté pour investir");
       return;
     }
 
-    if (investmentAmount <= 0 || investmentAmount > gap) {
-      toast({
-        title: "Montant invalide",
-        description: `Le montant doit être entre 1 et ${gap.toLocaleString()} Ar.`,
-        variant: "destructive",
-      });
+    if (investAmount <= 0) {
+      toast.error("Le montant de l'investissement doit être supérieur à 0");
       return;
     }
 
     try {
-      // Save investment to database
-      const { error } = await supabase.from("investissement").insert({
+      const { error } = await supabase.from('investissement').insert({
         id_investisseur: user.id,
-        id_projet: project.id_projet,
-        montant: investmentAmount,
-        date_decision_investir: new Date().toISOString(),
+        id_projet: parseInt(project.id),
+        montant: investAmount,
+        date_decision_investir: new Date().toISOString().split('T')[0]
       });
 
       if (error) throw error;
-
-      toast({
-        title: "Investissement réussi",
-        description: `Vous avez investi ${investmentAmount.toLocaleString()} Ar dans ce projet.`,
-        variant: "success",
-      });
-
-      setShowInvestmentForm(false);
-
-      // Update the project's financement_actuel
-      const { error: updateError } = await supabase
-        .from("projet")
-        .update({
-          financement_actuel: (financementActuel + investmentAmount),
-        })
-        .eq("id_projet", project.id_projet);
-
-      if (updateError) throw updateError;
-
-      if (onInvestSuccess) {
-        onInvestSuccess();
-      }
+      
+      toast.success("Votre investissement a été enregistré avec succès");
+      setShowInvestModal(false);
+      
+      // Rafraîchir les données du projet (idéalement via un callback)
     } catch (error) {
       console.error("Erreur lors de l'investissement:", error);
-      toast({
-        title: "Erreur",
-        description: "Une erreur est survenue lors de l'investissement.",
-        variant: "destructive",
-      });
+      toast.error("Une erreur est survenue lors de l'enregistrement de votre investissement");
     }
   };
-
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return "Non spécifié";
-    return new Date(dateString).toLocaleDateString();
+  
+  const handleLike = () => {
+    setLiked(!liked);
+    onLikeToggle(liked);
   };
-
+  
   return (
-    <Card className="overflow-hidden">
-      <CardHeader className="pb-2">
-        <div className="flex justify-between items-start">
-          <div className="flex items-center space-x-2">
-            <UserAvatar
-              src={project.agriculteur?.photo_profil || ""}
-              alt={project.agriculteur?.nom || ""}
-              size="sm"
-            />
-            <div>
-              <CardTitle className="text-base">
-                {project.titre || `Projet #${project.id_projet}`}
-              </CardTitle>
-              <CardDescription>
-                par {project.agriculteur?.nom} {project.agriculteur?.prenoms} •{" "}
-                {formatDate(project.created_at)}
-              </CardDescription>
+    <>
+      <Card className="overflow-hidden mb-4">
+        <div className="p-4">
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex items-center">
+              <UserAvatar 
+                src={project.farmer?.avatar} 
+                alt={typeof project.farmer?.name === 'string' ? project.farmer.name : 'Agriculteur'} 
+                size="md" 
+              />
+              <div className="ml-3">
+                <div className="font-semibold text-sm text-gray-900">
+                  {project.farmer?.name}
+                </div>
+                <div className="text-xs text-gray-500">
+                  {project.creationDate}
+                </div>
+              </div>
             </div>
+            
+            <Button variant={project.technicienId ? "default" : "destructive"} size="sm" className="ml-2 text-xs">
+              {project.technicienId ? "Validé" : "En attente"}
+            </Button>
           </div>
-          <div className="flex items-center space-x-1">
-            <Badge variant={project.statut === "en_financement" ? "default" : "outline"}>
-              {project.statut === "en_attente"
-                ? "En attente"
-                : project.statut === "en_financement"
-                ? "En financement"
-                : project.statut === "en_production"
-                ? "En production"
-                : project.statut === "terminé"
-                ? "Terminé"
-                : "Statut inconnu"}
-            </Badge>
+          
+          <div className="mb-3">
+            <h3 className="font-semibold text-base mb-1">{project.title}</h3>
+            <p className="text-sm text-gray-700">{project.description}</p>
           </div>
-        </div>
-      </CardHeader>
-      <CardContent className="pb-3">
-        {/* Project image or default image */}
-        <div className="h-40 bg-muted rounded-md mb-3 overflow-hidden">
-          <img
-            src={project.image || "/placeholder.svg"}
-            alt={project.titre || "Projet agricole"}
-            className="w-full h-full object-cover"
-          />
-        </div>
-        
-        {/* Project details */}
-        <div className="space-y-2">
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-            <div className="text-muted-foreground">Surface:</div>
-            <div className="text-right font-medium">{project.surface_ha} ha</div>
-            
-            <div className="text-muted-foreground">Cultures:</div>
-            <div className="text-right font-medium">
-              {project.cultures?.map(c => c.nom_culture).join(", ") || "Non spécifié"}
+          
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <div className="text-xs">
+              <span className="text-gray-500 block">Culture</span>
+              <span className="font-medium">{project.cultivationType}</span>
             </div>
-            
-            <div className="text-muted-foreground">Cout total:</div>
-            <div className="text-right font-medium">
-              {coutTotal.toLocaleString()} Ar
+            <div className="text-xs">
+              <span className="text-gray-500 block">Surface</span>
+              <span className="font-medium">{project.cultivationArea} ha</span>
             </div>
-            
-            <div className="text-muted-foreground">Rendement estimé:</div>
-            <div className="text-right font-medium">
-              {project.rendement_estime?.toLocaleString() || "Non spécifié"} Ar
+            <div className="text-xs">
+              <span className="text-gray-500 block">Localisation</span>
+              <span className="font-medium">{project.location.commune}, {project.location.district}</span>
+            </div>
+            <div className="text-xs">
+              <span className="text-gray-500 block">Région</span>
+              <span className="font-medium">{project.location.region}</span>
             </div>
           </div>
           
-          {(project.statut === "en_financement" || project.statut === "en_production") && (
-            <div className="space-y-1 pt-2">
-              <div className="flex justify-between text-xs">
-                <span>Financement: {progressPercentage.toFixed(0)}%</span>
-                <span>
-                  {financementActuel.toLocaleString()} / {coutTotal.toLocaleString()} Ar
-                </span>
+          {/* Affichage du financement */}
+          <div className="mb-4">
+            <div className="flex justify-between text-xs mb-1">
+              <span>Financement</span>
+              <span className="font-medium">{formatCurrency(project.currentFunding)} / {formatCurrency(project.fundingGoal)}</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2.5">
+              <div 
+                className="bg-primary h-2.5 rounded-full" 
+                style={{ width: `${Math.min(100, (project.currentFunding / project.fundingGoal) * 100)}%` }}
+              ></div>
+            </div>
+          </div>
+          
+          {/* Boutons d'actions */}
+          <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+            <div className="flex space-x-2">
+              <button 
+                className="flex items-center space-x-1 text-xs text-gray-500 hover:text-red-500 transition-colors"
+                onClick={handleLike}
+              >
+                <Heart className={`h-4 w-4 ${liked ? 'fill-red-500 text-red-500' : ''}`} />
+                <span>{project.likes}</span>
+              </button>
+              
+              <button className="flex items-center space-x-1 text-xs text-gray-500 hover:text-primary transition-colors">
+                <MessageCircle className="h-4 w-4" />
+                <span>{project.comments}</span>
+              </button>
+              
+              <button className="flex items-center space-x-1 text-xs text-gray-500 hover:text-primary transition-colors">
+                <Share className="h-4 w-4" />
+              </button>
+            </div>
+            
+            {canInvest && (
+              <Button 
+                size="sm" 
+                className="text-xs" 
+                onClick={handleOpenInvestModal}
+                disabled={fundingGap === 0}
+              >
+                {fundingGap > 0 ? "S'investir" : "Financé"}
+              </Button>
+            )}
+          </div>
+        </div>
+      </Card>
+      
+      {/* Modal d'investissement */}
+      <Dialog open={showInvestModal} onOpenChange={setShowInvestModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Investir dans ce projet</DialogTitle>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <div className="mb-4">
+              <h4 className="font-medium mb-1">{project.title}</h4>
+              <p className="text-sm text-gray-600">{project.description}</p>
+            </div>
+            
+            <div className="mb-6">
+              <div className="flex justify-between text-sm mb-1">
+                <span>Objectif de financement:</span>
+                <span>{formatCurrency(project.fundingGoal)}</span>
               </div>
-              <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-primary"
-                  style={{ width: `${progressPercentage}%` }}
+              <div className="flex justify-between text-sm mb-1">
+                <span>Déjà financé:</span>
+                <span>{formatCurrency(project.currentFunding)}</span>
+              </div>
+              <div className="flex justify-between text-sm font-medium">
+                <span>Reste à financer:</span>
+                <span>{formatCurrency(fundingGap)}</span>
+              </div>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="invest-amount">Montant de votre investissement</Label>
+                <Input 
+                  id="invest-amount" 
+                  type="number"
+                  min={0}
+                  max={fundingGap}
+                  value={investAmount}
+                  onChange={handleInvestAmountInput}
+                  className="mt-1"
                 />
               </div>
-            </div>
-          )}
-        </div>
-      </CardContent>
-      
-      <CardFooter className="flex justify-between pt-0">
-        <div className="flex space-x-2">
-          <Button variant="ghost" size="sm" onClick={handleLikeClick}>
-            <Heart
-              className={`h-4 w-4 mr-1 ${liked ? "fill-red-500 text-red-500" : ""}`}
-            />
-            <span>{likes.toString()}</span>
-          </Button>
-          
-          <Button variant="ghost" size="sm" onClick={handleMessageClick}>
-            <MessageCircle className="h-4 w-4 mr-1" />
-            <span>Message</span>
-          </Button>
-        </div>
-        
-        <div className="flex space-x-2">
-          {project.statut === "en_financement" && user && (
-            <Button variant="default" size="sm" onClick={handleInvestClick}>
-              Investir
-            </Button>
-          )}
-          
-          <Button variant="outline" size="sm" onClick={() => onDetailsClick?.(project)}>
-            Détails
-          </Button>
-        </div>
-      </CardFooter>
-      
-      {showInvestmentForm && (
-        <div className="px-4 pb-4 space-y-3 border-t pt-3">
-          <h4 className="font-medium">Montant d'investissement</h4>
-          
-          <div className="space-y-4">
-            <Input
-              type="number"
-              min={1}
-              max={gap}
-              value={investmentAmount}
-              onChange={(e) => setInvestmentAmount(Number(e.target.value))}
-              className="w-full"
-            />
-            
-            <Slider
-              value={[investmentAmount]}
-              min={0}
-              max={gap}
-              step={1000}
-              onValueChange={(values) => setInvestmentAmount(values[0])}
-              className="w-full"
-            />
-            
-            <div className="flex justify-between text-sm">
-              <span>Min: 0 Ar</span>
-              <span>Max: {gap.toLocaleString()} Ar</span>
-            </div>
-            
-            <div className="flex justify-end space-x-2">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => setShowInvestmentForm(false)}
-              >
-                Annuler
-              </Button>
-              <Button 
-                variant="default" 
-                size="sm"
-                onClick={handleInvestmentSubmit}
-              >
-                Confirmer
-              </Button>
+              
+              <div>
+                <Label>Ajuster le montant</Label>
+                <Slider
+                  defaultValue={[investAmount]}
+                  max={fundingGap}
+                  step={1000}
+                  onValueChange={handleInvestAmountChange}
+                  value={[investAmount]}
+                  className="mt-2"
+                />
+                <div className="flex justify-between text-xs text-gray-500 mt-1">
+                  <span>0</span>
+                  <span>{formatCurrency(fundingGap)}</span>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-    </Card>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowInvestModal(false)}>
+              Annuler
+            </Button>
+            <Button onClick={handleInvest} disabled={investAmount <= 0}>
+              Confirmer l'investissement
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 

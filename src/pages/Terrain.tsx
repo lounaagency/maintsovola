@@ -10,18 +10,21 @@ import { Plus } from 'lucide-react';
 import TerrainEditDialog from '@/components/TerrainEditDialog';
 import ProjectEditDialog from '@/components/ProjectEditDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { TerrainData } from "@/types/terrain";
 
 export const Terrain = () => {
   const { user, profile } = useAuth();
   const { toast } = useToast();
   
-  const [terrains, setTerrains] = useState([]);
+  const [pendingTerrains, setPendingTerrains] = useState<TerrainData[]>([]);
+  const [validatedTerrains, setValidatedTerrains] = useState<TerrainData[]>([]);
   const [projects, setProjects] = useState([]);
-  const [selectedTerrain, setSelectedTerrain] = useState(null);
+  const [selectedTerrain, setSelectedTerrain] = useState<TerrainData | null>(null);
   const [isTerrainDialogOpen, setIsTerrainDialogOpen] = useState(false);
   const [isNewTerrain, setIsNewTerrain] = useState(true);
   const [isProjectDialogOpen, setIsProjectDialogOpen] = useState(false);
   const [isAlertDialogOpen, setIsAlertDialogOpen] = useState(false);
+  const [techniciens, setTechniciens] = useState([]);
   
   const userRole = profile?.nom_role?.toLowerCase() || 'agriculteur';
 
@@ -30,22 +33,53 @@ export const Terrain = () => {
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
+      // Construire la requête de base
+      let query = supabase
         .from('terrain')
         .select(`
           *,
-          tantsaha:id_tantsaha(id_utilisateur, nom, prenoms),
-          superviseur:id_superviseur(id_utilisateur, nom, prenoms),
-          technicien:id_technicien(id_utilisateur, nom, prenoms),
-          region:id_region(nom_region),
+          commune:id_commune(nom_commune),
           district:id_district(nom_district),
-          commune:id_commune(nom_commune)
-        `)
-        .eq(userRole === 'agriculteur' ? 'id_tantsaha' : 'terrain.id_terrain', 
-            userRole === 'agriculteur' ? user.id : 'terrain.id_terrain');
+          region:id_region(nom_region),
+          technicien:id_technicien(id_utilisateur, nom, prenoms)
+        `);
+      
+      // Filtrer selon le rôle de l'utilisateur
+      if (userRole === 'agriculteur') {
+        query = query.eq('id_tantsaha', user.id);
+      } else if (userRole === 'technicien') {
+        query = query.eq('id_technicien', user.id);
+      }
+      
+      const { data, error } = await query;
 
       if (error) throw error;
-      setTerrains(data || []);
+      
+      // Formater les données pour les terrains
+      const terrainData = (data || []).map(terrain => ({
+        id_terrain: terrain.id_terrain,
+        nom_terrain: terrain.nom_terrain || `Terrain #${terrain.id_terrain}`,
+        surface_proposee: terrain.surface_proposee,
+        surface_validee: terrain.surface_validee,
+        acces_eau: terrain.acces_eau,
+        acces_route: terrain.acces_route,
+        id_tantsaha: terrain.id_tantsaha,
+        id_technicien: terrain.id_technicien,
+        id_superviseur: terrain.id_superviseur,
+        id_region: terrain.id_region,
+        id_district: terrain.id_district,
+        id_commune: terrain.id_commune,
+        statut: terrain.statut,
+        geom: terrain.geom,
+        region_name: terrain.region?.nom_region || 'Non spécifié',
+        district_name: terrain.district?.nom_district || 'Non spécifié',
+        commune_name: terrain.commune?.nom_commune || 'Non spécifié',
+        techniqueNom: terrain.technicien ? `${terrain.technicien.nom} ${terrain.technicien.prenoms || ''}`.trim() : 'Non assigné'
+      }));
+      
+      // Séparer les terrains validés et en attente
+      setPendingTerrains(terrainData.filter(t => t.statut === false));
+      setValidatedTerrains(terrainData.filter(t => t.statut === true));
     } catch (error) {
       console.error('Error fetching terrains:', error);
       toast({
@@ -55,6 +89,23 @@ export const Terrain = () => {
       });
     }
   }, [user, userRole, toast]);
+
+  // Récupérer les techniciens pour l'assignation
+  const fetchTechniciens = useCallback(async () => {
+    if (userRole !== 'superviseur') return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('utilisateur')
+        .select('id_utilisateur, nom, prenoms')
+        .eq('id_role', 3); // ID du rôle technicien
+        
+      if (error) throw error;
+      setTechniciens(data || []);
+    } catch (error) {
+      console.error('Error fetching techniciens:', error);
+    }
+  }, [userRole]);
 
   // Function to fetch projects
   const fetchProjects = useCallback(async () => {
@@ -97,8 +148,9 @@ export const Terrain = () => {
     if (user) {
       fetchTerrains();
       fetchProjects();
+      fetchTechniciens();
     }
-  }, [user, fetchTerrains, fetchProjects]);
+  }, [user, fetchTerrains, fetchProjects, fetchTechniciens]);
 
   const handleCreateTerrain = () => {
     setSelectedTerrain(null);
@@ -106,23 +158,22 @@ export const Terrain = () => {
     setIsTerrainDialogOpen(true);
   };
 
-  const handleEditTerrain = (terrain) => {
+  const handleEditTerrain = (terrain: TerrainData) => {
     setSelectedTerrain(terrain);
     setIsNewTerrain(false);
     setIsTerrainDialogOpen(true);
   };
 
   const handleTerrainSaved = () => {
-    fetchTerrains();
+    fetchTerrains(); // Rafraîchir la liste des terrains
     setIsTerrainDialogOpen(false);
   };
 
   const handleCreateProject = () => {
     // Check if user has validated terrains
-    const validTerrains = terrains.filter(terrain => 
-      terrain.id_tantsaha === user.id && 
-      terrain.statut === 'validé' && 
-      !projects.some(project => 
+    const validTerrains = validatedTerrains.filter(terrain => 
+      terrain.id_tantsaha === user?.id && 
+      !projects.some((project: any) => 
         project.id_terrain === terrain.id_terrain && 
         project.statut !== 'terminé'
       )
@@ -164,16 +215,35 @@ export const Terrain = () => {
             </Button>
           </div>
           
-          <TerrainTable 
-            terrains={terrains}
-            onEdit={handleEditTerrain}
-          />
+          <div className="space-y-6">
+            <div>
+              <h3 className="font-medium mb-2">Terrains en attente de validation</h3>
+              <TerrainTable 
+                terrains={pendingTerrains}
+                type="pending"
+                userRole={userRole}
+                onTerrainUpdate={fetchTerrains}
+                techniciens={techniciens}
+                onEdit={handleEditTerrain}
+              />
+            </div>
+            
+            <div>
+              <h3 className="font-medium mb-2">Terrains validés</h3>
+              <TerrainTable 
+                terrains={validatedTerrains}
+                type="validated"
+                userRole={userRole}
+                onEdit={handleEditTerrain}
+              />
+            </div>
+          </div>
           
           {isTerrainDialogOpen && (
             <TerrainEditDialog
               isOpen={isTerrainDialogOpen}
               onClose={() => setIsTerrainDialogOpen(false)}
-              terrain={selectedTerrain}
+              terrain={selectedTerrain as TerrainData}
               onSubmitSuccess={handleTerrainSaved}
               userId={user.id}
               userRole={userRole}
@@ -195,7 +265,7 @@ export const Terrain = () => {
           <div className="space-y-4">
             <div>
               <h3 className="font-medium mb-2">Projets en attente de validation</h3>
-              {projects.filter(p => p.statut === 'en_attente').length > 0 ? (
+              {projects.filter((p: any) => p.statut === 'en_attente').length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
@@ -209,13 +279,13 @@ export const Terrain = () => {
                     </thead>
                     <tbody>
                       {projects
-                        .filter(p => p.statut === 'en_attente')
-                        .map((project) => (
+                        .filter((p: any) => p.statut === 'en_attente')
+                        .map((project: any) => (
                           <tr key={project.id_projet} className="border-b hover:bg-muted/50">
                             <td className="p-2">{project.titre || `Projet #${project.id_projet}`}</td>
                             <td className="p-2">{project.surface_ha}</td>
                             <td className="p-2">
-                              {project.projet_culture.map(pc => pc.culture.nom_culture).join(', ')}
+                              {project.projet_culture.map((pc: any) => pc.culture.nom_culture).join(', ')}
                             </td>
                             <td className="p-2">
                               {project.terrain?.localisation || `Terrain #${project.id_terrain}`}
@@ -237,7 +307,7 @@ export const Terrain = () => {
             
             <div>
               <h3 className="font-medium mb-2">Projets en cours de financement</h3>
-              {projects.filter(p => p.statut === 'en_financement').length > 0 ? (
+              {projects.filter((p: any) => p.statut === 'en_financement').length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
@@ -251,8 +321,8 @@ export const Terrain = () => {
                     </thead>
                     <tbody>
                       {projects
-                        .filter(p => p.statut === 'en_financement')
-                        .map((project) => (
+                        .filter((p: any) => p.statut === 'en_financement')
+                        .map((project: any) => (
                           <tr key={project.id_projet} className="border-b hover:bg-muted/50">
                             <td className="p-2">{project.titre || `Projet #${project.id_projet}`}</td>
                             <td className="p-2">{project.surface_ha}</td>
@@ -275,7 +345,7 @@ export const Terrain = () => {
             
             <div>
               <h3 className="font-medium mb-2">Projets en production</h3>
-              {projects.filter(p => p.statut === 'en_production').length > 0 ? (
+              {projects.filter((p: any) => p.statut === 'en_production').length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
@@ -289,14 +359,13 @@ export const Terrain = () => {
                     </thead>
                     <tbody>
                       {projects
-                        .filter(p => p.statut === 'en_production')
-                        .map((project) => (
+                        .filter((p: any) => p.statut === 'en_production')
+                        .map((project: any) => (
                           <tr key={project.id_projet} className="border-b hover:bg-muted/50">
                             <td className="p-2">{project.titre || `Projet #${project.id_projet}`}</td>
                             <td className="p-2">{project.surface_ha}</td>
                             <td className="p-2">{new Date(project.date_debut).toLocaleDateString()}</td>
                             <td className="p-2">
-                              {/* TODO: Calculate progress from completed jalons */}
                               En cours
                             </td>
                             <td className="p-2 text-right">
@@ -320,10 +389,9 @@ export const Terrain = () => {
               isOpen={isProjectDialogOpen}
               onClose={() => setIsProjectDialogOpen(false)}
               onSubmitSuccess={handleProjectSaved}
-              availableTerrains={terrains.filter(terrain => 
+              terrain={validatedTerrains.find(terrain => 
                 terrain.id_tantsaha === user.id && 
-                terrain.statut === 'validé' && 
-                !projects.some(project => 
+                !projects.some((project: any) => 
                   project.id_terrain === terrain.id_terrain && 
                   project.statut !== 'terminé'
                 )

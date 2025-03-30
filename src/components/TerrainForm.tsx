@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,13 +30,9 @@ let DefaultIcon = L.icon({
 
 L.Marker.prototype.options.icon = DefaultIcon;
 
-// Add geometry util for area calculation
-if (!L.GeometryUtil) {
-  L.GeometryUtil = {} as any;
-}
-
-if (!L.GeometryUtil.geodesicArea) {
-  L.GeometryUtil.geodesicArea = function(latLngs: L.LatLng[]) {
+// Add custom geodesic area calculation utility
+const GeometryUtil = {
+  geodesicArea: function(latLngs: L.LatLng[]) {
     let area = 0;
     if (latLngs.length > 2) {
       const R = 6371000; // Earth radius in meters
@@ -50,8 +47,8 @@ if (!L.GeometryUtil.geodesicArea) {
       area = Math.abs(area * R * R / 2);
     }
     return area;
-  };
-}
+  }
+};
 
 interface TerrainFormProps {
   initialData?: TerrainData;
@@ -212,8 +209,8 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       let geomValue = null;
       if (geomPolygon && geomPolygon.geometry) {
         // Convert GeoJSON to WKT format
-        if (geomPolygon.geometry.type === 'Polygon' && geomPolygon.geometry.coordinates) {
-          const coordinates = geomPolygon.geometry.coordinates[0];
+        if (geomPolygon.geometry.type === 'Polygon') {
+          const coordinates = (geomPolygon.geometry as GeoJSON.Polygon).coordinates[0];
           
           if (coordinates && coordinates.length > 0) {
             const wktPoints = coordinates.map((coord: number[]) => `${coord[0]} ${coord[1]}`).join(',');
@@ -261,7 +258,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
             acces_eau: terrainData.acces_eau,
             acces_route: terrainData.acces_route,
             nom_terrain: terrainData.nom_terrain,
-            statut: false,
+            statut: false, // Toujours pas validé par défaut
             ...(geomValue ? { geom: geomValue } : {})
           });
 
@@ -296,7 +293,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       
       // Calculate approximate area in hectares
       const latlngs = layer.getLatLngs()[0];
-      let area = L.GeometryUtil.geodesicArea(latlngs);
+      let area = GeometryUtil.geodesicArea(latlngs);
       const areaInHectares = area / 10000; // Convert square meters to hectares
       
       // Update surface field with calculated area
@@ -317,7 +314,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       
       // Update area calculation
       const latlngs = layer.getLatLngs()[0];
-      let area = L.GeometryUtil.geodesicArea(latlngs);
+      let area = GeometryUtil.geodesicArea(latlngs);
       const areaInHectares = area / 10000;
       
       setTerrainData(prev => ({

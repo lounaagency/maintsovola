@@ -104,6 +104,11 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
     }
   };
 
+  // Assurez-vous d'avoir des terrains à afficher du bon type
+  const filteredTerrains = terrains.filter(terrain => 
+    type === 'validated' ? terrain.statut === true : terrain.statut === false
+  );
+
   return (
     <div className="rounded-md border">
       <Table>
@@ -125,8 +130,8 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {terrains.length > 0 ? (
-            terrains.map((terrain) => (
+          {filteredTerrains.length > 0 ? (
+            filteredTerrains.map((terrain) => (
               <TableRow key={terrain.id_terrain}>
                 <TableCell>{terrain.id_terrain}</TableCell>
                 <TableCell>{terrain.nom_terrain}</TableCell>

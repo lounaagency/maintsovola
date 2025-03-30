@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import NewProject from "@/components/NewProject";
@@ -29,7 +28,6 @@ const Feed: React.FC = () => {
     try {
       setLoading(true);
       
-      // Base query
       let query = supabase
         .from('projet')
         .select(`
@@ -45,7 +43,6 @@ const Feed: React.FC = () => {
         `)
         .order('created_at', { ascending: false });
       
-      // Apply filters if any
       if (activeFilters.region) {
         query = query.eq('commune.district.region.nom_region', activeFilters.region);
       }
@@ -64,7 +61,6 @@ const Feed: React.FC = () => {
         throw projetsError;
       }
       
-      // Récupération des cultures associées aux projets
       const { data: culturesData, error: culturesError } = await supabase
         .from('projet_culture')
         .select(`
@@ -79,7 +75,6 @@ const Feed: React.FC = () => {
         throw culturesError;
       }
       
-      // Apply culture filter if any
       let filteredCultures = culturesData;
       if (activeFilters.culture) {
         filteredCultures = culturesData.filter(
@@ -87,7 +82,6 @@ const Feed: React.FC = () => {
         );
       }
       
-      // Récupération des investissements
       const { data: investissementsData, error: investissementsError } = await supabase
         .from('investissement')
         .select(`
@@ -99,7 +93,6 @@ const Feed: React.FC = () => {
         throw investissementsError;
       }
       
-      // Récupération des likes pour chaque projet
       const { data: likesData, error: likesError } = await supabase
         .from('aimer_projet')
         .select(`
@@ -111,7 +104,6 @@ const Feed: React.FC = () => {
         throw likesError;
       }
       
-      // Récupération du nombre de commentaires pour chaque projet
       const { data: commentsCountData, error: commentsError } = await supabase
         .from('commentaire')
         .select('id_projet');
@@ -120,14 +112,12 @@ const Feed: React.FC = () => {
         throw commentsError;
       }
       
-      // Regroupement des commentaires par projet
       const commentsCount: Record<string, number> = {};
       commentsCountData.forEach(comment => {
         const projectId = comment.id_projet.toString();
         commentsCount[projectId] = (commentsCount[projectId] || 0) + 1;
       });
       
-      // If culture filter is active, filter projects
       let finalProjects = projetsData;
       if (activeFilters.culture) {
         const filteredProjectIds = filteredCultures.map(fc => fc.id_projet);
@@ -136,28 +126,21 @@ const Feed: React.FC = () => {
         );
       }
       
-      // Traitement des données pour créer les objets AgriculturalProject
       const transformedProjects = finalProjects.map(projet => {
-        // Recherche des cultures associées au projet
         const projetCultures = culturesData.filter(pc => pc.id_projet === projet.id_projet);
         
-        // Calcul du financement total pour ce projet
         const currentFunding = investissementsData
           .filter(inv => inv.id_projet === projet.id_projet)
           .reduce((sum, inv) => sum + inv.montant, 0);
         
-        // Nombre de likes pour ce projet
         const likes = likesData.filter(like => like.id_projet === projet.id_projet).length;
         
-        // Vérifier si l'utilisateur connecté a aimé ce projet
         const isLiked = user ? 
           likesData.some(like => like.id_projet === projet.id_projet && like.id_utilisateur === user.id) : 
           false;
         
-        // Nombre de commentaires pour ce projet
         const commentCount = commentsCount[projet.id_projet.toString()] || 0;
         
-        // Pour un exemple simple, on va considérer le coût d'exploitation comme objectif de financement
         const cultivationType = projetCultures.length > 0 
           ? projetCultures[0].culture.nom_culture 
           : "Non spécifié";
@@ -170,11 +153,8 @@ const Feed: React.FC = () => {
           ? projetCultures[0].rendement_previsionnel || 0 
           : 0;
         
-        // Calculer revenus attendus (exemple simple: rendement * surface * prix estimé)
-        // Dans un cas réel, ce calcul serait plus complexe
         const expectedRevenue = expectedYield * projet.surface_ha * 1.5 * farmingCost;
         
-        // Vérifier que l'agriculteur existe avant d'accéder à ses propriétés
         const tantsaha = projet.utilisateur;
         const farmer = tantsaha ? {
           id: tantsaha.id_utilisateur,
@@ -203,13 +183,13 @@ const Feed: React.FC = () => {
           expectedYield,
           expectedRevenue,
           creationDate: new Date(projet.created_at).toISOString().split('T')[0],
-          images: [], // À implémenter avec le stockage Supabase
+          images: [],
           description: `Projet de culture de ${cultivationType} sur un terrain de ${projet.surface_ha} hectares.`,
           fundingGoal: farmingCost * projet.surface_ha,
           currentFunding,
           likes,
           comments: commentCount,
-          shares: 0, // À implémenter
+          shares: 0,
           isLiked,
           technicienId: projet.id_technicien,
         };
@@ -237,7 +217,6 @@ const Feed: React.FC = () => {
     
     try {
       if (isCurrentlyLiked) {
-        // Supprimer le like
         const { error } = await supabase
           .from('aimer_projet')
           .delete()
@@ -248,7 +227,6 @@ const Feed: React.FC = () => {
           
         if (error) throw error;
       } else {
-        // Ajouter un like
         const { error } = await supabase
           .from('aimer_projet')
           .insert({ 
@@ -259,7 +237,6 @@ const Feed: React.FC = () => {
         if (error) throw error;
       }
       
-      // Mettre à jour l'état local
       setProjects(projects.map(project => {
         if (project.id === projectId) {
           return {
