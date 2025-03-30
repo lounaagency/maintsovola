@@ -11,7 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { AgriculturalProject } from "@/types/agriculturalProject";
 import { UserProfile } from "@/types/userProfile";
-import { AgriculturalProjectCard } from "@/components/AgriculturalProjectCard";
+import AgriculturalProjectCard from "@/components/AgriculturalProjectCard";
 
 const Profile: React.FC = () => {
   const { userId } = useParams();
