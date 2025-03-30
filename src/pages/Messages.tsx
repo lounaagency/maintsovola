@@ -8,25 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Search, Plus, Users } from "lucide-react";
-import { Message, UserInfo } from "@/types/message";
+import { ConversationMessage } from "@/types/message";
 import { UserProfile } from "@/types/userProfile";
-
-// Interface for frontend conversation representation
-interface ConversationMessage {
-  id: string;
-  user: {
-    id: string;
-    name: string;
-    avatar?: string;
-    status: string;
-  };
-  lastMessage: string;
-  timestamp: string;
-  unread: number;
-}
+import { useToast } from "@/components/ui/use-toast";
 
 const Messages: React.FC = () => {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [filteredMessages, setFilteredMessages] = useState<ConversationMessage[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -55,6 +43,8 @@ const Messages: React.FC = () => {
   }, [searchQuery, messages]);
   
   const fetchConversations = async () => {
+    if (!user) return;
+    
     try {
       const { data, error } = await supabase
         .from('conversation')
@@ -68,42 +58,60 @@ const Messages: React.FC = () => {
         `)
         .or(`id_utilisateur1.eq.${user?.id},id_utilisateur2.eq.${user?.id}`);
       
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching conversations:", error);
+        return;
+      }
       
       // Get all conversation IDs
       const conversationIds = data.map(conv => conv.id_conversation);
       
+      // If no conversations, return empty array
+      if (conversationIds.length === 0) {
+        setMessages([]);
+        return;
+      }
+      
       // Get last messages for each conversation
       const { data: lastMessages, error: lastMsgError } = await supabase
         .from('message')
-        .select('id_conversation, contenu, date_envoi, lu, id_expediteur')
+        .select('id_message, id_conversation, contenu, date_envoi, lu, id_expediteur, id_destinataire')
         .in('id_conversation', conversationIds)
         .order('date_envoi', { ascending: false });
         
-      if (lastMsgError) throw lastMsgError;
+      if (lastMsgError) {
+        console.error("Error fetching messages:", lastMsgError);
+        return;
+      }
       
       // Group by conversation and find last message
-      const conversationToLastMessage = lastMessages.reduce((acc, msg) => {
-        if (!acc[msg.id_conversation] || new Date(msg.date_envoi) > new Date(acc[msg.id_conversation].date_envoi)) {
-          acc[msg.id_conversation] = msg;
+      const conversationToLastMessage: Record<number, any> = {};
+      lastMessages.forEach(msg => {
+        if (!conversationToLastMessage[msg.id_conversation] || 
+            new Date(msg.date_envoi) > new Date(conversationToLastMessage[msg.id_conversation].date_envoi)) {
+          conversationToLastMessage[msg.id_conversation] = msg;
         }
-        return acc;
-      }, {});
+      });
       
       // Count unread messages
-      const unreadCounts = lastMessages.reduce((acc, msg) => {
-        if (!msg.lu && msg.id_expediteur !== user?.id) {
-          acc[msg.id_conversation] = (acc[msg.id_conversation] || 0) + 1;
+      const unreadCounts: Record<number, number> = {};
+      lastMessages.forEach(msg => {
+        if (!msg.lu && msg.id_destinataire === user?.id) {
+          unreadCounts[msg.id_conversation] = (unreadCounts[msg.id_conversation] || 0) + 1;
         }
-        return acc;
-      }, {});
+      });
       
       // Transform data into the expected format
       const formattedMessages: ConversationMessage[] = data.map(conv => {
         // Determine if the current user is utilisateur1 or utilisateur2
-        const isUser1 = conv.utilisateur1.id_utilisateur === user?.id;
+        const isUser1 = conv.utilisateur1?.id_utilisateur === user?.id;
         const otherUser = isUser1 ? conv.utilisateur2 : conv.utilisateur1;
         const lastMsg = conversationToLastMessage[conv.id_conversation];
+        
+        if (!otherUser) {
+          console.error("User not found in conversation:", conv);
+          return null;
+        }
         
         return {
           id: conv.id_conversation.toString(),
@@ -117,12 +125,17 @@ const Messages: React.FC = () => {
           timestamp: lastMsg?.date_envoi || conv.derniere_activite,
           unread: unreadCounts[conv.id_conversation] || 0
         };
-      });
+      }).filter(Boolean) as ConversationMessage[];
       
       setMessages(formattedMessages);
       setFilteredMessages(formattedMessages);
     } catch (error) {
       console.error("Error fetching conversations:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger les conversations",
+        variant: "destructive"
+      });
     }
   };
   
@@ -140,6 +153,11 @@ const Messages: React.FC = () => {
       setSearchResults(data || []);
     } catch (error) {
       console.error("Error searching for users:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de rechercher des utilisateurs",
+        variant: "destructive"
+      });
     }
   };
   
@@ -234,6 +252,7 @@ const Messages: React.FC = () => {
             <div 
               key={message.id}
               onClick={() => {
+                if (!message.user?.id) return;
                 setSelectedUser({
                   id_utilisateur: message.user.id,
                   nom: message.user.name,
@@ -243,35 +262,17 @@ const Messages: React.FC = () => {
               }}
               className="cursor-pointer"
             >
-              <div className="flex items-center p-3 rounded-lg hover:bg-gray-100 transition-colors">
-                <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden mr-3">
-                  {message.user.avatar && (
-                    <img 
-                      src={message.user.avatar} 
-                      alt={message.user.name} 
-                      className="w-full h-full object-cover"
-                    />
-                  )}
-                </div>
-                <div className="flex-1">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="font-semibold">{message.user.name}</span>
-                    <span className="text-xs text-gray-500">
-                      {new Date(message.timestamp).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm text-gray-600 truncate max-w-[180px]">
-                      {message.lastMessage}
-                    </p>
-                    {message.unread > 0 && (
-                      <span className="bg-primary text-primary-foreground text-xs rounded-full px-2 py-1 ml-2">
-                        {message.unread}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
+              <MessageItem
+                id={message.id}
+                user={{
+                  name: message.user.name,
+                  avatar: message.user.avatar,
+                  status: message.user.status || "none"
+                }}
+                lastMessage={message.lastMessage}
+                timestamp={new Date(message.timestamp).toLocaleDateString()}
+                unread={message.unread}
+              />
             </div>
           ))
         ) : (
@@ -291,8 +292,8 @@ const Messages: React.FC = () => {
             setSelectedUser(null);
           }}
           recipientId={selectedUser.id_utilisateur}
-          recipientName={selectedUser.nom}
-          recipientAvatar={selectedUser.photo_profil}
+          recipientName={`${selectedUser.nom} ${selectedUser.prenoms || ''}`}
+          recipientPhoto={selectedUser.photo_profil}
           onMessageSent={onMessageSent}
         />
       )}

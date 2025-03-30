@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import AgriculturalProjectCard from "@/components/AgriculturalProjectCard";
+import { AgriculturalProjectCard } from "@/components/AgriculturalProjectCard";
 import NewProject from "@/components/NewProject";
 import { motion } from "framer-motion";
 import { AgriculturalProject } from "@/types/agriculturalProject";

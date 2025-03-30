@@ -1,3 +1,4 @@
+
 export interface Message {
   id_message?: number;
   id_expediteur: string;
@@ -20,4 +21,18 @@ export interface UserInfo {
   id: string;
   name: string;
   avatar?: string;
+}
+
+// Frontend conversation representation
+export interface ConversationMessage {
+  id: string;
+  user: {
+    id: string;
+    name: string;
+    avatar?: string;
+    status?: "online" | "offline" | "away" | "busy" | "none";
+  };
+  lastMessage: string;
+  timestamp: string;
+  unread: number;
 }

@@ -1,137 +1,164 @@
 
-import React, { useState } from "react";
+import React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { motion } from "framer-motion";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { container, item } from "./motionConstants";
+import { motion } from "framer-motion";
+import { fadeIn } from "./motionConstants";
 
-const RegisterForm: React.FC = () => {
+const formSchema = z.object({
+  email: z.string().email({ message: "Adresse email invalide" }),
+  password: z.string().min(6, { message: "Le mot de passe doit contenir au moins 6 caractères" }),
+  nom: z.string().min(2, { message: "Le nom doit contenir au moins 2 caractères" }),
+  prenoms: z.string().optional(),
+  role: z.string({ required_error: "Veuillez sélectionner un rôle" }),
+});
+
+export default function RegisterForm({ switchToLogin }: { switchToLogin: () => void }) {
   const { signUp, loading } = useAuth();
-  const [registerEmail, setRegisterEmail] = useState("");
-  const [registerPassword, setRegisterPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [name, setName] = useState("");
-  const [prenoms, setPrenoms] = useState("");
-  const [role, setRole] = useState("agriculteur");
-  const [errors, setErrors] = useState<{[key: string]: string}>({});
   
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Simple validation
-    const newErrors: {[key: string]: string} = {};
-    if (!registerEmail) newErrors.registerEmail = "L'email est obligatoire";
-    if (!registerPassword) newErrors.registerPassword = "Le mot de passe est obligatoire";
-    if (registerPassword.length < 6) newErrors.registerPassword = "Le mot de passe doit contenir au moins 6 caractères";
-    if (registerPassword !== confirmPassword) newErrors.confirmPassword = "Les mots de passe ne correspondent pas";
-    if (!name) newErrors.name = "Le nom est obligatoire";
-    if (!role) newErrors.role = "Le rôle est obligatoire";
-    
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
-    }
-    
-    await signUp(registerEmail, registerPassword, { 
-      nom: name, 
-      prenoms,
-      role 
-    });
-  };
-  
-  return (
-    <motion.form 
-      onSubmit={handleRegister}
-      variants={container}
-      initial="hidden"
-      animate="show"
-      className="space-y-4"
-    >
-      <motion.div variants={item} className="space-y-2">
-        <Label htmlFor="name">Nom</Label>
-        <Input 
-          id="name" 
-          type="text" 
-          placeholder="Votre nom" 
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-        {errors.name && <p className="text-sm text-red-500">{errors.name}</p>}
-      </motion.div>
-      
-      <motion.div variants={item} className="space-y-2">
-        <Label htmlFor="prenoms">Prénoms</Label>
-        <Input 
-          id="prenoms" 
-          type="text" 
-          placeholder="Vos prénoms" 
-          value={prenoms}
-          onChange={(e) => setPrenoms(e.target.value)}
-        />
-      </motion.div>
-      
-      <motion.div variants={item} className="space-y-2">
-        <Label htmlFor="registerEmail">Email</Label>
-        <Input 
-          id="registerEmail" 
-          type="email" 
-          placeholder="votre@email.com" 
-          value={registerEmail}
-          onChange={(e) => setRegisterEmail(e.target.value)}
-        />
-        {errors.registerEmail && <p className="text-sm text-red-500">{errors.registerEmail}</p>}
-      </motion.div>
-      
-      <motion.div variants={item} className="space-y-2">
-        <Label htmlFor="role">Rôle</Label>
-        <Select value={role} onValueChange={setRole}>
-          <SelectTrigger>
-            <SelectValue placeholder="Sélectionnez un rôle" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="agriculteur">Agriculteur</SelectItem>
-            <SelectItem value="investisseur">Investisseur</SelectItem>
-            <SelectItem value="superviseur">Superviseur</SelectItem>
-            <SelectItem value="technicien">Technicien</SelectItem>
-          </SelectContent>
-        </Select>
-        {errors.role && <p className="text-sm text-red-500">{errors.role}</p>}
-      </motion.div>
-      
-      <motion.div variants={item} className="space-y-2">
-        <Label htmlFor="registerPassword">Mot de passe</Label>
-        <Input 
-          id="registerPassword" 
-          type="password" 
-          placeholder="********" 
-          value={registerPassword}
-          onChange={(e) => setRegisterPassword(e.target.value)}
-        />
-        {errors.registerPassword && <p className="text-sm text-red-500">{errors.registerPassword}</p>}
-      </motion.div>
-      
-      <motion.div variants={item} className="space-y-2">
-        <Label htmlFor="confirmPassword">Confirmer le mot de passe</Label>
-        <Input 
-          id="confirmPassword" 
-          type="password" 
-          placeholder="********" 
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-        />
-        {errors.confirmPassword && <p className="text-sm text-red-500">{errors.confirmPassword}</p>}
-      </motion.div>
-      
-      <motion.div variants={item}>
-        <Button type="submit" className="w-full" disabled={loading}>
-          {loading ? "Inscription..." : "S'inscrire"}
-        </Button>
-      </motion.div>
-    </motion.form>
-  );
-};
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+      nom: "",
+      prenoms: "",
+      role: "",
+    },
+  });
 
-export default RegisterForm;
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    try {
+      await signUp({
+        email: values.email,
+        password: values.password,
+        nom: values.nom,
+        prenoms: values.prenoms,
+        role: values.role,
+      });
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  return (
+    <motion.div {...fadeIn} className="w-full max-w-md">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-xl text-center">Créer un compte</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="nom"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nom</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Votre nom" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="prenoms"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Prénoms</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Vos prénoms" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input type="email" placeholder="votre@email.com" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Mot de passe</FormLabel>
+                    <FormControl>
+                      <Input type="password" placeholder="••••••" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="role"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Rôle</FormLabel>
+                    <Select 
+                      onValueChange={field.onChange} 
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sélectionnez votre rôle" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="agriculteur">Agriculteur</SelectItem>
+                        <SelectItem value="investisseur">Investisseur</SelectItem>
+                        <SelectItem value="technicien">Technicien</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? (
+                  <div className="flex items-center">
+                    <div className="animate-spin mr-2 h-4 w-4 border-t-2 border-b-2 border-primary-foreground rounded-full" />
+                    Inscription en cours...
+                  </div>
+                ) : (
+                  "S'inscrire"
+                )}
+              </Button>
+            </form>
+          </Form>
+        </CardContent>
+        <CardFooter className="flex justify-center">
+          <Button variant="link" onClick={switchToLogin} className="text-xs">
+            Déjà inscrit ? Se connecter
+          </Button>
+        </CardFooter>
+      </Card>
+    </motion.div>
+  );
+}

@@ -15,6 +15,7 @@ interface MessageDialogProps {
   recipientId: string;
   recipientName: string;
   recipientPhoto?: string;
+  onMessageSent?: () => void;
 }
 
 const MessageDialog: React.FC<MessageDialogProps> = ({
@@ -23,6 +24,7 @@ const MessageDialog: React.FC<MessageDialogProps> = ({
   recipientId,
   recipientName,
   recipientPhoto,
+  onMessageSent
 }) => {
   const { user, profile } = useAuth();
   const { toast } = useToast();
@@ -72,6 +74,10 @@ const MessageDialog: React.FC<MessageDialogProps> = ({
       });
       
       setMessage("");
+      
+      if (onMessageSent) {
+        onMessageSent();
+      }
     } catch (error) {
       console.error("Erreur lors de l'envoi du message:", error);
       toast({
