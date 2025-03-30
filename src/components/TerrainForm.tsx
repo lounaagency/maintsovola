@@ -80,9 +80,6 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
   const [geomPolygon, setGeomPolygon] = useState<GeoJSON.Feature | null>(null);
   const mapRef = useRef<any>(null);
   const featureGroupRef = useRef<any>(null);
-  //iniation du champ geom pour zoom
-  const [geom, setGeom] = useState(null);
-  const [map, setMap] = useState(null);
   
   const [terrainData, setTerrainData] = useState<TerrainData>({
     surface_proposee: 0,
@@ -107,17 +104,6 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     }
   }, [initialData, userRole]);
 
-  // rezoom 
-  useEffect(() => {
-    if (map) {
-      map.fitBounds(geom);
-    }
-  }, [geom, map]);
-
-  const handleGeomChange = (event) => {
-    const newGeom = event.target.value;
-    setGeom(newGeom);
-  };
   
   useEffect(() => {
     fetchRegions();
@@ -540,7 +526,6 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
                   />
                 </FeatureGroup>
               </MapContainer>
-              <input type='text' value={geom} onChange={handleGeomChange} />
             </div>
             <p className="text-sm text-muted-foreground">Dessinez le contour de votre terrain sur la carte pour calculer automatiquement la surface.</p>
           </div>
