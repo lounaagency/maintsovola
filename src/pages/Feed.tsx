@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import AgriculturalProjectCard from '@/components/AgriculturalProjectCard';
 import NewProject from "@/components/NewProject";
 import { motion } from "framer-motion";
 import { AgriculturalProject } from "@/types/agriculturalProject";
@@ -9,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
+import AgriculturalProjectCard from '@/components/AgriculturalProjectCard';
 
 const Feed: React.FC = () => {
   const [projects, setProjects] = useState<AgriculturalProject[]>([]);
