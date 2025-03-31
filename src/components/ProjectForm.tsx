@@ -75,12 +75,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
   }, [initialData, isEditing]);
   
   useEffect(() => {
-    
-    console.log("🔍 initialData:", initialData);
     if (initialData?.id_terrain) {
       setSelectedTerrain(initialData.id_terrain);
     }
-    console.log("🔍 selectedTerrain:", selectedTerrain);
     if (selectedTerrain) {
       // Find the terrain and set its surface
       const terrain = terrains.find(t => t.id_terrain === selectedTerrain);
@@ -183,15 +180,15 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
     // Calculate averages for multiple cultures
     const avgCostPerHa = selectedCultureObjects.reduce(
       (sum, culture) => sum + (culture.cout_exploitation_ha || 0), 0
-    ) / selectedCultureObjects.length;
+    ) ;
     
     const avgYieldPerHa = selectedCultureObjects.reduce(
       (sum, culture) => sum + (culture.rendement_ha || 0), 0
-    ) / selectedCultureObjects.length;
+    ) ;
     
     const avgPricePerTonne = selectedCultureObjects.reduce(
       (sum, culture) => sum + (culture.prix_tonne || 0), 0
-    ) / selectedCultureObjects.length;
+    ) ;
     
     // Calculate totals based on surface
     const calculatedTotalCost = avgCostPerHa * surface;
