@@ -306,7 +306,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
 
   return (
     {toast({
-        title: "Succès",
+        title: `Succès`,
         description: selectedTerrain 
           ? "Terrain choisis :"+selectedTerrain?.toString() 
           : "Aucun terrain choisis.",
