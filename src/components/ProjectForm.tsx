@@ -64,8 +64,6 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
     fetchCultures();
     
     if (isEditing && initialData) {
-      
-    console.log("🔍 InitialData:", initialData);
       setSelectedTerrain(initialData.terrain.id_terrain);
       setDescription(initialData.description || "");
       setSurface(initialData.surface_ha || 0);
@@ -137,16 +135,11 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
         .from('projet')
         .select('id_terrain')
         .not('statut', 'eq', 'terminé');
-      
-      if (projectError) throw projectError;
-      
-      console.log("🔍 activeProjects:", activeProjects);
       const usedTerrainIds = activeProjects?.map(p => p.id_terrain) || [];
-      console.log("🔍 usedTerrainIds:", usedTerrainIds);
-      const availableTerrains = data?.filter(t => !usedTerrainIds.includes(t.id_terrain) || 
-                                       (isEditing && initialData && t.id_terrain === initialData.terrain.id_terrain));
-      
-    console.log("🔍 availableTerrains:", availableTerrains);
+      const availableTerrains = data?.filter(t => 
+        !usedTerrainIds.includes(t.id_terrain) || 
+        (isEditing && initialData?.id_terrain === t.id_terrain)
+      );
       setTerrains(availableTerrains || []);
     } catch (error) {
       console.error('Error fetching terrains:', error);
@@ -421,72 +414,55 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
               <p className="text-sm text-muted-foreground">La surface est définie par le terrain sélectionné</p>
             </div>
           </div>
-
-                  {cultureCosts.length > 0 ? (
-          <div className="space-y-4">
-            {/* Header du tableau */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t">
-              <div className="space-y-1">
-                <Label className="text-sm text-muted-foreground">Culture</Label>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-sm text-muted-foreground">Coût d'exploitation estimé</Label>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-sm text-muted-foreground">Rendement total estimé</Label>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-sm text-muted-foreground">Prix de la tonne</Label>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-sm text-muted-foreground">Chiffre d'affaires potentiel</Label>
+          {cultureCosts.length > 0 ? (
+            <div className="space-y-4">
+              {/* Contenu dynamique */}
+              {cultureCosts.map(({ culture, cost, rendement, prix_tonne, revenu_previsionnel }) => (
+                <div key={culture} className="p-4 border rounded-lg shadow-sm bg-white">
+                  <p className="font-bold text-lg">{culture}</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 mt-2">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Coût d'exploitation</p>
+                      <p className="font-semibold">{formatCurrency(cost)}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Rendement total</p>
+                      <p className="font-semibold">{rendement.toLocaleString()} tonnes</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Prix de la tonne</p>
+                      <p className="font-semibold">{formatCurrency(prix_tonne)}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Chiffre d'affaires</p>
+                      <p className="font-semibold">{formatCurrency(revenu_previsionnel)}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+          
+              {/* Totaux */}
+              <div className="p-4 border-t font-bold">
+                <p className="text-lg">Total Projet</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 mt-2">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Coût</p>
+                    <p>{formatCurrency(totalCost)}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Rendement</p>
+                    <p>{totalYield.toLocaleString()} tonnes</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total CA</p>
+                    <p>{formatCurrency(totalRevenue)}</p>
+                  </div>
+                </div>
               </div>
             </div>
-        
-            {/* Contenu dynamique */}
-            {cultureCosts.map(({ culture, cost, rendement, prix_tonne, revenu_previsionnel }) => (
-              <div key={culture} className="grid grid-cols-1 md:grid-cols-5 gap-5 pt-5 border-t">
-                <div className="space-y-1">
-                  <p className="font-semibold">{culture}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="font-semibold">{formatCurrency(cost)}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="font-semibold">{rendement.toLocaleString()} tonnes</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="font-semibold">{formatCurrency(prix_tonne)}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="font-semibold">{formatCurrency(revenu_previsionnel)}</p>
-                </div>
-              </div>
-            ))}
-        
-            {/* Totaux */}
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-5 pt-5 border-t font-bold">
-              <div className="space-y-1">
-                <p>Total Projet</p>
-              </div>
-              <div className="space-y-1">
-                <p>{formatCurrency(totalCost)}</p>
-              </div>
-              <div className="space-y-1">
-                <p>{totalYield.toLocaleString()} tonnes</p>
-              </div>
-              <div className="space-y-1">
-                <p>{totalYield.toLocaleString()} tonnes</p>
-              </div>
-              <div className="space-y-1">
-                <p>{formatCurrency(totalRevenue)}</p>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <p className="text-gray-500">Sélectionnez un terrain et des cultures.</p>
-        )}
-
+          ) : (
+            <p className="text-gray-500">Sélectionnez un terrain et des cultures.</p>
+          )}
             
         </CardContent>
         
