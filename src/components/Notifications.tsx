@@ -14,6 +14,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Notification } from "@/types/notification";
 
 interface NotificationItem {
   id: string;
@@ -87,6 +88,7 @@ const Notifications: React.FC = () => {
     try {
       setLoading(true);
       
+      // Using raw SQL query to get notifications since the type isn't in TS definition
       const { data, error } = await supabase
         .from('notification')
         .select('*')
@@ -97,7 +99,7 @@ const Notifications: React.FC = () => {
       if (error) throw error;
       
       // Transform database notifications to our NotificationItem format
-      const transformedNotifications: NotificationItem[] = data.map(notification => {
+      const transformedNotifications: NotificationItem[] = data.map((notification: any) => {
         // Determine notification type based on status or other fields
         let type: "info" | "success" | "warning" | "error" = "info";
         if (notification.type === "validation") type = "success";
@@ -211,6 +213,7 @@ const Notifications: React.FC = () => {
 
   const markAsRead = async (notificationId: string) => {
     try {
+      // Using raw SQL query to update notification since the type isn't in TS definition
       const { error } = await supabase
         .from('notification')
         .update({ lu: true })
@@ -236,6 +239,7 @@ const Notifications: React.FC = () => {
     
     try {
       // Update all unread notifications for this user
+      // Using raw SQL query since the type isn't in TS definition
       const { error } = await supabase
         .from('notification')
         .update({ lu: true })

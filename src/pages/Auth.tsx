@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Navigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -41,7 +40,7 @@ export const Auth = () => {
         >
           <AnimatePresence mode="wait">
             {isLoginView ? (
-              <LoginForm key="login" switchToRegister={switchToRegister} />
+              <LoginForm key="login" />
             ) : (
               <RegisterForm key="register" switchToLogin={switchToLogin} />
             )}

@@ -29,6 +29,19 @@ export interface ConversationMessage extends Message {
     prenoms: string | null;
     photo_profil: string | null;
   };
+  // Additional fields for UI
+  id?: string;
+  user?: {
+    id: string;
+    name: string;
+    photo?: string;
+  };
+  lastMessage?: {
+    text: string;
+    timestamp: string;
+  };
+  timestamp?: string;
+  unread?: boolean;
 }
 
 export interface Recipient {

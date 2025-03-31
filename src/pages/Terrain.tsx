@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,7 +35,6 @@ export const Terrain = () => {
   
   const userRole = profile?.nom_role?.toLowerCase() || 'agriculteur';
 
-  // Function to fetch agriculteurs for technicians and supervisors
   const fetchAgriculteurs = useCallback(async () => {
     if (userRole !== 'technicien' && userRole !== 'superviseur') return;
     
@@ -44,7 +42,7 @@ export const Terrain = () => {
       const { data, error } = await supabase
         .from('utilisateur')
         .select('id_utilisateur, nom, prenoms')
-        .eq('id_role', 2); // ID du rôle agriculteur
+        .eq('id_role', 2);
         
       if (error) throw error;
       setAgriculteurs(data || []);
@@ -53,12 +51,10 @@ export const Terrain = () => {
     }
   }, [userRole]);
 
-  // Function to fetch terrains
   const fetchTerrains = useCallback(async () => {
     if (!user) return;
 
     try {
-      // Construire la requête de base
       let query = supabase
         .from('terrain')
         .select(`
@@ -69,7 +65,6 @@ export const Terrain = () => {
           technicien:id_technicien(id_utilisateur, nom, prenoms)
         `);
       
-      // Filtrer selon le rôle de l'utilisateur
       if (userRole === 'agriculteur') {
         query = query.eq('id_tantsaha', user.id);
       } else if (userRole === 'technicien') {
@@ -80,7 +75,6 @@ export const Terrain = () => {
 
       if (error) throw error;
       
-      // Formater les données pour les terrains
       const terrainData = (data || []).map(terrain => ({
         id_terrain: terrain.id_terrain,
         nom_terrain: terrain.nom_terrain || `Terrain #${terrain.id_terrain}`,
@@ -102,7 +96,6 @@ export const Terrain = () => {
         techniqueNom: terrain.technicien ? `${terrain.technicien.nom} ${terrain.technicien.prenoms || ''}`.trim() : 'Non assigné'
       }));
       
-      // Séparer les terrains validés et en attente
       setPendingTerrains(terrainData.filter(t => t.statut === false));
       setValidatedTerrains(terrainData.filter(t => t.statut === true));
     } catch (error) {
@@ -115,13 +108,12 @@ export const Terrain = () => {
     }
   }, [user, userRole, toast]);
 
-  // Récupérer les techniciens pour l'assignation
   const fetchTechniciens = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('utilisateur')
         .select('id_utilisateur, nom, prenoms')
-        .eq('id_role', 3); // ID du rôle technicien
+        .eq('id_role', 3);
         
       if (error) throw error;
       setTechniciens(data || []);
@@ -130,12 +122,10 @@ export const Terrain = () => {
     }
   }, []);
 
-  // Function to fetch projects
   const fetchProjects = useCallback(async () => {
     if (!user) return;
 
     try {
-      // Query based on user role
       let query = supabase.from('projet').select(`
         *,
         terrain(*),
@@ -200,12 +190,11 @@ export const Terrain = () => {
   };
 
   const handleTerrainSaved = () => {
-    fetchTerrains(); // Rafraîchir la liste des terrains
+    fetchTerrains();
     setIsTerrainDialogOpen(false);
   };
 
   const handleCreateProject = () => {
-    // Check if user has validated terrains
     const validTerrains = validatedTerrains.filter(terrain => 
       terrain.id_tantsaha === user?.id && 
       !projects.some((project: any) => 
@@ -315,7 +304,6 @@ export const Terrain = () => {
           </div>
           
           <div className="space-y-6">
-            {/* Projets en attente de validation */}
             <div>
               <h3 className="font-medium mb-2">Projets en attente de validation</h3>
               {pendingProjects.length > 0 ? (
@@ -372,7 +360,6 @@ export const Terrain = () => {
               )}
             </div>
             
-            {/* Projets en cours de financement */}
             <div>
               <h3 className="font-medium mb-2">Projets en cours de financement</h3>
               {fundingProjects.length > 0 ? (
@@ -419,7 +406,6 @@ export const Terrain = () => {
               )}
             </div>
             
-            {/* Projets en production */}
             <div>
               <h3 className="font-medium mb-2">Projets en production</h3>
               {activeProjects.length > 0 ? (

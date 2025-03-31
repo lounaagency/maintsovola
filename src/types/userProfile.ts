@@ -13,6 +13,8 @@ export interface UserProfile {
   id_role?: number;
   nom_role?: string;
   telephones?: UserTelephone[];
+  // For compatibility with Messages.tsx
+  name?: string; // Alias for nom + prenoms
 }
 
 export interface UserTelephone {

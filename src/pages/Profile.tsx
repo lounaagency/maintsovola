@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -70,14 +69,15 @@ export const Profile = () => {
       if (error) throw error;
       
       setProfile({
+        id_utilisateur: data.id_utilisateur,
         id: data.id_utilisateur,
-        email: data.email,
         nom: data.nom,
         prenoms: data.prenoms,
+        email: data.email,
         photo_profil: data.photo_profil,
-        telephone: data.telephone,
-        adresse: data.adresse,
-        bio: data.bio,
+        telephone: data.telephone || undefined,
+        adresse: data.adresse || undefined,
+        bio: data.bio || undefined,
         nom_role: data.role?.nom_role
       });
     } catch (error) {
@@ -90,18 +90,14 @@ export const Profile = () => {
     try {
       // Nombre de followers
       const { count: followersResult, error: followersError } = await supabase
-        .from('abonnement')
-        .select('id_abonnement', { count: 'exact' })
-        .eq('id_suivi', userId);
+        .rpc('count_followers', { user_id: userId });
       
       if (followersError) throw followersError;
       setFollowersCount(followersResult || 0);
       
       // Nombre d'abonnements
       const { count: followingResult, error: followingError } = await supabase
-        .from('abonnement')
-        .select('id_abonnement', { count: 'exact' })
-        .eq('id_abonne', userId);
+        .rpc('count_subscriptions', { user_id: userId });
       
       if (followingError) throw followingError;
       setFollowingCount(followingResult || 0);
@@ -265,11 +261,9 @@ export const Profile = () => {
       } else {
         // Follow
         const { error } = await supabase
-          .from('abonnement')
-          .insert({
-            id_abonne: user.id,
-            id_suivi: profile.id,
-            date_abonnement: new Date().toISOString()
+          .rpc('create_subscription', { 
+            abonne_id: user.id, 
+            suivi_id: profile.id_utilisateur
           });
         
         if (error) throw error;

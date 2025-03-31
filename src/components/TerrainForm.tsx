@@ -1,647 +1,472 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { useForm, Controller } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
+import * as yup from 'yup';
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select';
+import { Checkbox } from "@/components/ui/checkbox"
+import { toast } from 'sonner';
+import {
+  TerrainData,
+  RegionData,
+  DistrictData,
+  CommuneData
+} from '@/types/terrain';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { MapContainer, TileLayer, Marker, useMapEvents, Polygon, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
-import React, { useState, useEffect, useRef } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { TerrainData, RegionData, DistrictData, CommuneData } from "@/types/terrain";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import { MapContainer, TileLayer, FeatureGroup, GeoJSON } from "react-leaflet";
-import { EditControl } from "react-leaflet-draw";
-import "leaflet/dist/leaflet.css";
-import "leaflet-draw/dist/leaflet.draw.css";
-import L from "leaflet";
-import { wktToGeoJSON } from "@/lib/utils";
-
-// Fix Leaflet icon issues
-import icon from 'leaflet/dist/images/marker-icon.png';
-import iconShadow from 'leaflet/dist/images/marker-shadow.png';
-
-let DefaultIcon = L.icon({
-  iconUrl: icon,
-  shadowUrl: iconShadow,
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
+// Define the schema for form validation
+const formSchema = yup.object().shape({
+  nom_terrain: yup.string().required('Le nom du terrain est obligatoire'),
+  surface_proposee: yup.number().required('La surface proposée est obligatoire').positive('La surface doit être positive'),
+  id_region: yup.string().required('La région est obligatoire'),
+  id_district: yup.string().required('Le district est obligatoire'),
+  id_commune: yup.string().required('La commune est obligatoire'),
+  acces_eau: yup.boolean().nullable(),
+  acces_route: yup.boolean().nullable(),
 });
 
-L.Marker.prototype.options.icon = DefaultIcon;
-
-// Add custom geodesic area calculation utility
-const GeometryUtil = {
-  geodesicArea: function(latLngs: L.LatLng[]) {
-    let area = 0;
-    if (latLngs.length > 2) {
-      const R = 6371000; // Earth radius in meters
-      let p1, p2;
-      for (let i = 0; i < latLngs.length; i++) {
-        p1 = latLngs[i];
-        p2 = latLngs[(i + 1) % latLngs.length];
-        area += ((p2.lng - p1.lng) * Math.PI / 180) * 
-                (2 + Math.sin(p1.lat * Math.PI / 180) + 
-                 Math.sin(p2.lat * Math.PI / 180));
-      }
-      area = Math.abs(area * R * R / 2);
-    }
-    return area;
-  }
-};
-
-interface TerrainFormProps {
-  initialData?: TerrainData;
-  onSubmitSuccess: () => void;
-  onCancel: () => void;
-  isEditing?: boolean;
-  userId?: string;
-  userRole?: string;
-  agriculteurs?: { id_utilisateur: string; nom: string; prenoms?: string }[];
-}
-
-const TerrainForm: React.FC<TerrainFormProps> = ({
-  initialData,
-  onSubmitSuccess,
-  onCancel,
-  isEditing = false,
-  userId,
-  userRole,
-  agriculteurs = [],
-}) => {
-  const { toast } = useToast();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+const TerrainForm: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [regions, setRegions] = useState<RegionData[]>([]);
   const [districts, setDistricts] = useState<DistrictData[]>([]);
   const [communes, setCommunes] = useState<CommuneData[]>([]);
-  const [filteredDistricts, setFilteredDistricts] = useState<DistrictData[]>([]);
-  const [filteredCommunes, setFilteredCommunes] = useState<CommuneData[]>([]);
-  const [selectedAgriculteur, setSelectedAgriculteur] = useState<string>("");
-  const [geomPolygon, setGeomPolygon] = useState<GeoJSON.Feature | null>(null);
-  const [isMapReady, setIsMapReady] = useState(false);
+  const [selectedRegion, setSelectedRegion] = useState<number | null>(null);
+  const [selectedDistrict, setSelectedDistrict] = useState<number | null>(null);
+  const [terrain, setTerrain] = useState<TerrainData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [mapInitialized, setMapInitialized] = useState(false);
+  const [polygonCoordinates, setPolygonCoordinates] = useState<L.LatLngExpression[]>([
+    [-18.913684, 47.536131],
+    [-18.913684, 47.546131],
+    [-18.903684, 47.546131],
+    [-18.903684, 47.536131],
+  ]);
   const mapRef = useRef<L.Map | null>(null);
-  const featureGroupRef = useRef<any>(null);
-  const geoJSONLayerRef = useRef<any>(null);
-  
-  const [terrainData, setTerrainData] = useState<TerrainData>({
-    surface_proposee: 0,
-    id_region: null,
-    nom_terrain: "",
-    id_district: null,
-    id_commune: null,
-    acces_eau: false,
-    acces_route: false
+
+  // Initialize react-hook-form
+  const { control, handleSubmit, setValue, formState: { errors } } = useForm<TerrainData>({
+    resolver: yupResolver(formSchema),
+    defaultValues: {
+      nom_terrain: '',
+      surface_proposee: 0,
+      id_region: '',
+      id_district: '',
+      id_commune: '',
+      acces_eau: false,
+      acces_route: false,
+    }
   });
 
-  // Fetch initial geom data if editing
   useEffect(() => {
-    const fetchGeomData = async () => {
-      if (isEditing && initialData?.id_terrain) {
-        try {
-          const { data, error } = await supabase
-            .from('terrain')
-            .select('geom')
-            .eq('id_terrain', initialData.id_terrain)
-            .single();
-          
-          if (error) throw error;
-          
-          if (data && data.geom) {
-            const geoJSON = wktToGeoJSON(data.geom);
-            if (geoJSON) {
-              setGeomPolygon(geoJSON);
-            }
-          }
-        } catch (error) {
-          console.error('Error fetching terrain geometry:', error);
-        }
-      }
-    };
-    
-    fetchGeomData();
-  }, [isEditing, initialData?.id_terrain]);
-
-  useEffect(() => {
-    if (initialData) {
-      setTerrainData({
-        ...initialData,
-        nom_terrain: initialData.nom_terrain || "",
-        id_region: initialData.id_region || null,
-        id_district: initialData.id_district || null,
-        id_commune: initialData.id_commune || null,
-      });
-      
-      if (userRole === 'superviseur' || userRole === 'technicien') {
-        setSelectedAgriculteur(initialData.id_tantsaha || "");
-      }
-    }
-  }, [initialData, userRole]);
-
-  useEffect(() => {
+    // Fetch regions on component mount
     fetchRegions();
-    fetchDistricts();
-    fetchCommunes();
-  }, []);
 
-  useEffect(() => {
-    if (terrainData.id_region) {
-      setFilteredDistricts(
-        districts.filter((district) => district.id_region === terrainData.id_region)
-      );
-    } else {
-      setFilteredDistricts([]);
+    // If ID is present, we're in edit mode
+    if (id) {
+      setIsEditMode(true);
+      fetchTerrainData(id);
     }
-  }, [terrainData.id_region, districts]);
+  }, [id]);
 
   useEffect(() => {
-    if (terrainData.id_district) {
-      setFilteredCommunes(
-        communes.filter((commune) => commune.id_district === terrainData.id_district)
-      );
-    } else {
-      setFilteredCommunes([]);
+    if (selectedRegion) {
+      fetchDistricts(selectedRegion);
+      setValue('id_district', ''); // Reset district when region changes
+      setCommunes([]); // Also reset communes
+      setValue('id_commune', '');
     }
-  }, [terrainData.id_district, communes]);
+  }, [selectedRegion, setValue]);
 
-  // Effect to handle map initialization and zoom to terrain when geomPolygon changes
   useEffect(() => {
-    if (!isMapReady || !mapRef.current) return;
-    
-    if (geomPolygon && geoJSONLayerRef.current) {
-      try {
-        // Clear any existing drawn items
-        if (featureGroupRef.current) {
-          featureGroupRef.current.clearLayers();
-        }
-        
-        // Add the GeoJSON to the map and zoom to its bounds
-        const layer = L.geoJSON(geomPolygon);
-        const bounds = layer.getBounds();
-        
-        if (bounds.isValid()) {
-          mapRef.current.fitBounds(bounds, {
-            padding: [50, 50],
-            maxZoom: 16
-          });
-        }
-        
-        // Draw the polygon on the editable layer
-        if (featureGroupRef.current && geomPolygon.geometry.type === 'Polygon') {
-          const coordinates = geomPolygon.geometry.coordinates[0];
-          const latlngs = coordinates.map(([lng, lat]) => L.latLng(lat, lng));
-          const polygon = L.polygon(latlngs);
-          featureGroupRef.current.addLayer(polygon);
-          
-          // Calculate area
-          const area = GeometryUtil.geodesicArea(latlngs);
-          const areaInHectares = area / 10000;
-          
-          setTerrainData(prev => ({
-            ...prev,
-            surface_proposee: parseFloat(areaInHectares.toFixed(2))
-          }));
-        }
-      } catch (error) {
-        console.error('Error handling GeoJSON on map:', error);
+    if (selectedDistrict) {
+      fetchCommunes(selectedDistrict);
+      setValue('id_commune', ''); // Reset commune when district changes
+    }
+  }, [selectedDistrict, setValue]);
+
+  const fetchTerrainData = async (terrainId: string) => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('terrain')
+        .select('*')
+        .eq('id_terrain', terrainId)
+        .single();
+
+      if (error) {
+        throw error;
       }
-    } else if (mapRef.current && !geomPolygon) {
-      // If no geometry, center on Madagascar
-      mapRef.current.setView([-18.8792, 47.5079], 6);
+
+      if (data) {
+        setTerrain(data);
+        // Populate the form with the fetched data
+        setValue('nom_terrain', data.nom_terrain || '');
+        setValue('surface_proposee', data.surface_proposee);
+        setValue('id_region', data.id_region?.toString() || '');
+        setSelectedRegion(data.id_region);
+        setValue('id_district', data.id_district?.toString() || '');
+        setSelectedDistrict(data.id_district);
+        setValue('id_commune', data.id_commune?.toString() || '');
+        setValue('acces_eau', data.acces_eau || false);
+        setValue('acces_route', data.acces_route || false);
+      }
+    } catch (error) {
+      console.error("Error fetching terrain data:", error);
+      toast.error("Failed to load terrain data.");
+    } finally {
+      setLoading(false);
     }
-  }, [geomPolygon, isMapReady]);
+  };
 
   const fetchRegions = async () => {
     try {
       const { data, error } = await supabase
         .from('region')
         .select('*')
-        .order('nom_region');
-      
-      if (error) throw error;
-      setRegions(data || []);
+        .order('nom_region', { ascending: true });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data) {
+        setRegions(data);
+      }
     } catch (error) {
-      console.error('Error fetching regions:', error);
+      console.error("Error fetching regions:", error);
+      toast.error("Failed to load regions.");
     }
   };
 
-  const fetchDistricts = async () => {
+  const fetchDistricts = async (regionId: number) => {
     try {
       const { data, error } = await supabase
         .from('district')
         .select('*')
-        .order('nom_district');
-      
-      if (error) throw error;
-      setDistricts(data || []);
+        .eq('id_region', regionId)
+        .order('nom_district', { ascending: true });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data) {
+        setDistricts(data);
+      }
     } catch (error) {
-      console.error('Error fetching districts:', error);
+      console.error("Error fetching districts:", error);
+      toast.error("Failed to load districts.");
     }
   };
 
-  const fetchCommunes = async () => {
+  const fetchCommunes = async (districtId: number) => {
     try {
       const { data, error } = await supabase
         .from('commune')
         .select('*')
-        .order('nom_commune');
-      
-      if (error) throw error;
-      setCommunes(data || []);
+        .eq('id_district', districtId)
+        .order('nom_commune', { ascending: true });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data) {
+        setCommunes(data);
+      }
     } catch (error) {
-      console.error('Error fetching communes:', error);
+      console.error("Error fetching communes:", error);
+      toast.error("Failed to load communes.");
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!userId) {
-      toast({
-        title: "Erreur",
-        description: "Vous devez être connecté pour enregistrer un terrain",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!terrainData.id_region || !terrainData.nom_terrain || !terrainData.id_district || !terrainData.id_commune || terrainData.surface_proposee <= 0) {
-      toast({
-        title: "Champs manquants",
-        description: "Tous les champs sont obligatoires et la surface doit être supérieure à 0",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if ((userRole === 'superviseur' || userRole === 'technicien') && !selectedAgriculteur) {
-      toast({
-        title: "Champ manquant",
-        description: "Veuillez sélectionner un agriculteur propriétaire du terrain",
-        variant: "destructive"
-      });
-      return;
-    }
-
+  const onSubmit = async (data: TerrainData) => {
+    setLoading(true);
     try {
-      setIsSubmitting(true);
-      
-      // Convert GeoJSON to PostGIS format if available
-      let geomValue = null;
-      if (geomPolygon && geomPolygon.geometry) {
-        // Convert GeoJSON to WKT format
-        if (geomPolygon.geometry.type === 'Polygon') {
-          const coordinates = (geomPolygon.geometry as GeoJSON.Polygon).coordinates[0];
-          
-          if (coordinates && coordinates.length > 0) {
-            const wktPoints = coordinates.map((coord: number[]) => `${coord[0]} ${coord[1]}`).join(',');
-            geomValue = `POLYGON((${wktPoints}))`;
-          }
-        }
+      // Ensure that the user is authenticated and has a user ID
+      if (!user || !user.id) {
+        throw new Error("User not authenticated.");
       }
-      
-      const terrainId = terrainData.id_terrain;
-      const terrainOwner = (userRole === 'agriculteur') ? userId : selectedAgriculteur;
-      
-      if (isEditing && terrainId) {
-        // Update existing terrain
-        const { error } = await supabase
-          .from('terrain')
-          .update({
-            id_region: terrainData.id_region,
-            id_district: terrainData.id_district,
-            id_commune: terrainData.id_commune,
-            surface_proposee: terrainData.surface_proposee,
-            acces_eau: terrainData.acces_eau,
-            acces_route: terrainData.acces_route,
-            nom_terrain: terrainData.nom_terrain,
-            ...(geomValue ? { geom: geomValue } : {})
-          })
-          .eq('id_terrain', terrainId);
 
-        if (error) throw error;
-        
-        toast({
-          title: "Succès",
-          description: "Terrain mis à jour avec succès",
-        });
+      const terrainData = {
+        ...data,
+        id_tantsaha: user.id,
+        id_region: Number(data.id_region),
+        id_district: Number(data.id_district),
+        id_commune: Number(data.id_commune),
+      };
+
+      let response;
+      if (isEditMode) {
+        // Update existing terrain
+        response = await supabase
+          .from('terrain')
+          .update(terrainData)
+          .eq('id_terrain', id)
+          .single();
       } else {
         // Create new terrain
-        const { error } = await supabase
+        delete terrainData.id_terrain; // Remove id_terrain for new record
+        response = await supabase
           .from('terrain')
-          .insert({
-            id_tantsaha: terrainOwner,
-            id_region: terrainData.id_region,
-            id_district: terrainData.id_district,
-            id_commune: terrainData.id_commune,
-            surface_proposee: terrainData.surface_proposee,
-            surface_validee: 0,
-            acces_eau: terrainData.acces_eau,
-            acces_route: terrainData.acces_route,
-            nom_terrain: terrainData.nom_terrain,
-            statut: false, // Toujours pas validé par défaut
-            ...(geomValue ? { geom: geomValue } : {})
-          });
-
-        if (error) throw error;
-        
-        toast({
-          title: "Succès",
-          description: "Terrain enregistré avec succès",
-        });
+          .insert([terrainData])
+          .single();
       }
-      
-      onSubmitSuccess();
-    } catch (error) {
-      console.error('Error submitting terrain:', error);
-      toast({
-        title: "Erreur",
-        description: isEditing ? "Impossible de mettre à jour le terrain" : "Impossible d'enregistrer le terrain",
-        variant: "destructive"
-      });
+
+      if (response.error) {
+        throw response.error;
+      }
+
+      toast.success(`Terrain ${isEditMode ? 'updated' : 'created'} successfully!`);
+      navigate('/terrain'); // Redirect to terrain list
+    } catch (error: any) {
+      console.error("Error during form submission:", error);
+      toast.error(error.message || "An error occurred during submission.");
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
 
-  const handleCreatedPolygon = (e: any) => {
-    const { layerType, layer } = e;
-    
-    if (layerType === 'polygon') {
-      // Convert Leaflet layer to GeoJSON
-      const geoJson = layer.toGeoJSON();
-      setGeomPolygon(geoJson);
-      
-      // Calculate approximate area in hectares
-      const latlngs = layer.getLatLngs()[0];
-      let area = GeometryUtil.geodesicArea(latlngs);
-      const areaInHectares = area / 10000; // Convert square meters to hectares
-      
-      // Update surface field with calculated area
-      setTerrainData(prev => ({
-        ...prev,
-        surface_proposee: parseFloat(areaInHectares.toFixed(2))
-      }));
+  const handleRegionChange = (selectedValue: string) => {
+    setSelectedRegion(Number(selectedValue));
+  };
+
+  const handleDistrictChange = (selectedValue: string) => {
+    setSelectedDistrict(Number(selectedValue));
+  };
+
+  const handleMapCreated = () => {
+    if (mapRef.current) {
+      // Your map initialization code
     }
   };
 
-  const handleEditedPolygon = (e: any) => {
-    const { layers } = e;
-    
-    if (layers && layers.getLayers().length > 0) {
-      const layer = layers.getLayers()[0];
-      const geoJson = layer.toGeoJSON();
-      setGeomPolygon(geoJson);
-      
-      // Update area calculation
-      const latlngs = layer.getLatLngs()[0];
-      let area = GeometryUtil.geodesicArea(latlngs);
-      const areaInHectares = area / 10000;
-      
-      setTerrainData(prev => ({
-        ...prev,
-        surface_proposee: parseFloat(areaInHectares.toFixed(2))
-      }));
-    }
+  const handlePolygonEdited = (e: L.LeafletEvent) => {
+    const layer = e.target;
+    const coordinates = layer.getLatLngs()[0];
+    setPolygonCoordinates(coordinates);
   };
 
-  const handleDeletedPolygon = () => {
-    setGeomPolygon(null);
-  };
+  const MapEvents = () => {
+    const map = useMap();
 
-  const handleMapReady = (mapInstance: L.Map) => {
-    mapRef.current = mapInstance;
-    setIsMapReady(true);
+    useEffect(() => {
+      mapRef.current = map;
+      setMapInitialized(true);
+    }, [map]);
+
+    useMapEvents({
+      load: () => {
+        console.log('map loaded');
+      },
+      moveend: () => {
+        console.log('map moved');
+      },
+      drawCreated: (e) => {
+        console.log('drawCreated', e);
+      },
+      drawEdited: (e) => {
+        console.log('drawEdited', e);
+      },
+      drawDeleted: (e) => {
+        console.log('drawDeleted', e);
+      }
+    });
+    return null;
   };
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle>{isEditing ? "Modifier le terrain" : "Nouvel enregistrement de terrain"}</CardTitle>
-      </CardHeader>
-      <form onSubmit={handleSubmit}>
-        <CardContent className="space-y-4">
-          {(userRole === 'superviseur' || userRole === 'technicien') && (
-            <div className="space-y-2">
-              <Label htmlFor="agriculteur">Agriculteur propriétaire</Label>
-              <Select 
-                value={selectedAgriculteur} 
-                onValueChange={setSelectedAgriculteur}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner un agriculteur" />
-                </SelectTrigger>
-                <SelectContent>
-                  {agriculteurs.map(agriculteur => (
-                    <SelectItem key={agriculteur.id_utilisateur} value={agriculteur.id_utilisateur}>
-                      {agriculteur.nom} {agriculteur.prenoms || ''}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="nom_terrain">Nom du terrain</Label>
-              <Input 
-                id="nom_terrain"
-                value={terrainData.nom_terrain}  
-                onChange={(e) => setTerrainData({
-                  ...terrainData,
-                  nom_terrain: e.target.value
-                })}
-                placeholder="Nom du terrain"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="surface">Surface proposée (hectares)</Label>
-              <Input 
-                id="surface"
-                type="number" 
-                step="0.01"
-                min="0.01"
-                value={terrainData.surface_proposee || ''} 
-                onChange={(e) => setTerrainData({
-                  ...terrainData,
-                  surface_proposee: parseFloat(e.target.value)
-                })}
-                placeholder="Surface en hectares"
-              />
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="region">Région</Label>
-              <Select 
-                value={terrainData.id_region?.toString() || ""} 
-                onValueChange={(value) => {
-                  setTerrainData({
-                    ...terrainData,
-                    id_region: parseInt(value),
-                    id_district: null,
-                    id_commune: null
-                  });
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner une région" />
-                </SelectTrigger>
-                <SelectContent>
-                  {regions.map(region => (
-                    <SelectItem key={region.id_region} value={region.id_region.toString()}>
-                      {region.nom_region}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="district">District</Label>
-              <Select 
-                value={terrainData.id_district?.toString() || ""} 
-                onValueChange={(value) => {
-                  setTerrainData({
-                    ...terrainData,
-                    id_district: parseInt(value),
-                    id_commune: null
-                  });
-                }}
-                disabled={!terrainData.id_region}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner un district" />
-                </SelectTrigger>
-                <SelectContent>
-                  {filteredDistricts.map(district => (
-                    <SelectItem key={district.id_district} value={district.id_district.toString()}>
-                      {district.nom_district}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="commune">Commune</Label>
-              <Select 
-                value={terrainData.id_commune?.toString() || ""} 
-                onValueChange={(value) => {
-                  setTerrainData({
-                    ...terrainData,
-                    id_commune: parseInt(value)
-                  });
-                }}
-                disabled={!terrainData.id_district}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner une commune" />
-                </SelectTrigger>
-                <SelectContent>
-                  {filteredCommunes.map(commune => (
-                    <SelectItem key={commune.id_commune} value={commune.id_commune.toString()}>
-                      {commune.nom_commune}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                id="acces_eau"
-                checked={terrainData.acces_eau || false}
-                onChange={(e) => setTerrainData({
-                  ...terrainData,
-                  acces_eau: e.target.checked
-                })}
-                className="form-checkbox h-5 w-5 text-primary"
-              />
-              <Label htmlFor="acces_eau">Accès à l'eau</Label>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                id="acces_route"
-                checked={terrainData.acces_route || false}
-                onChange={(e) => setTerrainData({
-                  ...terrainData,
-                  acces_route: e.target.checked
-                })}
-                className="form-checkbox h-5 w-5 text-primary"
-              />
-              <Label htmlFor="acces_route">Accès routier</Label>
-            </div>
-          </div>
-          
-          <div className="space-y-2">
-            <Label>Délimitation du terrain</Label>
-            <div className="h-[400px] border rounded-md overflow-hidden">
-              <MapContainer 
-                center={[-18.8792, 47.5079]} // Center on Madagascar
-                zoom={6} 
-                style={{ height: "100%", width: "100%" }}
-                whenReady={(map) => handleMapReady(map.target)}
-              >
-                <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
-                <FeatureGroup ref={featureGroupRef}>
-                  <EditControl
-                    position="topright"
-                    onCreated={handleCreatedPolygon}
-                    onEdited={handleEditedPolygon}
-                    onDeleted={handleDeletedPolygon}
-                    draw={{
-                      rectangle: false,
-                      circle: false,
-                      circlemarker: false,
-                      marker: false,
-                      polyline: false,
-                    }}
+    <div className="container max-w-2xl py-6">
+      <h1 className="text-2xl font-bold mb-4">{isEditMode ? 'Modifier un Terrain' : 'Ajouter un Terrain'}</h1>
+      <Form {...{...control, handleSubmit, setValue, formState: { errors }}}>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <FormField
+            control={control}
+            name="nom_terrain"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Nom du terrain</FormLabel>
+                <FormControl>
+                  <Input placeholder="Nom du terrain" {...field} />
+                </FormControl>
+                <FormMessage>{errors.nom_terrain?.message}</FormMessage>
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={control}
+            name="surface_proposee"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Surface proposée (en hectares)</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    placeholder="Surface proposée en hectares"
+                    {...field}
                   />
-                </FeatureGroup>
-                {geomPolygon && (
-                  <GeoJSON 
-                    data={geomPolygon} 
-                    ref={geoJSONLayerRef}
-                    style={{ display: 'none' }} // Hide it, just using for bounds
-                  />
-                )}
-              </MapContainer>
-            </div>
-            <p className="text-sm text-muted-foreground">Dessinez le contour de votre terrain sur la carte pour calculer automatiquement la surface.</p>
+                </FormControl>
+                <FormMessage>{errors.surface_proposee?.message}</FormMessage>
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={control}
+            name="id_region"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Région</FormLabel>
+                <Select onValueChange={(value) => {
+                  field.onChange(value);
+                  handleRegionChange(value);
+                }}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Sélectionner une région" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {regions.map((region) => (
+                      <SelectItem key={region.id_region} value={region.id_region.toString()}>
+                        {region.nom_region}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage>{errors.id_region?.message}</FormMessage>
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={control}
+            name="id_district"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>District</FormLabel>
+                <Select onValueChange={(value) => {
+                  field.onChange(value);
+                  handleDistrictChange(value);
+                }}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Sélectionner un district" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {districts.map((district) => (
+                      <SelectItem key={district.id_district} value={district.id_district.toString()}>
+                        {district.nom_district}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage>{errors.id_district?.message}</FormMessage>
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={control}
+            name="id_commune"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Commune</FormLabel>
+                <Select onValueChange={field.onChange}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Sélectionner une commune" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {communes.map((commune) => (
+                      <SelectItem key={commune.id_commune} value={commune.id_commune.toString()}>
+                        {commune.nom_commune}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage>{errors.id_commune?.message}</FormMessage>
+              </FormItem>
+            )}
+          />
+          <div className="flex items-center space-x-2">
+            <FormField
+              control={control}
+              name="acces_eau"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <FormLabel className="font-normal">
+                    Accès à l'eau
+                  </FormLabel>
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={control}
+              name="acces_route"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <FormLabel className="font-normal">
+                    Accès à la route
+                  </FormLabel>
+                </FormItem>
+              )}
+            />
           </div>
-        </CardContent>
-        
-        <CardFooter className="flex justify-between">
-          <Button 
-            type="button" 
-            variant="outline" 
-            onClick={onCancel}
-          >
-            Annuler
+          <div>
+            <FormLabel>Définir la zone sur la carte</FormLabel>
+            <MapContainer
+              center={[-18.913684, 47.536131]}
+              zoom={13}
+              style={{ height: '400px', width: '100%' }}
+              className="rounded-md"
+              whenCreated={handleMapCreated}
+            >
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+              <Polygon
+                positions={polygonCoordinates}
+                pathOptions={{ color: '#ff4444', weight: 2, fillOpacity: 0.5, fillColor: '#ff4444' }}
+                eventHandlers={{
+                  edit: handlePolygonEdited,
+                }}
+                ref={mapRef}
+              />
+              <MapEvents />
+            </MapContainer>
+          </div>
+          <Button type="submit" disabled={loading}>
+            {loading ? 'Enregistrement...' : 'Enregistrer'}
           </Button>
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {isEditing ? "Mise à jour..." : "Enregistrement..."}
-              </>
-            ) : (isEditing ? "Mettre à jour" : "Enregistrer le terrain")}
-          </Button>
-        </CardFooter>
-      </form>
-    </Card>
+        </form>
+      </Form>
+    </div>
   );
 };
 

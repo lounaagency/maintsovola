@@ -1,488 +1,432 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Button } from "@/components/ui/button"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { Calendar } from "@/components/ui/calendar"
+import { CalendarIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
+import { PopoverClose } from '@radix-ui/react-popover';
+import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { TerrainData } from '@/types/terrain';
+import { CultureData } from '@/types/culture';
 
-import React, { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { TerrainData } from "@/types/terrain";
-import { Loader2 } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import { Checkbox } from "@/components/ui/checkbox";
-import { formatCurrency } from "@/lib/utils";
+const formSchema = z.object({
+  title: z.string().min(2, {
+    message: "Le titre doit contenir au moins 2 caractères.",
+  }),
+  description: z.string().optional(),
+  terrain: z.string().min(1, {
+    message: "Veuillez sélectionner un terrain.",
+  }),
+  status: z.string().optional(),
+  startDate: z.date().optional(),
+  endDate: z.date().optional(),
+  cultures: z.array(z.string()).optional(),
+  surface_ha: z.string().refine((value) => {
+    const num = Number(value);
+    return !isNaN(num) && num > 0;
+  }, {
+    message: "La surface doit être un nombre positif.",
+  }),
+  cout_total: z.string().refine((value) => {
+    const num = Number(value);
+    return !isNaN(num) && num >= 0;
+  }, {
+    message: "Le coût total doit être un nombre positif ou nul.",
+  }),
+  financement_actuel: z.string().refine((value) => {
+    const num = Number(value);
+    return !isNaN(num) && num >= 0;
+  }, {
+    message: "Le financement actuel doit être un nombre positif ou nul.",
+  }),
+})
 
 interface ProjectFormProps {
-  onSubmitSuccess: () => void;
-  onCancel: () => void;
-  userId: string;
-  userRole?: string;
-  isEditing?: boolean;
-  initialData?: any;
+  onSubmit: (data: z.infer<typeof formSchema>) => void;
+  disabled?: boolean;
 }
 
-interface Culture {
-  id_culture: number;
-  nom_culture: string;
-  rendement_ha: number;
-  cout_exploitation_ha: number;
-  prix_tonne: number;
-}
-
-const ProjectForm: React.FC<ProjectFormProps> = ({
-  onSubmitSuccess,
-  onCancel,
-  userId,
-  userRole,
-  isEditing = false,
-  initialData
-}) => {
-  const { toast } = useToast();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled }) => {
   const [terrains, setTerrains] = useState<TerrainData[]>([]);
-  const [cultures, setCultures] = useState<Culture[]>([]);
-  const [selectedCultures, setSelectedCultures] = useState<number[]>([]);
-  const [selectedTerrain, setSelectedTerrain] = useState<number | null>(null);
-  const [description, setDescription] = useState("");
-  const [surface, setSurface] = useState(0);
-  const [totalCost, setTotalCost] = useState(0);
-  const [totalYield, setTotalYield] = useState(0);
-  const [totalRevenue, setTotalRevenue] = useState(0);
-  const [cultureCosts, setCultureCosts] = useState<CultureCostsItem[]>([]);
+  const [cultures, setCultures] = useState<CultureData[]>([]);
+  const navigate = useNavigate();
+  const { user } = useAuth();
 
-  interface CultureCostsItem {
-    culture: string;
-    cost: number;
-    rendement: number;
-    prix_tonne: number;
-    revenu_previsionnel: number;
-  }
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      title: "",
+      description: "",
+      terrain: "",
+      status: "planification",
+      startDate: new Date(),
+      endDate: new Date(),
+      cultures: [],
+      surface_ha: "0",
+      cout_total: "0",
+      financement_actuel: "0"
+    },
+    mode: "onChange",
+  })
+
+  const { handleSubmit, control, setValue, getValues } = form;
+
+  const handleInputChange = (name: string, value: any) => {
+    setValue(name, value, { shouldValidate: true });
+  };
+
+  const onSubmitHandler = (data: z.infer<typeof formSchema>) => {
+    onSubmit(data);
+  };
+
+  const fetchTerrains = useCallback(async () => {
+    if (!user) return;
+    try {
+      const { data: terrainsData, error } = await supabase
+        .from('terrain')
+        .select('*')
+        .eq('id_tantsaha', user.id);
+
+      if (error) {
+        console.error("Error fetching terrains:", error);
+        toast.error("Erreur lors du chargement des terrains");
+        return;
+      }
+
+      setTerrains(terrainsData || []);
+      if (terrainsData && terrainsData.length > 0 && !getValues("terrain")) {
+        handleInputChange("terrain", terrainsData[0].id_terrain?.toString());
+      }
+    } catch (error) {
+      console.error("Unexpected error fetching terrains:", error);
+      toast.error("Erreur inattendue lors du chargement des terrains");
+    }
+  }, [user, getValues, handleInputChange, setTerrains]);
+
+  const fetchCultures = useCallback(async () => {
+    try {
+      const { data: culturesData, error } = await supabase
+        .from('culture')
+        .select('*');
+
+      if (error) {
+        console.error("Error fetching cultures:", error);
+        toast.error("Erreur lors du chargement des cultures");
+        return;
+      }
+
+      setCultures(culturesData || []);
+    } catch (error) {
+      console.error("Unexpected error fetching cultures:", error);
+      toast.error("Erreur inattendue lors du chargement des cultures");
+    }
+  }, [setCultures]);
 
   useEffect(() => {
     fetchTerrains();
     fetchCultures();
-    
-    if (isEditing && initialData) {
-      setSelectedTerrain(initialData.id_terrain);
-      setDescription(initialData.description || "");
-      setSurface(initialData.surface_ha || 0);
-      // Load selected cultures if editing
-      if (initialData.projet_culture) {
-        setSelectedCultures(initialData.projet_culture.map((pc: any) => pc.id_culture));
-      }
-    }
-  }, [initialData, isEditing]);
-  
-  useEffect(() => {
-    if (initialData?.id_terrain) {
-      setSelectedTerrain(initialData.id_terrain);
-    }
-    if (selectedTerrain) {
-      // Find the terrain and set its surface
-      const terrain = terrains.find(t => t.id_terrain === selectedTerrain);
-      if (terrain) {
-        setSurface(terrain.surface_validee || terrain.surface_proposee);
-      }
-    }
-  }, [selectedTerrain, terrains]);
-  
-  useEffect(() => {
-    const updatedCosts = cultures
-      .filter(c => selectedCultures.includes(c.id_culture))
-      .map(c => {
-        const cost = c.cout_exploitation_ha * surface;
-        const rendement = c.rendement_ha * surface;
-        const revenu_previsionnel = rendement * c.prix_tonne;
-        return {
-          culture: c.nom_culture,
-          cost,
-          rendement,
-          prix_tonne: c.prix_tonne,
-          revenu_previsionnel
-        };
-      });
+  }, [fetchTerrains, fetchCultures]);
 
-    setCultureCosts(updatedCosts);
-    calculateProjectMetrics();
-    
-  }, [selectedCultures, surface, cultures]);
-  
-  const fetchTerrains = async () => {
-    try {
-      // Get only validated terrains that are not already used in active projects
-      let query = supabase
-        .from('terrain')
-        .select(`
-          id_terrain,
-          nom_terrain,
-          surface_validee,
-          surface_proposee,
-          id_tantsaha,
-          id_region,
-          id_district,
-          id_commune
-        `)
-        .eq('statut', true);
-      
-      if (userRole === 'agriculteur') {
-        query = query.eq('id_tantsaha', userId);
-      }
-      
-      const { data, error } = await query;
-      
-      if (error) throw error;
-      
-      // Filter out terrains used in active projects
-      const { data: activeProjects, error: projectError } = await supabase
-        .from('projet')
-        .select('id_terrain')
-        .not('statut', 'eq', 'terminé');
-      const usedTerrainIds = activeProjects?.map(p => p.id_terrain) || [];
-      const availableTerrains = data?.filter(t => 
-        !usedTerrainIds.includes(t.id_terrain) || 
-        (isEditing && initialData?.id_terrain === t.id_terrain)
-      );
-      
-      setTerrains(availableTerrains || []);
-    } catch (error) {
-      console.error('Error fetching terrains:', error);
-    }
-  };
-
-  const fetchCultures = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('culture')
-        .select('id_culture, nom_culture, rendement_ha, cout_exploitation_ha, prix_tonne');
-      
-      if (error) throw error;
-      
-      setCultures(data || []);
-    } catch (error) {
-      console.error('Error fetching cultures:', error);
-    }
-  };
-  
-  const calculateProjectMetrics = () => {
-    if (selectedCultures.length === 0) {
-      setTotalCost(0);
-      setTotalYield(0);
-      setTotalRevenue(0);
-      return;
-    }
-    
-    // Get selected culture objects
-    const selectedCultureObjects = cultures.filter(c => 
-      selectedCultures.includes(c.id_culture)
-    );
-    
-    // Calculate averages for multiple cultures
-    const avgCostPerHa = selectedCultureObjects.reduce(
-      (sum, culture) => sum + (culture.cout_exploitation_ha || 0), 0
-    ) ;
-    
-    const avgYieldPerHa = selectedCultureObjects.reduce(
-      (sum, culture) => sum + (culture.rendement_ha || 0), 0
-    ) ;
-    
-    const avgPricePerTonne = selectedCultureObjects.reduce(
-      (sum, culture) => sum + (culture.prix_tonne || 0), 0
-    ) ;
-    
-    // Calculate totals based on surface
-    const calculatedTotalCost = avgCostPerHa * surface;
-    const calculatedTotalYield = avgYieldPerHa * surface;
-    const calculatedTotalRevenue = calculatedTotalYield * avgPricePerTonne;
-    
-    setTotalCost(parseFloat(calculatedTotalCost.toFixed(2)));
-    setTotalYield(parseFloat(calculatedTotalYield.toFixed(2)));
-    setTotalRevenue(parseFloat(calculatedTotalRevenue.toFixed(2)));
-    
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!selectedTerrain) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez sélectionner un terrain",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    if (selectedCultures.length === 0) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez sélectionner au moins une culture",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    if (!description.trim()) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez fournir une description du projet",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    try {
-      setIsSubmitting(true);
-      
-      const terrain = terrains.find(t => t.id_terrain === selectedTerrain);
-      if (!terrain) throw new Error("Terrain non trouvé");
-      
-      // Create or update the project
-      let projectId;
-      
-      if (isEditing && initialData) {
-        // Update existing project
-        const { error } = await supabase
-          .from('projet')
-          .update({
-            id_terrain: selectedTerrain,
-            surface_ha: surface,
-            description: description,
-            // Status remains the same
-          })
-          .eq('id_projet', initialData.id_projet);
-        
-        if (error) throw error;
-        projectId = initialData.id_projet;
-        
-        // Delete existing project cultures
-        const { error: deleteError } = await supabase
-          .from('projet_culture')
-          .delete()
-          .eq('id_projet', projectId);
-          
-        if (deleteError) throw deleteError;
-      } else {
-        // Create new project
-        const { data, error } = await supabase
-          .from('projet')
-          .insert({
-            id_terrain: selectedTerrain,
-            id_tantsaha: userId,
-            surface_ha: surface,
-            statut: 'en attente',
-            id_region: terrain.id_region,
-            id_district: terrain.id_district,
-            id_commune: terrain.id_commune,
-            description: description,
-            id_technicien: terrain.id_technicien
-          })
-          .select('id_projet')
-          .single();
-        
-        if (error) throw error;
-        projectId = data.id_projet;
-      }
-      
-      // Add cultures to project
-      for (const cultureId of selectedCultures) {
-        const culture = cultures.find(c => c.id_culture === cultureId);
-        if (!culture) continue;
-        
-        const { error } = await supabase
-          .from('projet_culture')
-          .insert({
-            id_projet: projectId,
-            id_culture: cultureId,
-            cout_exploitation_previsionnel: culture.cout_exploitation_ha * surface,
-            rendement_previsionnel: culture.rendement_ha * surface,
-            date_debut_previsionnelle: new Date().toISOString().split('T')[0]
-          });
-          
-        if (error) throw error;
-      }
-      
-      toast({
-        title: "Succès",
-        description: isEditing 
-          ? "Projet mis à jour avec succès" 
-          : "Projet créé avec succès. Il est en attente de validation.",
-      });
-      
-      onSubmitSuccess();
-    } catch (error) {
-      console.error('Error submitting project:', error);
-      toast({
-        title: "Erreur",
-        description: isEditing 
-          ? "Impossible de mettre à jour le projet" 
-          : "Impossible de créer le projet",
-        variant: "destructive"
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-   const handleCultureChange = (cultureId: number, checked: boolean) => {
-    setSelectedCultures(prev =>
-      checked ? [...prev, cultureId] : prev.filter(id => id !== cultureId)
-    );
-  };
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle>{isEditing ? "Modifier le projet" : "Nouveau projet agricole"}</CardTitle>
-      </CardHeader>
-      <form onSubmit={handleSubmit}>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="terrain">Terrain</Label>
-            <Select 
-              value={selectedTerrain?.toString() || ""} 
-              onValueChange={(value) => setSelectedTerrain(parseInt(value))}
-              onChange={(e) => setSelectedTerrain(Number(e.target.value))}
-              disabled={terrains.length === 0}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Sélectionner un terrain" />
-              </SelectTrigger>
-              <SelectContent>
-                {terrains.map(terrain => (
-                  <SelectItem 
-                    key={terrain.id_terrain} 
-                    value={terrain.id_terrain?.toString() || ""}
-                  >
-                    {terrain.nom_terrain} ({terrain.surface_validee || terrain.surface_proposee} ha)
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {terrains.length === 0 && (
-              <p className="text-sm text-red-500">
-                Vous n'avez pas de terrains validés disponibles. Veuillez d'abord créer et faire valider un terrain.
-              </p>
-            )}
-          </div>
-          
-          <div className="space-y-2">
-            <Label>Cultures (sélectionnez une ou plusieurs)</Label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 border rounded-md p-3">
-              {cultures.map(culture => (
-                <div key={culture.id_culture} className="flex items-center space-x-2">
-                  <Checkbox 
-                    id={`culture-${culture.id_culture}`} 
-                    checked={selectedCultures.includes(culture.id_culture)}
-                    onCheckedChange={(checked) => handleCultureChange(culture.id_culture, checked === true)}
-                  />
-                  <Label htmlFor={`culture-${culture.id_culture}`} className="cursor-pointer">
-                    {culture.nom_culture}
-                  </Label>
-                </div>
-              ))}
-            </div>
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="description">Description du projet</Label>
-            <Textarea 
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Décrivez votre projet agricole..."
-              rows={4}
-            />
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="surface">Surface (hectares)</Label>
-              <Input 
-                id="surface"
-                type="number" 
-                step="0.01"
-                min="0.01"
-                value={surface || ''} 
-                readOnly
-                className="bg-gray-50"
-              />
-              <p className="text-sm text-muted-foreground">La surface est définie par le terrain sélectionné</p>
-            </div>
-          </div>
-          {cultureCosts.length > 0 ? (
-            <div className="space-y-4">
-              {/* Contenu dynamique */}
-              {cultureCosts.map(({ culture, cost, rendement, prix_tonne, revenu_previsionnel }) => (
-                <div key={culture} className="p-4 border rounded-lg shadow-sm bg-white">
-                  <p className="font-bold text-lg">{culture}</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mt-2">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Coût d'exploitation</p>
-                      <p className="font-semibold">{formatCurrency(cost)}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Rendement total</p>
-                      <p className="font-semibold">{rendement.toLocaleString()} tonnes</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Prix de la tonne</p>
-                      <p className="font-semibold">{formatCurrency(prix_tonne)}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Chiffre d'affaires</p>
-                      <p className="font-semibold">{formatCurrency(revenu_previsionnel)}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-          
-              {/* Totaux */}
-              <div className="p-4 border-t font-bold">
-                <p className="text-lg">Total Projet</p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mt-2">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Coût</p>
-                    <p>{formatCurrency(totalCost)}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Rendement</p>
-                    <p>{totalYield.toLocaleString()} tonnes</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total CA</p>
-                    <p>{formatCurrency(totalRevenue)}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <p className="text-gray-500">Sélectionnez un terrain et des cultures.</p>
+    <Form {...form}>
+      <form onSubmit={handleSubmit(onSubmitHandler)} className="space-y-8">
+        <FormField
+          control={form.control}
+          name="title"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Titre du projet</FormLabel>
+              <FormControl>
+                <Input placeholder="Nommez votre projet" {...field} disabled={disabled} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
           )}
-            
-        </CardContent>
-        
-        <CardFooter className="flex justify-between">
-          <Button 
-            type="button" 
-            variant="outline" 
-            onClick={onCancel}
-          >
-            Annuler
-          </Button>
-          <Button 
-            type="submit" 
-            disabled={isSubmitting || terrains.length === 0 || selectedCultures.length === 0}
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {isEditing ? "Mise à jour..." : "Création..."}
-              </>
-            ) : (isEditing ? "Mettre à jour le projet" : "Créer le projet")}
-          </Button>
-        </CardFooter>
+        />
+        <FormField
+          control={form.control}
+          name="description"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Description</FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder="Décrivez votre projet agricole"
+                  className="resize-none"
+                  {...field}
+                  disabled={disabled}
+                />
+              </FormControl>
+              <FormDescription>
+                Fournissez une description claire et concise de votre projet.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <div className="flex flex-col md:flex-row gap-4">
+          <FormField
+            control={form.control}
+            name="surface_ha"
+            render={({ field }) => (
+              <FormItem className="w-full">
+                <FormLabel>Surface (ha)</FormLabel>
+                <FormControl>
+                  <Input placeholder="0" {...field} type="number" disabled={disabled} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="cout_total"
+            render={({ field }) => (
+              <FormItem className="w-full">
+                <FormLabel>Coût Total</FormLabel>
+                <FormControl>
+                  <Input placeholder="0 Ar" {...field} type="number" disabled={disabled} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="financement_actuel"
+            render={({ field }) => (
+              <FormItem className="w-full">
+                <FormLabel>Financement Actuel</FormLabel>
+                <FormControl>
+                  <Input placeholder="0 Ar" {...field} type="number" disabled={disabled} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+        <div className="flex flex-col md:flex-row gap-4">
+          <FormField
+            control={form.control}
+            name="terrain"
+            render={({ field }) => (
+              <FormItem className="w-full">
+                <FormLabel>Terrain</FormLabel>
+                <Select
+                  value={form.getValues("terrain")}
+                  onValueChange={field.onChange}
+                  disabled={disabled}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner un terrain" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {terrains.map((terrain) => (
+                      <SelectItem key={terrain.id_terrain} value={terrain.id_terrain?.toString()}>
+                        {terrain.nom_terrain || `Terrain #${terrain.id_terrain}`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="status"
+            render={({ field }) => (
+              <FormItem className="w-full">
+                <FormLabel>Statut</FormLabel>
+                <Select
+                  value={form.getValues("status")}
+                  onValueChange={field.onChange}
+                  disabled={disabled}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner un statut" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="planification">Planification</SelectItem>
+                    <SelectItem value="en_cours">En Cours</SelectItem>
+                    <SelectItem value="termine">Terminé</SelectItem>
+                    <SelectItem value="suspendu">Suspendu</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+        <div className="flex flex-col md:flex-row gap-4">
+          <FormField
+            control={form.control}
+            name="startDate"
+            render={({ field }) => (
+              <FormItem className="w-full">
+                <FormLabel>Date de début</FormLabel>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button
+                        variant={"outline"}
+                        className={cn(
+                          "w-[240px] pl-3 text-left font-normal",
+                          !field.value && "text-muted-foreground"
+                        )}
+                        disabled={disabled}
+                      >
+                        {field.value ? (
+                          format(field.value, "PPP")
+                        ) : (
+                          <span>Choisir une date</span>
+                        )}
+                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={field.value}
+                      onSelect={field.onChange}
+                      disabled={disabled}
+                      initialFocus
+                    />
+                    <PopoverClose className="absolute top-2 right-2 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary data-[state=open]:text-muted-foreground">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-x">
+                        <path d="M18 6 6 18" />
+                        <path d="M6 6 18 18" />
+                      </svg>
+                    </PopoverClose>
+                  </PopoverContent>
+                </Popover>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="endDate"
+            render={({ field }) => (
+              <FormItem className="w-full">
+                <FormLabel>Date de fin</FormLabel>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button
+                        variant={"outline"}
+                        className={cn(
+                          "w-[240px] pl-3 text-left font-normal",
+                          !field.value && "text-muted-foreground"
+                        )}
+                        disabled={disabled}
+                      >
+                        {field.value ? (
+                          format(field.value, "PPP")
+                        ) : (
+                          <span>Choisir une date</span>
+                        )}
+                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={field.value}
+                      onSelect={field.onChange}
+                      disabled={disabled}
+                      initialFocus
+                    />
+                    <PopoverClose className="absolute top-2 right-2 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary data-[state=open]:text-muted-foreground">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-x">
+                        <path d="M18 6 6 18" />
+                        <path d="M6 6 18 18" />
+                      </svg>
+                    </PopoverClose>
+                  </PopoverContent>
+                </Popover>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+        <FormField
+          control={form.control}
+          name="cultures"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Cultures</FormLabel>
+              {cultures.length > 0 ? (
+                cultures.map((culture) => (
+                  <div key={culture.id_culture} className="flex items-center space-x-2">
+                    <Input
+                      type="checkbox"
+                      id={`culture-${culture.id_culture}`}
+                      value={culture.id_culture?.toString()}
+                      checked={field.value?.includes(culture.id_culture?.toString())}
+                      onChange={(e) => {
+                        const isChecked = e.target.checked;
+                        if (isChecked) {
+                          field.onChange([...(field.value || []), culture.id_culture?.toString()]);
+                        } else {
+                          field.onChange(field.value?.filter((id) => id !== culture.id_culture?.toString()));
+                        }
+                      }}
+                      disabled={disabled}
+                    />
+                    <label
+                      htmlFor={`culture-${culture.id_culture}`}
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                      {culture.nom_culture}
+                    </label>
+                  </div>
+                ))
+              ) : (
+                <div>Aucune culture disponible.</div>
+              )}
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <Button type="submit" disabled={disabled}>Soumettre</Button>
       </form>
-    </Card>
+    </Form>
   );
 };
 
