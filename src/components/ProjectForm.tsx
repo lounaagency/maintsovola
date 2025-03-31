@@ -418,9 +418,10 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
             </div>
           </div>
 
-          
-        {cultureCosts.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t">
+                  {cultureCosts.length > 0 ? (
+          <div className="space-y-4">
+            {/* Header du tableau */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t">
               <div className="space-y-1">
                 <Label className="text-sm text-muted-foreground">Culture</Label>
               </div>
@@ -437,46 +438,51 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
                 <Label className="text-sm text-muted-foreground">Chiffre d'affaires potentiel</Label>
               </div>
             </div>
-          {cultureCosts.map(({ culture, cost, rendement, prix_tonne, revenu_previsionnel }) => (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t">
+        
+            {/* Contenu dynamique */}
+            {cultureCosts.map(({ culture, cost, rendement, prix_tonne, revenu_previsionnel }) => (
+              <div key={culture} className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t">
+                <div className="space-y-1">
+                  <p className="font-semibold">{culture}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="font-semibold">{formatCurrency(cost)}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="font-semibold">{rendement.toLocaleString()} tonnes</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="font-semibold">{formatCurrency(prix_tonne)}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="font-semibold">{formatCurrency(revenu_previsionnel)}</p>
+                </div>
+              </div>
+            ))}
+        
+            {/* Totaux */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t font-bold">
               <div className="space-y-1">
-                <p className="font-semibold">{culture}</p>
+                <p>Total Projet</p>
               </div>
               <div className="space-y-1">
-                <p className="font-semibold">{formatCurrency(cost)}</p>
+                <p>{formatCurrency(totalCost)}</p>
               </div>
               <div className="space-y-1">
-                <p className="font-semibold">{rendement.toLocaleString()} tonnes</p>
+                <p>{totalYield.toLocaleString()} tonnes</p>
               </div>
               <div className="space-y-1">
-                <p className="font-semibold">{formatCurrency(prix_tonne)}</p>
+                <p>{totalYield.toLocaleString()} tonnes</p>
               </div>
               <div className="space-y-1">
-                <p className="font-semibold">{formatCurrency(revenu_previsionnel)}</p>
+                <p>{formatCurrency(totalRevenue)}</p>
               </div>
             </div>
-          ))}
-
-              <div className="space-y-1">
-                <p className="font-semibold">Total Projet</p>
-              </div>
-              <div className="space-y-1">
-                <p className="font-semibold">{formatCurrency(totalCost)}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="font-semibold">{totalYield.toLocaleString()} tonnes</p>
-              </div>
-              <div className="space-y-1">
-                <p className="font-semibold">{totalYield.toLocaleString()} tonnes</p>
-              </div>
-              <div className="space-y-1">
-                <p className="font-semibold">{formatCurrency(totalRevenue)}</p>
-              </div>
-
-      
+          </div>
         ) : (
           <p className="text-gray-500">Sélectionnez un terrain et des cultures.</p>
         )}
+
             
         </CardContent>
         
