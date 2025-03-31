@@ -305,6 +305,12 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
   };
 
   return (
+    {toast({
+        title: "Succès",
+        description: selectedTerrain 
+          ? "Terrain choisis :"+selectedTerrain?.toString() 
+          : "Aucun terrain choisis.",
+      });}
     <Card className="w-full">
       <CardHeader>
         <CardTitle>{isEditing ? "Modifier le projet" : "Nouveau projet agricole"}</CardTitle>
