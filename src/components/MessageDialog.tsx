@@ -1,165 +1,134 @@
 
-import React, { useState, useEffect, useRef } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import React, { useState, useEffect } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Send } from "lucide-react";
-import { createConversation, sendMessage, useGetMessagesRealTime } from "@/lib/messagerie";
+import { Textarea } from "@/components/ui/textarea";
+import { Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import UserAvatar from "@/components/UserAvatar";
 import { useToast } from "@/components/ui/use-toast";
+import { createConversationIfNotExists } from "@/lib/messagerie";
 
 interface MessageDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  recipientId: string;
-  recipientName: string;
-  recipientPhoto?: string;
-  onMessageSent?: () => void;
+  recipient: {
+    id: string;
+    name: string;
+  };
+  subject?: string;
 }
 
 const MessageDialog: React.FC<MessageDialogProps> = ({
   isOpen,
   onClose,
-  recipientId,
-  recipientName,
-  recipientPhoto,
-  onMessageSent
+  recipient,
+  subject = "",
 }) => {
-  const { user, profile } = useAuth();
-  const { toast } = useToast();
   const [message, setMessage] = useState("");
-  const [messages, setMessages] = useState<any[]>([]);
-  const [conversationId, setConversationId] = useState<number | null>(null);
-  const [loading, setLoading] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { user } = useAuth();
+  const { toast } = useToast();
 
   useEffect(() => {
-    if (user && recipientId && isOpen) {
-      initializeConversation();
-    }
-  }, [user, recipientId, isOpen]);
-
-  useGetMessagesRealTime(conversationId || 0, (newMessages) => {
-    setMessages(newMessages);
-  });
-
-  const initializeConversation = async () => {
-    if (!user) return;
-    
-    try {
-      setLoading(true);
-      const conversation = await createConversation(user.id, recipientId);
-      setConversationId(conversation.id_conversation);
-    } catch (error) {
-      console.error("Erreur lors de l'initialisation de la conversation:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible d'initialiser la conversation",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!message.trim() || !user || !conversationId) return;
-
-    try {
-      await sendMessage({
-        id_conversation: conversationId,
-        id_expediteur: user.id,
-        id_destinataire: recipientId,
-        contenu: message,
-      });
-      
+    if (subject) {
+      setMessage(`Concernant ${subject}:\n\n`);
+    } else {
       setMessage("");
-      
-      if (onMessageSent) {
-        onMessageSent();
+    }
+  }, [subject, isOpen]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !message.trim()) return;
+
+    try {
+      setIsSubmitting(true);
+
+      // Créer ou récupérer une conversation
+      const conversationId = await createConversationIfNotExists(
+        user.id,
+        recipient.id,
+      );
+
+      if (!conversationId) {
+        throw new Error("Impossible de créer une conversation");
       }
+
+      // Envoyer le message
+      const { error } = await supabase.from("message").insert({
+        conversation_id: conversationId,
+        sender_id: user.id,
+        content: message.trim(),
+        timestamp: new Date().toISOString(),
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Message envoyé",
+        description: `Votre message a été envoyé à ${recipient.name}`,
+      });
+
+      setMessage("");
+      onClose();
     } catch (error) {
-      console.error("Erreur lors de l'envoi du message:", error);
+      console.error("Error sending message:", error);
       toast({
         title: "Erreur",
         description: "Impossible d'envoyer le message",
         variant: "destructive",
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  useEffect(() => {
-    // Scroll to bottom whenever messages change
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-md">
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent>
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <UserAvatar src={recipientPhoto} alt={recipientName} size="sm" />
-            <span>{recipientName}</span>
+          <DialogTitle>
+            Message à {recipient.name}
           </DialogTitle>
         </DialogHeader>
-        
-        <div className="flex flex-col h-[400px]">
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {loading ? (
-              <div className="flex justify-center items-center h-full">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-              </div>
-            ) : messages.length > 0 ? (
-              messages.map((msg) => {
-                const isCurrentUser = msg.id_expediteur === user?.id;
-                return (
-                  <div
-                    key={msg.id_message}
-                    className={`flex ${isCurrentUser ? "justify-end" : "justify-start"}`}
-                  >
-                    <div
-                      className={`max-w-[80%] p-3 rounded-lg ${
-                        isCurrentUser
-                          ? "bg-primary text-primary-foreground rounded-br-none"
-                          : "bg-muted rounded-bl-none"
-                      }`}
-                    >
-                      <p>{msg.contenu}</p>
-                      <p className={`text-xs mt-1 ${isCurrentUser ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
-                        {new Date(msg.date_envoi).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              <div className="flex justify-center items-center h-full text-muted-foreground">
-                Aucun message. Commencez la conversation!
-              </div>
-            )}
-            <div ref={messagesEndRef} />
+        <form onSubmit={handleSubmit}>
+          <div className="space-y-4 mt-4">
+            <Textarea
+              placeholder="Écrivez votre message ici..."
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              className="min-h-[150px]"
+              required
+            />
           </div>
-          
-          <div className="p-4 border-t">
-            <form
-              onSubmit={handleSendMessage}
-              className="flex gap-2"
+          <DialogFooter className="mt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              disabled={isSubmitting}
             >
-              <Input
-                placeholder="Tapez votre message..."
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                className="flex-1"
-              />
-              <Button type="submit" size="icon" disabled={!message.trim()}>
-                <Send className="h-4 w-4" />
-              </Button>
-            </form>
-          </div>
-        </div>
+              Annuler
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Envoi...
+                </>
+              ) : (
+                "Envoyer"
+              )}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );

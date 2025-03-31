@@ -1,42 +1,46 @@
 
 import React, { useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
 import { Navigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import LoginForm from "@/components/auth/LoginForm";
 import RegisterForm from "@/components/auth/RegisterForm";
-import { fadeIn } from "@/components/auth/motionConstants";
 
-const Auth = () => {
+export const Auth = () => {
   const { user } = useAuth();
-  const [isLogin, setIsLogin] = useState(true);
+  const [isLoginView, setIsLoginView] = useState(true);
 
-  // Redirect if user is already logged in
+  // Rediriger vers la page d'accueil si l'utilisateur est connecté
   if (user) {
-    return <Navigate to="/feed" replace />;
+    return <Navigate to="/" replace />;
   }
 
-  const switchToRegister = () => setIsLogin(false);
-  const switchToLogin = () => setIsLogin(true);
+  const switchToRegister = () => {
+    setIsLoginView(false);
+  };
+
+  const switchToLogin = () => {
+    setIsLoginView(true);
+  };
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4 bg-background">
-      <div className="w-full max-w-md space-y-8">
-        <div className="text-center">
-          <h2 className="text-3xl font-bold text-green-600">Maintso Vola</h2>
-          <p className="mt-2 text-muted-foreground">
-            Connecter les agriculteurs aux investisseurs
+    <div className="min-h-screen flex flex-col justify-center items-center p-4">
+      <div className="w-full max-w-md">
+        <div className="flex flex-col items-center mb-8">
+          <h1 className="text-3xl font-bold">Agrofinances</h1>
+          <p className="text-muted-foreground">
+            Plateforme de financement agricole participatif
           </p>
         </div>
 
         <motion.div
-          className="bg-white p-6 rounded-xl shadow-lg"
-          variants={fadeIn}
-          initial="hidden"
-          animate="visible"
+          className="bg-card border rounded-lg shadow-sm p-6"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
         >
           <AnimatePresence mode="wait">
-            {isLogin ? (
+            {isLoginView ? (
               <LoginForm key="login" switchToRegister={switchToRegister} />
             ) : (
               <RegisterForm key="register" switchToLogin={switchToLogin} />

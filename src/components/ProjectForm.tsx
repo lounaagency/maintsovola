@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +11,7 @@ import { Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CheckedState } from "@radix-ui/react-checkbox";
+import { formatCurrency } from "@/lib/utils";
 
 interface ProjectFormProps {
   onSubmitSuccess: () => void;
@@ -82,18 +83,25 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
   const fetchTerrains = async () => {
     try {
       // Get only validated terrains that are not already used in active projects
-      const { data, error } = await supabase
+      let query = supabase
         .from('terrain')
         .select(`
           id_terrain,
           nom_terrain,
           surface_validee,
           surface_proposee,
-          id_tantsaha
+          id_tantsaha,
+          id_region,
+          id_district,
+          id_commune
         `)
-        .eq('statut', true)
-        .eq(userRole === 'agriculteur' ? 'id_tantsaha' : 'id_terrain', 
-            userRole === 'agriculteur' ? userId : 'id_terrain');
+        .eq('statut', true);
+      
+      if (userRole === 'agriculteur') {
+        query = query.eq('id_tantsaha', userId);
+      }
+      
+      const { data, error } = await query;
       
       if (error) throw error;
       
@@ -101,13 +109,13 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
       const { data: activeProjects, error: projectError } = await supabase
         .from('projet')
         .select('id_terrain')
-        .neq('statut', 'terminé');
+        .not('statut', 'eq', 'terminé');
       
       if (projectError) throw projectError;
       
       const usedTerrainIds = activeProjects?.map(p => p.id_terrain) || [];
       const availableTerrains = data?.filter(t => !usedTerrainIds.includes(t.id_terrain) || 
-                                         (isEditing && initialData && t.id_terrain === initialData.id_terrain));
+                                       (isEditing && initialData && t.id_terrain === initialData.id_terrain));
       
       setTerrains(availableTerrains || []);
     } catch (error) {
@@ -258,8 +266,8 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
           .insert({
             id_projet: projectId,
             id_culture: cultureId,
-            cout_exploitation_previsionnel: culture.cout_exploitation_ha,
-            rendement_previsionnel: culture.rendement_ha,
+            cout_exploitation_previsionnel: culture.cout_exploitation_ha * surface,
+            rendement_previsionnel: culture.rendement_ha * surface,
             date_debut_previsionnelle: new Date().toISOString().split('T')[0]
           });
           
@@ -288,7 +296,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
     }
   };
 
-  const handleCultureChange = (cultureId: number, checked: CheckedState) => {
+  const handleCultureChange = (cultureId: number, checked: boolean) => {
     if (checked) {
       setSelectedCultures(prev => [...prev, cultureId]);
     } else {
@@ -339,7 +347,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
                   <Checkbox 
                     id={`culture-${culture.id_culture}`} 
                     checked={selectedCultures.includes(culture.id_culture)}
-                    onCheckedChange={(checked) => handleCultureChange(culture.id_culture, checked)}
+                    onCheckedChange={(checked) => handleCultureChange(culture.id_culture, checked === true)}
                   />
                   <Label htmlFor={`culture-${culture.id_culture}`} className="cursor-pointer">
                     {culture.nom_culture}
@@ -379,7 +387,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t">
             <div className="space-y-1">
               <Label className="text-sm text-muted-foreground">Coût d'exploitation estimé</Label>
-              <p className="font-semibold">{totalCost.toLocaleString()} Ar</p>
+              <p className="font-semibold">{formatCurrency(totalCost)}</p>
             </div>
             <div className="space-y-1">
               <Label className="text-sm text-muted-foreground">Rendement total estimé</Label>
@@ -387,7 +395,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
             </div>
             <div className="space-y-1">
               <Label className="text-sm text-muted-foreground">Chiffre d'affaires potentiel</Label>
-              <p className="font-semibold">{totalRevenue.toLocaleString()} Ar</p>
+              <p className="font-semibold">{formatCurrency(totalRevenue)}</p>
             </div>
           </div>
         </CardContent>

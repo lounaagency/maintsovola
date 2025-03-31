@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import TerrainEditDialog from '@/components/TerrainEditDialog';
 import ProjectEditDialog from '@/components/ProjectEditDialog';
+import MessageDialog from '@/components/MessageDialog';
+import ProjectDetailsDialog from '@/components/ProjectDetailsDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { TerrainData } from "@/types/terrain";
 
@@ -18,14 +20,19 @@ export const Terrain = () => {
   
   const [pendingTerrains, setPendingTerrains] = useState<TerrainData[]>([]);
   const [validatedTerrains, setValidatedTerrains] = useState<TerrainData[]>([]);
-  const [projects, setProjects] = useState([]);
+  const [projects, setProjects] = useState<any[]>([]);
   const [selectedTerrain, setSelectedTerrain] = useState<TerrainData | null>(null);
+  const [selectedProject, setSelectedProject] = useState<any>(null);
+  const [selectedTechnicien, setSelectedTechnicien] = useState<{id: string; name: string} | null>(null);
+  
   const [isTerrainDialogOpen, setIsTerrainDialogOpen] = useState(false);
-  const [isNewTerrain, setIsNewTerrain] = useState(true);
   const [isProjectDialogOpen, setIsProjectDialogOpen] = useState(false);
+  const [isProjectDetailsOpen, setIsProjectDetailsOpen] = useState(false);
+  const [isMessageDialogOpen, setIsMessageDialogOpen] = useState(false);
   const [isAlertDialogOpen, setIsAlertDialogOpen] = useState(false);
+  
   const [agriculteurs, setAgriculteurs] = useState<{id_utilisateur: string; nom: string; prenoms?: string}[]>([]);
-  const [techniciens, setTechniciens] = useState([]);
+  const [techniciens, setTechniciens] = useState<{id_utilisateur: string; nom: string; prenoms?: string}[]>([]);
   
   const userRole = profile?.nom_role?.toLowerCase() || 'agriculteur';
 
@@ -56,9 +63,9 @@ export const Terrain = () => {
         .from('terrain')
         .select(`
           *,
-          commune:id_commune(nom_commune),
-          district:id_district(nom_district),
           region:id_region(nom_region),
+          district:id_district(nom_district),
+          commune:id_commune(nom_commune),
           technicien:id_technicien(id_utilisateur, nom, prenoms)
         `);
       
@@ -110,8 +117,6 @@ export const Terrain = () => {
 
   // Récupérer les techniciens pour l'assignation
   const fetchTechniciens = useCallback(async () => {
-    if (userRole !== 'superviseur') return;
-    
     try {
       const { data, error } = await supabase
         .from('utilisateur')
@@ -123,7 +128,7 @@ export const Terrain = () => {
     } catch (error) {
       console.error('Error fetching techniciens:', error);
     }
-  }, [userRole]);
+  }, []);
 
   // Function to fetch projects
   const fetchProjects = useCallback(async () => {
@@ -173,14 +178,25 @@ export const Terrain = () => {
 
   const handleCreateTerrain = () => {
     setSelectedTerrain(null);
-    setIsNewTerrain(true);
     setIsTerrainDialogOpen(true);
   };
 
   const handleEditTerrain = (terrain: TerrainData) => {
     setSelectedTerrain(terrain);
-    setIsNewTerrain(false);
     setIsTerrainDialogOpen(true);
+  };
+
+  const handleContactTechnicien = (terrain: TerrainData) => {
+    if (terrain.id_technicien) {
+      const technicien = techniciens.find(t => t.id_utilisateur === terrain.id_technicien);
+      if (technicien) {
+        setSelectedTechnicien({
+          id: technicien.id_utilisateur,
+          name: `${technicien.nom} ${technicien.prenoms || ''}`.trim()
+        });
+        setIsMessageDialogOpen(true);
+      }
+    }
   };
 
   const handleTerrainSaved = () => {
@@ -203,7 +219,18 @@ export const Terrain = () => {
       return;
     }
     
+    setSelectedProject(null);
     setIsProjectDialogOpen(true);
+  };
+  
+  const handleEditProject = (project: any) => {
+    setSelectedProject(project);
+    setIsProjectDialogOpen(true);
+  };
+  
+  const handleViewProjectDetails = (project: any) => {
+    setSelectedProject(project);
+    setIsProjectDetailsOpen(true);
   };
 
   const handleProjectSaved = () => {
@@ -214,6 +241,10 @@ export const Terrain = () => {
   if (!user) {
     return <div>Loading...</div>;
   }
+  
+  const pendingProjects = projects.filter((p) => p.statut === 'en attente');
+  const fundingProjects = projects.filter((p) => p.statut === 'validé' || p.statut === 'en_financement');
+  const activeProjects = projects.filter((p) => p.statut === 'en cours' || p.statut === 'en_production');
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
@@ -254,6 +285,7 @@ export const Terrain = () => {
                 type="validated"
                 userRole={userRole}
                 onEdit={handleEditTerrain}
+                onContactTechnicien={handleContactTechnicien}
               />
             </div>
           </div>
@@ -282,15 +314,16 @@ export const Terrain = () => {
             )}
           </div>
           
-          <div className="space-y-4">
+          <div className="space-y-6">
+            {/* Projets en attente de validation */}
             <div>
               <h3 className="font-medium mb-2">Projets en attente de validation</h3>
-              {projects.filter((p: any) => p.statut === 'en_attente').length > 0 ? (
-                <div className="overflow-x-auto">
+              {pendingProjects.length > 0 ? (
+                <div className="overflow-x-auto rounded-md border">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b">
-                        <th className="text-left p-2">Titre</th>
+                      <tr className="border-b bg-muted/50">
+                        <th className="text-left p-2">ID</th>
                         <th className="text-left p-2">Surface (ha)</th>
                         <th className="text-left p-2">Cultures</th>
                         <th className="text-left p-2">Terrain</th>
@@ -298,23 +331,37 @@ export const Terrain = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {projects
-                        .filter((p: any) => p.statut === 'en_attente')
-                        .map((project: any) => (
-                          <tr key={project.id_projet} className="border-b hover:bg-muted/50">
-                            <td className="p-2">{project.titre || `Projet #${project.id_projet}`}</td>
-                            <td className="p-2">{project.surface_ha}</td>
-                            <td className="p-2">
-                              {project.projet_culture.map((pc: any) => pc.culture.nom_culture).join(', ')}
-                            </td>
-                            <td className="p-2">
-                              {project.terrain?.localisation || `Terrain #${project.id_terrain}`}
-                            </td>
-                            <td className="p-2 text-right">
-                              <Button variant="outline" size="sm">Modifier</Button>
-                            </td>
-                          </tr>
-                        ))}
+                      {pendingProjects.map((project) => (
+                        <tr key={project.id_projet} className="border-b hover:bg-muted/50">
+                          <td className="p-2">{project.id_projet}</td>
+                          <td className="p-2">{project.surface_ha}</td>
+                          <td className="p-2">
+                            {project.projet_culture?.map((pc: any) => pc.culture?.nom_culture).join(', ')}
+                          </td>
+                          <td className="p-2">
+                            {project.terrain?.nom_terrain || `Terrain #${project.id_terrain}`}
+                          </td>
+                          <td className="p-2 text-right">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleEditProject(project)}
+                            >
+                              Modifier
+                            </Button>
+                            {(userRole === 'technicien' || userRole === 'superviseur') && (
+                              <Button 
+                                variant="default" 
+                                size="sm"
+                                className="ml-2"
+                                onClick={() => handleViewProjectDetails(project)}
+                              >
+                                Valider
+                              </Button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
@@ -325,34 +372,43 @@ export const Terrain = () => {
               )}
             </div>
             
+            {/* Projets en cours de financement */}
             <div>
               <h3 className="font-medium mb-2">Projets en cours de financement</h3>
-              {projects.filter((p: any) => p.statut === 'en_financement').length > 0 ? (
-                <div className="overflow-x-auto">
+              {fundingProjects.length > 0 ? (
+                <div className="overflow-x-auto rounded-md border">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b">
-                        <th className="text-left p-2">Titre</th>
+                      <tr className="border-b bg-muted/50">
+                        <th className="text-left p-2">ID</th>
                         <th className="text-left p-2">Surface (ha)</th>
-                        <th className="text-left p-2">Financement</th>
-                        <th className="text-left p-2">Objectif</th>
+                        <th className="text-left p-2">Cultures</th>
+                        <th className="text-left p-2">Terrain</th>
                         <th className="text-right p-2">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {projects
-                        .filter((p: any) => p.statut === 'en_financement')
-                        .map((project: any) => (
-                          <tr key={project.id_projet} className="border-b hover:bg-muted/50">
-                            <td className="p-2">{project.titre || `Projet #${project.id_projet}`}</td>
-                            <td className="p-2">{project.surface_ha}</td>
-                            <td className="p-2">{project.financement_actuel || 0} Ar</td>
-                            <td className="p-2">{project.cout_total || 0} Ar</td>
-                            <td className="p-2 text-right">
-                              <Button variant="outline" size="sm">Détails</Button>
-                            </td>
-                          </tr>
-                        ))}
+                      {fundingProjects.map((project) => (
+                        <tr key={project.id_projet} className="border-b hover:bg-muted/50">
+                          <td className="p-2">{project.id_projet}</td>
+                          <td className="p-2">{project.surface_ha}</td>
+                          <td className="p-2">
+                            {project.projet_culture?.map((pc: any) => pc.culture?.nom_culture).join(', ')}
+                          </td>
+                          <td className="p-2">
+                            {project.terrain?.nom_terrain || `Terrain #${project.id_terrain}`}
+                          </td>
+                          <td className="p-2 text-right">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleViewProjectDetails(project)}
+                            >
+                              Détails
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
@@ -363,42 +419,49 @@ export const Terrain = () => {
               )}
             </div>
             
+            {/* Projets en production */}
             <div>
               <h3 className="font-medium mb-2">Projets en production</h3>
-              {projects.filter((p: any) => p.statut === 'en_production').length > 0 ? (
-                <div className="overflow-x-auto">
+              {activeProjects.length > 0 ? (
+                <div className="overflow-x-auto rounded-md border">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b">
-                        <th className="text-left p-2">Titre</th>
+                      <tr className="border-b bg-muted/50">
+                        <th className="text-left p-2">ID</th>
                         <th className="text-left p-2">Surface (ha)</th>
+                        <th className="text-left p-2">Cultures</th>
                         <th className="text-left p-2">Date début</th>
-                        <th className="text-left p-2">Progression</th>
                         <th className="text-right p-2">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {projects
-                        .filter((p: any) => p.statut === 'en_production')
-                        .map((project: any) => (
-                          <tr key={project.id_projet} className="border-b hover:bg-muted/50">
-                            <td className="p-2">{project.titre || `Projet #${project.id_projet}`}</td>
-                            <td className="p-2">{project.surface_ha}</td>
-                            <td className="p-2">{new Date(project.date_debut).toLocaleDateString()}</td>
-                            <td className="p-2">
-                              En cours
-                            </td>
-                            <td className="p-2 text-right">
-                              <Button variant="outline" size="sm">Jalons</Button>
-                            </td>
-                          </tr>
-                        ))}
+                      {activeProjects.map((project) => (
+                        <tr key={project.id_projet} className="border-b hover:bg-muted/50">
+                          <td className="p-2">{project.id_projet}</td>
+                          <td className="p-2">{project.surface_ha}</td>
+                          <td className="p-2">
+                            {project.projet_culture?.map((pc: any) => pc.culture?.nom_culture).join(', ')}
+                          </td>
+                          <td className="p-2">
+                            {project.date_lancement ? new Date(project.date_lancement).toLocaleDateString() : 'N/A'}
+                          </td>
+                          <td className="p-2 text-right">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleViewProjectDetails(project)}
+                            >
+                              Détails
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
               ) : (
                 <div className="text-center py-8 border rounded-lg border-dashed">
-                  Aucun projet en cours de production
+                  Aucun projet en production
                 </div>
               )}
             </div>
@@ -409,9 +472,27 @@ export const Terrain = () => {
               isOpen={isProjectDialogOpen}
               onClose={() => setIsProjectDialogOpen(false)}
               onSubmitSuccess={handleProjectSaved}
-              project={null}
+              project={selectedProject}
               userId={user.id}
               userRole={userRole}
+            />
+          )}
+          
+          {isProjectDetailsOpen && selectedProject && (
+            <ProjectDetailsDialog
+              isOpen={isProjectDetailsOpen}
+              onClose={() => setIsProjectDetailsOpen(false)}
+              projectId={selectedProject.id_projet}
+              userRole={userRole}
+            />
+          )}
+          
+          {isMessageDialogOpen && selectedTechnicien && (
+            <MessageDialog
+              isOpen={isMessageDialogOpen}
+              onClose={() => setIsMessageDialogOpen(false)}
+              recipient={selectedTechnicien}
+              subject="Question sur un terrain"
             />
           )}
           

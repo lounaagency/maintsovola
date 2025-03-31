@@ -18,7 +18,7 @@ interface RegisterFormProps {
 }
 
 const RegisterForm: React.FC<RegisterFormProps> = ({ switchToLogin }) => {
-  const { register } = useAuth();
+  const { signUp } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [nom, setNom] = useState("");
@@ -33,7 +33,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ switchToLogin }) => {
     setIsSubmitting(true);
 
     try {
-      await register(email, password, { nom, prenoms, role });
+      await signUp(email, password, { nom, prenoms, role });
     } catch (err) {
       console.error("Registration error:", err);
       setError(

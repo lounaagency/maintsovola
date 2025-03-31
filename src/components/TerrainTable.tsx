@@ -10,7 +10,7 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { Check, Edit } from "lucide-react";
+import { Check, Edit, MessageSquare } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -20,8 +20,9 @@ interface TerrainTableProps {
   type?: 'validated' | 'pending';
   userRole?: string;
   onTerrainUpdate?: () => void;
-  techniciens?: { id: string; nom: string; prenoms?: string }[];
+  techniciens?: { id_utilisateur: string; nom: string; prenoms?: string }[];
   onEdit?: (terrain: TerrainData) => void;
+  onContactTechnicien?: (terrain: TerrainData) => void;
 }
 
 const TerrainTable: React.FC<TerrainTableProps> = ({ 
@@ -30,7 +31,8 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
   userRole, 
   onTerrainUpdate,
   techniciens,
-  onEdit
+  onEdit,
+  onContactTechnicien
 }) => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -90,17 +92,43 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
 
   const canEdit = (terrain: TerrainData): boolean => {
     if (!user) return false;
-    if (userRole === 'superviseur') return true;
-    if (userRole === 'technicien' && terrain.id_technicien === user?.id) return true;
-    if (['agriculteur', 'investisseur'].includes(userRole || '') && terrain.id_tantsaha === user?.id) {
-      return true; 
+    
+    // Les agriculteurs et investisseurs peuvent modifier leurs terrains non validés
+    if (['agriculteur', 'investisseur'].includes(userRole || '') && terrain.id_tantsaha === user.id) {
+      return terrain.statut === false;
     }
+    
+    // Les techniciens peuvent modifier les terrains qui leur sont assignés
+    if (userRole === 'technicien' && terrain.id_technicien === user.id) {
+      return true;
+    }
+    
+    // Les superviseurs peuvent modifier tous les terrains
+    if (userRole === 'superviseur') return true;
+    
+    return false;
+  };
+
+  const canContactTechnicien = (terrain: TerrainData): boolean => {
+    if (!user) return false;
+    
+    // Les agriculteurs et investisseurs peuvent contacter le technicien pour leurs terrains validés
+    if (['agriculteur', 'investisseur'].includes(userRole || '') && terrain.id_tantsaha === user.id) {
+      return terrain.statut === true && !!terrain.id_technicien;
+    }
+    
     return false;
   };
 
   const handleEdit = (terrain: TerrainData) => {
     if (onEdit) {
       onEdit(terrain);
+    }
+  };
+
+  const handleContactTechnicien = (terrain: TerrainData) => {
+    if (onContactTechnicien) {
+      onContactTechnicien(terrain);
     }
   };
 
@@ -126,7 +154,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
             {type === 'validated' && (
               <TableHead>Surface validée</TableHead>
             )}
-            <TableHead></TableHead>
+            <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -136,7 +164,11 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                 <TableCell>{terrain.id_terrain}</TableCell>
                 <TableCell>{terrain.nom_terrain}</TableCell>
                 <TableCell>{terrain.surface_proposee} ha</TableCell>
-                <TableCell>{terrain.region_name}, {terrain.district_name}, {terrain.commune_name}</TableCell>
+                <TableCell>
+                  {terrain.region_name || 'N/A'}, 
+                  {terrain.district_name || 'N/A'}, 
+                  {terrain.commune_name || 'N/A'}
+                </TableCell>
                 <TableCell>{terrain.acces_eau ? "Oui" : "Non"}</TableCell>
                 <TableCell>{terrain.acces_route ? "Oui" : "Non"}</TableCell>
                 {type === 'pending' && userRole === 'superviseur' && (
@@ -150,7 +182,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                       >
                         <option value="">Sélectionner un technicien</option>
                         {techniciens?.map((tech) => (
-                          <option key={tech.id} value={tech.id}>
+                          <option key={tech.id_utilisateur} value={tech.id_utilisateur}>
                             {tech.nom} {tech.prenoms || ''}
                           </option>
                         ))}
@@ -161,28 +193,40 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                 {type === 'validated' && (
                   <TableCell>{terrain.surface_validee || terrain.surface_proposee} ha</TableCell>
                 )}
-                <TableCell className="flex gap-2">
-                  {type === 'pending' && (userRole === 'technicien' || userRole === 'superviseur') && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleValidate(terrain.id_terrain || 0)}
-                      disabled={userRole === 'technicien' && terrain.id_technicien !== user?.id}
-                    >
-                      <Check className="h-4 w-4 mr-1" />
-                      Valider
-                    </Button>
-                  )}
-                  {canEdit(terrain) && (
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => handleEdit(terrain)}
-                    >
-                      <Edit className="h-4 w-4 mr-1" />
-                      Modifier
-                    </Button>
-                  )}
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-2">
+                    {type === 'pending' && (userRole === 'technicien' || userRole === 'superviseur') && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleValidate(terrain.id_terrain || 0)}
+                        disabled={userRole === 'technicien' && terrain.id_technicien !== user?.id}
+                      >
+                        <Check className="h-4 w-4 mr-1" />
+                        Valider
+                      </Button>
+                    )}
+                    {canEdit(terrain) && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleEdit(terrain)}
+                      >
+                        <Edit className="h-4 w-4 mr-1" />
+                        Modifier
+                      </Button>
+                    )}
+                    {canContactTechnicien(terrain) && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleContactTechnicien(terrain)}
+                      >
+                        <MessageSquare className="h-4 w-4 mr-1" />
+                        Contacter
+                      </Button>
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
             ))

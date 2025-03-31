@@ -34,10 +34,14 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
   const { user, profile } = useAuth();
 
   useEffect(() => {
-    fetchComments();
+    if (postId) {
+      fetchComments();
+    }
   }, [postId]);
 
   const fetchComments = async () => {
+    if (!postId) return;
+    
     try {
       setLoading(true);
       
@@ -109,6 +113,11 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
     
     if (!newComment.trim()) {
       toast.error("Le commentaire ne peut pas être vide");
+      return;
+    }
+    
+    if (!postId) {
+      toast.error("ID du projet non défini");
       return;
     }
     

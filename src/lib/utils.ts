@@ -5,7 +5,10 @@ import { twMerge } from "tailwind-merge"
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
-export const formatCurrency = (amount: number, currency: string = "MGA") => {
+
+export const formatCurrency = (amount: number | null | undefined, currency: string = "MGA") => {
+  if (amount === null || amount === undefined) return "0 MGA";
+  
   return new Intl.NumberFormat("fr-MG", {
     style: "currency",
     currency: currency,
@@ -41,4 +44,3 @@ export const wktToGeoJSON = (wktString: string | null): GeoJSON.Feature | null =
     return null;
   }
 };
-
