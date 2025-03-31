@@ -305,12 +305,6 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
   };
 
   return (
-    {toast({
-        title: `Succès`,
-        description: selectedTerrain 
-          ? "Terrain choisis :"+selectedTerrain?.toString() 
-          : "Aucun terrain choisis.",
-      });}
     <Card className="w-full">
       <CardHeader>
         <CardTitle>{isEditing ? "Modifier le projet" : "Nouveau projet agricole"}</CardTitle>
@@ -390,20 +384,22 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
             </div>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t">
-            <div className="space-y-1">
-              <Label className="text-sm text-muted-foreground">Coût d'exploitation estimé</Label>
-              <p className="font-semibold">{formatCurrency(totalCost)}</p>
+          {cultures.map(culture => (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t">
+              <div className="space-y-1">
+                <Label className="text-sm text-muted-foreground">Coût d'exploitation estimé</Label>
+                <p className="font-semibold">{formatCurrency(totalCost)}</p>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-sm text-muted-foreground">Rendement total estimé</Label>
+                <p className="font-semibold">{totalYield.toLocaleString()} tonnes</p>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-sm text-muted-foreground">Chiffre d'affaires potentiel</Label>
+                <p className="font-semibold">{formatCurrency(totalRevenue)}</p>
+              </div>
             </div>
-            <div className="space-y-1">
-              <Label className="text-sm text-muted-foreground">Rendement total estimé</Label>
-              <p className="font-semibold">{totalYield.toLocaleString()} tonnes</p>
-            </div>
-            <div className="space-y-1">
-              <Label className="text-sm text-muted-foreground">Chiffre d'affaires potentiel</Label>
-              <p className="font-semibold">{formatCurrency(totalRevenue)}</p>
-            </div>
-          </div>
+          ))}
         </CardContent>
         
         <CardFooter className="flex justify-between">
