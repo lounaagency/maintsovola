@@ -49,6 +49,15 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
   const [totalCost, setTotalCost] = useState(0);
   const [totalYield, setTotalYield] = useState(0);
   const [totalRevenue, setTotalRevenue] = useState(0);
+  const [cultureCosts, setCultureCosts] = useState<CultureCostsItem[]>([]);
+
+  interface CultureCostsItem {
+    culture: string;
+    cost: number;
+    rendement: number;
+    prix_tonne: number;
+    revenu_previsionnel: number;
+  }
 
   useEffect(() => {
     fetchTerrains();
@@ -77,9 +86,26 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
   }, [selectedTerrain, terrains]);
   
   useEffect(() => {
-    calculateProjectMetrics();
-  }, [selectedCultures, surface, cultures]);
+    const updatedCosts = cultures
+      .filter(c => selectedCultures.includes(c.id_culture))
+      .map(c => {
+        const cost = c.cout_exploitation_ha * surface;
+        const rendement = c.rendement_ha * surface;
+        const revenu_previsionnel = rendement * c.prix_tonne;
+        return {
+          culture: c.nom_culture,
+          cost,
+          rendement,
+          prix_tonne: c.prix_tonne,
+          revenu_previsionnel
+        };
+      });
 
+    setCultureCosts(updatedCosts);
+    calculateProjectMetrics();
+    
+  }, [selectedCultures, surface, cultures]);
+  
   const fetchTerrains = async () => {
     try {
       // Get only validated terrains that are not already used in active projects
@@ -171,6 +197,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
     setTotalCost(parseFloat(calculatedTotalCost.toFixed(2)));
     setTotalYield(parseFloat(calculatedTotalYield.toFixed(2)));
     setTotalRevenue(parseFloat(calculatedTotalRevenue.toFixed(2)));
+    
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -296,6 +323,12 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
     }
   };
 
+   const handleCultureChange = (cultureId: number, checked: boolean) => {
+    setSelectedCultures(prev =>
+      checked ? [...prev, cultureId] : prev.filter(id => id !== cultureId)
+    );
+  };
+  /*
   const handleCultureChange = (cultureId: number, checked: boolean) => {
     if (checked) {
       setSelectedCultures(prev => [...prev, cultureId]);
@@ -303,7 +336,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
       setSelectedCultures(prev => prev.filter(id => id !== cultureId));
     }
   };
-
+*/
   return (
     <Card className="w-full">
       <CardHeader>
@@ -316,6 +349,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
             <Select 
               value={selectedTerrain?.toString() || ""} 
               onValueChange={(value) => setSelectedTerrain(parseInt(value))}
+              onChange={(e) => setSelectedTerrain(Number(e.target.value))}
               disabled={terrains.length === 0}
             >
               <SelectTrigger>
@@ -383,23 +417,67 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
               <p className="text-sm text-muted-foreground">La surface est définie par le terrain sélectionné</p>
             </div>
           </div>
+
           
-          {cultures.map(culture => (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t">
+        {cultureCosts.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t">
+              <div className="space-y-1">
+                <Label className="text-sm text-muted-foreground">Culture</Label>
+              </div>
               <div className="space-y-1">
                 <Label className="text-sm text-muted-foreground">Coût d'exploitation estimé</Label>
-                <p className="font-semibold">{formatCurrency(totalCost)}</p>
               </div>
               <div className="space-y-1">
                 <Label className="text-sm text-muted-foreground">Rendement total estimé</Label>
-                <p className="font-semibold">{totalYield.toLocaleString()} tonnes</p>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-sm text-muted-foreground">Prix de la tonne</Label>
               </div>
               <div className="space-y-1">
                 <Label className="text-sm text-muted-foreground">Chiffre d'affaires potentiel</Label>
-                <p className="font-semibold">{formatCurrency(totalRevenue)}</p>
+              </div>
+            </div>
+          {cultureCosts.map(({ culture, cost, rendement, prix_tonne, revenu_previsionnel }) => (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t">
+              <div className="space-y-1">
+                <p className="font-semibold">{culture}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="font-semibold">{formatCurrency(cost)}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="font-semibold">{rendement.toLocaleString()} tonnes</p>
+              </div>
+              <div className="space-y-1">
+                <p className="font-semibold">{formatCurrency(prix_tonne)}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="font-semibold">{formatCurrency(revenu_previsionnel)}</p>
               </div>
             </div>
           ))}
+
+              <div className="space-y-1">
+                <p className="font-semibold">Total Projet</p>
+              </div>
+              <div className="space-y-1">
+                <p className="font-semibold">{formatCurrency(totalCost)}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="font-semibold">{totalYield.toLocaleString()} tonnes</p>
+              </div>
+              <div className="space-y-1">
+                <p className="font-semibold">{totalYield.toLocaleString()} tonnes</p>
+              </div>
+              <div className="space-y-1">
+                <p className="font-semibold">{formatCurrency(totalRevenue)}</p>
+              </div>
+
+      
+        ) : (
+          <p className="text-gray-500">Sélectionnez un terrain et des cultures.</p>
+        )}
+            
         </CardContent>
         
         <CardFooter className="flex justify-between">
