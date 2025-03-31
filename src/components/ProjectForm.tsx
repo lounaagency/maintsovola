@@ -141,8 +141,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
         (isEditing && initialData?.id_terrain === t.id_terrain)
       );
       
-    console.log("🔍 usedTerrainIds:", usedTerrainIds);
-    console.log("🔍 activeProjects:", activeProjects);
+    console.log("🔍 selectedTerrain:", selectedTerrain);
     console.log("🔍 availableTerrains:", availableTerrains);
       setTerrains(availableTerrains || []);
     } catch (error) {
