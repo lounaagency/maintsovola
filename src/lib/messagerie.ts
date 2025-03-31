@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Message, Conversation } from "@/types/message";
 import { useAuth } from "@/contexts/AuthContext";
@@ -180,4 +179,55 @@ export const useGetMessagesRealTime = (conversationId: number, callback: (messag
       supabase.removeChannel(channel);
     };
   }, [conversationId, user, callback]);
+};
+
+/**
+ * Create a conversation between two users if it doesn't already exist
+ * @param userId1 - First user ID
+ * @param userId2 - Second user ID
+ * @returns The conversation ID
+ */
+export const createConversationIfNotExists = async (
+  userId1: string,
+  userId2: string
+): Promise<number | null> => {
+  try {
+    // Check if conversation already exists
+    const { data: existingConversation, error: findError } = await supabase
+      .from("conversation")
+      .select("id_conversation")
+      .or(`id_utilisateur1.eq.${userId1},id_utilisateur1.eq.${userId2}`)
+      .or(`id_utilisateur2.eq.${userId1},id_utilisateur2.eq.${userId2}`)
+      .maybeSingle();
+
+    if (findError) {
+      console.error("Error checking for existing conversation:", findError);
+      return null;
+    }
+
+    // Return existing conversation if found
+    if (existingConversation) {
+      return existingConversation.id_conversation;
+    }
+
+    // Create new conversation if not found
+    const { data: newConversation, error: insertError } = await supabase
+      .from("conversation")
+      .insert({
+        id_utilisateur1: userId1,
+        id_utilisateur2: userId2,
+      })
+      .select("id_conversation")
+      .single();
+
+    if (insertError) {
+      console.error("Error creating conversation:", insertError);
+      return null;
+    }
+
+    return newConversation.id_conversation;
+  } catch (error) {
+    console.error("Error in createConversationIfNotExists:", error);
+    return null;
+  }
 };

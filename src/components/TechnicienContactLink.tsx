@@ -1,94 +1,100 @@
 
-import React, { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
+import React, { useState } from "react";
+import { Button } from "./ui/button";
 import { MessageCircle } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import MessageDialog from "@/components/MessageDialog";
+import { supabase } from "@/integrations/supabase/client";
+import UserAvatar from "./UserAvatar";
+import MessageDialog from "./MessageDialog";
 
 interface TechnicienContactLinkProps {
-  technicienId: string | null | undefined;
-  projetId: number;
+  technicienId: string;
+  className?: string;
+  size?: "sm" | "md" | "lg";
+  showName?: boolean;
 }
 
-interface TechnicienInfo {
-  id_utilisateur: string;
-  nom: string;
-  prenoms?: string;
-  photo_profil?: string;
-}
-
-const TechnicienContactLink: React.FC<TechnicienContactLinkProps> = ({ 
+const TechnicienContactLink: React.FC<TechnicienContactLinkProps> = ({
   technicienId,
-  projetId 
+  className = "",
+  size = "sm",
+  showName = false
 }) => {
   const { user } = useAuth();
-  const [technicien, setTechnicien] = useState<TechnicienInfo | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isMessageDialogOpen, setIsMessageDialogOpen] = useState(false);
+  const [technicien, setTechnicien] = useState<{
+    id: string;
+    name: string;
+    photo?: string;
+  } | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    if (technicienId) {
-      fetchTechnicienInfo();
-    } else {
-      setIsLoading(false);
-    }
-  }, [technicienId]);
-
-  const fetchTechnicienInfo = async () => {
+  // Fetch technicien details when needed
+  const fetchTechnicienDetails = async () => {
+    if (!technicienId || technicien) return;
+    
+    setIsLoading(true);
     try {
       const { data, error } = await supabase
         .from('utilisateur')
         .select('id_utilisateur, nom, prenoms, photo_profil')
         .eq('id_utilisateur', technicienId)
         .single();
-
+        
       if (error) throw error;
-      setTechnicien(data);
+      
+      if (data) {
+        setTechnicien({
+          id: data.id_utilisateur,
+          name: `${data.nom} ${data.prenoms || ''}`.trim(),
+          photo: data.photo_profil
+        });
+      }
     } catch (error) {
-      console.error("Erreur lors de la récupération des informations du technicien:", error);
+      console.error('Erreur lors de la récupération des détails du technicien:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  if (isLoading) {
-    return <div className="text-sm text-gray-500">Chargement...</div>;
+  const handleClick = async () => {
+    await fetchTechnicienDetails();
+    setIsMessageDialogOpen(true);
+  };
+
+  if (!user || user.id === technicienId) {
+    return null;
   }
 
-  if (!technicien) {
-    return <div className="text-sm text-gray-500">Aucun technicien assigné</div>;
-  }
+  const buttonSize = {
+    sm: "h-8 px-2 text-xs",
+    md: "h-9 px-3 text-sm",
+    lg: "h-10 px-4"
+  }[size];
 
   return (
-    <div>
-      <div className="flex items-center mb-2">
-        <div className="mr-2">
-          <span className="font-medium">Technicien:</span>{" "}
-          <span>{technicien.nom} {technicien.prenoms || ''}</span>
-        </div>
-        
-        {user && user.id !== technicienId && (
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => setIsDialogOpen(true)}
-            title="Contacter le technicien"
-          >
-            <MessageCircle className="h-4 w-4 mr-1" />
-            <span className="text-xs">Contacter</span>
-          </Button>
-        )}
-      </div>
+    <>
+      <Button 
+        variant="ghost" 
+        size="sm"
+        className={`${buttonSize} flex items-center gap-1 hover:bg-muted/50 ${className}`}
+        onClick={handleClick}
+      >
+        <MessageCircle className="h-4 w-4" />
+        {showName && <span>Contacter</span>}
+      </Button>
 
-      <MessageDialog
-        isOpen={isDialogOpen}
-        onClose={() => setIsDialogOpen(false)}
-        recipientId={technicien.id_utilisateur}
-        recipientName={`${technicien.nom} ${technicien.prenoms || ''}`}
-        recipientPhoto={technicien.photo_profil}
-      />
-    </div>
+      {isMessageDialogOpen && technicien && (
+        <MessageDialog
+          isOpen={isMessageDialogOpen}
+          onClose={() => setIsMessageDialogOpen(false)}
+          recipient={{
+            id: technicien.id,
+            name: technicien.name
+          }}
+        />
+      )}
+    </>
   );
 };
 

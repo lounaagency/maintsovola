@@ -63,10 +63,11 @@ const MessageDialog: React.FC<MessageDialogProps> = ({
 
       // Envoyer le message
       const { error } = await supabase.from("message").insert({
-        conversation_id: conversationId,
-        sender_id: user.id,
-        content: message.trim(),
-        timestamp: new Date().toISOString(),
+        id_conversation: conversationId,
+        id_expediteur: user.id,
+        id_destinataire: recipient.id,
+        contenu: message.trim(),
+        date_envoi: new Date().toISOString(),
       });
 
       if (error) throw error;

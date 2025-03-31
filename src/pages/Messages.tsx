@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,7 +22,9 @@ const Messages: React.FC = () => {
   const [userSearchQuery, setUserSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
-  
+  const [isMessageDialogOpen, setIsMessageDialogOpen] = useState(false);
+  const [selectedRecipient, setSelectedRecipient] = useState<UserProfile | null>(null);
+
   useEffect(() => {
     if (user) {
       fetchConversations();
@@ -250,7 +251,7 @@ const Messages: React.FC = () => {
                 if (!message.user?.id) return;
                 setSelectedUser({
                   id_utilisateur: message.user.id,
-                  nom: message.user.name,
+                  name: message.user.name,
                   photo_profil: message.user.avatar
                 });
                 setIsDialogOpen(true);
@@ -286,10 +287,24 @@ const Messages: React.FC = () => {
             setIsDialogOpen(false);
             setSelectedUser(null);
           }}
-          recipientId={selectedUser.id_utilisateur}
-          recipientName={`${selectedUser.nom} ${selectedUser.prenoms || ''}`}
-          recipientPhoto={selectedUser.photo_profil}
-          onMessageSent={onMessageSent}
+          recipient={{
+            id: selectedUser.id,
+            name: selectedUser.name
+          }}
+        />
+      )}
+      
+      {isMessageDialogOpen && selectedRecipient && (
+        <MessageDialog
+          isOpen={isMessageDialogOpen}
+          onClose={() => {
+            setIsMessageDialogOpen(false);
+            fetchConversations(); // Refresh conversations list after sending a message
+          }}
+          recipient={{
+            id: selectedRecipient.id,
+            name: selectedRecipient.name
+          }}
         />
       )}
     </div>
