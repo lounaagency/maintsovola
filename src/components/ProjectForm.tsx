@@ -64,7 +64,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
     fetchCultures();
     
     if (isEditing && initialData) {
-      setSelectedTerrain(initialData.terrain.id_terrain);
+      setSelectedTerrain(initialData.id_terrain);
       setDescription(initialData.description || "");
       setSurface(initialData.surface_ha || 0);
       // Load selected cultures if editing
