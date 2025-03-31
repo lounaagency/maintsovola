@@ -140,6 +140,10 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
         !usedTerrainIds.includes(t.id_terrain) || 
         (isEditing && initialData?.id_terrain === t.id_terrain)
       );
+      
+    console.log("🔍 usedTerrainIds:", usedTerrainIds);
+    console.log("🔍 activeProjects:", activeProjects);
+    console.log("🔍 availableTerrains:", availableTerrains);
       setTerrains(availableTerrains || []);
     } catch (error) {
       console.error('Error fetching terrains:', error);
@@ -325,15 +329,6 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
       checked ? [...prev, cultureId] : prev.filter(id => id !== cultureId)
     );
   };
-  /*
-  const handleCultureChange = (cultureId: number, checked: boolean) => {
-    if (checked) {
-      setSelectedCultures(prev => [...prev, cultureId]);
-    } else {
-      setSelectedCultures(prev => prev.filter(id => id !== cultureId));
-    }
-  };
-*/
   return (
     <Card className="w-full">
       <CardHeader>
@@ -420,7 +415,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
               {cultureCosts.map(({ culture, cost, rendement, prix_tonne, revenu_previsionnel }) => (
                 <div key={culture} className="p-4 border rounded-lg shadow-sm bg-white">
                   <p className="font-bold text-lg">{culture}</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 mt-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mt-2">
                     <div>
                       <p className="text-sm text-muted-foreground">Coût d'exploitation</p>
                       <p className="font-semibold">{formatCurrency(cost)}</p>
@@ -444,7 +439,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
               {/* Totaux */}
               <div className="p-4 border-t font-bold">
                 <p className="text-lg">Total Projet</p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 mt-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mt-2">
                   <div>
                     <p className="text-sm text-muted-foreground">Total Coût</p>
                     <p>{formatCurrency(totalCost)}</p>
