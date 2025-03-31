@@ -75,9 +75,12 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
   }, [initialData, isEditing]);
   
   useEffect(() => {
+    
+    console.log("🔍 initialData:", initialData);
     if (initialData?.id_terrain) {
-      setSelectedCultures(initialData.id_terrain);
+      setSelectedTerrain(initialData.id_terrain);
     }
+    console.log("🔍 selectedTerrain:", selectedTerrain);
     if (selectedTerrain) {
       // Find the terrain and set its surface
       const terrain = terrains.find(t => t.id_terrain === selectedTerrain);
@@ -144,8 +147,6 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
         (isEditing && initialData?.id_terrain === t.id_terrain)
       );
       
-    console.log("🔍 selectedTerrain:", selectedTerrain);
-    console.log("🔍 availableTerrains:", availableTerrains);
       setTerrains(availableTerrains || []);
     } catch (error) {
       console.error('Error fetching terrains:', error);
