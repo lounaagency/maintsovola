@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Popover,
   PopoverContent,
@@ -10,6 +10,10 @@ import { Bell } from "lucide-react";
 import { Button } from "./ui/button";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { Link } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface NotificationItem {
   id: string;
@@ -18,53 +22,15 @@ interface NotificationItem {
   timestamp: string;
   read: boolean;
   type: "info" | "success" | "warning" | "error";
+  link?: string;
+  entity_id?: string;
+  entity_type?: "terrain" | "projet" | "jalon" | "investissement";
 }
 
-// Sample notifications data
-const sampleNotifications: NotificationItem[] = [
-  {
-    id: "1",
-    title: "Nouveau message",
-    message: "Vous avez reçu un nouveau message de Jean Dupont",
-    timestamp: "2023-07-15T10:30:00",
-    read: false,
-    type: "info",
-  },
-  {
-    id: "2",
-    title: "Terrain validé",
-    message: "Votre terrain 'Parcelle Sud' a été validé par le technicien",
-    timestamp: "2023-07-14T16:45:00",
-    read: true,
-    type: "success",
-  },
-  {
-    id: "3",
-    title: "Nouvel investissement",
-    message: "Un investisseur a financé votre projet à hauteur de 500 000 Ar",
-    timestamp: "2023-07-13T09:15:00",
-    read: true,
-    type: "success",
-  },
-  {
-    id: "4",
-    title: "Jalon à réaliser",
-    message: "Le jalon 'Semis' doit être réalisé dans les 3 prochains jours",
-    timestamp: "2023-07-12T14:20:00",
-    read: false,
-    type: "warning",
-  },
-  {
-    id: "5",
-    title: "Problème détecté",
-    message: "Le technicien a signalé un problème sur votre terrain",
-    timestamp: "2023-07-11T11:10:00",
-    read: false,
-    type: "error",
-  },
-];
-
-const NotificationItem: React.FC<{ notification: NotificationItem }> = ({ notification }) => {
+const NotificationItem: React.FC<{ notification: NotificationItem; onRead: (id: string) => void }> = ({ 
+  notification,
+  onRead 
+}) => {
   const typeStyles = {
     info: "bg-blue-50 border-blue-200",
     success: "bg-green-50 border-green-200",
@@ -72,7 +38,13 @@ const NotificationItem: React.FC<{ notification: NotificationItem }> = ({ notifi
     error: "bg-red-50 border-red-200",
   };
 
-  return (
+  const handleClick = () => {
+    if (!notification.read) {
+      onRead(notification.id);
+    }
+  };
+
+  const content = (
     <motion.div
       initial={{ opacity: 0, y: 5 }}
       animate={{ opacity: 1, y: 0 }}
@@ -81,6 +53,7 @@ const NotificationItem: React.FC<{ notification: NotificationItem }> = ({ notifi
         notification.read ? "bg-gray-50 border-gray-200" : typeStyles[notification.type],
         !notification.read && "font-medium"
       )}
+      onClick={handleClick}
     >
       {!notification.read && (
         <span className="absolute top-3 right-3 w-2 h-2 rounded-full bg-blue-500"></span>
@@ -92,14 +65,195 @@ const NotificationItem: React.FC<{ notification: NotificationItem }> = ({ notifi
       </p>
     </motion.div>
   );
+
+  return notification.link ? (
+    <Link to={notification.link} className="block">
+      {content}
+    </Link>
+  ) : (
+    content
+  );
 };
 
 const Notifications: React.FC = () => {
-  const [notifications, setNotifications] = useState<NotificationItem[]>(sampleNotifications);
+  const { user, profile } = useAuth();
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const unreadCount = notifications.filter((n) => !n.read).length;
 
-  const markAllAsRead = () => {
-    setNotifications(notifications.map((n) => ({ ...n, read: true })));
+  const fetchNotifications = async () => {
+    if (!user) return;
+    
+    try {
+      setLoading(true);
+      
+      const { data, error } = await supabase
+        .from('notification')
+        .select('*')
+        .eq('id_destinataire', user.id)
+        .order('date_creation', { ascending: false })
+        .limit(20);
+        
+      if (error) throw error;
+      
+      // Transform database notifications to our NotificationItem format
+      const transformedNotifications: NotificationItem[] = data.map(notification => {
+        // Determine notification type based on status or other fields
+        let type: "info" | "success" | "warning" | "error" = "info";
+        if (notification.type === "validation") type = "success";
+        if (notification.type === "alerte") type = "warning";
+        if (notification.type === "erreur") type = "error";
+        
+        // Create link based on entity type
+        let link = "";
+        if (notification.entity_type === "terrain") {
+          link = `/terrain?id=${notification.entity_id}`;
+        } else if (notification.entity_type === "projet") {
+          link = `/feed?project=${notification.entity_id}`;
+        } else if (notification.entity_type === "jalon") {
+          link = `/projet?id=${notification.projet_id}#jalons`;
+        } else if (notification.entity_type === "investissement") {
+          link = `/projet?id=${notification.projet_id}#investissements`;
+        }
+        
+        return {
+          id: notification.id_notification.toString(),
+          title: notification.titre,
+          message: notification.message,
+          timestamp: notification.date_creation,
+          read: notification.lu,
+          type,
+          link,
+          entity_id: notification.entity_id,
+          entity_type: notification.entity_type
+        };
+      });
+      
+      setNotifications(transformedNotifications);
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+      toast.error("Impossible de charger les notifications");
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  useEffect(() => {
+    fetchNotifications();
+    
+    // Subscribe to new notifications via Supabase Realtime
+    if (user) {
+      const channel = supabase
+        .channel('notification-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'notification',
+            filter: `id_destinataire=eq.${user.id}`
+          },
+          (payload) => {
+            const newNotification = payload.new as any;
+            
+            // Add the new notification to the list
+            setNotifications(prev => {
+              // Check if notification already exists
+              const exists = prev.some(n => n.id === newNotification.id_notification.toString());
+              if (exists) return prev;
+              
+              // Determine notification type
+              let type: "info" | "success" | "warning" | "error" = "info";
+              if (newNotification.type === "validation") type = "success";
+              if (newNotification.type === "alerte") type = "warning";
+              if (newNotification.type === "erreur") type = "error";
+              
+              // Create link based on entity type
+              let link = "";
+              if (newNotification.entity_type === "terrain") {
+                link = `/terrain?id=${newNotification.entity_id}`;
+              } else if (newNotification.entity_type === "projet") {
+                link = `/feed?project=${newNotification.entity_id}`;
+              } else if (newNotification.entity_type === "jalon") {
+                link = `/projet?id=${newNotification.projet_id}#jalons`;
+              } else if (newNotification.entity_type === "investissement") {
+                link = `/projet?id=${newNotification.projet_id}#investissements`;
+              }
+              
+              const formattedNotification: NotificationItem = {
+                id: newNotification.id_notification.toString(),
+                title: newNotification.titre,
+                message: newNotification.message,
+                timestamp: newNotification.date_creation,
+                read: newNotification.lu,
+                type,
+                link,
+                entity_id: newNotification.entity_id,
+                entity_type: newNotification.entity_type
+              };
+              
+              // Show toast for new notification
+              toast(formattedNotification.title, {
+                description: formattedNotification.message,
+              });
+              
+              return [formattedNotification, ...prev];
+            });
+          }
+        )
+        .subscribe();
+        
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [user]);
+
+  const markAsRead = async (notificationId: string) => {
+    try {
+      const { error } = await supabase
+        .from('notification')
+        .update({ lu: true })
+        .eq('id_notification', notificationId);
+        
+      if (error) throw error;
+      
+      // Update local state
+      setNotifications(prevNotifications => 
+        prevNotifications.map(notification => 
+          notification.id === notificationId 
+            ? { ...notification, read: true }
+            : notification
+        )
+      );
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+    }
+  };
+
+  const markAllAsRead = async () => {
+    if (!user) return;
+    
+    try {
+      // Update all unread notifications for this user
+      const { error } = await supabase
+        .from('notification')
+        .update({ lu: true })
+        .eq('id_destinataire', user.id)
+        .eq('lu', false);
+        
+      if (error) throw error;
+      
+      // Update local state
+      setNotifications(prevNotifications => 
+        prevNotifications.map(notification => ({ ...notification, read: true }))
+      );
+      
+      toast.success("Toutes les notifications ont été marquées comme lues");
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
+      toast.error("Une erreur s'est produite");
+    }
   };
 
   return (
@@ -129,9 +283,17 @@ const Notifications: React.FC = () => {
           )}
         </div>
         <ScrollArea className="h-[300px] p-4">
-          {notifications.length > 0 ? (
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-primary"></div>
+            </div>
+          ) : notifications.length > 0 ? (
             notifications.map((notification) => (
-              <NotificationItem key={notification.id} notification={notification} />
+              <NotificationItem 
+                key={notification.id} 
+                notification={notification} 
+                onRead={markAsRead}
+              />
             ))
           ) : (
             <div className="text-center py-8 text-gray-500">

@@ -1,3 +1,4 @@
+
 export interface Conversation {
   id_conversation: number;
   id_utilisateur1: string;
@@ -19,6 +20,15 @@ export interface Message {
   contenu: string;
   date_envoi: string;
   lu: boolean;
+}
+
+export interface ConversationMessage extends Message {
+  sender?: {
+    id_utilisateur: string;
+    nom: string;
+    prenoms: string | null;
+    photo_profil: string | null;
+  };
 }
 
 export interface Recipient {

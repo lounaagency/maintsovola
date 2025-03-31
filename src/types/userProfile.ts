@@ -1,11 +1,15 @@
 
 export interface UserProfile {
   id_utilisateur: string;
+  id?: string; // For compatibility with existing code
   nom: string;
   prenoms?: string;
   email?: string;
   photo_profil?: string;
   photo_couverture?: string;
+  telephone?: string;
+  adresse?: string;
+  bio?: string;
   id_role?: number;
   nom_role?: string;
   telephones?: UserTelephone[];

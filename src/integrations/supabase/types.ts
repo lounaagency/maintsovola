@@ -9,6 +9,30 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      abonnement: {
+        Row: {
+          created_at: string | null
+          id_abonne: string
+          id_abonnement: number
+          id_suivi: string
+          modified_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id_abonne: string
+          id_abonnement?: number
+          id_suivi: string
+          modified_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id_abonne?: string
+          id_abonnement?: number
+          id_suivi?: string
+          modified_at?: string | null
+        }
+        Relationships: []
+      }
       aimer_commentaire: {
         Row: {
           created_at: string | null
@@ -92,6 +116,20 @@ export type Database = {
             referencedColumns: ["id_projet"]
           },
           {
+            foreignKeyName: "aimer_projet_id_projet_fkey"
+            columns: ["id_projet"]
+            isOneToOne: false
+            referencedRelation: "vue_suivi_financier_projet"
+            referencedColumns: ["id_projet"]
+          },
+          {
+            foreignKeyName: "aimer_projet_id_projet_fkey"
+            columns: ["id_projet"]
+            isOneToOne: false
+            referencedRelation: "vue_suivi_jalons_projet"
+            referencedColumns: ["id_projet"]
+          },
+          {
             foreignKeyName: "fk_aimer_projet_id_utilisateur_utilisateur"
             columns: ["id_utilisateur"]
             isOneToOne: false
@@ -154,6 +192,20 @@ export type Database = {
             columns: ["id_projet"]
             isOneToOne: false
             referencedRelation: "projet"
+            referencedColumns: ["id_projet"]
+          },
+          {
+            foreignKeyName: "commentaire_id_projet_fkey"
+            columns: ["id_projet"]
+            isOneToOne: false
+            referencedRelation: "vue_suivi_financier_projet"
+            referencedColumns: ["id_projet"]
+          },
+          {
+            foreignKeyName: "commentaire_id_projet_fkey"
+            columns: ["id_projet"]
+            isOneToOne: false
+            referencedRelation: "vue_suivi_jalons_projet"
             referencedColumns: ["id_projet"]
           },
           {
@@ -260,6 +312,142 @@ export type Database = {
           },
         ]
       }
+      cout_jalon_projet: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id_cout_jalon_projet: number
+          id_jalon_projet: number
+          id_projet: number
+          modified_at: string | null
+          montant_par_hectare: number
+          montant_total: number
+          montant_total_reel: number | null
+          statut_paiement: string
+          type_depense: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id_cout_jalon_projet?: number
+          id_jalon_projet: number
+          id_projet: number
+          modified_at?: string | null
+          montant_par_hectare: number
+          montant_total: number
+          montant_total_reel?: number | null
+          statut_paiement?: string
+          type_depense: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id_cout_jalon_projet?: number
+          id_jalon_projet?: number
+          id_projet?: number
+          modified_at?: string | null
+          montant_par_hectare?: number
+          montant_total?: number
+          montant_total_reel?: number | null
+          statut_paiement?: string
+          type_depense?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cout_jalon_projet_id_jalon_projet_fkey"
+            columns: ["id_jalon_projet"]
+            isOneToOne: false
+            referencedRelation: "jalon_projet"
+            referencedColumns: ["id_jalon_projet"]
+          },
+          {
+            foreignKeyName: "cout_jalon_projet_id_jalon_projet_fkey"
+            columns: ["id_jalon_projet"]
+            isOneToOne: false
+            referencedRelation: "vue_suivi_jalons_projet"
+            referencedColumns: ["id_jalon_projet"]
+          },
+          {
+            foreignKeyName: "cout_jalon_projet_id_projet_fkey"
+            columns: ["id_projet"]
+            isOneToOne: false
+            referencedRelation: "projet"
+            referencedColumns: ["id_projet"]
+          },
+          {
+            foreignKeyName: "cout_jalon_projet_id_projet_fkey"
+            columns: ["id_projet"]
+            isOneToOne: false
+            referencedRelation: "vue_suivi_financier_projet"
+            referencedColumns: ["id_projet"]
+          },
+          {
+            foreignKeyName: "cout_jalon_projet_id_projet_fkey"
+            columns: ["id_projet"]
+            isOneToOne: false
+            referencedRelation: "vue_suivi_jalons_projet"
+            referencedColumns: ["id_projet"]
+          },
+        ]
+      }
+      cout_jalon_reference: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id_cout_jalon_reference: number
+          id_culture: number
+          id_jalon_agricole: number
+          modified_at: string | null
+          montant_par_hectare: number
+          type_depense: string
+          unite: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id_cout_jalon_reference?: number
+          id_culture: number
+          id_jalon_agricole: number
+          modified_at?: string | null
+          montant_par_hectare: number
+          type_depense: string
+          unite?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id_cout_jalon_reference?: number
+          id_culture?: number
+          id_jalon_agricole?: number
+          modified_at?: string | null
+          montant_par_hectare?: number
+          type_depense?: string
+          unite?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cout_jalon_reference_id_culture_fkey"
+            columns: ["id_culture"]
+            isOneToOne: false
+            referencedRelation: "culture"
+            referencedColumns: ["id_culture"]
+          },
+          {
+            foreignKeyName: "cout_jalon_reference_id_jalon_agricole_fkey"
+            columns: ["id_jalon_agricole"]
+            isOneToOne: false
+            referencedRelation: "jalon_agricole"
+            referencedColumns: ["id_jalon_agricole"]
+          },
+          {
+            foreignKeyName: "cout_jalon_reference_id_jalon_agricole_fkey"
+            columns: ["id_jalon_agricole"]
+            isOneToOne: false
+            referencedRelation: "vue_suivi_jalons_projet"
+            referencedColumns: ["id_jalon_agricole"]
+          },
+        ]
+      }
       culture: {
         Row: {
           cout_exploitation_ha: number | null
@@ -328,6 +516,83 @@ export type Database = {
           },
         ]
       }
+      historique_paiement: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          date_paiement: string | null
+          id_cout_jalon_projet: number | null
+          id_historique_paiement: number
+          id_projet: number
+          id_responsable_financier: string | null
+          id_technicien: string | null
+          modified_at: string | null
+          montant: number
+          observation: string | null
+          reference_paiement: string | null
+          type_paiement: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          date_paiement?: string | null
+          id_cout_jalon_projet?: number | null
+          id_historique_paiement?: number
+          id_projet: number
+          id_responsable_financier?: string | null
+          id_technicien?: string | null
+          modified_at?: string | null
+          montant: number
+          observation?: string | null
+          reference_paiement?: string | null
+          type_paiement: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          date_paiement?: string | null
+          id_cout_jalon_projet?: number | null
+          id_historique_paiement?: number
+          id_projet?: number
+          id_responsable_financier?: string | null
+          id_technicien?: string | null
+          modified_at?: string | null
+          montant?: number
+          observation?: string | null
+          reference_paiement?: string | null
+          type_paiement?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "historique_paiement_id_cout_jalon_projet_fkey"
+            columns: ["id_cout_jalon_projet"]
+            isOneToOne: false
+            referencedRelation: "cout_jalon_projet"
+            referencedColumns: ["id_cout_jalon_projet"]
+          },
+          {
+            foreignKeyName: "historique_paiement_id_projet_fkey"
+            columns: ["id_projet"]
+            isOneToOne: false
+            referencedRelation: "projet"
+            referencedColumns: ["id_projet"]
+          },
+          {
+            foreignKeyName: "historique_paiement_id_projet_fkey"
+            columns: ["id_projet"]
+            isOneToOne: false
+            referencedRelation: "vue_suivi_financier_projet"
+            referencedColumns: ["id_projet"]
+          },
+          {
+            foreignKeyName: "historique_paiement_id_projet_fkey"
+            columns: ["id_projet"]
+            isOneToOne: false
+            referencedRelation: "vue_suivi_jalons_projet"
+            referencedColumns: ["id_projet"]
+          },
+        ]
+      }
       investissement: {
         Row: {
           created_at: string | null
@@ -387,6 +652,20 @@ export type Database = {
             referencedRelation: "projet"
             referencedColumns: ["id_projet"]
           },
+          {
+            foreignKeyName: "investissement_id_projet_fkey"
+            columns: ["id_projet"]
+            isOneToOne: false
+            referencedRelation: "vue_suivi_financier_projet"
+            referencedColumns: ["id_projet"]
+          },
+          {
+            foreignKeyName: "investissement_id_projet_fkey"
+            columns: ["id_projet"]
+            isOneToOne: false
+            referencedRelation: "vue_suivi_jalons_projet"
+            referencedColumns: ["id_projet"]
+          },
         ]
       }
       jalon: {
@@ -427,6 +706,122 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "culture"
             referencedColumns: ["id_culture"]
+          },
+        ]
+      }
+      jalon_agricole: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          delai_apres_lancement: number
+          description: string | null
+          id_culture: number
+          id_jalon_agricole: number
+          modified_at: string | null
+          nom_jalon: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          delai_apres_lancement: number
+          description?: string | null
+          id_culture: number
+          id_jalon_agricole?: number
+          modified_at?: string | null
+          nom_jalon: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          delai_apres_lancement?: number
+          description?: string | null
+          id_culture?: number
+          id_jalon_agricole?: number
+          modified_at?: string | null
+          nom_jalon?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jalon_agricole_id_culture_fkey"
+            columns: ["id_culture"]
+            isOneToOne: false
+            referencedRelation: "culture"
+            referencedColumns: ["id_culture"]
+          },
+        ]
+      }
+      jalon_projet: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          date_prev_planifiee: string
+          date_reelle_execution: string | null
+          id_jalon_agricole: number
+          id_jalon_projet: number
+          id_projet: number
+          modified_at: string | null
+          observations: string | null
+          statut: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          date_prev_planifiee: string
+          date_reelle_execution?: string | null
+          id_jalon_agricole: number
+          id_jalon_projet?: number
+          id_projet: number
+          modified_at?: string | null
+          observations?: string | null
+          statut?: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          date_prev_planifiee?: string
+          date_reelle_execution?: string | null
+          id_jalon_agricole?: number
+          id_jalon_projet?: number
+          id_projet?: number
+          modified_at?: string | null
+          observations?: string | null
+          statut?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jalon_projet_id_jalon_agricole_fkey"
+            columns: ["id_jalon_agricole"]
+            isOneToOne: false
+            referencedRelation: "jalon_agricole"
+            referencedColumns: ["id_jalon_agricole"]
+          },
+          {
+            foreignKeyName: "jalon_projet_id_jalon_agricole_fkey"
+            columns: ["id_jalon_agricole"]
+            isOneToOne: false
+            referencedRelation: "vue_suivi_jalons_projet"
+            referencedColumns: ["id_jalon_agricole"]
+          },
+          {
+            foreignKeyName: "jalon_projet_id_projet_fkey"
+            columns: ["id_projet"]
+            isOneToOne: false
+            referencedRelation: "projet"
+            referencedColumns: ["id_projet"]
+          },
+          {
+            foreignKeyName: "jalon_projet_id_projet_fkey"
+            columns: ["id_projet"]
+            isOneToOne: false
+            referencedRelation: "vue_suivi_financier_projet"
+            referencedColumns: ["id_projet"]
+          },
+          {
+            foreignKeyName: "jalon_projet_id_projet_fkey"
+            columns: ["id_projet"]
+            isOneToOne: false
+            referencedRelation: "vue_suivi_jalons_projet"
+            referencedColumns: ["id_projet"]
           },
         ]
       }
@@ -509,6 +904,7 @@ export type Database = {
         Row: {
           created_at: string | null
           created_by: string | null
+          description: string | null
           geom: unknown | null
           id_commune: number | null
           id_district: number | null
@@ -521,10 +917,12 @@ export type Database = {
           modified_at: string | null
           statut: string | null
           surface_ha: number
+          titre: string | null
         }
         Insert: {
           created_at?: string | null
           created_by?: string | null
+          description?: string | null
           geom?: unknown | null
           id_commune?: number | null
           id_district?: number | null
@@ -537,10 +935,12 @@ export type Database = {
           modified_at?: string | null
           statut?: string | null
           surface_ha: number
+          titre?: string | null
         }
         Update: {
           created_at?: string | null
           created_by?: string | null
+          description?: string | null
           geom?: unknown | null
           id_commune?: number | null
           id_district?: number | null
@@ -553,6 +953,7 @@ export type Database = {
           modified_at?: string | null
           statut?: string | null
           surface_ha?: number
+          titre?: string | null
         }
         Relationships: [
           {
@@ -685,6 +1086,20 @@ export type Database = {
             referencedRelation: "projet"
             referencedColumns: ["id_projet"]
           },
+          {
+            foreignKeyName: "projet_culture_id_projet_fkey"
+            columns: ["id_projet"]
+            isOneToOne: false
+            referencedRelation: "vue_suivi_financier_projet"
+            referencedColumns: ["id_projet"]
+          },
+          {
+            foreignKeyName: "projet_culture_id_projet_fkey"
+            columns: ["id_projet"]
+            isOneToOne: false
+            referencedRelation: "vue_suivi_jalons_projet"
+            referencedColumns: ["id_projet"]
+          },
         ]
       }
       projet_jalon: {
@@ -734,6 +1149,20 @@ export type Database = {
             columns: ["id_projet"]
             isOneToOne: false
             referencedRelation: "projet"
+            referencedColumns: ["id_projet"]
+          },
+          {
+            foreignKeyName: "projet_jalon_id_projet_fkey"
+            columns: ["id_projet"]
+            isOneToOne: false
+            referencedRelation: "vue_suivi_financier_projet"
+            referencedColumns: ["id_projet"]
+          },
+          {
+            foreignKeyName: "projet_jalon_id_projet_fkey"
+            columns: ["id_projet"]
+            isOneToOne: false
+            referencedRelation: "vue_suivi_jalons_projet"
             referencedColumns: ["id_projet"]
           },
         ]
@@ -1049,6 +1478,8 @@ export type Database = {
       }
       utilisateur: {
         Row: {
+          adresse: string | null
+          bio: string | null
           created_at: string | null
           email: string
           id_role: number | null
@@ -1060,6 +1491,8 @@ export type Database = {
           role: string | null
         }
         Insert: {
+          adresse?: string | null
+          bio?: string | null
           created_at?: string | null
           email: string
           id_role?: number | null
@@ -1071,6 +1504,8 @@ export type Database = {
           role?: string | null
         }
         Update: {
+          adresse?: string | null
+          bio?: string | null
           created_at?: string | null
           email?: string
           id_role?: number | null
@@ -1151,6 +1586,51 @@ export type Database = {
           nom_role: string | null
           photo_profil: string | null
           prenoms: string | null
+        }
+        Relationships: []
+      }
+      vue_suivi_financier_projet: {
+        Row: {
+          cout_total_previsionnel: number | null
+          cout_total_reel: number | null
+          id_projet: number | null
+          id_tantsaha: string | null
+          statut_projet: string | null
+          surface_ha: number | null
+          total_engage: number | null
+          total_investissement: number | null
+          total_non_engage: number | null
+          total_paye: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_projet_id_tantsaha_utilisateur"
+            columns: ["id_tantsaha"]
+            isOneToOne: false
+            referencedRelation: "utilisateur"
+            referencedColumns: ["id_utilisateur"]
+          },
+          {
+            foreignKeyName: "fk_projet_id_tantsaha_utilisateur"
+            columns: ["id_tantsaha"]
+            isOneToOne: false
+            referencedRelation: "utilisateurs_par_role"
+            referencedColumns: ["id_utilisateur"]
+          },
+        ]
+      }
+      vue_suivi_jalons_projet: {
+        Row: {
+          date_prev_planifiee: string | null
+          date_reelle_execution: string | null
+          id_jalon_agricole: number | null
+          id_jalon_projet: number | null
+          id_projet: number | null
+          nom_culture: string | null
+          nom_jalon: string | null
+          performance_jalon: string | null
+          statut_jalon: string | null
+          statut_projet: string | null
         }
         Relationships: []
       }
