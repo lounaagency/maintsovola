@@ -75,6 +75,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
   }, [initialData, isEditing]);
   
   useEffect(() => {
+    if (initialData?.id_terrain) {
+      setSelectedCultures(initialData.id_terrain);
+    }
     if (selectedTerrain) {
       // Find the terrain and set its surface
       const terrain = terrains.find(t => t.id_terrain === selectedTerrain);
