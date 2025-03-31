@@ -64,6 +64,8 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
     fetchCultures();
     
     if (isEditing && initialData) {
+      
+    console.log("🔍 InitialData:", initialData);
       setSelectedTerrain(initialData.terrain.id_terrain);
       setDescription(initialData.description || "");
       setSurface(initialData.surface_ha || 0);
@@ -138,10 +140,13 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
       
       if (projectError) throw projectError;
       
+      console.log("🔍 activeProjects:", activeProjects);
       const usedTerrainIds = activeProjects?.map(p => p.id_terrain) || [];
+      console.log("🔍 usedTerrainIds:", usedTerrainIds);
       const availableTerrains = data?.filter(t => !usedTerrainIds.includes(t.id_terrain) || 
                                        (isEditing && initialData && t.id_terrain === initialData.terrain.id_terrain));
       
+    console.log("🔍 availableTerrains:", availableTerrains);
       setTerrains(availableTerrains || []);
     } catch (error) {
       console.error('Error fetching terrains:', error);
