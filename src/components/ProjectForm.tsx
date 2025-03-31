@@ -441,7 +441,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
         
             {/* Contenu dynamique */}
             {cultureCosts.map(({ culture, cost, rendement, prix_tonne, revenu_previsionnel }) => (
-              <div key={culture} className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t">
+              <div key={culture} className="grid grid-cols-1 md:grid-cols-5 gap-5 pt-5 border-t">
                 <div className="space-y-1">
                   <p className="font-semibold">{culture}</p>
                 </div>
@@ -461,7 +461,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
             ))}
         
             {/* Totaux */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t font-bold">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-5 pt-5 border-t font-bold">
               <div className="space-y-1">
                 <p>Total Projet</p>
               </div>
