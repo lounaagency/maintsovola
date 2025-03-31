@@ -140,7 +140,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
       
       const usedTerrainIds = activeProjects?.map(p => p.id_terrain) || [];
       const availableTerrains = data?.filter(t => !usedTerrainIds.includes(t.id_terrain) || 
-                                       (isEditing && initialData && t.id_terrain === initialData.id_terrain));
+                                       (isEditing && initialData && t.id_terrain === initialData.terrain.id_terrain));
       
       setTerrains(availableTerrains || []);
     } catch (error) {
