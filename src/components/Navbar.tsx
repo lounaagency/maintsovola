@@ -1,7 +1,7 @@
 
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Home, MessageCircle, User, Settings, MapPin, Menu } from "lucide-react";
+import { Home, MessageCircle, MapPin, Menu, Settings, Bell } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import UserAvatar from "./UserAvatar";
 import Notifications from "./Notifications";
@@ -11,6 +11,16 @@ import {
   SheetContent,
   SheetTrigger
 } from "@/components/ui/sheet";
+import {
+  NavigationMenu,
+  NavigationMenuContent,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+  NavigationMenuTrigger,
+  navigationMenuTriggerStyle,
+} from "@/components/ui/navigation-menu";
+import { cn } from "@/lib/utils";
 
 const Navbar: React.FC = () => {
   const location = useLocation();
@@ -21,13 +31,14 @@ const Navbar: React.FC = () => {
     return location.pathname === path;
   };
 
-  const NavItems = () => (
+  // Navigation items for mobile menu and desktop navigation
+  const renderNavItems = () => (
     <>
       <Link 
         to="/" 
         className={`nav-item ${isActive("/") || isActive("/feed") ? "active" : ""}`}
       >
-        <Home size={20} strokeWidth={2} />
+        <Home size={20} strokeWidth={isMobile ? 1.5 : 2} />
         <span className="text-sm">Accueil</span>
       </Link>
       
@@ -35,7 +46,7 @@ const Navbar: React.FC = () => {
         to="/terrain" 
         className={`nav-item ${isActive("/terrain") ? "active" : ""}`}
       >
-        <MapPin size={20} strokeWidth={2} />
+        <MapPin size={20} strokeWidth={isMobile ? 1.5 : 2} />
         <span className="text-sm">Terrain</span>
       </Link>
       
@@ -43,7 +54,7 @@ const Navbar: React.FC = () => {
         to="/messages" 
         className={`nav-item ${isActive("/messages") ? "active" : ""}`}
       >
-        <MessageCircle size={20} strokeWidth={2} />
+        <MessageCircle size={20} strokeWidth={isMobile ? 1.5 : 2} />
         <span className="text-sm">Messages</span>
       </Link>
       
@@ -51,16 +62,16 @@ const Navbar: React.FC = () => {
         to="/settings" 
         className={`nav-item ${isActive("/settings") ? "active" : ""}`}
       >
-        <Settings size={20} strokeWidth={2} />
+        <Settings size={20} strokeWidth={isMobile ? 1.5 : 2} />
         <span className="text-sm">Réglages</span>
       </Link>
     </>
   );
 
   return (
-    <nav className="fixed top-0 left-0 right-0 bg-white border-b border-border shadow-sm h-16 z-50">
-      <div className="h-full max-w-6xl mx-auto px-4 flex items-center justify-between">
-        {/* Logo and brand */}
+    <nav className="fixed top-0 left-0 right-0 bg-white border-b border-border shadow-sm h-14 md:h-16 z-50">
+      <div className="h-full max-w-6xl mx-auto px-2 md:px-4 flex items-center justify-between">
+        {/* Logo and brand - Always visible */}
         <div className="flex items-center">
           <Link to="/" className="text-xl font-bold text-green-600">
             Maintso Vola
@@ -69,66 +80,56 @@ const Navbar: React.FC = () => {
         
         {/* Main navigation - Desktop */}
         {!isMobile ? (
-          <div className="flex items-center justify-center space-x-6">
-            <NavItems />
+          <div className="hidden md:flex items-center justify-center space-x-1 lg:space-x-4">
+            {renderNavItems()}
           </div>
         ) : null}
         
-        {/* User controls */}
-        <div className="flex items-center space-x-2">
-          <Notifications />
+        {/* User controls - Always visible */}
+        <div className="flex items-center space-x-1 md:space-x-3">
+          {/* Notifications - Always visible */}
+          <div className="hidden md:block">
+            <Notifications />
+          </div>
           
-          <Sheet>
-            <SheetTrigger asChild>
-              <button className="p-2 flex items-center">
-                <UserAvatar
-                  src={profile?.photo_profil}
-                  alt={profile?.nom || "Profile"}
-                  size="sm"
-                  status="online"
-                />
-                {!isMobile && (
-                  <span className="ml-2 text-sm font-medium hidden md:inline-block">
-                    {profile?.nom} {profile?.prenoms}
-                  </span>
-                )}
-              </button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-[250px] sm:w-[300px]">
-              <div className="flex flex-col space-y-4 mt-8">
-                <Link to="/profile" className="flex items-center space-x-2 p-2 border-b pb-4 mb-4">
-                  <UserAvatar
-                    src={profile?.photo_profil}
-                    alt={profile?.nom || "Profile"}
-                    size="sm"
-                    status="online"
-                  />
-                  <div>
-                    <span className="font-medium block">
-                      {profile?.nom} {profile?.prenoms}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {profile?.nom_role || "Utilisateur"}
-                    </span>
-                  </div>
-                </Link>
-                
-                {isMobile && (
-                  <div className="flex flex-col space-y-3 mb-4">
-                    <NavItems />
-                  </div>
-                )}
-                
-                <div className="border-t pt-4">
-                  <h3 className="text-sm font-medium mb-2">Options supplémentaires</h3>
-                  <Link to="/profile" className="flex items-center p-2 hover:bg-muted rounded-md">
-                    <User size={18} className="mr-2" />
-                    Mon profil
+          {/* Mobile menu trigger */}
+          {isMobile && (
+            <Sheet>
+              <SheetTrigger asChild>
+                <button className="p-1 md:p-2 text-gray-700 hover:bg-gray-100 rounded-full">
+                  <Menu size={24} />
+                </button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-[250px] sm:w-[300px] pt-8">
+                <div className="flex flex-col space-y-6">
+                  <Link to="/" className="text-xl font-bold text-green-600 mb-4">
+                    Maintso Vola
                   </Link>
+                
+                  <div className="flex flex-col space-y-5">
+                    {renderNavItems()}
+                  </div>
+                  
+                  <div className="pt-4 mt-4 border-t">
+                    <Notifications />
+                  </div>
                 </div>
-              </div>
-            </SheetContent>
-          </Sheet>
+              </SheetContent>
+            </Sheet>
+          )}
+          
+          {/* User profile link - Always visible */}
+          <Link to="/profile" className="flex items-center space-x-2">
+            <UserAvatar
+              src={profile?.photo_profil}
+              alt={profile?.nom || "Profile"}
+              size="sm"
+              status="online"
+            />
+            <span className="hidden md:inline-block text-sm font-medium mr-2">
+              {profile?.nom} {profile?.prenoms}
+            </span>
+          </Link>
         </div>
       </div>
     </nav>

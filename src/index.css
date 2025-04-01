@@ -6,19 +6,19 @@
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
+    --foreground: 222.2 84% 4.9%;
 
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
+    --card-foreground: 222.2 84% 4.9%;
  
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
+    --popover-foreground: 222.2 84% 4.9%;
  
     --primary: 142.1 76.2% 36.3%;
     --primary-foreground: 355.7 100% 97.3%;
  
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
+    --secondary: 240 5.9% 10%;
+    --secondary-foreground: 0 0% 98%;
  
     --muted: 240 4.8% 95.9%;
     --muted-foreground: 240 3.8% 46.1%;
@@ -28,12 +28,6 @@
  
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-
-    --success: 142.1 76.2% 36.3%;
-    --success-foreground: 355.7 100% 97.3%;
-
-    --maintso: 142.1 76.2% 36.3%;
-    --maintso-foreground: 355.7 100% 97.3%;
 
     --border: 240 5.9% 90%;
     --input: 240 5.9% 90%;
@@ -66,9 +60,6 @@
  
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 85.7% 97.3%;
-
-    --success: 142.1 70.6% 45.3%;
-    --success-foreground: 144.9 80.4% 10%;
  
     --border: 240 3.7% 15.9%;
     --input: 240 3.7% 15.9%;
@@ -82,24 +73,28 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
 
 @layer components {
-  .bottom-nav-item {
-    @apply flex flex-col items-center justify-center text-xs font-medium text-gray-500;
-  }
-  
-  .bottom-nav-item.active {
-    @apply text-primary;
-  }
-  
   .nav-item {
-    @apply flex flex-col items-center justify-center text-sm font-medium text-gray-500 hover:text-primary transition-colors;
+    @apply flex flex-col md:flex-row items-center justify-center px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100 transition-colors;
   }
   
   .nav-item.active {
-    @apply text-primary;
+    @apply text-green-600 font-medium;
+  }
+  
+  .nav-item svg {
+    @apply mb-1 md:mb-0 md:mr-2;
+  }
+  
+  /* Mobile navigation styles */
+  .mobile-nav .nav-item {
+    @apply flex flex-row items-center px-4 py-3 hover:bg-gray-100 rounded-md;
+  }
+  
+  .mobile-nav .nav-item svg {
+    @apply mr-3 mb-0;
   }
 }
