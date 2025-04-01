@@ -33,10 +33,7 @@ const ProjectEditDialog: React.FC<ProjectEditDialogProps> = ({
         </DialogHeader>
         <ProjectForm
           initialData={project}
-          onSuccess={() => {
-            onSubmitSuccess();
-            onClose();
-          }}
+          onSubmitSuccess={onSubmitSuccess}
           onCancel={onClose}
           isEditing={true}
           userId={userId}

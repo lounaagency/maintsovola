@@ -900,6 +900,77 @@ export type Database = {
           },
         ]
       }
+      notification: {
+        Row: {
+          date_creation: string | null
+          entity_id: number | null
+          entity_type: string | null
+          id_destinataire: string
+          id_expediteur: string | null
+          id_notification: number
+          lu: boolean | null
+          message: string
+          projet_id: number | null
+          titre: string
+          type: string | null
+        }
+        Insert: {
+          date_creation?: string | null
+          entity_id?: number | null
+          entity_type?: string | null
+          id_destinataire: string
+          id_expediteur?: string | null
+          id_notification?: number
+          lu?: boolean | null
+          message: string
+          projet_id?: number | null
+          titre: string
+          type?: string | null
+        }
+        Update: {
+          date_creation?: string | null
+          entity_id?: number | null
+          entity_type?: string | null
+          id_destinataire?: string
+          id_expediteur?: string | null
+          id_notification?: number
+          lu?: boolean | null
+          message?: string
+          projet_id?: number | null
+          titre?: string
+          type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_id_destinataire_fkey"
+            columns: ["id_destinataire"]
+            isOneToOne: false
+            referencedRelation: "utilisateur"
+            referencedColumns: ["id_utilisateur"]
+          },
+          {
+            foreignKeyName: "notification_id_destinataire_fkey"
+            columns: ["id_destinataire"]
+            isOneToOne: false
+            referencedRelation: "utilisateurs_par_role"
+            referencedColumns: ["id_utilisateur"]
+          },
+          {
+            foreignKeyName: "notification_id_expediteur_fkey"
+            columns: ["id_expediteur"]
+            isOneToOne: false
+            referencedRelation: "utilisateur"
+            referencedColumns: ["id_utilisateur"]
+          },
+          {
+            foreignKeyName: "notification_id_expediteur_fkey"
+            columns: ["id_expediteur"]
+            isOneToOne: false
+            referencedRelation: "utilisateurs_par_role"
+            referencedColumns: ["id_utilisateur"]
+          },
+        ]
+      }
       projet: {
         Row: {
           created_at: string | null
@@ -4670,7 +4741,13 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      entity_type_enum: "terrain" | "projet" | "jalon" | "investissement"
+      notification_type_enum:
+        | "info"
+        | "validation"
+        | "alerte"
+        | "erreur"
+        | "assignment"
     }
     CompositeTypes: {
       geometry_dump: {

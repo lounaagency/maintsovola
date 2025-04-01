@@ -12,7 +12,7 @@ import {
 import { Check, Edit, MessageSquare } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface TerrainTableProps {
@@ -35,7 +35,6 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
   onContactTechnicien
 }) => {
   const { user } = useAuth();
-  const { toast } = useToast();
   const isMobile = useIsMobile();
 
   const handleValidate = async (terrainId: number) => {
@@ -105,18 +104,21 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
 
       if (error) throw error;
 
-      await supabase
-        .rpc('create_technicien_assignment_notification', {
-          technicien_id: technicianId,
-          terrain_id: terrainId,
-          superviseur_id: user?.id
-        });
+      await supabase.from('notification')
+        .insert([{
+          id_destinataire: technicianId,
+          id_expediteur: user?.id,
+          titre: "Nouvelle affectation de terrain",
+          message: `Vous avez été assigné au terrain #${terrainId}`,
+          entity_type: "terrain",
+          entity_id: terrainId
+        }]);
       
-      toast.success("Technicien assigné avec succès!");
-      onTerrainUpdate();
+      toast("Technicien assigné avec succès!");
+      if (onTerrainUpdate) onTerrainUpdate();
     } catch (error) {
       console.error("Error assigning technician:", error);
-      toast.error("Erreur lors de l'assignation du technicien");
+      toast("Erreur lors de l'assignation du technicien");
     }
   };
 

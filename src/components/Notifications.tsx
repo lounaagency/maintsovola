@@ -88,9 +88,12 @@ const Notifications: React.FC = () => {
     try {
       setLoading(true);
       
-      // Using raw SQL query to get notifications since the type isn't in TS definition
+      // Instead of using rpc, use direct query to notification table
       const { data, error } = await supabase
-        .rpc('get_notifications_for_user', { user_id: user.id })
+        .from('notification')
+        .select('*')
+        .eq('id_destinataire', user.id)
+        .order('date_creation', { ascending: false })
         .limit(20);
         
       if (error) throw error;
@@ -210,9 +213,11 @@ const Notifications: React.FC = () => {
 
   const markAsRead = async (notificationId: string) => {
     try {
-      // Using raw SQL query to update notification since the type isn't in TS definition
+      // Direct update of notification record instead of using rpc
       const { error } = await supabase
-        .rpc('mark_notification_as_read', { notification_id: parseInt(notificationId) });
+        .from('notification')
+        .update({ lu: true })
+        .eq('id_notification', parseInt(notificationId));
         
       if (error) throw error;
       
@@ -233,10 +238,12 @@ const Notifications: React.FC = () => {
     if (!user) return;
     
     try {
-      // Update all unread notifications for this user
-      // Using raw SQL query since the type isn't in TS definition
+      // Direct update all unread notifications for this user
       const { error } = await supabase
-        .rpc('mark_all_notifications_as_read', { user_id: user.id });
+        .from('notification')
+        .update({ lu: true })
+        .eq('id_destinataire', user.id)
+        .eq('lu', false);
         
       if (error) throw error;
       

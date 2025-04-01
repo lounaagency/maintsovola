@@ -34,17 +34,11 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
         <DialogHeader>
           <DialogTitle>Modifier le terrain</DialogTitle>
         </DialogHeader>
+        {/* Pass correct props that match TerrainForm component expectations */}
         <TerrainForm
-          initialData={terrain}
-          onSubmitSuccess={() => {
-            onSubmitSuccess();
-            onClose();
-          }}
+          id={terrain.id_terrain?.toString()}
+          onSubmitSuccess={onSubmitSuccess}
           onCancel={onClose}
-          isEditing={true}
-          userId={userId}
-          userRole={userRole}
-          agriculteurs={agriculteurs}
         />
       </DialogContent>
     </Dialog>

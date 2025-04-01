@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
@@ -14,7 +15,6 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox"
 import { toast } from 'sonner';
@@ -24,6 +24,7 @@ import {
   DistrictData,
   CommuneData
 } from '@/types/terrain';
+import { TerrainFormData, convertFormDataToTerrainData } from '@/types/terrainForm';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { MapContainer, TileLayer, Marker, useMapEvents, Polygon, useMap } from 'react-leaflet';
@@ -41,10 +42,19 @@ const formSchema = yup.object().shape({
   acces_route: yup.boolean().nullable(),
 });
 
-const TerrainForm: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+interface TerrainFormProps {
+  id?: string;
+  onSubmitSuccess?: () => void;
+  onCancel?: () => void;
+}
+
+const TerrainForm: React.FC<TerrainFormProps> = ({ 
+  id, 
+  onSubmitSuccess, 
+  onCancel
+}) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [regions, setRegions] = useState<RegionData[]>([]);
   const [districts, setDistricts] = useState<DistrictData[]>([]);
   const [communes, setCommunes] = useState<CommuneData[]>([]);
@@ -61,12 +71,13 @@ const TerrainForm: React.FC = () => {
     [-18.903684, 47.536131],
   ]);
   const mapRef = useRef<L.Map | null>(null);
+  const polygonRef = useRef<L.Polygon | null>(null);
   const [photos, setPhotos] = useState<File[]>([]);
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { control, handleSubmit, setValue, formState: { errors } } = useForm<TerrainData>({
+  const form = useForm<TerrainFormData>({
     resolver: yupResolver(formSchema),
     defaultValues: {
       nom_terrain: '',
@@ -78,6 +89,8 @@ const TerrainForm: React.FC = () => {
       acces_route: false,
     }
   });
+
+  const { control, handleSubmit, setValue, formState: { errors } } = form;
 
   useEffect(() => {
     fetchRegions();
@@ -135,7 +148,7 @@ const TerrainForm: React.FC = () => {
       }
     } catch (error) {
       console.error("Error fetching terrain data:", error);
-      toast.error("Failed to load terrain data.");
+      toast("Failed to load terrain data.");
     } finally {
       setLoading(false);
     }
@@ -157,7 +170,7 @@ const TerrainForm: React.FC = () => {
       }
     } catch (error) {
       console.error("Error fetching regions:", error);
-      toast.error("Failed to load regions.");
+      toast("Failed to load regions.");
     }
   };
 
@@ -178,7 +191,7 @@ const TerrainForm: React.FC = () => {
       }
     } catch (error) {
       console.error("Error fetching districts:", error);
-      toast.error("Failed to load districts.");
+      toast("Failed to load districts.");
     }
   };
 
@@ -199,7 +212,7 @@ const TerrainForm: React.FC = () => {
       }
     } catch (error) {
       console.error("Error fetching communes:", error);
-      toast.error("Failed to load communes.");
+      toast("Failed to load communes.");
     }
   };
 
@@ -269,7 +282,7 @@ const TerrainForm: React.FC = () => {
     }
   };
 
-  const onSubmit = async (data: TerrainData) => {
+  const onSubmit = async (formData: TerrainFormData) => {
     setLoading(true);
     try {
       if (!user || !user.id) {
@@ -280,27 +293,23 @@ const TerrainForm: React.FC = () => {
       
       const allPhotoUrls = [...photoUrls.filter(url => url.includes('supabase.co')), ...uploadedPhotoUrls];
       
-      const terrainData = {
-        ...data,
-        id_tantsaha: user.id,
-        id_region: Number(data.id_region),
-        id_district: Number(data.id_district),
-        id_commune: Number(data.id_commune),
-        photos: allPhotoUrls.join(',')
-      };
+      // Convert form data to the correct types
+      const terrainData = convertFormDataToTerrainData(formData);
+      terrainData.id_tantsaha = user.id;
+      terrainData.photos = allPhotoUrls.join(',');
 
       let response;
-      if (isEditMode) {
+      if (isEditMode && id) {
         response = await supabase
           .from('terrain')
           .update(terrainData)
           .eq('id_terrain', id)
           .single();
       } else {
-        delete terrainData.id_terrain;
+        const { id_terrain, ...newTerrainData } = terrainData;
         response = await supabase
           .from('terrain')
-          .insert([terrainData])
+          .insert([newTerrainData])
           .single();
       }
 
@@ -308,11 +317,15 @@ const TerrainForm: React.FC = () => {
         throw response.error;
       }
 
-      toast.success(`Terrain ${isEditMode ? 'updated' : 'created'} successfully!`);
-      navigate('/terrain');
+      toast(`Terrain ${isEditMode ? 'updated' : 'created'} successfully!`);
+      if (onSubmitSuccess) {
+        onSubmitSuccess();
+      } else {
+        navigate('/terrain');
+      }
     } catch (error: any) {
       console.error("Error during form submission:", error);
-      toast.error(error.message || "An error occurred during submission.");
+      toast(error.message || "An error occurred during submission.");
     } finally {
       setLoading(false);
     }
@@ -326,19 +339,6 @@ const TerrainForm: React.FC = () => {
     setSelectedDistrict(Number(selectedValue));
   };
 
-  const handleMapCreated = () => {
-    if (mapRef.current) {
-      mapRef.current = map;
-      setMapInitialized(true);
-    }
-  };
-
-  const handlePolygonEdited = (e: L.LeafletEvent) => {
-    const layer = e.target;
-    const coordinates = layer.getLatLngs()[0];
-    setPolygonCoordinates(coordinates);
-  };
-
   const MapEvents = () => {
     const map = useMap();
 
@@ -347,30 +347,13 @@ const TerrainForm: React.FC = () => {
       setMapInitialized(true);
     }, [map]);
 
-    useMapEvents({
-      load: () => {
-        console.log('map loaded');
-      },
-      moveend: () => {
-        console.log('map moved');
-      },
-      drawCreated: (e) => {
-        console.log('drawCreated', e);
-      },
-      drawEdited: (e) => {
-        console.log('drawEdited', e);
-      },
-      drawDeleted: (e) => {
-        console.log('drawDeleted', e);
-      }
-    });
     return null;
   };
 
   return (
     <div className="container max-w-2xl py-6">
       <h1 className="text-2xl font-bold mb-4">{isEditMode ? 'Modifier un Terrain' : 'Ajouter un Terrain'}</h1>
-      <Form {...{...control, handleSubmit, setValue, formState: { errors }}}>
+      <Form {...form}>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <FormField
             control={control}
@@ -396,6 +379,7 @@ const TerrainForm: React.FC = () => {
                     type="number"
                     placeholder="Surface proposée en hectares"
                     {...field}
+                    onChange={(e) => field.onChange(parseFloat(e.target.value))}
                   />
                 </FormControl>
                 <FormMessage>{errors.surface_proposee?.message}</FormMessage>
@@ -411,7 +395,7 @@ const TerrainForm: React.FC = () => {
                 <Select onValueChange={(value) => {
                   field.onChange(value);
                   handleRegionChange(value);
-                }}>
+                }} value={field.value}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Sélectionner une région" />
                   </SelectTrigger>
@@ -436,7 +420,7 @@ const TerrainForm: React.FC = () => {
                 <Select onValueChange={(value) => {
                   field.onChange(value);
                   handleDistrictChange(value);
-                }}>
+                }} value={field.value}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Sélectionner un district" />
                   </SelectTrigger>
@@ -458,7 +442,7 @@ const TerrainForm: React.FC = () => {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Commune</FormLabel>
-                <Select onValueChange={field.onChange}>
+                <Select onValueChange={field.onChange} value={field.value}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Sélectionner une commune" />
                   </SelectTrigger>
@@ -560,7 +544,7 @@ const TerrainForm: React.FC = () => {
               zoom={13}
               style={{ height: '400px', width: '100%' }}
               className="rounded-md"
-              whenCreated={handleMapCreated}
+              whenReady={() => setMapInitialized(true)}
             >
               <TileLayer
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -569,22 +553,25 @@ const TerrainForm: React.FC = () => {
               <Polygon
                 positions={polygonCoordinates}
                 pathOptions={{ color: '#ff4444', weight: 2, fillOpacity: 0.5, fillColor: '#ff4444' }}
-                eventHandlers={{
-                  edit: handlePolygonEdited,
-                }}
-                ref={mapRef}
               />
               <MapEvents />
             </MapContainer>
           </div>
-          <Button type="submit" disabled={loading || isUploading} className="flex items-center">
-            {(loading || isUploading) ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {isUploading ? 'Upload en cours...' : 'Enregistrement...'}
-              </>
-            ) : 'Enregistrer'}
-          </Button>
+          <div className="flex gap-3 justify-end">
+            {onCancel && (
+              <Button type="button" variant="outline" onClick={onCancel}>
+                Annuler
+              </Button>
+            )}
+            <Button type="submit" disabled={loading || isUploading} className="flex items-center">
+              {(loading || isUploading) ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {isUploading ? 'Upload en cours...' : 'Enregistrement...'}
+                </>
+              ) : 'Enregistrer'}
+            </Button>
+          </div>
         </form>
       </Form>
     </div>
