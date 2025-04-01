@@ -1,7 +1,7 @@
 
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Home, MessageCircle, MapPin, Menu, Settings, Bell } from "lucide-react";
+import { Home, MessageCircle, MapPin, Menu, Settings, Bell, ChevronDown, User } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import UserAvatar from "./UserAvatar";
 import Notifications from "./Notifications";
@@ -12,14 +12,11 @@ import {
   SheetTrigger
 } from "@/components/ui/sheet";
 import {
-  NavigationMenu,
-  NavigationMenuContent,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-  NavigationMenuTrigger,
-  navigationMenuTriggerStyle,
-} from "@/components/ui/navigation-menu";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
 const Navbar: React.FC = () => {
@@ -71,27 +68,41 @@ const Navbar: React.FC = () => {
   return (
     <nav className="fixed top-0 left-0 right-0 bg-white border-b border-border shadow-sm h-14 md:h-16 z-50">
       <div className="h-full max-w-6xl mx-auto px-2 md:px-4 flex items-center justify-between">
-        {/* Logo and brand - Always visible */}
+        {/* Logo and brand - Always visible but smaller */}
         <div className="flex items-center">
-          <Link to="/" className="text-xl font-bold text-green-600">
+          <Link to="/" className="text-lg font-bold text-green-600">
             Maintso Vola
           </Link>
         </div>
         
-        {/* Main navigation - Desktop */}
-        {!isMobile ? (
-          <div className="hidden md:flex items-center justify-center space-x-1 lg:space-x-4">
-            {renderNavItems()}
-          </div>
-        ) : null}
+        {/* Central Navigation Icons - Desktop */}
+        <div className="hidden md:flex items-center justify-center space-x-2 lg:space-x-6 flex-1 mx-4">
+          <Link 
+            to="/" 
+            className={`p-2 rounded-md ${isActive("/") || isActive("/feed") ? "text-green-600 bg-gray-100" : "text-gray-700 hover:bg-gray-100"}`}
+          >
+            <Home size={22} />
+          </Link>
+          
+          <Link 
+            to="/terrain" 
+            className={`p-2 rounded-md ${isActive("/terrain") ? "text-green-600 bg-gray-100" : "text-gray-700 hover:bg-gray-100"}`}
+          >
+            <MapPin size={22} />
+          </Link>
+          
+          <Link 
+            to="/messages" 
+            className={`p-2 rounded-md ${isActive("/messages") ? "text-green-600 bg-gray-100" : "text-gray-700 hover:bg-gray-100"}`}
+          >
+            <MessageCircle size={22} />
+          </Link>
+          
+          <Notifications />
+        </div>
         
         {/* User controls - Always visible */}
         <div className="flex items-center space-x-1 md:space-x-3">
-          {/* Notifications - Always visible */}
-          <div className="hidden md:block">
-            <Notifications />
-          </div>
-          
           {/* Mobile menu trigger */}
           {isMobile && (
             <Sheet>
@@ -118,18 +129,46 @@ const Navbar: React.FC = () => {
             </Sheet>
           )}
           
-          {/* User profile link - Always visible */}
-          <Link to="/profile" className="flex items-center space-x-2">
-            <UserAvatar
-              src={profile?.photo_profil}
-              alt={profile?.nom || "Profile"}
-              size="sm"
-              status="online"
-            />
-            <span className="hidden md:inline-block text-sm font-medium mr-2">
-              {profile?.nom} {profile?.prenoms}
-            </span>
-          </Link>
+          {/* Mobile notifications button */}
+          {isMobile && (
+            <Notifications />
+          )}
+          
+          {/* User profile dropdown menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center space-x-2 focus:outline-none">
+                <UserAvatar
+                  src={profile?.photo_profil}
+                  alt={profile?.nom || "Profile"}
+                  size="sm"
+                  status="online"
+                />
+                {!isMobile && (
+                  <>
+                    <span className="hidden md:inline-block text-sm font-medium">
+                      {profile?.nom} {profile?.prenoms}
+                    </span>
+                    <ChevronDown size={16} className="hidden md:inline-block text-gray-500" />
+                  </>
+                )}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem asChild>
+                <Link to="/profile" className="flex items-center space-x-2 cursor-pointer w-full">
+                  <User size={16} />
+                  <span>Mon Profil</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/settings" className="flex items-center space-x-2 cursor-pointer w-full">
+                  <Settings size={16} />
+                  <span>Réglages</span>
+                </Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </nav>
