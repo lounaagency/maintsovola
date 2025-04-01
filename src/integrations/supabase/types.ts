@@ -915,6 +915,7 @@ export type Database = {
           id_technicien: string | null
           id_terrain: number | null
           modified_at: string | null
+          photos: string | null
           statut: string | null
           surface_ha: number
           titre: string | null
@@ -933,6 +934,7 @@ export type Database = {
           id_technicien?: string | null
           id_terrain?: number | null
           modified_at?: string | null
+          photos?: string | null
           statut?: string | null
           surface_ha: number
           titre?: string | null
@@ -951,6 +953,7 @@ export type Database = {
           id_technicien?: string | null
           id_terrain?: number | null
           modified_at?: string | null
+          photos?: string | null
           statut?: string | null
           surface_ha?: number
           titre?: string | null
@@ -1315,6 +1318,7 @@ export type Database = {
           id_terrain: number
           modified_at: string | null
           nom_terrain: string | null
+          photos: string | null
           statut: boolean
           surface_proposee: number
           surface_validee: number | null
@@ -1335,6 +1339,7 @@ export type Database = {
           id_terrain?: number
           modified_at?: string | null
           nom_terrain?: string | null
+          photos?: string | null
           statut?: boolean
           surface_proposee: number
           surface_validee?: number | null
@@ -1355,6 +1360,7 @@ export type Database = {
           id_terrain?: number
           modified_at?: string | null
           nom_terrain?: string | null
+          photos?: string | null
           statut?: boolean
           surface_proposee?: number
           surface_validee?: number | null

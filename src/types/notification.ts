@@ -7,7 +7,7 @@ export interface Notification {
   message: string;
   lu: boolean;
   date_creation: string;
-  type: 'info' | 'validation' | 'alerte' | 'erreur';
+  type: 'info' | 'validation' | 'alerte' | 'erreur' | 'assignment';
   entity_id?: string;
   entity_type?: 'terrain' | 'projet' | 'jalon' | 'investissement';
   projet_id?: number;
