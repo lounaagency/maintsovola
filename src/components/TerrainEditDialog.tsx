@@ -8,7 +8,6 @@ import {
 } from "@/components/ui/dialog";
 import TerrainForm from "./terrain/TerrainForm";
 import { TerrainData } from "@/types/terrain";
-import { toast } from "@/hooks/use-toast";
 
 interface TerrainEditDialogProps {
   isOpen: boolean;

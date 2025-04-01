@@ -1,6 +1,6 @@
 
 import React, { useRef, useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Polygon, useMap, Marker } from 'react-leaflet';
+import { MapContainer, TileLayer, Polygon, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -25,16 +25,15 @@ const TerrainMapSelector: React.FC<TerrainMapSelectorProps> = ({
   polygonCoordinates,
   setPolygonCoordinates
 }) => {
-  const mapRef = useRef<L.Map | null>(null);
   const [mapInitialized, setMapInitialized] = useState(false);
 
   return (
-    <div>
+    <div className="w-full">
       <MapContainer
         center={[-18.913684, 47.536131]}
         zoom={13}
         style={{ height: '400px', width: '100%' }}
-        className="rounded-md"
+        className="rounded-md border border-gray-200"
         whenReady={() => setMapInitialized(true)}
       >
         <TileLayer
@@ -47,6 +46,10 @@ const TerrainMapSelector: React.FC<TerrainMapSelectorProps> = ({
         />
         <MapEvents />
       </MapContainer>
+      
+      <div className="mt-2 text-sm text-gray-500">
+        Pour définir le périmètre du terrain, vous pourrez utiliser les outils de dessin sur la carte.
+      </div>
     </div>
   );
 };

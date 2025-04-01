@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import AgriculturalProjectCard from '@/components/AgriculturalProjectCard';
+import LandingPages from "@/components/LandingPages";
 
 const Feed: React.FC = () => {
   const [projects, setProjects] = useState<AgriculturalProject[]>([]);
@@ -18,11 +19,23 @@ const Feed: React.FC = () => {
     district?: string;
     commune?: string;
   }>({});
-  const { user } = useAuth();
+  const [showLanding, setShowLanding] = useState(false);
+  const { user, profile } = useAuth();
   
   useEffect(() => {
     fetchProjects();
-  }, [activeFilters]);
+    
+    // Check if user is new (based on a flag in local storage)
+    const hasSeenLanding = localStorage.getItem('hasSeenLanding');
+    if (!hasSeenLanding && user) {
+      setShowLanding(true);
+    }
+  }, [activeFilters, user]);
+  
+  const handleLandingComplete = () => {
+    setShowLanding(false);
+    localStorage.setItem('hasSeenLanding', 'true');
+  };
   
   const fetchProjects = async () => {
     try {
@@ -313,6 +326,10 @@ const Feed: React.FC = () => {
     );
   };
 
+  if (showLanding) {
+    return <LandingPages onComplete={handleLandingComplete} />;
+  }
+
   return (
     <div className="max-w-md mx-auto px-4 py-4">
       <header className="mb-4">
@@ -321,8 +338,8 @@ const Feed: React.FC = () => {
       
       <Tabs defaultValue="for-you" className="mb-6">
         <TabsList className="grid w-full grid-cols-2 bg-muted rounded-lg">
-          <TabsTrigger value="for-you" className="rounded-md">Pour vous</TabsTrigger>
-          <TabsTrigger value="following" className="rounded-md">Abonnements</TabsTrigger>
+          <TabsTrigger value="for-you" className="rounded-md">En financement</TabsTrigger>
+          <TabsTrigger value="production" className="rounded-md">En production</TabsTrigger>
         </TabsList>
         
         <TabsContent value="for-you" className="mt-4">
@@ -405,9 +422,9 @@ const Feed: React.FC = () => {
           )}
         </TabsContent>
         
-        <TabsContent value="following" className="mt-4">
+        <TabsContent value="production" className="mt-4">
           <div className="flex items-center justify-center h-40 border rounded-lg border-dashed text-gray-500">
-            Suivez des agriculteurs pour voir leurs projets
+            Les projets en cours de production apparaîtront ici
           </div>
         </TabsContent>
       </Tabs>

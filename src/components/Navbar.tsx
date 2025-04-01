@@ -1,7 +1,7 @@
 
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Home, MessageCircle, MapPin, Settings, Bell, ChevronDown, User, LogOut } from "lucide-react";
+import { Home, MapPin, MessageCircle, Settings, Bell, ChevronDown, User, LogOut } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import UserAvatar from "./UserAvatar";
 import Notifications from "./Notifications";
@@ -46,9 +46,10 @@ const Navbar: React.FC = () => {
           <Link 
             to="/" 
             className={cn(
-              "p-2 rounded-full", 
+              "p-2 rounded-full transition-colors", 
               isActive("/") ? "bg-gray-100 text-green-600" : "text-gray-600 hover:bg-gray-100"
             )}
+            title="Accueil"
           >
             <Home size={22} />
           </Link>
@@ -56,9 +57,10 @@ const Navbar: React.FC = () => {
           <Link 
             to="/terrain" 
             className={cn(
-              "p-2 rounded-full", 
+              "p-2 rounded-full transition-colors", 
               isActive("/terrain") ? "bg-gray-100 text-green-600" : "text-gray-600 hover:bg-gray-100"
             )}
+            title="Terrains"
           >
             <MapPin size={22} />
           </Link>
@@ -66,9 +68,10 @@ const Navbar: React.FC = () => {
           <Link 
             to="/messages" 
             className={cn(
-              "p-2 rounded-full", 
+              "p-2 rounded-full transition-colors", 
               isActive("/messages") ? "bg-gray-100 text-green-600" : "text-gray-600 hover:bg-gray-100"
             )}
+            title="Messages"
           >
             <MessageCircle size={22} />
           </Link>
@@ -86,9 +89,9 @@ const Navbar: React.FC = () => {
                 size="sm"
                 status="online"
               />
-              {!isMobile && (
+              {!isMobile && profile && (
                 <span className="hidden md:inline-block text-sm font-medium">
-                  {profile?.nom} {profile?.prenoms}
+                  {profile.nom} {profile.prenoms}
                 </span>
               )}
             </button>
@@ -119,11 +122,11 @@ const Navbar: React.FC = () => {
       {isMobile && (
         <Sheet>
           <SheetTrigger className="md:hidden fixed bottom-4 right-4 bg-green-600 text-white p-3 rounded-full shadow-lg">
-            <div className="h-6 w-6 flex items-center justify-center">
+            <div className="h-6 w-6 flex flex-col items-center justify-center gap-1.5">
               <span className="sr-only">Menu</span>
               <span className="block w-5 h-0.5 bg-white"></span>
-              <span className="block w-5 h-0.5 bg-white mt-1.5"></span>
-              <span className="block w-5 h-0.5 bg-white mt-1.5"></span>
+              <span className="block w-5 h-0.5 bg-white"></span>
+              <span className="block w-5 h-0.5 bg-white"></span>
             </div>
           </SheetTrigger>
           <SheetContent side="right" className="w-[250px] sm:w-[300px]">
