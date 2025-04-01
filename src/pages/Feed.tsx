@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { Navigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import NewProject from "@/components/NewProject";
 import { motion } from "framer-motion";
@@ -9,7 +8,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import AgriculturalProjectCard from '@/components/AgriculturalProjectCard';
-import LandingPages from "@/components/LandingPages";
 
 const Feed: React.FC = () => {
   const [projects, setProjects] = useState<AgriculturalProject[]>([]);
@@ -20,26 +18,11 @@ const Feed: React.FC = () => {
     district?: string;
     commune?: string;
   }>({});
-  const [showLanding, setShowLanding] = useState(false);
-  const { user, profile } = useAuth();
-  // Rediriger vers la page d'accueil si l'utilisateur est connecté
-    if (!user) {
-      return <Navigate to="/auth" replace />;
-    }
+  const { user } = useAuth();
+  
   useEffect(() => {
     fetchProjects();
-    
-    // Check if user is new (based on a flag in local storage)
-    const hasSeenLanding = localStorage.getItem('hasSeenLanding');
-    if (!hasSeenLanding && user) {
-      setShowLanding(true);
-    }
-  }, [activeFilters, user]);
-  
-  const handleLandingComplete = () => {
-    setShowLanding(false);
-    localStorage.setItem('hasSeenLanding', 'true');
-  };
+  }, [activeFilters]);
   
   const fetchProjects = async () => {
     try {
@@ -58,7 +41,6 @@ const Feed: React.FC = () => {
           utilisateur!id_tantsaha(id_utilisateur, nom, prenoms, photo_profil),
           commune(nom_commune, district(nom_district, region(nom_region)))
         `)
-        .eq('statut', 'en_financement')
         .order('created_at', { ascending: false });
       
       if (activeFilters.region) {
@@ -188,7 +170,7 @@ const Feed: React.FC = () => {
         
         return {
           id: projet.id_projet.toString(),
-          titre: projet.titre || `Projet de culture de ${cultivationType}`,
+          title: `Projet de culture de ${cultivationType}`,
           farmer,
           location: {
             region: projet.commune?.district?.region?.nom_region || "Non spécifié",
@@ -202,7 +184,7 @@ const Feed: React.FC = () => {
           expectedRevenue,
           creationDate: new Date(projet.created_at).toISOString().split('T')[0],
           images: [],
-          description: projet.description || `Projet de culture de ${cultivationType} sur un terrain de ${projet.surface_ha} hectares.`,
+          description: `Projet de culture de ${cultivationType} sur un terrain de ${projet.surface_ha} hectares.`,
           fundingGoal: farmingCost * projet.surface_ha,
           currentFunding,
           likes,
@@ -331,10 +313,6 @@ const Feed: React.FC = () => {
     );
   };
 
-  if (showLanding) {
-    return <LandingPages onComplete={handleLandingComplete} />;
-  }
-
   return (
     <div className="max-w-md mx-auto px-4 py-4">
       <header className="mb-4">
@@ -343,8 +321,8 @@ const Feed: React.FC = () => {
       
       <Tabs defaultValue="for-you" className="mb-6">
         <TabsList className="grid w-full grid-cols-2 bg-muted rounded-lg">
-          <TabsTrigger value="for-you" className="rounded-md">En financement</TabsTrigger>
-          <TabsTrigger value="production" className="rounded-md">En production</TabsTrigger>
+          <TabsTrigger value="for-you" className="rounded-md">Pour vous</TabsTrigger>
+          <TabsTrigger value="following" className="rounded-md">Abonnements</TabsTrigger>
         </TabsList>
         
         <TabsContent value="for-you" className="mt-4">
@@ -427,9 +405,9 @@ const Feed: React.FC = () => {
           )}
         </TabsContent>
         
-        <TabsContent value="production" className="mt-4">
+        <TabsContent value="following" className="mt-4">
           <div className="flex items-center justify-center h-40 border rounded-lg border-dashed text-gray-500">
-            Les projets en cours de production apparaîtront ici
+            Suivez des agriculteurs pour voir leurs projets
           </div>
         </TabsContent>
       </Tabs>

@@ -29,7 +29,7 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
   
   const isInvestor = userRole === 'investisseur';
   const isFarmer = userRole === 'agriculteur';
-  //const canInvest = isInvestor || isFarmer;
+  const canInvest = isInvestor || isFarmer;
   
   const fundingGap = Math.max(0, project.fundingGoal - project.currentFunding);
   
@@ -109,8 +109,11 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
               </div>
             </div>
             
+            <Button variant={project.technicienId ? "default" : "destructive"} size="sm" className="ml-2 text-xs">
+              {project.technicienId ? "Validé" : "En attente"}
+            </Button>
           </div>
-    
+          
           <div className="mb-3">
             <h3 className="font-semibold text-base mb-1">{project.title}</h3>
             <p className="text-sm text-gray-700">{project.description}</p>
@@ -170,6 +173,7 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
               </button>
             </div>
             
+            {canInvest && (
               <Button 
                 size="sm" 
                 className="text-xs" 
@@ -178,6 +182,7 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
               >
                 {fundingGap > 0 ? "S'investir" : "Financé"}
               </Button>
+            )}
           </div>
         </div>
       </Card>
