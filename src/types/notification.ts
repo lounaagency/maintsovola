@@ -12,3 +12,18 @@ export interface Notification {
   entity_type?: 'terrain' | 'projet' | 'jalon' | 'investissement';
   projet_id?: number;
 }
+
+// Ajouter cette interface pour les statistiques SQL
+export interface DatabaseNotification {
+  id_notification: number;
+  id_expediteur?: string;
+  id_destinataire: string;
+  titre: string;
+  message: string;
+  lu: boolean;
+  date_creation: string;
+  type: string;
+  entity_id?: string;
+  entity_type?: string;
+  projet_id?: number;
+}

@@ -1,3 +1,4 @@
+
 export interface TerrainData {
   id_terrain?: number;
   id_tantsaha?: string;
@@ -18,6 +19,20 @@ export interface TerrainData {
   techniqueNom?: string;
   techniquePrenoms?: string;
   nom_terrain?: string;
+  photos?: string | string[];
+  geom?: any;
+}
+
+export interface TerrainFormData {
+  id_terrain?: number;
+  id_tantsaha?: string;
+  id_region: string;
+  id_district: string;
+  id_commune: string;
+  surface_proposee: number;
+  acces_eau: boolean;
+  acces_route: boolean;
+  nom_terrain: string;
   photos?: string | string[];
 }
 

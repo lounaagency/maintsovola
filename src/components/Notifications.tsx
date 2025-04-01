@@ -14,7 +14,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Notification } from "@/types/notification";
+import { Notification, DatabaseNotification } from "@/types/notification";
 
 interface NotificationItem {
   id: string;
@@ -90,16 +90,13 @@ const Notifications: React.FC = () => {
       
       // Using raw SQL query to get notifications since the type isn't in TS definition
       const { data, error } = await supabase
-        .from('notification')
-        .select('*')
-        .eq('id_destinataire', user.id)
-        .order('date_creation', { ascending: false })
+        .rpc('get_notifications_for_user', { user_id: user.id })
         .limit(20);
         
       if (error) throw error;
       
       // Transform database notifications to our NotificationItem format
-      const transformedNotifications: NotificationItem[] = data.map((notification: any) => {
+      const transformedNotifications: NotificationItem[] = (data as DatabaseNotification[]).map((notification) => {
         // Determine notification type based on status or other fields
         let type: "info" | "success" | "warning" | "error" = "info";
         if (notification.type === "validation") type = "success";
@@ -127,7 +124,7 @@ const Notifications: React.FC = () => {
           type,
           link,
           entity_id: notification.entity_id,
-          entity_type: notification.entity_type
+          entity_type: notification.entity_type as "terrain" | "projet" | "jalon" | "investissement" | undefined
         };
       });
       
@@ -156,7 +153,7 @@ const Notifications: React.FC = () => {
             filter: `id_destinataire=eq.${user.id}`
           },
           (payload) => {
-            const newNotification = payload.new as any;
+            const newNotification = payload.new as DatabaseNotification;
             
             // Add the new notification to the list
             setNotifications(prev => {
@@ -191,7 +188,7 @@ const Notifications: React.FC = () => {
                 type,
                 link,
                 entity_id: newNotification.entity_id,
-                entity_type: newNotification.entity_type
+                entity_type: newNotification.entity_type as "terrain" | "projet" | "jalon" | "investissement" | undefined
               };
               
               // Show toast for new notification
@@ -215,9 +212,7 @@ const Notifications: React.FC = () => {
     try {
       // Using raw SQL query to update notification since the type isn't in TS definition
       const { error } = await supabase
-        .from('notification')
-        .update({ lu: true })
-        .eq('id_notification', notificationId);
+        .rpc('mark_notification_as_read', { notification_id: parseInt(notificationId) });
         
       if (error) throw error;
       
@@ -241,10 +236,7 @@ const Notifications: React.FC = () => {
       // Update all unread notifications for this user
       // Using raw SQL query since the type isn't in TS definition
       const { error } = await supabase
-        .from('notification')
-        .update({ lu: true })
-        .eq('id_destinataire', user.id)
-        .eq('lu', false);
+        .rpc('mark_all_notifications_as_read', { user_id: user.id });
         
       if (error) throw error;
       

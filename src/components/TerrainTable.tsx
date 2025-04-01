@@ -1,4 +1,3 @@
-
 import React from "react";
 import { TerrainData } from "@/types/terrain";
 import { Button } from "@/components/ui/button";
@@ -41,7 +40,6 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
 
   const handleValidate = async (terrainId: number) => {
     try {
-      // Vérifier si le rôle est autorisé à valider
       if (!['technicien', 'superviseur'].includes(userRole || '')) {
         toast({
           title: "Accès refusé",
@@ -51,7 +49,6 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
         return;
       }
 
-      // Si c'est un technicien, il faut vérifier qu'il est assigné à ce terrain
       if (userRole === 'technicien') {
         const terrain = terrains.find(t => t.id_terrain === terrainId);
         if (terrain?.id_technicien !== user?.id) {
@@ -90,9 +87,8 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
     }
   };
 
-  const handleAssignTechnicien = async (terrainId: number, technicienId: string) => {
+  const handleAssignTechnician = async (terrainId: number, technicianId: string) => {
     try {
-      // Vérifier que seul un superviseur peut assigner un technicien
       if (userRole !== 'superviseur') {
         toast({
           title: "Accès refusé",
@@ -104,51 +100,37 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
 
       const { error } = await supabase
         .from('terrain')
-        .update({ id_technicien: technicienId })
+        .update({ id_technicien: technicianId })
         .eq('id_terrain', terrainId);
 
       if (error) throw error;
 
-      // Créer une notification pour le technicien
-      await supabase.from('notification').insert({
-        id_destinataire: technicienId,
-        titre: "Affectation terrain",
-        message: `Vous avez été assigné à un nouveau terrain (ID: ${terrainId})`,
-        type: 'info',
-        entity_type: 'terrain',
-        entity_id: terrainId.toString()
-      });
+      await supabase
+        .rpc('create_technicien_assignment_notification', {
+          technicien_id: technicianId,
+          terrain_id: terrainId,
+          superviseur_id: user?.id
+        });
       
-      toast({
-        title: "Succès",
-        description: "Le technicien a été assigné avec succès",
-      });
-      
-      if (onTerrainUpdate) onTerrainUpdate();
+      toast.success("Technicien assigné avec succès!");
+      onTerrainUpdate();
     } catch (error) {
-      console.error('Erreur lors de l\'assignation du technicien:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible d'assigner le technicien",
-        variant: "destructive"
-      });
+      console.error("Error assigning technician:", error);
+      toast.error("Erreur lors de l'assignation du technicien");
     }
   };
 
   const canEdit = (terrain: TerrainData): boolean => {
     if (!user) return false;
     
-    // Les agriculteurs et investisseurs peuvent modifier leurs terrains non validés
     if (['agriculteur', 'investisseur'].includes(userRole || '') && terrain.id_tantsaha === user.id) {
       return terrain.statut === false;
     }
     
-    // Les techniciens peuvent modifier les terrains qui leur sont assignés
     if (userRole === 'technicien' && terrain.id_technicien === user.id) {
       return true;
     }
     
-    // Les superviseurs peuvent modifier tous les terrains
     if (userRole === 'superviseur') return true;
     
     return false;
@@ -157,7 +139,6 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
   const canContactTechnicien = (terrain: TerrainData): boolean => {
     if (!user) return false;
     
-    // Les agriculteurs et investisseurs peuvent contacter le technicien pour leurs terrains validés
     if (['agriculteur', 'investisseur'].includes(userRole || '') && terrain.id_tantsaha === user.id) {
       return terrain.statut === true && !!terrain.id_technicien;
     }
@@ -177,12 +158,10 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
     }
   };
 
-  // Assurez-vous d'avoir des terrains à afficher du bon type
   const filteredTerrains = terrains.filter(terrain => 
     type === 'validated' ? terrain.statut === true : terrain.statut === false
   );
 
-  // Rendu adaptatif selon le type d'appareil
   if (isMobile) {
     return (
       <div className="space-y-4">
@@ -224,7 +203,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                   ) : (
                     <select
                       className="border p-1 rounded-md w-full text-sm"
-                      onChange={(e) => handleAssignTechnicien(terrain.id_terrain || 0, e.target.value)}
+                      onChange={(e) => handleAssignTechnician(terrain.id_terrain || 0, e.target.value)}
                     >
                       <option value="">Sélectionner un technicien</option>
                       {techniciens?.map((tech) => (
@@ -288,7 +267,6 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
     );
   }
 
-  // Version desktop
   return (
     <div className="rounded-md border">
       <Table>
@@ -330,7 +308,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                     ) : (
                       <select
                         className="border p-1 rounded-md w-full"
-                        onChange={(e) => handleAssignTechnicien(terrain.id_terrain || 0, e.target.value)}
+                        onChange={(e) => handleAssignTechnician(terrain.id_terrain || 0, e.target.value)}
                       >
                         <option value="">Sélectionner un technicien</option>
                         {techniciens?.map((tech) => (

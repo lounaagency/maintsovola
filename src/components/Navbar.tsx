@@ -78,50 +78,57 @@ const Navbar: React.FC = () => {
         <div className="flex items-center space-x-2">
           <Notifications />
           
-          {isMobile ? (
-            <Sheet>
-              <SheetTrigger asChild>
-                <button className="p-2">
-                  <Menu size={24} />
-                </button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-[250px] sm:w-[300px]">
-                <div className="flex flex-col space-y-4 mt-8">
-                  <Link to="/profile" className="flex items-center space-x-2 p-2 border-b pb-4 mb-4">
-                    <UserAvatar
-                      src={profile?.photo_profil}
-                      alt={profile?.nom || "Profile"}
-                      size="sm"
-                      status="online"
-                    />
-                    <div>
-                      <span className="font-medium block">
-                        {profile?.nom} {profile?.prenoms}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {profile?.nom_role || "Utilisateur"}
-                      </span>
-                    </div>
-                  </Link>
-                  <div className="flex flex-col space-y-3">
+          <Sheet>
+            <SheetTrigger asChild>
+              <button className="p-2 flex items-center">
+                <UserAvatar
+                  src={profile?.photo_profil}
+                  alt={profile?.nom || "Profile"}
+                  size="sm"
+                  status="online"
+                />
+                {!isMobile && (
+                  <span className="ml-2 text-sm font-medium hidden md:inline-block">
+                    {profile?.nom} {profile?.prenoms}
+                  </span>
+                )}
+              </button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-[250px] sm:w-[300px]">
+              <div className="flex flex-col space-y-4 mt-8">
+                <Link to="/profile" className="flex items-center space-x-2 p-2 border-b pb-4 mb-4">
+                  <UserAvatar
+                    src={profile?.photo_profil}
+                    alt={profile?.nom || "Profile"}
+                    size="sm"
+                    status="online"
+                  />
+                  <div>
+                    <span className="font-medium block">
+                      {profile?.nom} {profile?.prenoms}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {profile?.nom_role || "Utilisateur"}
+                    </span>
+                  </div>
+                </Link>
+                
+                {isMobile && (
+                  <div className="flex flex-col space-y-3 mb-4">
                     <NavItems />
                   </div>
+                )}
+                
+                <div className="border-t pt-4">
+                  <h3 className="text-sm font-medium mb-2">Options supplémentaires</h3>
+                  <Link to="/profile" className="flex items-center p-2 hover:bg-muted rounded-md">
+                    <User size={18} className="mr-2" />
+                    Mon profil
+                  </Link>
                 </div>
-              </SheetContent>
-            </Sheet>
-          ) : (
-            <Link to="/profile" className="flex items-center space-x-2 pl-2">
-              <UserAvatar
-                src={profile?.photo_profil}
-                alt={profile?.nom || "Profile"}
-                size="sm"
-                status="online"
-              />
-              <span className="text-sm font-medium hidden md:inline-block">
-                {profile?.nom} {profile?.prenoms}
-              </span>
-            </Link>
-          )}
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
     </nav>
