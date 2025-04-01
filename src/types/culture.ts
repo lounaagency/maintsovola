@@ -20,3 +20,13 @@ export interface ProjetCulture {
   cout_production_prevu?: number;
   culture?: Culture;
 }
+
+// Ajout pour résoudre l'erreur d'importation
+export interface CultureData {
+  id_culture: number;
+  nom_culture: string;
+  description?: string;
+  rendement_ha?: number;
+  cout_exploitation_ha?: number;
+  prix_tonne?: number;
+}

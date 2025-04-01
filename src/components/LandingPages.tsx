@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ArrowLeft, ArrowRight, Leaf, TrendingUp, Sprout } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 interface LandingPageProps {
   onComplete: () => void;
@@ -47,7 +48,12 @@ const LandingPages: React.FC<LandingPageProps> = ({ onComplete }) => {
   };
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-12">
+    <motion.div 
+      className="max-w-2xl mx-auto px-4 py-12"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+    >
       <div className="flex justify-between items-center mb-8">
         <Button 
           variant="ghost" 
@@ -91,15 +97,23 @@ const LandingPages: React.FC<LandingPageProps> = ({ onComplete }) => {
         )}
       </div>
       
-      <Card className={`overflow-hidden ${pages[currentPage].color}`}>
-        <CardContent className="p-10 text-center">
-          <div className="flex justify-center mb-6">
-            {pages[currentPage].icon}
-          </div>
-          <h2 className="text-2xl font-bold mb-4">{pages[currentPage].title}</h2>
-          <p className="text-lg">{pages[currentPage].content}</p>
-        </CardContent>
-      </Card>
+      <motion.div 
+        key={currentPage}
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, x: -20 }}
+        transition={{ duration: 0.3 }}
+      >
+        <Card className={`overflow-hidden ${pages[currentPage].color}`}>
+          <CardContent className="p-10 text-center">
+            <div className="flex justify-center mb-6">
+              {pages[currentPage].icon}
+            </div>
+            <h2 className="text-2xl font-bold mb-4">{pages[currentPage].title}</h2>
+            <p className="text-lg">{pages[currentPage].content}</p>
+          </CardContent>
+        </Card>
+      </motion.div>
       
       <div className="mt-6 text-center">
         <Button 
@@ -109,7 +123,7 @@ const LandingPages: React.FC<LandingPageProps> = ({ onComplete }) => {
           Passer l'introduction
         </Button>
       </div>
-    </div>
+    </motion.div>
   );
 };
 
