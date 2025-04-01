@@ -25,6 +25,10 @@ const ProjectEditDialog: React.FC<ProjectEditDialogProps> = ({
   userId,
   userRole
 }) => {
+  const handleSubmitSuccess = () => {
+    if (onSubmitSuccess) onSubmitSuccess();
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
@@ -33,11 +37,11 @@ const ProjectEditDialog: React.FC<ProjectEditDialogProps> = ({
         </DialogHeader>
         <ProjectForm
           initialData={project}
-          onSubmitSuccess={onSubmitSuccess}
           onCancel={onClose}
           isEditing={true}
           userId={userId}
           userRole={userRole}
+          onSuccess={handleSubmitSuccess}
         />
       </DialogContent>
     </Dialog>

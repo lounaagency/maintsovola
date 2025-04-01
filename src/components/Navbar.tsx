@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import UserAvatar from "./UserAvatar";
 import Notifications from "./Notifications";
 import { useIsMobile } from "@/hooks/use-mobile";
+import Logo from "./Logo";
 import { 
   Sheet,
   SheetContent,
@@ -36,10 +37,8 @@ const Navbar: React.FC = () => {
   return (
     <nav className="fixed top-0 left-0 right-0 bg-white border-b border-border shadow-sm h-14 md:h-16 z-50">
       <div className="h-full max-w-6xl mx-auto px-2 md:px-4 flex items-center justify-between">
-        {/* Logo - Smaller */}
-        <Link to="/" className="text-base font-bold text-green-600">
-          Maintso Vola
-        </Link>
+        {/* Logo */}
+        <Logo size={isMobile ? "sm" : "md"} withText={!isMobile} />
         
         {/* Central Navigation Icons */}
         <div className="flex items-center justify-center space-x-4 lg:space-x-8">
@@ -47,7 +46,7 @@ const Navbar: React.FC = () => {
             to="/" 
             className={cn(
               "p-2 rounded-full transition-colors", 
-              isActive("/") ? "bg-gray-100 text-green-600" : "text-gray-600 hover:bg-gray-100"
+              isActive("/") || isActive("/feed") ? "bg-gray-100 text-green-600" : "text-gray-600 hover:bg-gray-100"
             )}
             title="Accueil"
           >

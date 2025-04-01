@@ -103,7 +103,7 @@ const InvestmentDialog: React.FC<InvestmentDialogProps> = ({
           const { data: projectData } = await supabase
             .from('projet')
             .select('id_tantsaha, id_technicien, id_superviseur')
-            .eq('id_projet', projectId)
+            .eq('id_projet', parseInt(projectId))
             .single();
 
           if (projectData) {
@@ -116,7 +116,7 @@ const InvestmentDialog: React.FC<InvestmentDialogProps> = ({
                 message: `Un investisseur a investi ${amount.toLocaleString()} Ar dans votre projet "${projectTitle}"`,
                 type: 'info',
                 entity_type: 'projet',
-                entity_id: projectId,
+                entity_id: parseInt(projectId),
                 projet_id: parseInt(projectId)
               });
             }
@@ -130,7 +130,7 @@ const InvestmentDialog: React.FC<InvestmentDialogProps> = ({
                 message: `Un investisseur a investi ${amount.toLocaleString()} Ar dans le projet "${projectTitle}"`,
                 type: 'info',
                 entity_type: 'projet',
-                entity_id: projectId,
+                entity_id: parseInt(projectId),
                 projet_id: parseInt(projectId)
               });
             }
@@ -144,7 +144,7 @@ const InvestmentDialog: React.FC<InvestmentDialogProps> = ({
                 message: `Un investisseur a investi ${amount.toLocaleString()} Ar dans le projet "${projectTitle}"`,
                 type: 'info',
                 entity_type: 'projet',
-                entity_id: projectId,
+                entity_id: parseInt(projectId),
                 projet_id: parseInt(projectId)
               });
             }

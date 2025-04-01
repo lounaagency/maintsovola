@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { ArrowLeft, ArrowRight, Farm, Leaf, TrendingUp, Users } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Leaf, TrendingUp, Sprout } from 'lucide-react';
 
 interface LandingPageProps {
   onComplete: () => void;
@@ -20,7 +20,7 @@ const LandingPages: React.FC<LandingPageProps> = ({ onComplete }) => {
     },
     {
       title: "Pour les Agriculteurs",
-      icon: <Farm className="w-16 h-16 text-amber-500" />,
+      icon: <Sprout className="w-16 h-16 text-amber-500" />,
       content: "Accédez à des financements pour vos projets agricoles, bénéficiez de l'accompagnement de techniciens qualifiés et développez votre activité. Enregistrez vos terrains, créez des projets et trouvez des investisseurs facilement.",
       color: "bg-amber-50"
     },
@@ -82,7 +82,6 @@ const LandingPages: React.FC<LandingPageProps> = ({ onComplete }) => {
           </Button>
         ) : (
           <Button 
-            variant="primary" 
             onClick={onComplete}
             className="flex items-center"
           >
