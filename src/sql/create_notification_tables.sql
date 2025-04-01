@@ -2,14 +2,14 @@
 -- Create notification table
 CREATE TABLE IF NOT EXISTS public.notification (
     id_notification SERIAL PRIMARY KEY,
-    id_expediteur VARCHAR(255) REFERENCES public.utilisateur(id_utilisateur), -- Can be NULL for system notifications
-    id_destinataire VARCHAR(255) NOT NULL REFERENCES public.utilisateur(id_utilisateur),
+    id_expediteur UUID REFERENCES public.utilisateur(id_utilisateur), -- Can be NULL for system notifications
+    id_destinataire UUID NOT NULL REFERENCES public.utilisateur(id_utilisateur),
     titre VARCHAR(255) NOT NULL,
     message TEXT NOT NULL,
     lu BOOLEAN DEFAULT FALSE,
     date_creation TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     type VARCHAR(50) DEFAULT 'info', -- 'info', 'validation', 'alerte', 'erreur'
-    entity_id VARCHAR(255), -- ID of related entity (terrain, projet, etc.)
+    entity_id INTEGER, -- ID of related entity (terrain, projet, etc.)
     entity_type VARCHAR(50), -- Type of entity ('terrain', 'projet', 'jalon', 'investissement')
     projet_id INT -- Reference to specific project if applicable
 );
@@ -318,31 +318,27 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE TRIGGER new_investment_notification
-AFTER INSERT ON public.investissement
-FOR EACH ROW
-EXECUTE PROCEDURE notify_new_investment();
-
--- 7. Project funding complete notification
 CREATE OR REPLACE FUNCTION notify_project_fully_funded()
 RETURNS TRIGGER AS $$
 DECLARE
     total_investment DECIMAL;
     funding_goal DECIMAL;
-    project_record RECORD;
+    id_tantsaha UUID;
+    id_technicien UUID;
+    projet_titre TEXT;
 BEGIN
-    -- Calculate total investment and get funding goal
+    -- Calculer l'investissement total et obtenir l'objectif de financement
     SELECT SUM(i.montant), p.cout_total, p.id_tantsaha, t.id_technicien, p.titre
-    INTO total_investment, funding_goal, project_record
+    INTO total_investment, funding_goal, id_tantsaha, id_technicien, projet_titre
     FROM public.investissement i
     JOIN public.projet p ON i.id_projet = p.id_projet
     JOIN public.terrain t ON p.id_terrain = t.id_terrain
     WHERE i.id_projet = NEW.id_projet
     GROUP BY p.id_projet, t.id_terrain;
     
-    -- If funding is complete, notify relevant parties
+    -- Vérifier si le financement est complété
     IF total_investment >= funding_goal AND OLD.statut != 'en_production' AND NEW.statut = 'en_production' THEN
-        -- Notify farmer
+        -- Notifier le tantsaha (agriculteur)
         INSERT INTO public.notification (
             id_destinataire,
             titre,
@@ -353,9 +349,9 @@ BEGIN
             projet_id
         )
         VALUES (
-            project_record.id_tantsaha,
+            id_tantsaha,
             'Financement complété',
-            'Votre projet "' || COALESCE(project_record.titre, 'Projet #' || NEW.id_projet) || 
+            'Votre projet "' || COALESCE(projet_titre, 'Projet #' || NEW.id_projet) || 
             '" a atteint son objectif de financement et entre en phase de production.',
             'success',
             NEW.id_projet::VARCHAR,
@@ -363,8 +359,8 @@ BEGIN
             NEW.id_projet
         );
         
-        -- Notify technician
-        IF project_record.id_technicien IS NOT NULL THEN
+        -- Notifier le technicien si présent
+        IF id_technicien IS NOT NULL THEN
             INSERT INTO public.notification (
                 id_destinataire,
                 titre,
@@ -375,9 +371,9 @@ BEGIN
                 projet_id
             )
             VALUES (
-                project_record.id_technicien,
+                id_technicien,
                 'Projet en production',
-                'Le projet "' || COALESCE(project_record.titre, 'Projet #' || NEW.id_projet) || 
+                'Le projet "' || COALESCE(projet_titre, 'Projet #' || NEW.id_projet) || 
                 '" a atteint son objectif de financement et entre en phase de production.',
                 'info',
                 NEW.id_projet::VARCHAR,
