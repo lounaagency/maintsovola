@@ -13,8 +13,11 @@ export interface UserProfile {
   id_role?: number;
   nom_role?: string;
   telephones?: UserTelephone[];
+  is_investor?: boolean;
+  is_farming_owner?: boolean;
   // For compatibility with Messages.tsx
   name?: string; // Alias for nom + prenoms
+  photo?: string; // Alias for photo_profil
 }
 
 export interface UserTelephone {

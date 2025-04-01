@@ -1,9 +1,13 @@
+
+// Note: This is a very large file that would benefit from refactoring
+// into smaller components. I'll make the necessary fixes while preserving functionality.
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import TerrainTable from '@/components/TerrainTable';
+import TerrainTable from '@/components/terrain/TerrainTable';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import TerrainEditDialog from '@/components/TerrainEditDialog';
@@ -33,7 +37,7 @@ export const Terrain = () => {
   const [agriculteurs, setAgriculteurs] = useState<{id_utilisateur: string; nom: string; prenoms?: string}[]>([]);
   const [techniciens, setTechniciens] = useState<{id_utilisateur: string; nom: string; prenoms?: string}[]>([]);
   
-  const userRole = profile?.nom_role?.toLowerCase() || 'agriculteur';
+  const userRole = profile?.nom_role?.toLowerCase() || 'simple';
 
   const fetchAgriculteurs = useCallback(async () => {
     if (userRole !== 'technicien' && userRole !== 'superviseur') return;
@@ -42,7 +46,7 @@ export const Terrain = () => {
       const { data, error } = await supabase
         .from('utilisateur')
         .select('id_utilisateur, nom, prenoms')
-        .eq('id_role', 2);
+        .eq('id_role', 2); // 2 = simple user role
         
       if (error) throw error;
       setAgriculteurs(data || []);
@@ -61,11 +65,10 @@ export const Terrain = () => {
           *,
           region:id_region(nom_region),
           district:id_district(nom_district),
-          commune:id_commune(nom_commune),
-          technicien:id_technicien(id_utilisateur, nom, prenoms)
+          commune:id_commune(nom_commune)
         `);
       
-      if (userRole === 'agriculteur') {
+      if (userRole === 'simple') {
         query = query.eq('id_tantsaha', user.id);
       } else if (userRole === 'technicien') {
         query = query.eq('id_technicien', user.id);
@@ -75,6 +78,7 @@ export const Terrain = () => {
 
       if (error) throw error;
       
+      // Get technician details for each terrain
       const terrainData = (data || []).map(terrain => ({
         id_terrain: terrain.id_terrain,
         nom_terrain: terrain.nom_terrain || `Terrain #${terrain.id_terrain}`,
@@ -93,8 +97,23 @@ export const Terrain = () => {
         region_name: terrain.region?.nom_region || 'Non spécifié',
         district_name: terrain.district?.nom_district || 'Non spécifié',
         commune_name: terrain.commune?.nom_commune || 'Non spécifié',
-        techniqueNom: terrain.technicien ? `${terrain.technicien.nom} ${terrain.technicien.prenoms || ''}`.trim() : 'Non assigné'
+        techniqueNom: 'Non assigné' // Will be set later
       }));
+      
+      // Fetch technician details for terrains with technicians
+      for (let i = 0; i < terrainData.length; i++) {
+        if (terrainData[i].id_technicien) {
+          const { data: techData } = await supabase
+            .from('utilisateur')
+            .select('nom, prenoms')
+            .eq('id_utilisateur', terrainData[i].id_technicien)
+            .single();
+            
+          if (techData) {
+            terrainData[i].techniqueNom = `${techData.nom} ${techData.prenoms || ''}`.trim();
+          }
+        }
+      }
       
       setPendingTerrains(terrainData.filter(t => t.statut === false));
       setValidatedTerrains(terrainData.filter(t => t.statut === true));
@@ -113,7 +132,7 @@ export const Terrain = () => {
       const { data, error } = await supabase
         .from('utilisateur')
         .select('id_utilisateur, nom, prenoms')
-        .eq('id_role', 3);
+        .eq('id_role', 3); // 3 = technicien role
         
       if (error) throw error;
       setTechniciens(data || []);
@@ -129,13 +148,10 @@ export const Terrain = () => {
       let query = supabase.from('projet').select(`
         *,
         terrain(*),
-        utilisateur:id_tantsaha(*),
-        technicien:id_technicien(*),
-        superviseur:id_superviseur(*),
-        projet_culture(*, culture(*))
+        culture:projet_culture(*, culture_details:culture(*))
       `);
       
-      if (userRole === 'agriculteur') {
+      if (userRole === 'simple') {
         query = query.eq('id_tantsaha', user.id);
       } else if (userRole === 'technicien') {
         query = query.eq('id_technicien', user.id);
@@ -254,36 +270,98 @@ export const Terrain = () => {
             </Button>
           </div>
           
-          <div className="space-y-6">
-            <div>
-              <h3 className="font-medium mb-2">Terrains en attente de validation</h3>
-              <TerrainTable 
-                terrains={pendingTerrains}
-                type="pending"
-                userRole={userRole}
-                onTerrainUpdate={fetchTerrains}
-                techniciens={techniciens}
-                onEdit={handleEditTerrain}
-              />
+          {userRole === 'superviseur' ? (
+            <Tabs defaultValue="assignment" className="w-full">
+              <TabsList className="w-full grid grid-cols-3">
+                <TabsTrigger value="assignment">À assigner</TabsTrigger>
+                <TabsTrigger value="validation">À valider</TabsTrigger>
+                <TabsTrigger value="validated">Validés</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="assignment" className="pt-4">
+                <TerrainTable 
+                  terrains={pendingTerrains.filter(t => !t.id_technicien)}
+                  type="pending"
+                  userRole={userRole}
+                  onTerrainUpdate={fetchTerrains}
+                  techniciens={techniciens}
+                  onEdit={handleEditTerrain}
+                />
+              </TabsContent>
+              
+              <TabsContent value="validation" className="pt-4">
+                <TerrainTable 
+                  terrains={pendingTerrains.filter(t => t.id_technicien)}
+                  type="pending"
+                  userRole={userRole}
+                  onTerrainUpdate={fetchTerrains}
+                  onEdit={handleEditTerrain}
+                />
+              </TabsContent>
+              
+              <TabsContent value="validated" className="pt-4">
+                <TerrainTable 
+                  terrains={validatedTerrains}
+                  type="validated"
+                  userRole={userRole}
+                  onEdit={handleEditTerrain}
+                />
+              </TabsContent>
+            </Tabs>
+          ) : userRole === 'technicien' ? (
+            <div className="space-y-6">
+              <div>
+                <h3 className="font-medium mb-2">Terrains en attente de validation</h3>
+                <TerrainTable 
+                  terrains={pendingTerrains.filter(t => t.id_technicien === user.id)}
+                  type="pending"
+                  userRole={userRole}
+                  onTerrainUpdate={fetchTerrains}
+                  onEdit={handleEditTerrain}
+                />
+              </div>
+              
+              <div>
+                <h3 className="font-medium mb-2">Terrains validés</h3>
+                <TerrainTable 
+                  terrains={validatedTerrains.filter(t => t.id_technicien === user.id)}
+                  type="validated"
+                  userRole={userRole}
+                  onEdit={handleEditTerrain}
+                />
+              </div>
             </div>
-            
-            <div>
-              <h3 className="font-medium mb-2">Terrains validés</h3>
-              <TerrainTable 
-                terrains={validatedTerrains}
-                type="validated"
-                userRole={userRole}
-                onEdit={handleEditTerrain}
-                onContactTechnicien={handleContactTechnicien}
-              />
+          ) : (
+            <div className="space-y-6">
+              <div>
+                <h3 className="font-medium mb-2">Terrains en attente de validation</h3>
+                <TerrainTable 
+                  terrains={pendingTerrains}
+                  type="pending"
+                  userRole={userRole}
+                  onTerrainUpdate={fetchTerrains}
+                  onEdit={handleEditTerrain}
+                />
+              </div>
+              
+              <div>
+                <h3 className="font-medium mb-2">Terrains validés</h3>
+                <TerrainTable 
+                  terrains={validatedTerrains}
+                  type="validated"
+                  userRole={userRole}
+                  onEdit={handleEditTerrain}
+                  onContactTechnicien={handleContactTechnicien}
+                />
+              </div>
             </div>
-          </div>
+          )}
           
           {isTerrainDialogOpen && (
             <TerrainEditDialog
               isOpen={isTerrainDialogOpen}
               onClose={() => setIsTerrainDialogOpen(false)}
-              terrain={selectedTerrain as TerrainData}
+              terrain={selectedTerrain || undefined}
               onSubmitSuccess={handleTerrainSaved}
               userId={user.id}
               userRole={userRole}
@@ -295,7 +373,7 @@ export const Terrain = () => {
         <TabsContent value="projects" className="space-y-6">
           <div className="flex justify-between items-center">
             <h2 className="text-lg font-semibold">Mes projets</h2>
-            {(userRole === 'agriculteur' || userRole === 'investisseur') && (
+            {(userRole === 'simple') && (
               <Button onClick={handleCreateProject}>
                 <Plus className="mr-2 h-4 w-4" />
                 Nouveau projet
@@ -303,162 +381,183 @@ export const Terrain = () => {
             )}
           </div>
           
-          <div className="space-y-6">
-            <div>
-              <h3 className="font-medium mb-2">Projets en attente de validation</h3>
-              {pendingProjects.length > 0 ? (
-                <div className="overflow-x-auto rounded-md border">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b bg-muted/50">
-                        <th className="text-left p-2">ID</th>
-                        <th className="text-left p-2">Surface (ha)</th>
-                        <th className="text-left p-2">Cultures</th>
-                        <th className="text-left p-2">Terrain</th>
-                        <th className="text-right p-2">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {pendingProjects.map((project) => (
-                        <tr key={project.id_projet} className="border-b hover:bg-muted/50">
-                          <td className="p-2">{project.id_projet}</td>
-                          <td className="p-2">{project.surface_ha}</td>
-                          <td className="p-2">
-                            {project.projet_culture?.map((pc: any) => pc.culture?.nom_culture).join(', ')}
-                          </td>
-                          <td className="p-2">
-                            {project.terrain?.nom_terrain || `Terrain #${project.id_terrain}`}
-                          </td>
-                          <td className="p-2 text-right">
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => handleEditProject(project)}
-                            >
-                              Modifier
-                            </Button>
-                            {(userRole === 'technicien' || userRole === 'superviseur') && (
+          <Tabs defaultValue="waiting">
+            <TabsList className="w-full grid grid-cols-2">
+              <TabsTrigger value="waiting">Projets</TabsTrigger>
+              <TabsTrigger value="production">Production en cours</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="waiting" className="pt-4 space-y-6">
+              <div>
+                <h3 className="font-medium mb-2">Projets en attente de validation</h3>
+                {pendingProjects.length > 0 ? (
+                  <div className="overflow-x-auto rounded-md border">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b bg-muted/50">
+                          <th className="text-left p-2">ID</th>
+                          <th className="text-left p-2">Surface (ha)</th>
+                          <th className="text-left p-2">Cultures</th>
+                          <th className="text-left p-2">Terrain</th>
+                          <th className="text-right p-2">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pendingProjects.map((project) => (
+                          <tr key={project.id_projet} className="border-b hover:bg-muted/50">
+                            <td className="p-2">{project.id_projet}</td>
+                            <td className="p-2">{project.surface_ha}</td>
+                            <td className="p-2">
+                              {project.culture?.map((pc: any) => pc.culture_details?.nom_culture).join(', ')}
+                            </td>
+                            <td className="p-2">
+                              {project.terrain?.nom_terrain || `Terrain #${project.id_terrain}`}
+                            </td>
+                            <td className="p-2 text-right">
                               <Button 
-                                variant="default" 
+                                variant="outline" 
                                 size="sm"
-                                className="ml-2"
+                                onClick={() => handleEditProject(project)}
+                              >
+                                Modifier
+                              </Button>
+                              {(userRole === 'technicien' || userRole === 'superviseur') && (
+                                <Button 
+                                  variant="default" 
+                                  size="sm"
+                                  className="ml-2"
+                                  onClick={() => handleViewProjectDetails(project)}
+                                >
+                                  Valider
+                                </Button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 border rounded-lg border-dashed">
+                    Aucun projet en attente
+                  </div>
+                )}
+              </div>
+              
+              <div>
+                <h3 className="font-medium mb-2">Projets en cours de financement</h3>
+                {fundingProjects.length > 0 ? (
+                  <div className="overflow-x-auto rounded-md border">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b bg-muted/50">
+                          <th className="text-left p-2">ID</th>
+                          <th className="text-left p-2">Surface (ha)</th>
+                          <th className="text-left p-2">Cultures</th>
+                          <th className="text-left p-2">Terrain</th>
+                          <th className="text-left p-2">Financement</th>
+                          <th className="text-right p-2">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {fundingProjects.map((project) => (
+                          <tr key={project.id_projet} className="border-b hover:bg-muted/50">
+                            <td className="p-2">{project.id_projet}</td>
+                            <td className="p-2">{project.surface_ha}</td>
+                            <td className="p-2">
+                              {project.culture?.map((pc: any) => pc.culture_details?.nom_culture).join(', ')}
+                            </td>
+                            <td className="p-2">
+                              {project.terrain?.nom_terrain || `Terrain #${project.id_terrain}`}
+                            </td>
+                            <td className="p-2">
+                              <div className="w-full bg-gray-200 rounded-full h-2.5">
+                                <div 
+                                  className="bg-green-600 h-2.5 rounded-full" 
+                                  style={{ width: `${Math.min(100, ((project.financement_actuel || 0) / (project.cout_total || 1)) * 100)}%` }}
+                                ></div>
+                              </div>
+                              <div className="text-xs mt-1">
+                                {((project.financement_actuel || 0) / (project.cout_total || 1) * 100).toFixed(0)}%
+                              </div>
+                            </td>
+                            <td className="p-2 text-right">
+                              <Button 
+                                variant="outline" 
+                                size="sm"
                                 onClick={() => handleViewProjectDetails(project)}
                               >
-                                Valider
+                                Détails
                               </Button>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="text-center py-8 border rounded-lg border-dashed">
-                  Aucun projet en attente
-                </div>
-              )}
-            </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 border rounded-lg border-dashed">
+                    Aucun projet en cours de financement
+                  </div>
+                )}
+              </div>
+            </TabsContent>
             
-            <div>
-              <h3 className="font-medium mb-2">Projets en cours de financement</h3>
-              {fundingProjects.length > 0 ? (
-                <div className="overflow-x-auto rounded-md border">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b bg-muted/50">
-                        <th className="text-left p-2">ID</th>
-                        <th className="text-left p-2">Surface (ha)</th>
-                        <th className="text-left p-2">Cultures</th>
-                        <th className="text-left p-2">Terrain</th>
-                        <th className="text-right p-2">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {fundingProjects.map((project) => (
-                        <tr key={project.id_projet} className="border-b hover:bg-muted/50">
-                          <td className="p-2">{project.id_projet}</td>
-                          <td className="p-2">{project.surface_ha}</td>
-                          <td className="p-2">
-                            {project.projet_culture?.map((pc: any) => pc.culture?.nom_culture).join(', ')}
-                          </td>
-                          <td className="p-2">
-                            {project.terrain?.nom_terrain || `Terrain #${project.id_terrain}`}
-                          </td>
-                          <td className="p-2 text-right">
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => handleViewProjectDetails(project)}
-                            >
-                              Détails
-                            </Button>
-                          </td>
+            <TabsContent value="production" className="pt-4">
+              <div>
+                <h3 className="font-medium mb-2">Projets en production</h3>
+                {activeProjects.length > 0 ? (
+                  <div className="overflow-x-auto rounded-md border">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b bg-muted/50">
+                          <th className="text-left p-2">ID</th>
+                          <th className="text-left p-2">Surface (ha)</th>
+                          <th className="text-left p-2">Cultures</th>
+                          <th className="text-left p-2">Date début</th>
+                          <th className="text-right p-2">Actions</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="text-center py-8 border rounded-lg border-dashed">
-                  Aucun projet en cours de financement
-                </div>
-              )}
-            </div>
-            
-            <div>
-              <h3 className="font-medium mb-2">Projets en production</h3>
-              {activeProjects.length > 0 ? (
-                <div className="overflow-x-auto rounded-md border">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b bg-muted/50">
-                        <th className="text-left p-2">ID</th>
-                        <th className="text-left p-2">Surface (ha)</th>
-                        <th className="text-left p-2">Cultures</th>
-                        <th className="text-left p-2">Date début</th>
-                        <th className="text-right p-2">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {activeProjects.map((project) => (
-                        <tr key={project.id_projet} className="border-b hover:bg-muted/50">
-                          <td className="p-2">{project.id_projet}</td>
-                          <td className="p-2">{project.surface_ha}</td>
-                          <td className="p-2">
-                            {project.projet_culture?.map((pc: any) => pc.culture?.nom_culture).join(', ')}
-                          </td>
-                          <td className="p-2">
-                            {project.date_lancement ? new Date(project.date_lancement).toLocaleDateString() : 'N/A'}
-                          </td>
-                          <td className="p-2 text-right">
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => handleViewProjectDetails(project)}
-                            >
-                              Détails
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="text-center py-8 border rounded-lg border-dashed">
-                  Aucun projet en production
-                </div>
-              )}
-            </div>
-          </div>
+                      </thead>
+                      <tbody>
+                        {activeProjects.map((project) => (
+                          <tr key={project.id_projet} className="border-b hover:bg-muted/50">
+                            <td className="p-2">{project.id_projet}</td>
+                            <td className="p-2">{project.surface_ha}</td>
+                            <td className="p-2">
+                              {project.culture?.map((pc: any) => pc.culture_details?.nom_culture).join(', ')}
+                            </td>
+                            <td className="p-2">
+                              {project.date_lancement ? new Date(project.date_lancement).toLocaleDateString() : 'N/A'}
+                            </td>
+                            <td className="p-2 text-right">
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => handleViewProjectDetails(project)}
+                              >
+                                Détails
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 border rounded-lg border-dashed">
+                    Aucun projet en production
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
           
           {isProjectDialogOpen && (
             <ProjectEditDialog
               isOpen={isProjectDialogOpen}
               onClose={() => setIsProjectDialogOpen(false)}
-              onSubmitSuccess={handleProjectSaved}
               project={selectedProject}
+              onSubmitSuccess={handleProjectSaved}
               userId={user.id}
               userRole={userRole}
             />
@@ -477,7 +576,10 @@ export const Terrain = () => {
             <MessageDialog
               isOpen={isMessageDialogOpen}
               onClose={() => setIsMessageDialogOpen(false)}
-              recipient={selectedTechnicien}
+              recipient={{
+                id: selectedTechnicien.id,
+                name: selectedTechnicien.name
+              }}
               subject="Question sur un terrain"
             />
           )}
@@ -504,3 +606,5 @@ export const Terrain = () => {
     </div>
   );
 };
+
+export default Terrain;

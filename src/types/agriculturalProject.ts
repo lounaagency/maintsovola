@@ -31,5 +31,6 @@ export interface AgriculturalProject {
   comments: number;
   shares: number;
   isLiked?: boolean;
-  technicienId?: string; // ID du technicien responsable du projet
+  technicianId?: string; // ID du technicien responsable du projet
+  status?: 'en_attente' | 'validé' | 'en_financement' | 'en_cours' | 'en_production' | 'terminé';
 }

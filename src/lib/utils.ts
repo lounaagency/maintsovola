@@ -1,46 +1,44 @@
 
-import { clsx, type ClassValue } from "clsx"
+import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export const formatCurrency = (amount: number | null | undefined, currency: string = "MGA") => {
-  if (amount === null || amount === undefined) return "0 MGA";
-  
-  return new Intl.NumberFormat("fr-MG", {
-    style: "currency",
-    currency: currency,
-    minimumFractionDigits: 0, // Ariary n'a pas de sous-unité officielle
+export const isValidEmail = (email: string): boolean => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
+
+export const isValidPhoneNumber = (phone: string): boolean => {
+  // For Malagasy phone numbers (03X, 03X, 03X)
+  const phoneRegex = /^(032|033|034)\d{7}$/;
+  return phoneRegex.test(phone);
+};
+
+export const formatPrice = (amount: number): string => {
+  return new Intl.NumberFormat('fr-MG', {
+    style: 'currency',
+    currency: 'MGA',
+    minimumFractionDigits: 0
   }).format(amount);
 };
 
-// Function to convert WKT format to GeoJSON
-export const wktToGeoJSON = (wktString: string | null): GeoJSON.Feature | null => {
-  if (!wktString) return null;
+export const generateProjectTitle = (cultures: string[]): string => {
+  if (!cultures || cultures.length === 0) return 'Nouveau projet';
   
-  try {
-    // Simple WKT POLYGON parser
-    const match = wktString.match(/POLYGON\s*\(\((.*)\)\)/i);
-    if (!match || !match[1]) return null;
+  return `Projet de culture de ${cultures.join(', ')}`;
+};
 
-    const coordsPairs = match[1].split(',').map(pair => pair.trim());
-    const coordinates = coordsPairs.map(pair => {
-      const [lng, lat] = pair.split(' ').map(Number);
-      return [lng, lat];
-    });
-
-    return {
-      type: 'Feature',
-      geometry: {
-        type: 'Polygon',
-        coordinates: [coordinates]
-      },
-      properties: {}
-    };
-  } catch (error) {
-    console.error('Error parsing WKT:', error);
-    return null;
-  }
+export const generateProjectDescription = (
+  cultures: string[], 
+  surface: number, 
+  commune: string, 
+  district: string, 
+  region: string,
+  rendement: number,
+  ca: number
+): string => {
+  return `Projet de culture de ${cultures.join(', ')} sur un terrain de ${surface} hectares dans la commune ${commune}, district de ${district} de la région ${region} pour une production de ${rendement} Tonnes estimée à ${formatPrice(ca)}.`;
 };

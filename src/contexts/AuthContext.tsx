@@ -1,17 +1,19 @@
+
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { UserProfile } from "@/types/userProfile";
+import { isValidEmail } from "@/lib/utils";
 
 interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
   loading: boolean;
   error: Error | null;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, userData: any) => Promise<void>;
+  signIn: (identifier: string, password: string) => Promise<void>;
+  signUp: (identifier: string, password: string, userData: any) => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -68,7 +70,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const { data, error } = await supabase
         .from('utilisateur')
-        .select('*')
+        .select(`
+          *,
+          role:id_role(nom_role),
+          telephones:telephone(*)
+        `)
         .eq('id_utilisateur', userId)
         .single();
 
@@ -77,68 +83,123 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
       
-      setProfile(data);
+      // Convert to UserProfile type
+      const userProfile: UserProfile = {
+        id_utilisateur: data.id_utilisateur,
+        id: data.id_utilisateur,
+        nom: data.nom,
+        prenoms: data.prenoms,
+        email: data.email,
+        photo_profil: data.photo_profil,
+        photo_couverture: data.photo_couverture,
+        telephone: data.telephone || undefined,
+        adresse: data.adresse || undefined,
+        bio: data.bio || undefined,
+        id_role: data.id_role,
+        nom_role: data.role?.nom_role,
+        telephones: data.telephones || []
+      };
+      
+      setProfile(userProfile);
     } catch (error) {
       console.error("Error fetching profile:", error);
     }
   };
 
-  const signUp = async (email: string, password: string, userData: any) => {
+  const signUp = async (identifier: string, password: string, userData: any) => {
     try {
       setLoading(true);
-
-      const { data, error } = await supabase.auth.signUp({
-        email,
+      
+      const isEmail = isValidEmail(identifier);
+      
+      // Set up the user data
+      const authData = {
+        ...(isEmail ? { email: identifier } : {}),
         password,
         options: {
           data: {
             nom: userData.nom,
-            role: userData.role
+            prenoms: userData.prenoms,
+            role: userData.role || 'simple',
+            is_investor: userData.is_investor || false,
+            is_farming_owner: userData.is_farming_owner || false
           }
         }
-      });
+      };
+
+      // Create the user in auth
+      const { data, error } = isEmail 
+        ? await supabase.auth.signUp(authData)
+        : await supabase.auth.signUp({
+            phone: identifier,
+            password,
+            options: authData.options
+          });
 
       if (error) throw error;
       if (!data.user) throw new Error("L'utilisateur n'a pas été créé.");
       
-      console.log("Données utilisateur :", {
-          id_utilisateur: data?.user?.id,
-          email,
-          nom: userData.nom,
-          role: userData.role
-        });
-
-        toast.info(`Utilisateur: ${data?.user?.id}, Nom: ${userData.nom}, Rôle: ${userData.role}, Email: ${email}`);
-
+      // Insert user data into public.utilisateur table
       const { error: dbError } = await supabase.from("utilisateur").insert([
         {
           id_utilisateur: data.user.id,
-          email: email,
+          email: isEmail ? identifier : userData.email,
           nom: userData.nom,
-          role: userData.role
+          prenoms: userData.prenoms,
+          id_role: userData.role === 'technicien' ? 3 : userData.role === 'superviseur' ? 4 : 2 // 2=simple, 3=technicien, 4=superviseur
         }
       ]);
 
       if (dbError) throw dbError;
+      
+      // Insert phone number if provided
+      if (!isEmail || userData.telephone) {
+        const { error: phoneError } = await supabase.from("telephone").insert([
+          {
+            id_utilisateur: data.user.id,
+            numero: isEmail ? userData.telephone : identifier,
+            type: 'principal'
+          }
+        ]);
+        
+        if (phoneError) console.error("Error saving phone:", phoneError);
+      }
 
       toast.success("Inscription réussie ! Vérifiez votre email pour confirmer.");
-      navigate("/feed");
     } catch (error: any) {
       toast.error(error.message || "Erreur lors de l'inscription");
       console.error("Error signing up:", error);
+      throw error;
     } finally {
       setLoading(false);
     }
   };
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (identifier: string, password: string) => {
     try {
       setLoading(true);
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-
+      
+      // Check if identifier is an email or phone number
+      const isEmail = isValidEmail(identifier);
+      
+      let authResponse;
+      
+      if (isEmail) {
+        // Try sign in with email
+        authResponse = await supabase.auth.signInWithPassword({
+          email: identifier,
+          password
+        });
+      } else {
+        // Try sign in with phone number
+        authResponse = await supabase.auth.signInWithPassword({
+          phone: identifier,
+          password
+        });
+      }
+      
+      const { data, error } = authResponse;
+      
       if (error) throw error;
       
       toast.success("Connexion réussie !");
@@ -146,6 +207,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error: any) {
       toast.error(error.message || "Erreur lors de la connexion");
       console.error("Error signing in:", error);
+      throw error;
     } finally {
       setLoading(false);
     }
@@ -174,7 +236,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .from('utilisateur')
         .select(`
           *,
-          role:id_role(nom_role)
+          role:id_role(nom_role),
+          telephones:telephone(*)
         `)
         .eq('id_utilisateur', user.id)
         .single();
@@ -193,8 +256,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         adresse: data.adresse || undefined,
         bio: data.bio || undefined,
         id_role: data.id_role,
-        nom_role: data.role?.nom_role
+        nom_role: data.role?.nom_role,
+        telephones: data.telephones || []
       };
+      
       setProfile(userProfile);
       
     } catch (error) {
