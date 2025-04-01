@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Navigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import NewProject from "@/components/NewProject";
 import { motion } from "framer-motion";
@@ -20,6 +21,10 @@ const Feed: React.FC = () => {
   }>({});
   const { user } = useAuth();
   
+  // Redirect to auth if not logged in
+  if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
   useEffect(() => {
     fetchProjects();
   }, [activeFilters]);

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import MessageItem from "@/components/MessageItem";
@@ -25,6 +26,10 @@ const Messages: React.FC = () => {
   const [isMessageDialogOpen, setIsMessageDialogOpen] = useState(false);
   const [selectedRecipient, setSelectedRecipient] = useState<UserProfile | null>(null);
 
+  // Redirect to auth if not logged in
+  if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
   useEffect(() => {
     if (user) {
       fetchConversations();
@@ -35,7 +40,7 @@ const Messages: React.FC = () => {
     if (searchQuery) {
       const filtered = messages.filter(message => 
         message.user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        message.lastMessage.toLowerCase().includes(searchQuery.toLowerCase())
+        message.lastMessage.text.toLowerCase().includes(searchQuery.toLowerCase())
       );
       setFilteredMessages(filtered);
     } else {
@@ -65,7 +70,7 @@ const Messages: React.FC = () => {
       
       // Get user details for conversation participants
       const conversationIds = conversationsData.map(conv => conv.id_conversation);
-      let formattedMessages: ConversationMessage[] = [];
+      const formattedMessages: ConversationMessage[] = [];
       
       for (const conv of conversationsData) {
         // Determine the other user in the conversation
@@ -114,7 +119,7 @@ const Messages: React.FC = () => {
           user: {
             id: userData.id_utilisateur,
             name: `${userData.nom} ${userData.prenoms || ''}`.trim(),
-            avatar: userData.photo_profil,
+            photo_profil: userData.photo_profil,
             status: "online" // Default status
           },
           lastMessage: lastMessageData?.contenu || "Nouvelle conversation",
@@ -252,7 +257,7 @@ const Messages: React.FC = () => {
                 setSelectedUser({
                   id_utilisateur: message.user.id,
                   name: message.user.name,
-                  photo_profil: message.user.avatar
+                  photo_profil: message.user.photo_profil
                 });
                 setIsDialogOpen(true);
               }}
@@ -262,7 +267,7 @@ const Messages: React.FC = () => {
                 id={message.id}
                 user={{
                   name: message.user.name,
-                  avatar: message.user.avatar,
+                  photo_profil: message.user.photo_profil,
                   status: message.user.status || "none"
                 }}
                 lastMessage={message.lastMessage}

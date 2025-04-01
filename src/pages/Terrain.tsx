@@ -3,6 +3,7 @@
 // into smaller components. I'll make the necessary fixes while preserving functionality.
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -19,6 +20,10 @@ import { TerrainData } from "@/types/terrain";
 
 export const Terrain = () => {
   const { user, profile } = useAuth();
+  // Redirect to auth if not logged in
+  if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
   const { toast } = useToast();
   
   const [pendingTerrains, setPendingTerrains] = useState<TerrainData[]>([]);

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,7 +13,11 @@ import { User, Phone, Upload, Plus, Trash2, Check, X } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
 const Settings = () => {
-  const { user, profile } = useAuth();
+const { user, profile } = useAuth();
+  // Redirect to auth if not logged in
+  if (!user) {
+    return <Navigate to="/auth" replace />;
+}
   const { toast } = useToast();
 
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);

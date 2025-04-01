@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate,Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -34,7 +34,11 @@ export const Profile = () => {
   const [investedProjects, setInvestedProjects] = useState<any[]>([]);
   const [projectsCount, setProjectsCount] = useState(0);
   const [loading, setLoading] = useState(true);
-
+  
+  // Redirect to auth if not logged in
+  if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
   useEffect(() => {
     if (!id) return;
     

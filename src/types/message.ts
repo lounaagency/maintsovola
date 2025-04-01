@@ -34,7 +34,7 @@ export interface ConversationMessage extends Message {
   user?: {
     id: string;
     name: string;
-    photo?: string;
+    photo_profil?: string;
   };
   lastMessage?: {
     text: string;
@@ -47,5 +47,5 @@ export interface ConversationMessage extends Message {
 export interface Recipient {
   id: string;
   name: string;
-  photo?: string;
+  photo_profil?: string;
 }

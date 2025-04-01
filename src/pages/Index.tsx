@@ -20,7 +20,8 @@ const Index = () => {
           alt="Maintso Vola Logo" 
           className="w-24 h-24 mx-auto"
         />
-        
+        <img src="/maintsovola_logo_pm.png" alt="Maintso Vola Logo" width="150" />
+
         <h1 className="text-3xl font-bold text-maintso">Maintso Vola</h1>
         
         <p className="text-lg text-gray-600">
