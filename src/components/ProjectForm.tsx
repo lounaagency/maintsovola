@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import {
@@ -28,7 +28,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Upload, X, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { PopoverClose } from '@radix-ui/react-popover';
@@ -73,27 +73,33 @@ const formSchema = z.object({
 interface ProjectFormProps {
   onSubmit: (data: z.infer<typeof formSchema>) => void;
   disabled?: boolean;
+  initialData?: any;
+  isEditing?: boolean;
 }
 
-const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled }) => {
+const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialData, isEditing }) => {
   const [terrains, setTerrains] = useState<TerrainData[]>([]);
   const [cultures, setCultures] = useState<CultureData[]>([]);
+  const [photos, setPhotos] = useState<File[]>([]);
+  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const { user } = useAuth();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      title: "",
-      description: "",
-      terrain: "",
-      status: "planification",
-      startDate: new Date(),
-      endDate: new Date(),
-      cultures: [],
-      surface_ha: "0",
-      cout_total: "0",
-      financement_actuel: "0"
+      title: initialData?.title || "",
+      description: initialData?.description || "",
+      terrain: initialData?.terrain?.toString() || "",
+      status: initialData?.status || "planification",
+      startDate: initialData?.startDate ? new Date(initialData.startDate) : new Date(),
+      endDate: initialData?.endDate ? new Date(initialData.endDate) : new Date(),
+      cultures: initialData?.cultures || [],
+      surface_ha: initialData?.surface_ha?.toString() || "0",
+      cout_total: initialData?.cout_total?.toString() || "0",
+      financement_actuel: initialData?.financement_actuel?.toString() || "0"
     },
     mode: "onChange",
   })
@@ -104,8 +110,91 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled }) => {
     setValue(name, value, { shouldValidate: true });
   };
 
-  const onSubmitHandler = (data: z.infer<typeof formSchema>) => {
-    onSubmit(data);
+  const onSubmitHandler = async (data: z.infer<typeof formSchema>) => {
+    try {
+      const uploadedPhotoUrls = await uploadPhotos();
+      
+      const allPhotoUrls = [
+        ...photoUrls.filter(url => url.includes('supabase.co')), 
+        ...uploadedPhotoUrls
+      ];
+      
+      const formData = {
+        ...data,
+        images: allPhotoUrls
+      };
+      
+      onSubmit(formData);
+    } catch (error) {
+      console.error("Error processing form submission:", error);
+      toast.error("Une erreur s'est produite lors de l'envoi du formulaire.");
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    
+    const selectedFiles = Array.from(e.target.files);
+    setPhotos(prevPhotos => [...prevPhotos, ...selectedFiles]);
+    
+    selectedFiles.forEach(file => {
+      const previewUrl = URL.createObjectURL(file);
+      setPhotoUrls(prevUrls => [...prevUrls, previewUrl]);
+    });
+  };
+
+  const removePhoto = (index: number) => {
+    setPhotos(prevPhotos => {
+      const newPhotos = [...prevPhotos];
+      newPhotos.splice(index, 1);
+      return newPhotos;
+    });
+
+    setPhotoUrls(prevUrls => {
+      const newUrls = [...prevUrls];
+      URL.revokeObjectURL(newUrls[index]);
+      newUrls.splice(index, 1);
+      return newUrls;
+    });
+  };
+
+  const uploadPhotos = async (): Promise<string[]> => {
+    if (photos.length === 0) return [];
+    
+    setIsUploading(true);
+    const uploadedUrls: string[] = [];
+    
+    try {
+      for (const photo of photos) {
+        const fileExt = photo.name.split('.').pop();
+        const fileName = `project-${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+        const filePath = `project-photos/${fileName}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('project-photos')
+          .upload(filePath, photo);
+          
+        if (uploadError) {
+          console.error("Error uploading photo:", uploadError);
+          continue;
+        }
+        
+        const { data: publicUrlData } = supabase.storage
+          .from('project-photos')
+          .getPublicUrl(filePath);
+          
+        if (publicUrlData) {
+          uploadedUrls.push(publicUrlData.publicUrl);
+        }
+      }
+      
+      return uploadedUrls;
+    } catch (error) {
+      console.error("Error in photo upload process:", error);
+      return [];
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const fetchTerrains = useCallback(async () => {
@@ -155,6 +244,12 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled }) => {
     fetchTerrains();
     fetchCultures();
   }, [fetchTerrains, fetchCultures]);
+
+  useEffect(() => {
+    if (isEditing && initialData?.images) {
+      setPhotoUrls(initialData.images);
+    }
+  }, [isEditing, initialData]);
 
   return (
     <Form {...form}>
@@ -424,7 +519,64 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled }) => {
             </FormItem>
           )}
         />
-        <Button type="submit" disabled={disabled}>Soumettre</Button>
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <FormLabel>Photos du projet</FormLabel>
+            <Button 
+              type="button" 
+              variant="outline" 
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={disabled}
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Ajouter des photos
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={handleFileChange}
+              disabled={disabled}
+            />
+          </div>
+          
+          {photoUrls.length > 0 && (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
+              {photoUrls.map((url, index) => (
+                <div key={index} className="relative group">
+                  <img 
+                    src={url} 
+                    alt={`Project photo ${index + 1}`} 
+                    className="w-full h-32 object-cover rounded-md border border-border"
+                  />
+                  {!disabled && (
+                    <button
+                      type="button"
+                      className="absolute top-1 right-1 bg-black bg-opacity-50 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => removePhoto(index)}
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <Button type="submit" disabled={disabled || isUploading} className="flex items-center">
+          {isUploading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Upload en cours...
+            </>
+          ) : (
+            'Soumettre'
+          )}
+        </Button>
       </form>
     </Form>
   );

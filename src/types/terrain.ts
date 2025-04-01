@@ -1,4 +1,3 @@
-
 export interface TerrainData {
   id_terrain?: number;
   id_tantsaha?: string;
@@ -19,6 +18,7 @@ export interface TerrainData {
   techniqueNom?: string;
   techniquePrenoms?: string;
   nom_terrain?: string;
+  photos?: string | string[];
 }
 
 export interface ProjetStatus {

@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
+
+import React, { useState, useEffect, useRef } from "react";
 import UserAvatar from "./UserAvatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Image, MapPin, Calendar } from "lucide-react";
+import { Image, MapPin, Calendar, Upload, X, Loader2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { AgriculturalProject } from "@/types/agriculturalProject";
@@ -21,7 +22,11 @@ const NewProject: React.FC<NewProjectProps> = ({ onProjectCreated }) => {
   const [terrains, setTerrains] = useState<{id: number, nom: string, surface: number}[]>([]);
   const [selectedTerrain, setSelectedTerrain] = useState<number | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [photos, setPhotos] = useState<File[]>([]);
+  const [photoPreviewUrls, setPhotoPreviewUrls] = useState<string[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
   const { user, profile } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   useEffect(() => {
     const fetchUserRole = async () => {
@@ -106,6 +111,73 @@ const NewProject: React.FC<NewProjectProps> = ({ onProjectCreated }) => {
     }
   }, [user, userRole]);
   
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    
+    const selectedFiles = Array.from(e.target.files);
+    setPhotos(prevPhotos => [...prevPhotos, ...selectedFiles]);
+    
+    // Create preview URLs
+    selectedFiles.forEach(file => {
+      const previewUrl = URL.createObjectURL(file);
+      setPhotoPreviewUrls(prevUrls => [...prevUrls, previewUrl]);
+    });
+  };
+
+  const removePhoto = (index: number) => {
+    setPhotos(prevPhotos => {
+      const newPhotos = [...prevPhotos];
+      newPhotos.splice(index, 1);
+      return newPhotos;
+    });
+
+    setPhotoPreviewUrls(prevUrls => {
+      const newUrls = [...prevUrls];
+      URL.revokeObjectURL(newUrls[index]); // Clean up object URL
+      newUrls.splice(index, 1);
+      return newUrls;
+    });
+  };
+
+  const uploadPhotos = async (): Promise<string[]> => {
+    if (photos.length === 0) return [];
+    
+    setIsUploading(true);
+    const uploadedUrls: string[] = [];
+    
+    try {
+      for (const photo of photos) {
+        const fileExt = photo.name.split('.').pop();
+        const fileName = `project-${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+        const filePath = `project-photos/${fileName}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('project-photos')
+          .upload(filePath, photo);
+          
+        if (uploadError) {
+          console.error("Error uploading photo:", uploadError);
+          continue;
+        }
+        
+        const { data: publicUrlData } = supabase.storage
+          .from('project-photos')
+          .getPublicUrl(filePath);
+          
+        if (publicUrlData) {
+          uploadedUrls.push(publicUrlData.publicUrl);
+        }
+      }
+      
+      return uploadedUrls;
+    } catch (error) {
+      console.error("Error in photo upload process:", error);
+      return [];
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -132,6 +204,9 @@ const NewProject: React.FC<NewProjectProps> = ({ onProjectCreated }) => {
     setIsPosting(true);
     
     try {
+      // Upload photos first
+      const uploadedPhotoUrls = await uploadPhotos();
+      
       const { data: cultureData, error: cultureError } = await supabase
         .from('culture')
         .select('*')
@@ -157,7 +232,9 @@ const NewProject: React.FC<NewProjectProps> = ({ onProjectCreated }) => {
           statut: 'en attente',
           id_region: terrainData.id_region,
           id_district: terrainData.id_district,
-          id_commune: terrainData.id_commune
+          id_commune: terrainData.id_commune,
+          description: content,
+          photos: uploadedPhotoUrls.join(',')
         })
         .select('id_projet')
         .single();
@@ -196,7 +273,7 @@ const NewProject: React.FC<NewProjectProps> = ({ onProjectCreated }) => {
         expectedYield: cultureData.rendement_ha || 2,
         expectedRevenue: (cultureData.rendement_ha || 2) * terrainData.surface_validee * (cultureData.prix_tonne || 1000),
         creationDate: new Date().toISOString().split('T')[0],
-        images: [],
+        images: uploadedPhotoUrls,
         description: content,
         fundingGoal: (cultureData.cout_exploitation_ha || 3000) * terrainData.surface_validee,
         currentFunding: 0,
@@ -210,6 +287,8 @@ const NewProject: React.FC<NewProjectProps> = ({ onProjectCreated }) => {
       }
       
       setContent("");
+      setPhotoPreviewUrls([]);
+      setPhotos([]);
       toast.success("Projet créé avec succès!");
     } catch (error) {
       console.error("Erreur lors de la création du projet:", error);
@@ -271,14 +350,50 @@ const NewProject: React.FC<NewProjectProps> = ({ onProjectCreated }) => {
                   </select>
                 </div>
               )}
+              
+              {/* Photo preview area */}
+              {photoPreviewUrls.length > 0 && (
+                <div className="grid grid-cols-3 gap-2 mt-3">
+                  {photoPreviewUrls.map((url, index) => (
+                    <div key={index} className="relative group">
+                      <img 
+                        src={url} 
+                        alt={`Preview ${index + 1}`} 
+                        className="h-20 w-full object-cover rounded border border-border"
+                      />
+                      <button
+                        type="button"
+                        className="absolute top-1 right-1 bg-black bg-opacity-50 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => removePhoto(index)}
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
           
           <div className="mt-4 flex items-center justify-between pt-3 border-t border-border">
             <div className="flex">
-              <Button type="button" variant="ghost" size="sm" className="rounded-full text-gray-600">
+              <Button 
+                type="button" 
+                variant="ghost" 
+                size="sm" 
+                className="rounded-full text-gray-600"
+                onClick={() => fileInputRef.current?.click()}
+              >
                 <Image size={18} className="mr-1" />
                 <span className="text-xs">Photos</span>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={handleFileChange}
+                />
               </Button>
               <Button type="button" variant="ghost" size="sm" className="rounded-full text-gray-600">
                 <MapPin size={18} className="mr-1" />
@@ -294,9 +409,14 @@ const NewProject: React.FC<NewProjectProps> = ({ onProjectCreated }) => {
               type="submit" 
               size="sm" 
               className="rounded-full px-4"
-              disabled={!content.trim() || isPosting || !user || !selectedCulture || !selectedTerrain}
+              disabled={!content.trim() || isPosting || isUploading || !user || !selectedCulture || !selectedTerrain}
             >
-              {isPosting ? "Publication..." : "Publier"}
+              {isPosting || isUploading ? (
+                <div className="flex items-center">
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {isUploading ? "Upload..." : "Publication..."}
+                </div>
+              ) : "Publier"}
             </Button>
           </div>
         </form>

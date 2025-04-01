@@ -15,7 +15,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/sélect";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox"
 import { toast } from 'sonner';
 import {
@@ -29,8 +29,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { MapContainer, TileLayer, Marker, useMapEvents, Polygon, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { Upload, X, Loader2 } from 'lucide-react';
 
-// Define the schema for form validation
 const formSchema = yup.object().shape({
   nom_terrain: yup.string().required('Le nom du terrain est obligatoire'),
   surface_proposee: yup.number().required('La surface proposée est obligatoire').positive('La surface doit être positive'),
@@ -61,8 +61,11 @@ const TerrainForm: React.FC = () => {
     [-18.903684, 47.536131],
   ]);
   const mapRef = useRef<L.Map | null>(null);
+  const [photos, setPhotos] = useState<File[]>([]);
+  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Initialize react-hook-form
   const { control, handleSubmit, setValue, formState: { errors } } = useForm<TerrainData>({
     resolver: yupResolver(formSchema),
     defaultValues: {
@@ -77,10 +80,8 @@ const TerrainForm: React.FC = () => {
   });
 
   useEffect(() => {
-    // Fetch regions on component mount
     fetchRegions();
 
-    // If ID is present, we're in edit mode
     if (id) {
       setIsEditMode(true);
       fetchTerrainData(id);
@@ -90,8 +91,8 @@ const TerrainForm: React.FC = () => {
   useEffect(() => {
     if (selectedRegion) {
       fetchDistricts(selectedRegion);
-      setValue('id_district', ''); // Reset district when region changes
-      setCommunes([]); // Also reset communes
+      setValue('id_district', '');
+      setCommunes([]);
       setValue('id_commune', '');
     }
   }, [selectedRegion, setValue]);
@@ -99,7 +100,7 @@ const TerrainForm: React.FC = () => {
   useEffect(() => {
     if (selectedDistrict) {
       fetchCommunes(selectedDistrict);
-      setValue('id_commune', ''); // Reset commune when district changes
+      setValue('id_commune', '');
     }
   }, [selectedDistrict, setValue]);
 
@@ -118,7 +119,6 @@ const TerrainForm: React.FC = () => {
 
       if (data) {
         setTerrain(data);
-        // Populate the form with the fetched data
         setValue('nom_terrain', data.nom_terrain || '');
         setValue('surface_proposee', data.surface_proposee);
         setValue('id_region', data.id_region?.toString() || '');
@@ -128,6 +128,10 @@ const TerrainForm: React.FC = () => {
         setValue('id_commune', data.id_commune?.toString() || '');
         setValue('acces_eau', data.acces_eau || false);
         setValue('acces_route', data.acces_route || false);
+        
+        if (data.photos) {
+          setPhotoUrls(typeof data.photos === 'string' ? data.photos.split(',') : data.photos);
+        }
       }
     } catch (error) {
       console.error("Error fetching terrain data:", error);
@@ -199,33 +203,101 @@ const TerrainForm: React.FC = () => {
     }
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    
+    const selectedFiles = Array.from(e.target.files);
+    setPhotos(prevPhotos => [...prevPhotos, ...selectedFiles]);
+    
+    selectedFiles.forEach(file => {
+      const previewUrl = URL.createObjectURL(file);
+      setPhotoUrls(prevUrls => [...prevUrls, previewUrl]);
+    });
+  };
+
+  const removePhoto = (index: number) => {
+    setPhotos(prevPhotos => {
+      const newPhotos = [...prevPhotos];
+      newPhotos.splice(index, 1);
+      return newPhotos;
+    });
+
+    setPhotoUrls(prevUrls => {
+      const newUrls = [...prevUrls];
+      URL.revokeObjectURL(newUrls[index]);
+      newUrls.splice(index, 1);
+      return newUrls;
+    });
+  };
+
+  const uploadPhotos = async (): Promise<string[]> => {
+    if (photos.length === 0) return [];
+    
+    setIsUploading(true);
+    const uploadedUrls: string[] = [];
+    
+    try {
+      for (const photo of photos) {
+        const fileExt = photo.name.split('.').pop();
+        const fileName = `terrain-${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+        const filePath = `terrain-photos/${fileName}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('project-photos')
+          .upload(filePath, photo);
+          
+        if (uploadError) {
+          console.error("Error uploading photo:", uploadError);
+          continue;
+        }
+        
+        const { data: publicUrlData } = supabase.storage
+          .from('project-photos')
+          .getPublicUrl(filePath);
+          
+        if (publicUrlData) {
+          uploadedUrls.push(publicUrlData.publicUrl);
+        }
+      }
+      
+      return uploadedUrls;
+    } catch (error) {
+      console.error("Error in photo upload process:", error);
+      return [];
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const onSubmit = async (data: TerrainData) => {
     setLoading(true);
     try {
-      // Ensure that the user is authenticated and has a user ID
       if (!user || !user.id) {
         throw new Error("User not authenticated.");
       }
 
+      const uploadedPhotoUrls = await uploadPhotos();
+      
+      const allPhotoUrls = [...photoUrls.filter(url => url.includes('supabase.co')), ...uploadedPhotoUrls];
+      
       const terrainData = {
         ...data,
         id_tantsaha: user.id,
         id_region: Number(data.id_region),
         id_district: Number(data.id_district),
         id_commune: Number(data.id_commune),
+        photos: allPhotoUrls.join(',')
       };
 
       let response;
       if (isEditMode) {
-        // Update existing terrain
         response = await supabase
           .from('terrain')
           .update(terrainData)
           .eq('id_terrain', id)
           .single();
       } else {
-        // Create new terrain
-        delete terrainData.id_terrain; // Remove id_terrain for new record
+        delete terrainData.id_terrain;
         response = await supabase
           .from('terrain')
           .insert([terrainData])
@@ -237,7 +309,7 @@ const TerrainForm: React.FC = () => {
       }
 
       toast.success(`Terrain ${isEditMode ? 'updated' : 'created'} successfully!`);
-      navigate('/terrain'); // Redirect to terrain list
+      navigate('/terrain');
     } catch (error: any) {
       console.error("Error during form submission:", error);
       toast.error(error.message || "An error occurred during submission.");
@@ -256,7 +328,8 @@ const TerrainForm: React.FC = () => {
 
   const handleMapCreated = () => {
     if (mapRef.current) {
-      // Your map initialization code
+      mapRef.current = map;
+      setMapInitialized(true);
     }
   };
 
@@ -437,6 +510,49 @@ const TerrainForm: React.FC = () => {
               )}
             />
           </div>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <FormLabel>Photos du terrain</FormLabel>
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Ajouter des photos
+              </Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={handleFileChange}
+              />
+            </div>
+            
+            {photoUrls.length > 0 && (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
+                {photoUrls.map((url, index) => (
+                  <div key={index} className="relative group">
+                    <img 
+                      src={url} 
+                      alt={`Terrain photo ${index + 1}`} 
+                      className="w-full h-32 object-cover rounded-md border border-border"
+                    />
+                    <button
+                      type="button"
+                      className="absolute top-1 right-1 bg-black bg-opacity-50 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => removePhoto(index)}
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
           <div>
             <FormLabel>Définir la zone sur la carte</FormLabel>
             <MapContainer
@@ -461,8 +577,13 @@ const TerrainForm: React.FC = () => {
               <MapEvents />
             </MapContainer>
           </div>
-          <Button type="submit" disabled={loading}>
-            {loading ? 'Enregistrement...' : 'Enregistrer'}
+          <Button type="submit" disabled={loading || isUploading} className="flex items-center">
+            {(loading || isUploading) ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {isUploading ? 'Upload en cours...' : 'Enregistrement...'}
+              </>
+            ) : 'Enregistrer'}
           </Button>
         </form>
       </Form>
