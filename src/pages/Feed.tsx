@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Navigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import NewProject from "@/components/NewProject";
 import { motion } from "framer-motion";
@@ -21,7 +22,10 @@ const Feed: React.FC = () => {
   }>({});
   const [showLanding, setShowLanding] = useState(false);
   const { user, profile } = useAuth();
-  
+  // Rediriger vers la page d'accueil si l'utilisateur est connecté
+    if (!user) {
+      return <Navigate to="/auth" replace />;
+    }
   useEffect(() => {
     fetchProjects();
     
@@ -54,6 +58,7 @@ const Feed: React.FC = () => {
           utilisateur!id_tantsaha(id_utilisateur, nom, prenoms, photo_profil),
           commune(nom_commune, district(nom_district, region(nom_region)))
         `)
+        .eq('statut', 'en_financement')
         .order('created_at', { ascending: false });
       
       if (activeFilters.region) {
@@ -183,7 +188,7 @@ const Feed: React.FC = () => {
         
         return {
           id: projet.id_projet.toString(),
-          title: `Projet de culture de ${cultivationType}`,
+          titre: projet.titre || `Projet de culture de ${cultivationType}`,
           farmer,
           location: {
             region: projet.commune?.district?.region?.nom_region || "Non spécifié",
@@ -197,7 +202,7 @@ const Feed: React.FC = () => {
           expectedRevenue,
           creationDate: new Date(projet.created_at).toISOString().split('T')[0],
           images: [],
-          description: `Projet de culture de ${cultivationType} sur un terrain de ${projet.surface_ha} hectares.`,
+          description: projet.description || `Projet de culture de ${cultivationType} sur un terrain de ${projet.surface_ha} hectares.`,
           fundingGoal: farmingCost * projet.surface_ha,
           currentFunding,
           likes,
