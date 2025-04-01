@@ -11,6 +11,7 @@ export interface TerrainFormData {
   acces_eau: boolean;
   acces_route: boolean;
   photos?: string[] | string;
+  id_tantsaha?: string;
 }
 
 // Convert from form data (strings) to API data (numbers)
@@ -29,12 +30,15 @@ export const convertFormDataToTerrainData = (formData: TerrainFormData): Terrain
 export const convertTerrainDataToFormData = (terrainData: TerrainData): TerrainFormData => {
   return {
     ...terrainData,
+    nom_terrain: terrainData.nom_terrain || '',
     id_region: terrainData.id_region?.toString() || '',
     id_district: terrainData.id_district?.toString() || '',
     id_commune: terrainData.id_commune?.toString() || '',
     // Convert comma-separated photos string to array if needed
     photos: typeof terrainData.photos === 'string' && terrainData.photos ? 
             terrainData.photos.split(',') : 
-            terrainData.photos
+            terrainData.photos,
+    acces_eau: !!terrainData.acces_eau,
+    acces_route: !!terrainData.acces_route
   };
 };

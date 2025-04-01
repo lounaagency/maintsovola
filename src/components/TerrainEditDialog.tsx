@@ -6,14 +6,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import TerrainForm from "./TerrainForm";
+import TerrainForm from "./terrain/TerrainForm";
 import { TerrainData } from "@/types/terrain";
 import { toast } from "@/hooks/use-toast";
 
 interface TerrainEditDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  terrain: TerrainData;
+  terrain: TerrainData | null;
   onSubmitSuccess: () => void;
   userId: string;
   userRole?: string;
@@ -33,13 +33,18 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Modifier le terrain</DialogTitle>
+          <DialogTitle>
+            {terrain?.id_terrain ? 'Modifier le terrain' : 'Ajouter un terrain'}
+          </DialogTitle>
         </DialogHeader>
         <TerrainForm
-          id={terrain.id_terrain?.toString()}
+          id={terrain?.id_terrain?.toString()}
           onSubmitSuccess={onSubmitSuccess}
           onCancel={onClose}
-          initialTerrain={terrain}
+          initialData={terrain}
+          userId={userId}
+          userRole={userRole}
+          agriculteurs={agriculteurs}
         />
       </DialogContent>
     </Dialog>
