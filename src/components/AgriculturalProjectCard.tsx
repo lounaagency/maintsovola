@@ -109,8 +109,8 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
               </div>
             </div>
             
-            <Button variant={project.technicienId ? "default" : "destructive"} size="sm" className="ml-2 text-xs">
-              {project.technicienId ? "Validé" : "En attente"}
+            <Button variant={project.technicianId ? "default" : "destructive"} size="sm" className="ml-2 text-xs">
+              {project.technicianId ? "Validé" : "En attente"}
             </Button>
           </div>
           
