@@ -9,7 +9,7 @@ export interface Location {
 
 export interface AgriculturalProject {
   id: string;
-  title: string;
+  titre: string;
   farmer: {
     id: string;
     name: string | ReactNode;
