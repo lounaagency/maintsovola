@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import TerrainForm from "./TerrainForm";
 import { TerrainData } from "@/types/terrain";
+import { toast } from "@/hooks/use-toast";
 
 interface TerrainEditDialogProps {
   isOpen: boolean;
@@ -34,11 +35,11 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
         <DialogHeader>
           <DialogTitle>Modifier le terrain</DialogTitle>
         </DialogHeader>
-        {/* Pass correct props that match TerrainForm component expectations */}
         <TerrainForm
           id={terrain.id_terrain?.toString()}
           onSubmitSuccess={onSubmitSuccess}
           onCancel={onClose}
+          initialTerrain={terrain}
         />
       </DialogContent>
     </Dialog>

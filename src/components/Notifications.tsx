@@ -13,8 +13,8 @@ import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-import { Notification, DatabaseNotification } from "@/types/notification";
+import { toast } from "@/hooks/use-toast";
+import { Notification } from "@/types/notification";
 
 interface NotificationItem {
   id: string;
@@ -88,7 +88,6 @@ const Notifications: React.FC = () => {
     try {
       setLoading(true);
       
-      // Instead of using rpc, use direct query to notification table
       const { data, error } = await supabase
         .from('notification')
         .select('*')
@@ -98,43 +97,49 @@ const Notifications: React.FC = () => {
         
       if (error) throw error;
       
-      // Transform database notifications to our NotificationItem format
-      const transformedNotifications: NotificationItem[] = (data as DatabaseNotification[]).map((notification) => {
-        // Determine notification type based on status or other fields
-        let type: "info" | "success" | "warning" | "error" = "info";
-        if (notification.type === "validation") type = "success";
-        if (notification.type === "alerte") type = "warning";
-        if (notification.type === "erreur") type = "error";
+      if (data) {
+        // Transform database notifications to our NotificationItem format
+        const transformedNotifications: NotificationItem[] = data.map((notification: any) => {
+          // Determine notification type based on status or other fields
+          let type: "info" | "success" | "warning" | "error" = "info";
+          if (notification.type === "validation") type = "success";
+          if (notification.type === "alerte") type = "warning";
+          if (notification.type === "erreur") type = "error";
+          
+          // Create link based on entity type
+          let link = "";
+          if (notification.entity_type === "terrain") {
+            link = `/terrain?id=${notification.entity_id}`;
+          } else if (notification.entity_type === "projet") {
+            link = `/feed?project=${notification.entity_id}`;
+          } else if (notification.entity_type === "jalon") {
+            link = `/projet?id=${notification.projet_id}#jalons`;
+          } else if (notification.entity_type === "investissement") {
+            link = `/projet?id=${notification.projet_id}#investissements`;
+          }
+          
+          return {
+            id: notification.id_notification.toString(),
+            title: notification.titre,
+            message: notification.message,
+            timestamp: notification.date_creation,
+            read: notification.lu,
+            type,
+            link,
+            entity_id: notification.entity_id?.toString(),
+            entity_type: notification.entity_type as "terrain" | "projet" | "jalon" | "investissement" | undefined
+          };
+        });
         
-        // Create link based on entity type
-        let link = "";
-        if (notification.entity_type === "terrain") {
-          link = `/terrain?id=${notification.entity_id}`;
-        } else if (notification.entity_type === "projet") {
-          link = `/feed?project=${notification.entity_id}`;
-        } else if (notification.entity_type === "jalon") {
-          link = `/projet?id=${notification.projet_id}#jalons`;
-        } else if (notification.entity_type === "investissement") {
-          link = `/projet?id=${notification.projet_id}#investissements`;
-        }
-        
-        return {
-          id: notification.id_notification.toString(),
-          title: notification.titre,
-          message: notification.message,
-          timestamp: notification.date_creation,
-          read: notification.lu,
-          type,
-          link,
-          entity_id: notification.entity_id,
-          entity_type: notification.entity_type as "terrain" | "projet" | "jalon" | "investissement" | undefined
-        };
-      });
-      
-      setNotifications(transformedNotifications);
+        setNotifications(transformedNotifications);
+      }
     } catch (error) {
       console.error("Error fetching notifications:", error);
-      toast.error("Impossible de charger les notifications");
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger les notifications",
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
@@ -156,7 +161,7 @@ const Notifications: React.FC = () => {
             filter: `id_destinataire=eq.${user.id}`
           },
           (payload) => {
-            const newNotification = payload.new as DatabaseNotification;
+            const newNotification = payload.new as any;
             
             // Add the new notification to the list
             setNotifications(prev => {
@@ -190,12 +195,13 @@ const Notifications: React.FC = () => {
                 read: newNotification.lu,
                 type,
                 link,
-                entity_id: newNotification.entity_id,
+                entity_id: newNotification.entity_id?.toString(),
                 entity_type: newNotification.entity_type as "terrain" | "projet" | "jalon" | "investissement" | undefined
               };
               
               // Show toast for new notification
-              toast(formattedNotification.title, {
+              toast({
+                title: formattedNotification.title,
                 description: formattedNotification.message,
               });
               
@@ -213,7 +219,7 @@ const Notifications: React.FC = () => {
 
   const markAsRead = async (notificationId: string) => {
     try {
-      // Direct update of notification record instead of using rpc
+      // Direct update of notification record
       const { error } = await supabase
         .from('notification')
         .update({ lu: true })
@@ -252,10 +258,17 @@ const Notifications: React.FC = () => {
         prevNotifications.map(notification => ({ ...notification, read: true }))
       );
       
-      toast.success("Toutes les notifications ont été marquées comme lues");
+      toast({
+        title: "Succès",
+        description: "Toutes les notifications ont été marquées comme lues"
+      });
     } catch (error) {
       console.error("Error marking all notifications as read:", error);
-      toast.error("Une erreur s'est produite");
+      toast({
+        title: "Erreur",
+        description: "Une erreur s'est produite",
+        variant: "destructive"
+      });
     }
   };
 

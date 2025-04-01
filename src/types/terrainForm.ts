@@ -10,7 +10,7 @@ export interface TerrainFormData {
   id_commune: string; // Form will use string for select inputs
   acces_eau: boolean;
   acces_route: boolean;
-  photos?: string[];
+  photos?: string[] | string;
 }
 
 // Convert from form data (strings) to API data (numbers)
@@ -20,6 +20,8 @@ export const convertFormDataToTerrainData = (formData: TerrainFormData): Terrain
     id_region: Number(formData.id_region),
     id_district: Number(formData.id_district),
     id_commune: Number(formData.id_commune),
+    // Ensure photos is a string for the database
+    photos: Array.isArray(formData.photos) ? formData.photos.join(',') : formData.photos
   };
 };
 
@@ -30,5 +32,9 @@ export const convertTerrainDataToFormData = (terrainData: TerrainData): TerrainF
     id_region: terrainData.id_region?.toString() || '',
     id_district: terrainData.id_district?.toString() || '',
     id_commune: terrainData.id_commune?.toString() || '',
+    // Convert comma-separated photos string to array if needed
+    photos: typeof terrainData.photos === 'string' && terrainData.photos ? 
+            terrainData.photos.split(',') : 
+            terrainData.photos
   };
 };
