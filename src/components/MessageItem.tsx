@@ -23,7 +23,7 @@ interface MessageItemComponent extends React.FC<MessageItemProps> {
   Icon: typeof MessageCircle;
 }
 
-const MessageItem: React.FC<MessageItemProps> = ({
+const MessageItem: React.FC<MessageItemProps> = React.memo(({
   user,
   lastMessage,
   timestamp,
@@ -61,9 +61,12 @@ const MessageItem: React.FC<MessageItemProps> = ({
       </div>
     </motion.div>
   );
-};
+});
+
+MessageItem.displayName = "MessageItem";
 
 // Properly define the static Icon property
-(MessageItem as MessageItemComponent).Icon = MessageCircle;
+const MessageItemWithIcon = MessageItem as MessageItemComponent;
+MessageItemWithIcon.Icon = MessageCircle;
 
-export default MessageItem as MessageItemComponent;
+export default MessageItemWithIcon;

@@ -1,12 +1,13 @@
 
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Home, MessageCircle, MapPin, LogOut, Settings, Bell, User } from "lucide-react";
+import { Home, MapPin, LogOut, Settings, Bell, User } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import UserAvatar from "./UserAvatar";
 import Notifications from "./Notifications";
 import { useIsMobile } from "@/hooks/use-mobile";
 import Logo from "./Logo";
+import MessageBadge from "./MessageBadge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -53,13 +54,7 @@ const Navbar: React.FC = () => {
             <MapPin size={22} />
           </Link>
           
-          <Link 
-            to="/messages" 
-            className={`p-2 rounded-md ${isActive("/messages") ? "text-green-600 bg-gray-100" : "text-gray-700 hover:bg-gray-100"}`}
-            title="Messages"
-          >
-            <MessageCircle size={22} />
-          </Link>
+          <MessageBadge isActive={isActive("/messages")} />
           
           <Notifications />
         </div>
