@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { Search, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -10,6 +9,8 @@ import { UserProfile } from "@/types/userProfile";
 import { ConversationMessage } from "@/types/message";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
+import { markMessagesAsRead } from '@/lib/messagerie';
+import { useUnreadMessagesCount } from '@/hooks/use-unread-messages';
 
 interface ConversationListProps {
   userId: string;
@@ -28,8 +29,9 @@ const ConversationList: React.FC<ConversationListProps> = ({
   const [isSearchingUser, setIsSearchingUser] = useState(false);
   const [userSearchQuery, setUserSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
+  const { fetchUnreadCount } = useUnreadMessagesCount(userId);
   
-  const fetchConversations = async () => {
+  const fetchConversations = useCallback(async () => {
     if (!userId) return;
     
     try {
@@ -124,7 +126,7 @@ const ConversationList: React.FC<ConversationListProps> = ({
     } catch (error) {
       console.error("Error fetching conversations:", error);
     }
-  };
+  }, [userId]);
   
   const handleUserSearch = async () => {
     if (!userSearchQuery) return;
@@ -144,6 +146,38 @@ const ConversationList: React.FC<ConversationListProps> = ({
       console.error("Error searching for users:", error);
     }
   };
+  
+  const handleSelectConversation = useCallback(async (conversation: ConversationMessage) => {
+    // If there are unread messages in this conversation, mark them as read
+    if (conversation.unread && conversation.unread > 0) {
+      try {
+        // Mark messages as read server-side
+        await markMessagesAsRead(conversation.id_conversation, userId);
+        
+        // Update the conversation in the local state
+        setConversations(prev => prev.map(conv => 
+          conv.id_conversation === conversation.id_conversation 
+            ? { ...conv, unread: 0 } 
+            : conv
+        ));
+        
+        // Update filtered conversations too
+        setFilteredConversations(prev => prev.map(conv => 
+          conv.id_conversation === conversation.id_conversation 
+            ? { ...conv, unread: 0 } 
+            : conv
+        ));
+        
+        // Update global unread count
+        fetchUnreadCount();
+      } catch (error) {
+        console.error("Error marking messages as read:", error);
+      }
+    }
+    
+    // Select the conversation
+    onSelectConversation(conversation);
+  }, [userId, onSelectConversation, fetchUnreadCount]);
   
   const startConversation = async (selectedUser: UserProfile) => {
     setIsSearchingUser(false);
@@ -239,7 +273,7 @@ const ConversationList: React.FC<ConversationListProps> = ({
         supabase.removeChannel(channel);
       };
     }
-  }, [userId]);
+  }, [userId, fetchConversations]);
   
   useEffect(() => {
     if (searchQuery) {
@@ -254,12 +288,11 @@ const ConversationList: React.FC<ConversationListProps> = ({
     }
   }, [searchQuery, conversations]);
   
-  // Use memoization to avoid unnecessary re-renders
   const conversationItems = useMemo(() => {
     return filteredConversations.map((conversation) => (
       <div 
         key={conversation.id_conversation}
-        onClick={() => onSelectConversation(conversation)}
+        onClick={() => handleSelectConversation(conversation)}
         className={`cursor-pointer ${selectedConversation?.id_conversation === conversation.id_conversation ? 'bg-muted' : ''}`}
       >
         <MessageItem
@@ -275,10 +308,10 @@ const ConversationList: React.FC<ConversationListProps> = ({
         />
       </div>
     ));
-  }, [filteredConversations, selectedConversation, onSelectConversation]);
+  }, [filteredConversations, selectedConversation, handleSelectConversation]);
   
   return (
-    <div className="flex flex-col w-full h-full border-r border-border bg-background">
+    <div className="flex flex-col w-full h-full border-r border-border bg-background overflow-hidden">
       <div className="p-4 border-b border-border">
         <h1 className="text-xl font-bold mb-4">Messages</h1>
         

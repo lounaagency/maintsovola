@@ -1,28 +1,35 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export const useUnreadMessagesCount = (userId?: string) => {
   const [unreadCount, setUnreadCount] = useState(0);
   
-  useEffect(() => {
+  // Function to fetch the unread message count
+  const fetchUnreadCount = useCallback(async () => {
     if (!userId) return;
     
-    // Function to fetch the unread message count
-    const fetchUnreadCount = async () => {
-      const { count, error } = await supabase
-        .from('message')
-        .select('*', { count: 'exact', head: true })
-        .eq('id_destinataire', userId)
-        .eq('lu', false);
-      
-      if (error) {
-        console.error("Error counting unread messages:", error);
-        return;
-      }
-      
-      setUnreadCount(count || 0);
-    };
+    const { count, error } = await supabase
+      .from('message')
+      .select('*', { count: 'exact', head: true })
+      .eq('id_destinataire', userId)
+      .eq('lu', false);
+    
+    if (error) {
+      console.error("Error counting unread messages:", error);
+      return;
+    }
+    
+    setUnreadCount(count || 0);
+  }, [userId]);
+  
+  // Function to update count when messages are marked as read
+  const decrementCount = useCallback((amount: number = 1) => {
+    setUnreadCount(prev => Math.max(0, prev - amount));
+  }, []);
+  
+  useEffect(() => {
+    if (!userId) return;
     
     // Initial call
     fetchUnreadCount();
@@ -40,14 +47,14 @@ export const useUnreadMessagesCount = (userId?: string) => {
         event: 'UPDATE',
         schema: 'public',
         table: 'message',
-        filter: `id_destinataire=eq.${userId}`
+        filter: `id_destinataire=eq.${userId} AND lu=eq.true`
       }, fetchUnreadCount)
       .subscribe();
     
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userId]);
+  }, [userId, fetchUnreadCount]);
   
-  return unreadCount;
+  return { unreadCount, fetchUnreadCount, decrementCount };
 };

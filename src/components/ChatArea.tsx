@@ -78,6 +78,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ userId, conversation, onBack }) => 
     setIsSendingMessage(true);
     
     try {
+      // Create message object
       const messageToSend = {
         id_conversation: conversation.id_conversation,
         id_expediteur: userId,
@@ -87,6 +88,28 @@ const ChatArea: React.FC<ChatAreaProps> = ({ userId, conversation, onBack }) => 
         lu: false
       };
       
+      // Add optimistic update
+      const optimisticMessage: ConversationMessage = {
+        ...messageToSend,
+        id_message: Date.now(), // Temporary ID
+        sender: {
+          id_utilisateur: userId,
+          nom: "", // These fields will be updated when we receive the actual message
+          prenoms: null,
+          photo_profil: null
+        }
+      };
+      
+      // Update UI immediately
+      setCurrentMessages(prev => [...prev, optimisticMessage]);
+      
+      // Clear input immediately for better UX
+      setNewMessage("");
+      
+      // Scroll to bottom immediately
+      setTimeout(scrollToBottom, 50);
+      
+      // Actually send the message
       const { data, error } = await supabase
         .from('message')
         .insert(messageToSend)
@@ -100,10 +123,9 @@ const ChatArea: React.FC<ChatAreaProps> = ({ userId, conversation, onBack }) => 
         .update({ derniere_activite: new Date().toISOString() })
         .eq('id_conversation', conversation.id_conversation);
       
-      // Clear input
-      setNewMessage("");
     } catch (error) {
       console.error("Error sending message:", error);
+      // If error, we could revert the optimistic update here
     } finally {
       setIsSendingMessage(false);
     }
@@ -133,7 +155,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ userId, conversation, onBack }) => 
     // Fetch messages when a conversation is selected
     if (conversation) {
       fetchMessages(conversation.id_conversation);
-      // Mark messages as read
+      // Mark messages as read immediately when opening the conversation
       markMessagesAsRead(conversation.id_conversation);
       
       // Set up real-time subscription for this conversation
@@ -145,8 +167,11 @@ const ChatArea: React.FC<ChatAreaProps> = ({ userId, conversation, onBack }) => 
           table: 'message',
           filter: `id_conversation=eq.${conversation.id_conversation}`
         }, (payload) => {
-          // Fetch fresh message data with sender info
-          fetchMessages(conversation.id_conversation);
+          // If the message is from the current user, we already have an optimistic update
+          // If not, add it to the chat
+          if (payload.new && payload.new.id_expediteur !== userId) {
+            fetchMessages(conversation.id_conversation);
+          }
           
           // Mark as read if user is the recipient
           if (payload.new && payload.new.id_destinataire === userId) {
@@ -181,7 +206,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ userId, conversation, onBack }) => 
   return (
     <>
       {/* Chat Header */}
-      <div className="flex items-center p-4 border-b border-border">
+      <div className="flex items-center p-4 border-b border-border sticky top-0 bg-white z-10">
         <Button 
           variant="ghost" 
           size="icon" 
@@ -202,7 +227,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ userId, conversation, onBack }) => 
       </div>
       
       {/* Chat Messages */}
-      <ScrollArea className="flex-1 p-4">
+      <ScrollArea className="flex-1 p-4 h-full">
         <div className="space-y-4">
           {currentMessages.map((message, index) => (
             <div 
@@ -239,7 +264,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ userId, conversation, onBack }) => 
       </ScrollArea>
       
       {/* Message Input */}
-      <form onSubmit={handleSendMessage} className="p-4 border-t border-border">
+      <form onSubmit={handleSendMessage} className="p-4 border-t border-border sticky bottom-0 bg-white">
         <div className="flex space-x-2">
           <Textarea
             placeholder="Écrivez un message..."

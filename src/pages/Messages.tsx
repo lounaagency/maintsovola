@@ -19,7 +19,7 @@ const Messages: React.FC = () => {
     <div className="container mx-auto max-w-6xl px-4 py-6">
       <div className="flex h-[calc(100vh-150px)] rounded-lg border border-border overflow-hidden">
         {/* Conversations Sidebar */}
-        <div className={`${selectedConversation ? 'hidden md:flex' : 'flex'} flex-col w-full md:w-1/3`}>
+        <div className={`${selectedConversation ? 'hidden md:block' : 'block'} w-full md:w-1/3 h-full overflow-hidden flex-shrink-0`}>
           <ConversationList 
             userId={user.id}
             selectedConversation={selectedConversation}
@@ -28,7 +28,7 @@ const Messages: React.FC = () => {
         </div>
         
         {/* Chat Area */}
-        <div className={`${selectedConversation ? 'flex' : 'hidden md:flex'} flex-col w-full md:w-2/3 bg-background`}>
+        <div className={`${selectedConversation ? 'flex' : 'hidden md:flex'} flex-col w-full md:w-2/3 bg-background h-full overflow-hidden`}>
           <ChatArea 
             userId={user.id}
             conversation={selectedConversation}

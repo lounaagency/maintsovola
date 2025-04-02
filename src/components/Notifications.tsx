@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import {
   Popover,
@@ -19,7 +18,7 @@ import { Notification, DatabaseNotification } from "@/types/notification";
 interface NotificationItem {
   id: string;
   title: string;
-  message: string;
+  description: string;
   timestamp: string;
   read: boolean;
   type: "info" | "success" | "warning" | "error";
@@ -60,7 +59,7 @@ const NotificationItem: React.FC<{ notification: NotificationItem; onRead: (id: 
         <span className="absolute top-3 right-3 w-2 h-2 rounded-full bg-blue-500"></span>
       )}
       <h4 className="font-medium">{notification.title}</h4>
-      <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
+      <p className="text-sm text-gray-600 mt-1">{notification.description}</p>
       <p className="text-xs text-gray-500 mt-2">
         {new Date(notification.timestamp).toLocaleDateString()} • {new Date(notification.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
       </p>
@@ -88,7 +87,6 @@ const Notifications: React.FC = () => {
     try {
       setLoading(true);
       
-      // Instead of using rpc, use direct query to notification table
       const { data, error } = await supabase
         .from('notification')
         .select('*')
@@ -98,15 +96,12 @@ const Notifications: React.FC = () => {
         
       if (error) throw error;
       
-      // Transform database notifications to our NotificationItem format
       const transformedNotifications: NotificationItem[] = (data as unknown as DatabaseNotification[]).map((notification) => {
-        // Determine notification type based on status or other fields
         let type: "info" | "success" | "warning" | "error" = "info";
         if (notification.type === "validation") type = "success";
         if (notification.type === "alerte") type = "warning";
         if (notification.type === "erreur") type = "error";
         
-        // Create link based on entity type
         let link = "";
         if (notification.entity_type === "terrain") {
           link = `/terrain?id=${notification.entity_id}`;
@@ -118,7 +113,6 @@ const Notifications: React.FC = () => {
           link = `/projet?id=${notification.projet_id}#investissements`;
         }
         
-        // Ensure entity_id is a string
         const entityId = notification.entity_id !== undefined 
           ? String(notification.entity_id) 
           : undefined;
@@ -126,7 +120,7 @@ const Notifications: React.FC = () => {
         return {
           id: notification.id_notification.toString(),
           title: notification.titre,
-          message: notification.message,
+          description: notification.message,
           timestamp: notification.date_creation,
           read: notification.lu,
           type,
@@ -148,7 +142,6 @@ const Notifications: React.FC = () => {
   useEffect(() => {
     fetchNotifications();
     
-    // Subscribe to new notifications via Supabase Realtime
     if (user) {
       const channel = supabase
         .channel('notification-changes')
@@ -163,19 +156,15 @@ const Notifications: React.FC = () => {
           (payload) => {
             const newNotification = payload.new as DatabaseNotification;
             
-            // Add the new notification to the list
             setNotifications(prev => {
-              // Check if notification already exists
               const exists = prev.some(n => n.id === newNotification.id_notification.toString());
               if (exists) return prev;
               
-              // Determine notification type
               let type: "info" | "success" | "warning" | "error" = "info";
               if (newNotification.type === "validation") type = "success";
               if (newNotification.type === "alerte") type = "warning";
               if (newNotification.type === "erreur") type = "error";
               
-              // Create link based on entity type
               let link = "";
               if (newNotification.entity_type === "terrain") {
                 link = `/terrain?id=${newNotification.entity_id}`;
@@ -190,7 +179,7 @@ const Notifications: React.FC = () => {
               const formattedNotification: NotificationItem = {
                 id: newNotification.id_notification.toString(),
                 title: newNotification.titre,
-                message: newNotification.message,
+                description: newNotification.message,
                 timestamp: newNotification.date_creation,
                 read: newNotification.lu,
                 type,
@@ -199,9 +188,8 @@ const Notifications: React.FC = () => {
                 entity_type: newNotification.entity_type as "terrain" | "projet" | "jalon" | "investissement" | undefined
               };
               
-              // Show toast for new notification
               toast(formattedNotification.title, {
-                description: formattedNotification.message,
+                description: formattedNotification.description,
               });
               
               return [formattedNotification, ...prev];
@@ -218,7 +206,6 @@ const Notifications: React.FC = () => {
 
   const markAsRead = async (notificationId: string) => {
     try {
-      // Direct update of notification record instead of using rpc
       const { error } = await supabase
         .from('notification')
         .update({ lu: true })
@@ -226,7 +213,6 @@ const Notifications: React.FC = () => {
         
       if (error) throw error;
       
-      // Update local state
       setNotifications(prevNotifications => 
         prevNotifications.map(notification => 
           notification.id === notificationId 
@@ -243,7 +229,6 @@ const Notifications: React.FC = () => {
     if (!user) return;
     
     try {
-      // Direct update all unread notifications for this user
       const { error } = await supabase
         .from('notification')
         .update({ lu: true })
@@ -252,7 +237,6 @@ const Notifications: React.FC = () => {
         
       if (error) throw error;
       
-      // Update local state
       setNotifications(prevNotifications => 
         prevNotifications.map(notification => ({ ...notification, read: true }))
       );

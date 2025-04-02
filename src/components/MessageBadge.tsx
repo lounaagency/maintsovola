@@ -14,7 +14,7 @@ interface MessageBadgeProps {
 
 const MessageBadge: React.FC<MessageBadgeProps> = ({ isActive, className }) => {
   const { user } = useAuth();
-  const unreadCount = useUnreadMessagesCount(user?.id);
+  const { unreadCount } = useUnreadMessagesCount(user?.id);
   
   return (
     <Link 

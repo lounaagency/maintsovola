@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Message, Conversation } from "@/types/message";
 import { useAuth } from "@/contexts/AuthContext";
@@ -113,6 +112,17 @@ export const getConversations = async (userId: string) => {
 
 export const markMessagesAsRead = async (conversationId: number, userId: string) => {
   try {
+    // First, count how many unread messages there are
+    const { count } = await supabase
+      .from('message')
+      .select('*', { count: 'exact', head: true })
+      .eq('id_conversation', conversationId)
+      .eq('id_destinataire', userId)
+      .eq('lu', false);
+      
+    if (!count || count === 0) return 0;
+    
+    // Then mark them as read
     const { error } = await supabase
       .from('message')
       .update({ lu: true })
@@ -121,8 +131,10 @@ export const markMessagesAsRead = async (conversationId: number, userId: string)
       .eq('lu', false);
       
     if (error) throw error;
+    
+    return count;
   } catch (error) {
-    console.error('Erreur lors du marquage des messages comme lus:', error);
+    console.error('Error marking messages as read:', error);
     throw error;
   }
 };
