@@ -21,6 +21,6 @@ export interface DatabaseNotification {
   date_creation: string;
   type?: string;
   entity_type?: string;
-  entity_id?: string | number;
+  entity_id?: string;
   projet_id?: number;
 }

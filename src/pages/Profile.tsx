@@ -1,518 +1,341 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate,Navigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Avatar } from '@/components/ui/avatar';
-import { 
-  Mail, 
-  MapPin, 
-  Phone, 
-  User2,
-  Edit, 
-  PenSquare,
-  Users
-} from 'lucide-react';
-import { Separator } from '@/components/ui/separator';
-import { toast } from 'sonner';
-import AgriculturalProjectCard from '@/components/AgriculturalProjectCard';
-import { AgriculturalProject } from '@/types/agriculturalProject';
-import { UserProfile } from '@/types/userProfile';
-import { formatCurrency } from '@/lib/utils';
+import React, { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate, useParams } from "react-router-dom";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
+import { Calendar } from "@/components/ui/calendar"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { CalendarIcon } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { format } from "date-fns"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+} from "@/components/ui/command"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
+import { useForm } from "react-hook-form"
+import * as z from "zod"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox"
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { supabase } from "@/integrations/supabase/client";
+import { TerrainData } from "@/types/terrain";
+import ProjectEditDialog from "@/components/ProjectEditDialog";
 
-export const Profile = () => {
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const { user, profile: currentUserProfile, refreshProfile } = useAuth();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [isCurrentUser, setIsCurrentUser] = useState(false);
+const subscriptionSchema = z.object({
+  email: z.string().email({
+    message: "Please enter a valid email address.",
+  }),
+})
+
+const Profile: React.FC = () => {
+  const { user } = useAuth();
+  const { profileUserId } = useParams<{ profileUserId: string }>();
+  const [profile, setProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [isCurrentUserProfile, setIsCurrentUserProfile] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
-  const [followingCount, setFollowingCount] = useState(0);
-  const [projects, setProjects] = useState<AgriculturalProject[]>([]);
-  const [investedProjects, setInvestedProjects] = useState<any[]>([]);
-  const [projectsCount, setProjectsCount] = useState(0);
-  const [loading, setLoading] = useState(true);
-  
-  if (!user) {
-    return <Navigate to="/auth" replace />;
-  }
-  useEffect(() => {
-    if (!id) return;
-    
-    if (user?.id === id) {
-      setIsCurrentUser(true);
-      if (currentUserProfile) {
-        setProfile(currentUserProfile);
-      }
-    } else {
-      setIsCurrentUser(false);
-      fetchUserProfile(id);
-    }
-    
-    fetchFollowStatus(id);
-    fetchUserProjects(id);
-    fetchInvestedProjects(id);
-    
-  }, [id, user, currentUserProfile]);
+  const [subscriptionsCount, setSubscriptionsCount] = useState(0);
+  const [followActionInProgress, setFollowActionInProgress] = useState(false);
+  const [userProjects, setUserProjects] = useState<any[]>([]);
+  const [showProjectDialog, setShowProjectDialog] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<any>(null);
+  const navigate = useNavigate();
 
-  const fetchUserProfile = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('utilisateur')
-        .select(`
-          *,
-          role:id_role(nom_role)
-        `)
-        .eq('id_utilisateur', userId)
-        .single();
-      
-      if (error) throw error;
-      
-      setProfile({
-        id_utilisateur: data.id_utilisateur,
-        id: data.id_utilisateur,
-        nom: data.nom,
-        prenoms: data.prenoms,
-        email: data.email,
-        photo_profil: data.photo_profil,
-        telephone: data.telephone || undefined,
-        adresse: data.adresse || undefined,
-        bio: data.bio || undefined,
-        nom_role: data.role?.nom_role
-      });
-    } catch (error) {
-      console.error('Error fetching user profile:', error);
-      toast.error("Impossible de charger le profil de l'utilisateur");
+  useEffect(() => {
+    if (!user) {
+      navigate('/auth');
+      return;
     }
-  };
-  
-  const fetchFollowStatus = async (userId: string) => {
-    try {
-      const { data: followersData, error: followersError } = await supabase
-        .from('abonnement')
-        .select('id_abonnement', { count: 'exact' })
-        .eq('id_suivi', userId);
-        
-      if (followersError) throw followersError;
-      const followersCount = followersData ? followersData.length : 0;
-      setFollowersCount(followersCount);
-      
-      const { data: subscriptionsData, error: subscriptionsError } = await supabase
-        .from('abonnement')
-        .select('id_abonnement', { count: 'exact' })
-        .eq('id_abonne', userId);
-        
-      if (subscriptionsError) throw subscriptionsError;
-      const subscriptionsCount = subscriptionsData ? subscriptionsData.length : 0;
-      setFollowingCount(subscriptionsCount);
-      
-      if (user && userId !== user.id) {
-        const { data, error } = await supabase
-          .from('abonnement')
-          .select('id_abonnement')
-          .eq('id_abonne', user.id)
-          .eq('id_suivi', userId)
-          .maybeSingle();
-        
-        if (error) throw error;
-        setIsFollowing(!!data);
-      }
-    } catch (error) {
-      console.error('Error fetching follow status:', error);
+
+    if (profileUserId) {
+      setIsCurrentUserProfile(user.id === profileUserId);
+    } else {
+      setIsCurrentUserProfile(true);
     }
-  };
-  
-  const fetchUserProjects = async (userId: string) => {
+  }, [user, profileUserId, navigate]);
+
+  useEffect(() => {
+    if (user) {
+      fetchUserProfile();
+      fetchUserProjects();
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (user && profileUserId) {
+      fetchFollowState();
+      fetchFollowersCount();
+      fetchSubscriptionsCount();
+    }
+  }, [user, profileUserId]);
+
+  // Fix the telephone property access
+  const fetchUserProfile = async () => {
     try {
       setLoading(true);
-      
-      const { data, error, count } = await supabase
-        .from('projet')
-        .select(`
-          *,
-          terrain(*),
-          projet_culture!inner(*, culture(*))
-        `, { count: 'exact' })
-        .eq('id_tantsaha', userId)
-        .order('created_at', { ascending: false });
-      
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('utilisateur')
+        .select('*')
+        .eq('id_utilisateur', user.id)
+        .single();
+
       if (error) throw error;
-      
-      const formattedProjects: AgriculturalProject[] = (data || []).map(project => {
-        const totalCost = project.projet_culture.reduce(
-          (sum: number, pc: any) => sum + (pc.cout_exploitation_previsionnel || 0), 
-          0
-        );
-        
-        const totalYield = project.projet_culture.reduce(
-          (sum: number, pc: any) => sum + (pc.rendement_previsionnel || 0), 
-          0
-        );
-        
-        const expectedRevenue = project.projet_culture.reduce(
-          (sum: number, pc: any) => sum + (pc.rendement_previsionnel * (pc.culture?.prix_tonne || 0)), 
-          0
-        );
-        
-        const financementActuel = (project as any).financement_actuel || 0;
-        
-        return {
-          id: project.id_projet.toString(),
-          title: project.titre || `Projet #${project.id_projet}`,
-          farmer: {
-            id: userId,
-            name: `${profile?.nom || ""} ${profile?.prenoms || ""}`.trim(),
-            username: profile?.nom?.toLowerCase()?.replace(/\s+/g, '') || "",
-            avatar: profile?.photo_profil,
-          },
-          location: {
-            region: project.terrain?.id_region || "Non spécifié",
-            district: project.terrain?.id_district || "Non spécifié",
-            commune: project.terrain?.id_commune || "Non spécifié",
-          },
-          cultivationArea: project.surface_ha || 0,
-          cultivationType: project.projet_culture[0]?.culture?.nom_culture || "Non spécifié",
-          farmingCost: totalCost,
-          expectedYield: totalYield,
-          expectedRevenue: expectedRevenue,
-          creationDate: project.created_at || new Date().toISOString(),
-          images: [],
-          description: project.description || "",
-          fundingGoal: totalCost,
-          currentFunding: financementActuel,
-          likes: 0,
-          comments: 0,
-          shares: 0,
-        };
-      });
-      
-      setProjects(formattedProjects);
-      setProjectsCount(count || 0);
+
+      if (data) {
+        // Fetch telephones separately
+        const { data: telephones, error: telephoneError } = await supabase
+          .from('telephone')
+          .select('*')
+          .eq('id_utilisateur', user.id);
+
+        if (telephoneError) throw telephoneError;
+
+        setProfile({
+          ...data,
+          telephones: telephones || []
+        });
+      }
     } catch (error) {
-      console.error('Error fetching user projects:', error);
-      toast.error("Impossible de charger les projets");
+      console.error('Error fetching profile:', error);
     } finally {
       setLoading(false);
     }
   };
-  
-  const fetchInvestedProjects = async (userId: string) => {
+
+  const fetchUserProjects = async () => {
     try {
+      if (!user) return;
+
       const { data, error } = await supabase
-        .from('investissement')
-        .select(`
-          *,
-          projet(
-            *,
-            tantsaha:id_tantsaha(id_utilisateur, nom, prenoms, photo_profil),
-            projet_culture(*, culture(*))
-          )
-        `)
-        .eq('id_investisseur', userId);
-      
+        .from('projet')
+        .select('*')
+        .eq('id_tantsaha', user.id);
+
       if (error) throw error;
-      
-      const projectsMap = new Map();
-      
-      data?.forEach(investment => {
-        const project = investment.projet;
-        if (!project) return;
-        
-        const projectId = project.id_projet;
-        
-        if (!projectsMap.has(projectId)) {
-          projectsMap.set(projectId, {
-            ...project,
-            totalInvestment: investment.montant
-          });
-        } else {
-          const existingProject = projectsMap.get(projectId);
-          existingProject.totalInvestment += investment.montant;
-          projectsMap.set(projectId, existingProject);
-        }
-      });
-      
-      setInvestedProjects(Array.from(projectsMap.values()));
+
+      setUserProjects(data || []);
     } catch (error) {
-      console.error('Error fetching invested projects:', error);
+      console.error('Error fetching user projects:', error);
     }
   };
-  
-  const handleFollow = async () => {
-    if (!user || !profile) return;
-    
+
+  const fetchFollowState = async () => {
     try {
-      if (isFollowing) {
-        const { error } = await supabase
-          .from('abonnement')
-          .delete()
-          .eq('id_abonne', user.id)
-          .eq('id_suivi', profile.id);
-        
-        if (error) throw error;
-        
-        setIsFollowing(false);
-        setFollowersCount(prev => prev - 1);
-        toast.success(`Vous ne suivez plus ${profile.nom}`);
-      } else {
+      if (!user || !profileUserId) return;
+
+      const { data, error } = await supabase
+        .from('abonnement')
+        .select('*')
+        .eq('id_suivi', profileUserId)
+        .eq('id_abonne', user.id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') throw error;
+
+      setIsFollowing(!!data);
+    } catch (error) {
+      console.error('Error fetching follow state:', error);
+    }
+  };
+
+  // Fix the RPC calls
+  const fetchFollowersCount = async () => {
+    try {
+      const { data, error } = await supabase
+        .rpc('count_followers', { user_id: user?.id });
+
+      if (error) throw error;
+      setFollowersCount(data || 0);
+    } catch (error) {
+      console.error('Error fetching followers count:', error);
+    }
+  };
+
+  const fetchSubscriptionsCount = async () => {
+    try {
+      const { data, error } = await supabase
+        .rpc('count_subscriptions', { user_id: user?.id });
+
+      if (error) throw error;
+      setSubscriptionsCount(data || 0);
+    } catch (error) {
+      console.error('Error fetching subscriptions count:', error);
+    }
+  };
+
+  const handleViewProjectDetails = (project: any) => {
+    setSelectedProject(project);
+    setShowProjectDialog(true);
+  };
+
+  const handleCloseProjectDialog = () => {
+    setShowProjectDialog(false);
+    setSelectedProject(null);
+  };
+
+  // Fix the create_subscription RPC call
+  const handleFollow = async () => {
+    try {
+      setFollowActionInProgress(true);
+      if (!isFollowing) {
         const { error } = await supabase
           .from('abonnement')
           .insert({
-            id_abonne: user.id,
-            id_suivi: profile.id
+            id_suivi: profileUserId,
+            id_abonne: user?.id
           });
-        
+
         if (error) throw error;
-        
+      
         setIsFollowing(true);
-        setFollowersCount(prev => prev + 1);
-        toast.success(`Vous suivez maintenant ${profile.nom}`);
+        setFollowersCount((prev) => prev + 1);
+      } else {
+        const { error } = await supabase
+          .from('abonnement')
+          .delete()
+          .eq('id_suivi', profileUserId)
+          .eq('id_abonne', user?.id);
+
+        if (error) throw error;
+      
+        setIsFollowing(false);
+        setFollowersCount((prev) => Math.max(0, prev - 1));
       }
     } catch (error) {
-      console.error('Error updating follow status:', error);
+      console.error('Error following/unfollowing:', error);
       toast.error("Une erreur est survenue");
+    } finally {
+      setFollowActionInProgress(false);
     }
   };
-  
-  const handleLikeToggle = async (projectId: string) => {
-    // Implementation for toggling like on a project
+
+  const handleAddProject = () => {
+    setSelectedProject(null);
+    setShowProjectDialog(true);
   };
-  
-  if (!profile) {
-    return (
-      <div className="flex justify-center items-center min-h-[50vh]">
-        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
+
+  const handleEditProject = (project: any) => {
+    setSelectedProject(project);
+    setShowProjectDialog(true);
+  };
+
+  const handleProjectSubmitSuccess = () => {
+    fetchUserProjects();
+    handleCloseProjectDialog();
+  };
 
   return (
-    <div className="container max-w-4xl py-6 space-y-6">
-      <div className="flex flex-col md:flex-row gap-6 items-start">
-        <Avatar className="h-24 w-24 rounded-full border-4 border-background">
-          {profile.photo_profil ? (
-            <img 
-              src={profile.photo_profil} 
-              alt={profile.nom} 
-              className="aspect-square h-full w-full object-cover"
-            />
-          ) : (
-            <User2 className="h-12 w-12" />
-          )}
-        </Avatar>
-        
-        <div className="flex-1">
-          <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
-            <h1 className="text-2xl font-bold">
-              {`${profile.nom} ${profile.prenoms || ''}`}
-            </h1>
-            
-            <div className="flex items-center">
-              <span className="text-sm px-2 py-0.5 bg-muted rounded-full">
-                {profile.nom_role?.charAt(0).toUpperCase() + profile.nom_role?.slice(1)}
-              </span>
-            </div>
-          </div>
-          
-          {profile.bio && (
-            <p className="mt-2 text-muted-foreground">{profile.bio}</p>
-          )}
-          
-          <div className="flex flex-wrap gap-4 mt-3">
-            <div className="flex items-center text-sm text-muted-foreground">
-              <MapPin size={16} className="mr-1" />
-              <span>{profile.adresse || 'Aucune adresse'}</span>
-            </div>
-            
-            {profile.telephones?.find(t => t.type === 'principal')?.numero && (
-              <div className="flex items-center text-sm text-muted-foreground">
-                <Phone size={16} className="mr-1" />
-                <span>{profile.telephones.find(t => t.type === 'principal')?.numero}</span>
-              </div>
-            )}
-            
-            <div className="flex items-center text-sm text-muted-foreground">
-              <Mail size={16} className="mr-1" />
-              <span>{profile.email}</span>
-            </div>
-          </div>
-          
-          <div className="flex flex-wrap items-center gap-4 mt-4">
-            <div className="flex items-center gap-1">
-              <span className="font-semibold">{projectsCount}</span>
-              <span className="text-muted-foreground text-sm">projets</span>
-            </div>
-            
-            <div className="flex items-center gap-1">
-              <span className="font-semibold">{followersCount}</span>
-              <span className="text-muted-foreground text-sm">abonnés</span>
-            </div>
-            
-            <div className="flex items-center gap-1">
-              <span className="font-semibold">{followingCount}</span>
-              <span className="text-muted-foreground text-sm">abonnements</span>
-            </div>
-          </div>
+    <div className="container mx-auto py-6">
+      {loading ? (
+        <div className="flex justify-center items-center h-48">
+          Chargement du profil...
         </div>
-        
-        <div className="flex flex-col gap-2">
-          {isCurrentUser ? (
-            <Button 
-              variant="outline" 
-              onClick={() => navigate('/settings')}
-              className="flex items-center"
-            >
-              <Edit size={16} className="mr-2" />
-              Modifier profil
-            </Button>
-          ) : (
-            <>
-              <Button 
-                variant={isFollowing ? "outline" : "default"}
+      ) : (
+        <>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-4">
+              <Avatar>
+                <AvatarImage src="https://github.com/shadcn.png" />
+                <AvatarFallback>{profile?.nom?.charAt(0)}{profile?.prenoms?.charAt(0)}</AvatarFallback>
+              </Avatar>
+              <div>
+                <h1 className="text-2xl font-bold">{profile?.nom} {profile?.prenoms}</h1>
+                <p className="text-sm text-gray-500">{profile?.email}</p>
+              </div>
+            </div>
+            {!isCurrentUserProfile && (
+              <Button
+                variant="outline"
+                disabled={followActionInProgress}
                 onClick={handleFollow}
               >
-                {isFollowing ? (
-                  <>
-                    <Users size={16} className="mr-2" />
-                    Abonné
-                  </>
-                ) : (
-                  <>
-                    <Users size={16} className="mr-2" />
-                    Suivre
-                  </>
-                )}
+                {isFollowing ? "Se désabonner" : "S'abonner"}
               </Button>
-              <Button variant="outline">
-                <Mail size={16} className="mr-2" />
-                Message
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div className="p-4 border rounded-lg">
+              <h2 className="text-lg font-medium mb-2">Informations</h2>
+              <p>Role: {profile?.nom_role}</p>
+              <p>Téléphone: {profile?.telephones?.map((tel: any) => tel.numero).join(', ') || 'Non renseigné'}</p>
+              <p>Abonnés: {followersCount}</p>
+              <p>Abonnements: {subscriptionsCount}</p>
+            </div>
+
+            <div className="p-4 border rounded-lg">
+              <h2 className="text-lg font-medium mb-2">Projets</h2>
+              <Button variant="outline" size="sm" onClick={handleAddProject}>
+                Ajouter un projet
               </Button>
-            </>
-          )}
-        </div>
-      </div>
-      
-      <Separator />
-      
-      <Tabs defaultValue="projects">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="projects" className="flex items-center">
-            <PenSquare size={16} className="mr-2" />
-            Projets
-          </TabsTrigger>
-          <TabsTrigger value="investments" className="flex items-center">
-            <Users size={16} className="mr-2" />
-            Investissements
-          </TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="projects" className="mt-6">
-          {loading ? (
-            <div className="flex justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
-            </div>
-          ) : projects.length > 0 ? (
-            <div className="grid grid-cols-1 gap-6">
-              {projects.map(project => (
-                <AgriculturalProjectCard
-                  key={project.id}
-                  project={project}
-                  onLikeToggle={() => handleLikeToggle(project.id)}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12 border border-dashed rounded-lg">
-              <PenSquare size={40} className="mx-auto text-muted-foreground" />
-              <h3 className="mt-4 text-lg font-medium">Aucun projet</h3>
-              <p className="text-muted-foreground">
-                {isCurrentUser 
-                  ? "Vous n'avez pas encore créé de projet agricole."
-                  : "Cet utilisateur n'a pas encore créé de projet agricole."}
-              </p>
-              {isCurrentUser && profile.nom_role === 'agriculteur' && (
-                <Button className="mt-4" onClick={() => navigate('/terrain')}>
-                  Créer un projet
-                </Button>
-              )}
-            </div>
-          )}
-        </TabsContent>
-        
-        <TabsContent value="investments" className="mt-6">
-          {investedProjects.length > 0 ? (
-            <div className="space-y-4">
-              {investedProjects.map(project => (
-                <div key={project.id_projet} className="border rounded-lg p-4">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="font-medium">{project.titre || `Projet #${project.id_projet}`}</h3>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Par {project.tantsaha?.nom} {project.tantsaha?.prenoms || ''}
-                      </p>
-                      <div className="flex gap-2 mt-2">
-                        <span className="text-xs bg-muted px-2 py-1 rounded-full">
-                          {project.surface_ha} ha
+              <ScrollArea className="h-[200px] mt-3">
+                {userProjects.length > 0 ? (
+                  // Fix the financement_actuel property access in project listings
+                  userProjects.map((project) => (
+                    <div key={project.id_projet} className="p-4 border rounded-lg">
+                      <h3 className="text-lg font-medium">{project.titre}</h3>
+                      <p className="text-sm text-gray-600 mb-2">{project.description}</p>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm">
+                          {/* Use optional chaining and default to 0 */}
+                          Financement: {project.financement_actuel || 0}/{project.cout_total || 0} Ar
                         </span>
-                        <span className="text-xs bg-muted px-2 py-1 rounded-full">
-                          {project.statut}
-                        </span>
+                        <Button variant="outline" size="sm" onClick={() => handleViewProjectDetails(project)}>
+                          Détails
+                        </Button>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-medium">Votre investissement</p>
-                      <p className="text-lg font-bold">{formatCurrency(project.totalInvestment)}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="mt-3">
-                    <div className="flex justify-between text-sm">
-                      <span>Progression</span>
-                      <span>
-                        {(project.financement_actuel || 0) > 0 && project.cout_total ? 
-                          `${Math.round((project.financement_actuel / project.cout_total) * 100)}%` : 
-                          '0%'
-                        }
-                      </span>
-                    </div>
-                    <div className="w-full bg-muted rounded-full h-2 mt-1">
-                      <div 
-                        className="bg-primary h-2 rounded-full" 
-                        style={{ 
-                          width: `${project.cout_total ? 
-                            Math.min(Math.round((project.financement_actuel || 0) / project.cout_total * 100), 100) : 0
-                          }%` 
-                        }}
-                      ></div>
-                    </div>
-                  </div>
-                  
-                  <div className="mt-3 flex justify-end">
-                    <Button variant="outline" size="sm">Voir détails</Button>
-                  </div>
-                </div>
-              ))}
+                  ))
+                ) : (
+                  <p>Aucun projet trouvé.</p>
+                )}
+              </ScrollArea>
             </div>
-          ) : (
-            <div className="text-center py-12 border border-dashed rounded-lg">
-              <Users size={40} className="mx-auto text-muted-foreground" />
-              <h3 className="mt-4 text-lg font-medium">Aucun investissement</h3>
-              <p className="text-muted-foreground">
-                {isCurrentUser 
-                  ? "Vous n'avez pas encore investi dans des projets agricoles."
-                  : "Cet utilisateur n'a pas encore investi dans des projets agricoles."}
-              </p>
-              {isCurrentUser && (
-                <Button className="mt-4" onClick={() => navigate('/')}>
-                  Explorer les projets
-                </Button>
-              )}
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+          </div>
+        </>
+      )}
+
+      <ProjectEditDialog
+        isOpen={showProjectDialog}
+        onClose={handleCloseProjectDialog}
+        project={selectedProject}
+        onSubmitSuccess={handleProjectSubmitSuccess}
+        userId={user?.id || ""}
+      />
     </div>
   );
 };

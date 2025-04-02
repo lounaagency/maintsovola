@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Table,
@@ -353,16 +354,16 @@ const Terrain: React.FC = () => {
         agriculteurs={agriculteurs}
       />
 
-      {showContactTechnicianDialog && (
+      {showContactTechnicianDialog && selectedTerrain && (
         <MessageDialog
           isOpen={showContactTechnicianDialog}
-          onClose={() => setShowContactTechnicianDialog(false)}
+          onClose={handleCloseContactTechnicianDialog}
           recipient={{
-            id: selectedTerrain?.id_technicien || "",
-            name: `${selectedTerrain?.techniqueNom || ""} ${selectedTerrain?.techniquePrenoms || ""}`
+            id: selectedTerrain.id_technicien || "",
+            name: `${selectedTerrain.techniqueNom || ""} ${selectedTerrain.techniquePrenoms || ""}`
           }}
-          subject={`Demande concernant terrain: ${selectedTerrain?.nom_terrain}`}
-          initialMessage={`Bonjour ${selectedTerrain?.techniquePrenoms || ""} ! Je vous contacte parce que j'aimerais modifier quelques informations concernant mon terrain ${selectedTerrain?.nom_terrain}.`}
+          subject={`Demande concernant terrain: ${selectedTerrain.nom_terrain}`}
+          initialMessage={`Bonjour ${selectedTerrain.techniquePrenoms || ""} ! Je vous contacte parce que j'aimerais modifier quelques informations concernant mon terrain ${selectedTerrain.nom_terrain}.`}
         />
       )}
     </div>

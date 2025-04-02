@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -50,14 +51,12 @@ const MessageDialog: React.FC<MessageDialogProps> = ({
   
     setLoading(true);
     try {
-      const { error } = await supabase.from("message").insert([
-        {
-          id_expediteur: user.id, // Utiliser l'ID réel de l'utilisateur
-          id_destinataire: recipient.id, // Utiliser l'ID du destinataire
-          contenu: data.message, // Utiliser la valeur du formulaire
-          lu: false // Un message n'est pas encore lu par défaut
-        }
-      ]);
+      const { error } = await supabase.from("message").insert({
+        id_expediteur: user.id, 
+        id_destinataire: recipient.id,
+        contenu: data.message,
+        lu: false 
+      });
   
       if (error) {
         throw error;
