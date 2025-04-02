@@ -12,7 +12,7 @@ export interface TerrainFormData {
   photos?: string | string[];
 }
 
-export const convertFormDataToTerrainData = (formData: TerrainFormData): TerrainData => {
+export const convertFormDataToTerrainData = (formData: TerrainFormData): Partial<TerrainData> => {
   return {
     id_region: formData.id_region ? parseInt(formData.id_region) : undefined,
     id_district: formData.id_district ? parseInt(formData.id_district) : undefined,
@@ -21,6 +21,6 @@ export const convertFormDataToTerrainData = (formData: TerrainFormData): Terrain
     surface_proposee: formData.surface_proposee,
     acces_eau: formData.acces_eau,
     acces_route: formData.acces_route,
-    photos: formData.photos || [] // Initialize with empty array
+    photos: formData.photos || '' // Initialize with empty string instead of array
   };
 };

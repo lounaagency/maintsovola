@@ -1,269 +1,177 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
+import React, { useState, useEffect } from 'react';
+import { useForm, Controller } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
+import * as yup from 'yup';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Button } from "@/components/ui/button"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-import { Calendar } from "@/components/ui/calendar"
-import { CalendarIcon, Upload, X, Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { format } from "date-fns";
-import { PopoverClose } from '@radix-ui/react-popover';
-import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
-import { TerrainData } from '@/types/terrain';
-import { CultureData } from '@/types/culture';
-
-const formSchema = z.object({
-  title: z.string().min(2, {
-    message: "Le titre doit contenir au moins 2 caractères.",
-  }),
-  description: z.string().optional(),
-  terrain: z.string().min(1, {
-    message: "Veuillez sélectionner un terrain.",
-  }),
-  status: z.string().optional(),
-  startDate: z.date().optional(),
-  endDate: z.date().optional(),
-  cultures: z.array(z.string()).optional(),
-  surface_ha: z.string().refine((value) => {
-    const num = Number(value);
-    return !isNaN(num) && num > 0;
-  }, {
-    message: "La surface doit être un nombre positif.",
-  }),
-  cout_total: z.string().refine((value) => {
-    const num = Number(value);
-    return !isNaN(num) && num >= 0;
-  }, {
-    message: "Le coût total doit être un nombre positif ou nul.",
-  }),
-  financement_actuel: z.string().refine((value) => {
-    const num = Number(value);
-    return !isNaN(num) && num >= 0;
-  }, {
-    message: "Le financement actuel doit être un nombre positif ou nul.",
-  }),
-})
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { format } from 'date-fns';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { CalendarIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { fr } from 'date-fns/locale';
 
 interface ProjectFormProps {
-  onSubmit: (data: z.infer<typeof formSchema>) => void;
-  disabled?: boolean;
   initialData?: any;
   isEditing?: boolean;
+  userId: string;
+  userRole?: string;
+  onCancel?: () => void;
+  onSubmitSuccess?: () => void;
 }
 
-const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialData, isEditing }) => {
-  const [terrains, setTerrains] = useState<TerrainData[]>([]);
-  const [cultures, setCultures] = useState<CultureData[]>([]);
-  const [photos, setPhotos] = useState<File[]>([]);
-  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
-  const [isUploading, setIsUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const navigate = useNavigate();
-  const { user } = useAuth();
+// Define the form schema
+const formSchema = yup.object().shape({
+  titre: yup.string().required('Le titre est obligatoire'),
+  description: yup.string().required('La description est obligatoire'),
+  surface_ha: yup.number().required('La surface est obligatoire').positive('La surface doit être positive'),
+  id_terrain: yup.string().required('Le terrain est obligatoire'),
+  id_culture: yup.string().required('La culture est obligatoire'),
+  statut: yup.string().required('Le statut est obligatoire'),
+  date_debut_previsionnelle: yup.date().required('La date de début prévisionnelle est obligatoire'),
+});
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+const ProjectForm: React.FC<ProjectFormProps> = ({
+  initialData,
+  isEditing,
+  userId,
+  userRole,
+  onCancel,
+  onSubmitSuccess
+}) => {
+  const [loading, setLoading] = useState(false);
+  const [terrains, setTerrains] = useState([]);
+  const [cultures, setCultures] = useState([]);
+  const [statuts, setStatuts] = useState([
+    { value: 'planifie', label: 'Planifié' },
+    { value: 'en_cours', label: 'En cours' },
+    { value: 'termine', label: 'Terminé' },
+    { value: 'suspendu', label: 'Suspendu' },
+    { value: 'annule', label: 'Annulé' },
+  ]);
+
+  const form = useForm({
+    resolver: yupResolver(formSchema),
     defaultValues: {
-      title: initialData?.title || "",
-      description: initialData?.description || "",
-      terrain: initialData?.terrain?.toString() || "",
-      status: initialData?.status || "planification",
-      startDate: initialData?.startDate ? new Date(initialData.startDate) : new Date(),
-      endDate: initialData?.endDate ? new Date(initialData.endDate) : new Date(),
-      cultures: initialData?.cultures || [],
-      surface_ha: initialData?.surface_ha?.toString() || "0",
-      cout_total: initialData?.cout_total?.toString() || "0",
-      financement_actuel: initialData?.financement_actuel?.toString() || "0"
+      titre: initialData?.titre || '',
+      description: initialData?.description || '',
+      surface_ha: initialData?.surface_ha || 0,
+      id_terrain: initialData?.id_terrain || '',
+      id_culture: initialData?.id_culture || '',
+      statut: initialData?.statut || 'planifie',
+      date_debut_previsionnelle: initialData?.date_debut_previsionnelle ? new Date(initialData.date_debut_previsionnelle) : undefined,
     },
-    mode: "onChange",
-  })
-
-  const { handleSubmit, control, setValue, getValues } = form;
-
-  const handleInputChange = (name: string, value: any) => {
-    setValue(name, value, { shouldValidate: true });
-  };
-
-  const onSubmitHandler = async (data: z.infer<typeof formSchema>) => {
-    try {
-      const uploadedPhotoUrls = await uploadPhotos();
-      
-      const allPhotoUrls = [
-        ...photoUrls.filter(url => url.includes('supabase.co')), 
-        ...uploadedPhotoUrls
-      ];
-      
-      const formData = {
-        ...data,
-        images: allPhotoUrls
-      };
-      
-      onSubmit(formData);
-    } catch (error) {
-      console.error("Error processing form submission:", error);
-      toast.error("Une erreur s'est produite lors de l'envoi du formulaire.");
-    }
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0) return;
-    
-    const selectedFiles = Array.from(e.target.files);
-    setPhotos(prevPhotos => [...prevPhotos, ...selectedFiles]);
-    
-    selectedFiles.forEach(file => {
-      const previewUrl = URL.createObjectURL(file);
-      setPhotoUrls(prevUrls => [...prevUrls, previewUrl]);
-    });
-  };
-
-  const removePhoto = (index: number) => {
-    setPhotos(prevPhotos => {
-      const newPhotos = [...prevPhotos];
-      newPhotos.splice(index, 1);
-      return newPhotos;
-    });
-
-    setPhotoUrls(prevUrls => {
-      const newUrls = [...prevUrls];
-      URL.revokeObjectURL(newUrls[index]);
-      newUrls.splice(index, 1);
-      return newUrls;
-    });
-  };
-
-  const uploadPhotos = async (): Promise<string[]> => {
-    if (photos.length === 0) return [];
-    
-    setIsUploading(true);
-    const uploadedUrls: string[] = [];
-    
-    try {
-      for (const photo of photos) {
-        const fileExt = photo.name.split('.').pop();
-        const fileName = `project-${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
-        const filePath = `project-photos/${fileName}`;
-        
-        const { error: uploadError } = await supabase.storage
-          .from('project-photos')
-          .upload(filePath, photo);
-          
-        if (uploadError) {
-          console.error("Error uploading photo:", uploadError);
-          continue;
-        }
-        
-        const { data: publicUrlData } = supabase.storage
-          .from('project-photos')
-          .getPublicUrl(filePath);
-          
-        if (publicUrlData) {
-          uploadedUrls.push(publicUrlData.publicUrl);
-        }
-      }
-      
-      return uploadedUrls;
-    } catch (error) {
-      console.error("Error in photo upload process:", error);
-      return [];
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const fetchTerrains = useCallback(async () => {
-    if (!user) return;
-    try {
-      const { data: terrainsData, error } = await supabase
-        .from('terrain')
-        .select('*')
-        .eq('id_tantsaha', user.id);
-
-      if (error) {
-        console.error("Error fetching terrains:", error);
-        toast.error("Erreur lors du chargement des terrains");
-        return;
-      }
-
-      setTerrains(terrainsData || []);
-      if (terrainsData && terrainsData.length > 0 && !getValues("terrain")) {
-        handleInputChange("terrain", terrainsData[0].id_terrain?.toString());
-      }
-    } catch (error) {
-      console.error("Unexpected error fetching terrains:", error);
-      toast.error("Erreur inattendue lors du chargement des terrains");
-    }
-  }, [user, getValues, handleInputChange, setTerrains]);
-
-  const fetchCultures = useCallback(async () => {
-    try {
-      const { data: culturesData, error } = await supabase
-        .from('culture')
-        .select('*');
-
-      if (error) {
-        console.error("Error fetching cultures:", error);
-        toast.error("Erreur lors du chargement des cultures");
-        return;
-      }
-
-      setCultures(culturesData || []);
-    } catch (error) {
-      console.error("Unexpected error fetching cultures:", error);
-      toast.error("Erreur inattendue lors du chargement des cultures");
-    }
-  }, [setCultures]);
+  });
 
   useEffect(() => {
     fetchTerrains();
     fetchCultures();
-  }, [fetchTerrains, fetchCultures]);
+  }, []);
 
-  useEffect(() => {
-    if (isEditing && initialData?.images) {
-      setPhotoUrls(initialData.images);
+  const fetchTerrains = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('terrain')
+        .select('*')
+        .eq('id_tantsaha', userId);
+
+      if (error) {
+        throw error;
+      }
+
+      if (data) {
+        setTerrains(data);
+      }
+    } catch (error) {
+      console.error("Error fetching terrains:", error);
+      toast.error("Failed to load terrains.");
     }
-  }, [isEditing, initialData]);
+  };
+
+  const fetchCultures = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('culture')
+        .select('*');
+
+      if (error) {
+        throw error;
+      }
+
+      if (data) {
+        setCultures(data);
+      }
+    } catch (error) {
+      console.error("Error fetching cultures:", error);
+      toast.error("Failed to load cultures.");
+    }
+  };
+
+  const onSubmit = async (data: any) => {
+    setLoading(true);
+    try {
+      const payload = {
+        ...data,
+        surface_ha: parseFloat(data.surface_ha),
+        id_tantsaha: userId,
+      };
+
+      let response;
+      if (isEditing && initialData?.id_projet) {
+        response = await supabase
+          .from('projet')
+          .update(payload)
+          .eq('id_projet', initialData.id_projet);
+      } else {
+        response = await supabase
+          .from('projet')
+          .insert([payload]);
+      }
+
+      if (response.error) {
+        throw response.error;
+      }
+
+      toast.success(`Project ${isEditing ? 'updated' : 'created'} successfully!`);
+      onSubmitSuccess?.();
+    } catch (error: any) {
+      console.error("Error during form submission:", error);
+      toast.error(error.message || "An error occurred during submission.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Make sure setValues uses string values for fields
+  const setValue = (field: string, value: any) => {
+    form.setValue(field as any, value);
+  };
 
   return (
     <Form {...form}>
-      <form onSubmit={handleSubmit(onSubmitHandler)} className="space-y-8">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <FormField
           control={form.control}
-          name="title"
+          name="titre"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Titre du projet</FormLabel>
+              <FormLabel>Titre</FormLabel>
               <FormControl>
-                <Input placeholder="Nommez votre projet" {...field} disabled={disabled} />
+                <Input placeholder="Titre du projet" {...field} />
               </FormControl>
-              <FormMessage />
+              <FormMessage>{form.formState.errors.titre?.message}</FormMessage>
             </FormItem>
           )}
         />
@@ -274,309 +182,148 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
             <FormItem>
               <FormLabel>Description</FormLabel>
               <FormControl>
-                <Textarea
-                  placeholder="Décrivez votre projet agricole"
-                  className="resize-none"
-                  {...field}
-                  disabled={disabled}
-                />
+                <Textarea placeholder="Description du projet" {...field} />
               </FormControl>
-              <FormDescription>
-                Fournissez une description claire et concise de votre projet.
-              </FormDescription>
-              <FormMessage />
+              <FormMessage>{form.formState.errors.description?.message}</FormMessage>
             </FormItem>
           )}
         />
-        <div className="flex flex-col md:flex-row gap-4">
-          <FormField
-            control={form.control}
-            name="surface_ha"
-            render={({ field }) => (
-              <FormItem className="w-full">
-                <FormLabel>Surface (ha)</FormLabel>
-                <FormControl>
-                  <Input placeholder="0" {...field} type="number" disabled={disabled} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="cout_total"
-            render={({ field }) => (
-              <FormItem className="w-full">
-                <FormLabel>Coût Total</FormLabel>
-                <FormControl>
-                  <Input placeholder="0 Ar" {...field} type="number" disabled={disabled} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="financement_actuel"
-            render={({ field }) => (
-              <FormItem className="w-full">
-                <FormLabel>Financement Actuel</FormLabel>
-                <FormControl>
-                  <Input placeholder="0 Ar" {...field} type="number" disabled={disabled} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-        <div className="flex flex-col md:flex-row gap-4">
-          <FormField
-            control={form.control}
-            name="terrain"
-            render={({ field }) => (
-              <FormItem className="w-full">
-                <FormLabel>Terrain</FormLabel>
-                <Select
-                  value={form.getValues("terrain")}
-                  onValueChange={field.onChange}
-                  disabled={disabled}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner un terrain" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {terrains.map((terrain) => (
-                      <SelectItem key={terrain.id_terrain} value={terrain.id_terrain?.toString()}>
-                        {terrain.nom_terrain || `Terrain #${terrain.id_terrain}`}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="status"
-            render={({ field }) => (
-              <FormItem className="w-full">
-                <FormLabel>Statut</FormLabel>
-                <Select
-                  value={form.getValues("status")}
-                  onValueChange={field.onChange}
-                  disabled={disabled}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner un statut" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="planification">Planification</SelectItem>
-                    <SelectItem value="en_cours">En Cours</SelectItem>
-                    <SelectItem value="termine">Terminé</SelectItem>
-                    <SelectItem value="suspendu">Suspendu</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-        <div className="flex flex-col md:flex-row gap-4">
-          <FormField
-            control={form.control}
-            name="startDate"
-            render={({ field }) => (
-              <FormItem className="w-full">
-                <FormLabel>Date de début</FormLabel>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <FormControl>
-                      <Button
-                        variant={"outline"}
-                        className={cn(
-                          "w-[240px] pl-3 text-left font-normal",
-                          !field.value && "text-muted-foreground"
-                        )}
-                        disabled={disabled}
-                      >
-                        {field.value ? (
-                          format(field.value, "PPP")
-                        ) : (
-                          <span>Choisir une date</span>
-                        )}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={field.value}
-                      onSelect={field.onChange}
-                      disabled={disabled}
-                      initialFocus
-                    />
-                    <PopoverClose className="absolute top-2 right-2 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary data-[state=open]:text-muted-foreground">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-x">
-                        <path d="M18 6 6 18" />
-                        <path d="M6 6 18 18" />
-                      </svg>
-                    </PopoverClose>
-                  </PopoverContent>
-                </Popover>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="endDate"
-            render={({ field }) => (
-              <FormItem className="w-full">
-                <FormLabel>Date de fin</FormLabel>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <FormControl>
-                      <Button
-                        variant={"outline"}
-                        className={cn(
-                          "w-[240px] pl-3 text-left font-normal",
-                          !field.value && "text-muted-foreground"
-                        )}
-                        disabled={disabled}
-                      >
-                        {field.value ? (
-                          format(field.value, "PPP")
-                        ) : (
-                          <span>Choisir une date</span>
-                        )}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={field.value}
-                      onSelect={field.onChange}
-                      disabled={disabled}
-                      initialFocus
-                    />
-                    <PopoverClose className="absolute top-2 right-2 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary data-[state=open]:text-muted-foreground">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-x">
-                        <path d="M18 6 6 18" />
-                        <path d="M6 6 18 18" />
-                      </svg>
-                    </PopoverClose>
-                  </PopoverContent>
-                </Popover>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
         <FormField
           control={form.control}
-          name="cultures"
+          name="surface_ha"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Cultures</FormLabel>
-              {cultures.length > 0 ? (
-                cultures.map((culture) => (
-                  <div key={culture.id_culture} className="flex items-center space-x-2">
-                    <Input
-                      type="checkbox"
-                      id={`culture-${culture.id_culture}`}
-                      value={culture.id_culture?.toString()}
-                      checked={field.value?.includes(culture.id_culture?.toString())}
-                      onChange={(e) => {
-                        const isChecked = e.target.checked;
-                        if (isChecked) {
-                          field.onChange([...(field.value || []), culture.id_culture?.toString()]);
-                        } else {
-                          field.onChange(field.value?.filter((id) => id !== culture.id_culture?.toString()));
-                        }
-                      }}
-                      disabled={disabled}
-                    />
-                    <label
-                      htmlFor={`culture-${culture.id_culture}`}
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                    >
-                      {culture.nom_culture}
-                    </label>
-                  </div>
-                ))
-              ) : (
-                <div>Aucune culture disponible.</div>
-              )}
-              <FormMessage />
+              <FormLabel>Surface (ha)</FormLabel>
+              <FormControl>
+                <Input
+                  type="number"
+                  placeholder="Surface en hectares"
+                  {...field}
+                  onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                />
+              </FormControl>
+              <FormMessage>{form.formState.errors.surface_ha?.message}</FormMessage>
             </FormItem>
           )}
         />
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <FormLabel>Photos du projet</FormLabel>
-            <Button 
-              type="button" 
-              variant="outline" 
-              size="sm"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={disabled}
-            >
-              <Upload className="h-4 w-4 mr-2" />
-              Ajouter des photos
-            </Button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              multiple
-              className="hidden"
-              onChange={handleFileChange}
-              disabled={disabled}
-            />
-          </div>
-          
-          {photoUrls.length > 0 && (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
-              {photoUrls.map((url, index) => (
-                <div key={index} className="relative group">
-                  <img 
-                    src={url} 
-                    alt={`Project photo ${index + 1}`} 
-                    className="w-full h-32 object-cover rounded-md border border-border"
-                  />
-                  {!disabled && (
-                    <button
-                      type="button"
-                      className="absolute top-1 right-1 bg-black bg-opacity-50 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={() => removePhoto(index)}
+        <FormField
+          control={form.control}
+          name="id_terrain"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Terrain</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Sélectionner un terrain" />
+                </SelectTrigger>
+                <SelectContent>
+                  {terrains.map((terrain) => (
+                    <SelectItem key={terrain.id_terrain} value={terrain.id_terrain}>
+                      {terrain.nom_terrain}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage>{form.formState.errors.id_terrain?.message}</FormMessage>
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="id_culture"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Culture</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Sélectionner une culture" />
+                </SelectTrigger>
+                <SelectContent>
+                  {cultures.map((culture) => (
+                    <SelectItem key={culture.id_culture} value={culture.id_culture}>
+                      {culture.nom_culture}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage>{form.formState.errors.id_culture?.message}</FormMessage>
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="statut"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Statut</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Sélectionner un statut" />
+                </SelectTrigger>
+                <SelectContent>
+                  {statuts.map((statut) => (
+                    <SelectItem key={statut.value} value={statut.value}>
+                      {statut.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage>{form.formState.errors.statut?.message}</FormMessage>
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="date_debut_previsionnelle"
+          render={({ field }) => (
+            <FormItem className="flex flex-col">
+              <FormLabel>Date de début prévisionnelle</FormLabel>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <FormControl>
+                    <Button
+                      variant={'outline'}
+                      className={cn(
+                        'w-[240px] pl-3 text-left font-normal',
+                        !field.value && 'text-muted-foreground'
+                      )}
                     >
-                      <X size={16} />
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
+                      {field.value ? (
+                        format(field.value, 'PPP', { locale: fr })
+                      ) : (
+                        <span>Choisir une date</span>
+                      )}
+                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                    </Button>
+                  </FormControl>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    locale={fr}
+                    selected={field.value}
+                    onSelect={field.onChange}
+                    disabled={(date) =>
+                      date > new Date()
+                    }
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+              <FormMessage>{form.formState.errors.date_debut_previsionnelle?.message}</FormMessage>
+            </FormItem>
           )}
+        />
+        <div className="flex justify-end space-x-2">
+          {onCancel && (
+            <Button type="button" variant="outline" onClick={onCancel}>
+              Annuler
+            </Button>
+          )}
+          <Button type="submit" disabled={loading}>
+            {isEditing ? 'Mettre à jour' : 'Créer'}
+          </Button>
         </div>
-
-        <Button type="submit" disabled={disabled || isUploading} className="flex items-center">
-          {isUploading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Upload en cours...
-            </>
-          ) : (
-            'Soumettre'
-          )}
-        </Button>
       </form>
     </Form>
   );

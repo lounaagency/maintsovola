@@ -80,10 +80,10 @@ const Notifications: React.FC = () => {
         return;
       }
       
-      // Type conversion
+      // Type conversion with proper casting
       const typedNotifications: Notification[] = (data || []).map(notif => ({
-        ...notif as DatabaseNotification,
-        entity_id: notif.entity_id?.toString(),
+        ...notif,
+        entity_id: notif.entity_id?.toString() || null,
         type: (notif.type || 'info') as Notification['type']
       }));
       

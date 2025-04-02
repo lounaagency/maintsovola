@@ -1,6 +1,6 @@
 
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, AuthGuard } from './contexts/AuthContext';
 import Layout from './components/Layout';
 import Auth from './pages/Auth';
 import Feed from './pages/Feed';
@@ -25,7 +25,7 @@ function App() {
           
           {/* Protected routes */}
           <Route path="/" element={
-            <PrivateRoute>
+            <AuthGuard>
               <Layout>
                 <Routes>
                   <Route index element={<Navigate to="/feed" replace />} />
@@ -37,7 +37,7 @@ function App() {
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Layout>
-            </PrivateRoute>
+            </AuthGuard>
           }>
           </Route>
         </Routes>
