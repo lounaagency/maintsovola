@@ -13,7 +13,7 @@ export interface Notification {
   projet_id?: number;
 }
 
-// Ajouter cette interface pour les statistiques SQL
+// Update DatabaseNotification to match what's coming from the database
 export interface DatabaseNotification {
   id_notification: number;
   id_expediteur?: string;
@@ -23,7 +23,7 @@ export interface DatabaseNotification {
   lu: boolean;
   date_creation: string;
   type: string;
-  entity_id?: string;
+  entity_id?: string | number;  // Accept both string and number
   entity_type?: string;
   projet_id?: number;
 }

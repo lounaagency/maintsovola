@@ -99,7 +99,7 @@ const Notifications: React.FC = () => {
       if (error) throw error;
       
       // Transform database notifications to our NotificationItem format
-      const transformedNotifications: NotificationItem[] = (data as DatabaseNotification[]).map((notification) => {
+      const transformedNotifications: NotificationItem[] = (data as unknown as DatabaseNotification[]).map((notification) => {
         // Determine notification type based on status or other fields
         let type: "info" | "success" | "warning" | "error" = "info";
         if (notification.type === "validation") type = "success";
@@ -118,6 +118,11 @@ const Notifications: React.FC = () => {
           link = `/projet?id=${notification.projet_id}#investissements`;
         }
         
+        // Ensure entity_id is a string
+        const entityId = notification.entity_id !== undefined 
+          ? String(notification.entity_id) 
+          : undefined;
+        
         return {
           id: notification.id_notification.toString(),
           title: notification.titre,
@@ -126,7 +131,7 @@ const Notifications: React.FC = () => {
           read: notification.lu,
           type,
           link,
-          entity_id: notification.entity_id,
+          entity_id: entityId,
           entity_type: notification.entity_type as "terrain" | "projet" | "jalon" | "investissement" | undefined
         };
       });

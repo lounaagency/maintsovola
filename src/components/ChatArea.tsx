@@ -5,7 +5,7 @@ import { ConversationMessage } from "@/types/message";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ArrowLeftCircle, Send } from "lucide-react";
+import { ArrowLeftCircle, Send, MessageCircle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import UserAvatar from "./UserAvatar";
@@ -28,7 +28,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ userId, conversation, onBack }) => 
         .from('message')
         .select(`
           *,
-          expediteur:id_expediteur(id_utilisateur, nom, prenoms, photo_profil)
+          expediteur:utilisateur!id_expediteur(id_utilisateur, nom, prenoms, photo_profil)
         `)
         .eq('id_conversation', conversationId)
         .order('date_envoi', { ascending: true });
@@ -215,7 +215,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({ userId, conversation, onBack }) => 
                     src={message.sender?.photo_profil || undefined}
                     alt={message.sender?.nom || ""}
                     size="sm"
-                    className="mr-2 mt-1 flex-shrink-0"
                   />
                 )}
                 <div>
@@ -264,8 +263,5 @@ const ChatArea: React.FC<ChatAreaProps> = ({ userId, conversation, onBack }) => 
     </>
   );
 };
-
-// Import MessageCircle here to avoid the error in the placeholder state
-import { MessageCircle } from "lucide-react";
 
 export default ChatArea;

@@ -8,7 +8,7 @@ export const useUnreadMessagesCount = (userId?: string) => {
   useEffect(() => {
     if (!userId) return;
     
-    // Fonction pour récupérer le nombre de messages non lus
+    // Function to fetch the unread message count
     const fetchUnreadCount = async () => {
       const { count, error } = await supabase
         .from('message')
@@ -24,10 +24,10 @@ export const useUnreadMessagesCount = (userId?: string) => {
       setUnreadCount(count || 0);
     };
     
-    // Appel initial
+    // Initial call
     fetchUnreadCount();
     
-    // Configurer l'écoute en temps réel des nouveaux messages
+    // Setup real-time subscription for new messages
     const channel = supabase
       .channel('unread-messages')
       .on('postgres_changes', {

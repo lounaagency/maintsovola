@@ -18,11 +18,6 @@ interface MessageItemProps {
   onClick?: () => void;
 }
 
-// Define the interface for the MessageItem component with static properties
-interface MessageItemComponent extends React.FC<MessageItemProps> {
-  Icon: typeof MessageCircle;
-}
-
 const MessageItem: React.FC<MessageItemProps> = React.memo(({
   user,
   lastMessage,
@@ -65,8 +60,10 @@ const MessageItem: React.FC<MessageItemProps> = React.memo(({
 
 MessageItem.displayName = "MessageItem";
 
-// Properly define the static Icon property
-const MessageItemWithIcon = MessageItem as MessageItemComponent;
+// Add MessageCircle as a static property 
+const MessageItemWithIcon = MessageItem as typeof MessageItem & { 
+  Icon: typeof MessageCircle 
+};
 MessageItemWithIcon.Icon = MessageCircle;
 
 export default MessageItemWithIcon;
