@@ -109,7 +109,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
         form.setValue("surface_ha", selectedTerrain.surface_validee || selectedTerrain.surface_proposee);
       }
     }
-  }, [form.watch("terrain"), terrains]);
+  }, [form.watch("terrain"), terrains, form]);
   
   // Handle form submission
   const onSubmit = async (values: ProjectFormValues) => {
@@ -125,7 +125,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
       // Calculate total cost based on selected cultures and terrain surface
       const surface = selectedTerrain.surface_validee || selectedTerrain.surface_proposee;
       
-      const projectData = {
+      const projectData: any = {
         titre: values.title,
         description: values.description,
         id_terrain: terrainId,

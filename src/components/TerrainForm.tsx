@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import {
@@ -24,13 +24,23 @@ import {
   DistrictData,
   CommuneData
 } from '@/types/terrain';
-import { TerrainFormData, convertFormDataToTerrainData } from '@/types/terrainForm';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { MapContainer, TileLayer, Marker, useMapEvents, Polygon, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Upload, X, Loader2 } from 'lucide-react';
+
+// Define the TerrainFormData type
+interface TerrainFormData {
+  nom_terrain: string;
+  surface_proposee: number;
+  id_region: string;
+  id_district: string;
+  id_commune: string;
+  acces_eau: boolean;
+  acces_route: boolean;
+}
 
 const formSchema = yup.object().shape({
   nom_terrain: yup.string().required('Le nom du terrain est obligatoire'),
@@ -46,12 +56,20 @@ interface TerrainFormProps {
   id?: string;
   onSubmitSuccess?: () => void;
   onCancel?: () => void;
+  initialData?: TerrainData;
+  userId?: string;
+  userRole?: string;
+  agriculteurs?: { id_utilisateur: string; nom: string; prenoms?: string }[];
 }
 
 const TerrainForm: React.FC<TerrainFormProps> = ({ 
   id, 
   onSubmitSuccess, 
-  onCancel
+  onCancel,
+  initialData,
+  userId: propUserId,
+  userRole,
+  agriculteurs
 }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -75,10 +93,11 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
   const [photos, setPhotos] = useState<File[]>([]);
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<string>(propUserId || user?.id || '');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<TerrainFormData>({
-    resolver: yupResolver(formSchema),
+    resolver: yupResolver(formSchema) as any,
     defaultValues: {
       nom_terrain: '',
       surface_proposee: 0,
@@ -98,8 +117,39 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     if (id) {
       setIsEditMode(true);
       fetchTerrainData(id);
+    } else if (initialData) {
+      setIsEditMode(!!initialData.id_terrain);
+      setTerrain(initialData);
+      populateFormWithData(initialData);
     }
-  }, [id]);
+  }, [id, initialData]);
+
+  const populateFormWithData = (data: TerrainData) => {
+    setValue('nom_terrain', data.nom_terrain || '');
+    setValue('surface_proposee', data.surface_proposee);
+    
+    if (data.id_region) {
+      setValue('id_region', data.id_region.toString());
+      setSelectedRegion(data.id_region);
+    }
+    
+    if (data.id_district) {
+      setValue('id_district', data.id_district.toString());
+      setSelectedDistrict(data.id_district);
+    }
+    
+    if (data.id_commune) {
+      setValue('id_commune', data.id_commune.toString());
+    }
+    
+    setValue('acces_eau', data.acces_eau || false);
+    setValue('acces_route', data.acces_route || false);
+    
+    if (data.photos) {
+      const photoArray = typeof data.photos === 'string' ? data.photos.split(',') : [data.photos];
+      setPhotoUrls(photoArray);
+    }
+  };
 
   useEffect(() => {
     if (selectedRegion) {
@@ -131,19 +181,10 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       }
 
       if (data) {
-        setTerrain(data);
-        setValue('nom_terrain', data.nom_terrain || '');
-        setValue('surface_proposee', data.surface_proposee);
-        setValue('id_region', data.id_region?.toString() || '');
-        setSelectedRegion(data.id_region);
-        setValue('id_district', data.id_district?.toString() || '');
-        setSelectedDistrict(data.id_district);
-        setValue('id_commune', data.id_commune?.toString() || '');
-        setValue('acces_eau', data.acces_eau || false);
-        setValue('acces_route', data.acces_route || false);
-        
-        if (data.photos) {
-          setPhotoUrls(typeof data.photos === 'string' ? data.photos.split(',') : data.photos);
+        setTerrain(data as TerrainData);
+        populateFormWithData(data as TerrainData);
+        if (data.id_tantsaha) {
+          setSelectedUser(data.id_tantsaha);
         }
       }
     } catch (error) {
@@ -170,7 +211,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       }
     } catch (error) {
       console.error("Error fetching regions:", error);
-      toast("Failed to load regions.");
+      toast.error("Failed to load regions.");
     }
   };
 
@@ -191,7 +232,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       }
     } catch (error) {
       console.error("Error fetching districts:", error);
-      toast("Failed to load districts.");
+      toast.error("Failed to load districts.");
     }
   };
 
@@ -212,7 +253,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       }
     } catch (error) {
       console.error("Error fetching communes:", error);
-      toast("Failed to load communes.");
+      toast.error("Failed to load communes.");
     }
   };
 
@@ -285,39 +326,47 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
   const onSubmit = async (formData: TerrainFormData) => {
     setLoading(true);
     try {
-      if (!user || !user.id) {
+      if (!user?.id && !propUserId) {
         throw new Error("User not authenticated.");
       }
 
       const uploadedPhotoUrls = await uploadPhotos();
+      const existingPhotoUrls = photoUrls.filter(url => url.includes('supabase.co'));
+      const allPhotoUrls = [...existingPhotoUrls, ...uploadedPhotoUrls];
       
-      const allPhotoUrls = [...photoUrls.filter(url => url.includes('supabase.co')), ...uploadedPhotoUrls];
+      const userId = propUserId || user?.id || '';
       
-      // Convert form data to the correct types
-      const terrainData = convertFormDataToTerrainData(formData);
-      terrainData.id_tantsaha = user.id;
-      terrainData.photos = allPhotoUrls.join(',');
+      const terrainData: any = {
+        id_tantsaha: selectedUser || userId,
+        id_region: parseInt(formData.id_region),
+        id_district: parseInt(formData.id_district),
+        id_commune: parseInt(formData.id_commune),
+        surface_proposee: formData.surface_proposee,
+        acces_eau: formData.acces_eau,
+        acces_route: formData.acces_route,
+        nom_terrain: formData.nom_terrain,
+        photos: allPhotoUrls.join(','),
+        created_by: userId,
+      };
 
       let response;
-      if (isEditMode && id) {
+      if (isEditMode && (id || initialData?.id_terrain)) {
+        const terrainId = id || initialData?.id_terrain;
         response = await supabase
           .from('terrain')
           .update(terrainData)
-          .eq('id_terrain', id)
-          .single();
+          .eq('id_terrain', terrainId);
       } else {
-        const { id_terrain, ...newTerrainData } = terrainData;
         response = await supabase
           .from('terrain')
-          .insert([newTerrainData])
-          .single();
+          .insert([terrainData]);
       }
 
       if (response.error) {
         throw response.error;
       }
 
-      toast(`Terrain ${isEditMode ? 'updated' : 'created'} successfully!`);
+      toast.success(`Terrain ${isEditMode ? 'mis à jour' : 'créé'} avec succès!`);
       if (onSubmitSuccess) {
         onSubmitSuccess();
       } else {
@@ -325,18 +374,18 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       }
     } catch (error: any) {
       console.error("Error during form submission:", error);
-      toast(error.message || "An error occurred during submission.");
+      toast.error(error.message || "Une erreur est survenue lors de la soumission.");
     } finally {
       setLoading(false);
     }
   };
 
   const handleRegionChange = (selectedValue: string) => {
-    setSelectedRegion(Number(selectedValue));
+    setSelectedRegion(parseInt(selectedValue));
   };
 
   const handleDistrictChange = (selectedValue: string) => {
-    setSelectedDistrict(Number(selectedValue));
+    setSelectedDistrict(parseInt(selectedValue));
   };
 
   const MapEvents = () => {
@@ -355,6 +404,26 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       <h1 className="text-2xl font-bold mb-4">{isEditMode ? 'Modifier un Terrain' : 'Ajouter un Terrain'}</h1>
       <Form {...form}>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          {(userRole === 'technicien' || userRole === 'superviseur') && agriculteurs && agriculteurs.length > 0 && (
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-1">Propriétaire</label>
+              <select 
+                value={selectedUser}
+                onChange={(e) => setSelectedUser(e.target.value)}
+                className="w-full p-2 border rounded"
+              >
+                {agriculteurs.map(agri => (
+                  <option key={agri.id_utilisateur} value={agri.id_utilisateur}>
+                    {agri.nom} {agri.prenoms || ''}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                Sélectionnez le propriétaire du terrain
+              </p>
+            </div>
+          )}
+
           <FormField
             control={control}
             name="nom_terrain"

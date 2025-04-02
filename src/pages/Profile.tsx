@@ -1,341 +1,257 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import { useParams } from 'react-router-dom';
 import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate, useParams } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Calendar } from "@/components/ui/calendar"
+import { Link } from "react-router-dom";
+import { Edit, Check, UserPlus, UserMinus, MessageSquare } from "lucide-react";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-import { CalendarIcon } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { format } from "date-fns"
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-  CommandSeparator,
-} from "@/components/ui/command"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form"
-import { useForm } from "react-hook-form"
-import * as z from "zod"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox"
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { supabase } from "@/integrations/supabase/client";
-import { TerrainData } from "@/types/terrain";
-import ProjectEditDialog from "@/components/ProjectEditDialog";
-
-const subscriptionSchema = z.object({
-  email: z.string().email({
-    message: "Please enter a valid email address.",
-  }),
-})
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { MoreHorizontal } from "lucide-react";
+import MessageDialog from "@/components/MessageDialog";
 
 const Profile: React.FC = () => {
+  const { userId } = useParams<{ userId: string }>();
   const { user } = useAuth();
-  const { profileUserId } = useParams<{ profileUserId: string }>();
-  const [profile, setProfile] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [isCurrentUserProfile, setIsCurrentUserProfile] = useState(false);
+  const [userData, setUserData] = useState<{
+    id_utilisateur: string;
+    nom: string;
+    prenoms?: string;
+    email: string;
+    photo_profil?: string;
+    nom_role?: string;
+  } | null>(null);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
-  const [subscriptionsCount, setSubscriptionsCount] = useState(0);
-  const [followActionInProgress, setFollowActionInProgress] = useState(false);
-  const [userProjects, setUserProjects] = useState<any[]>([]);
-  const [showProjectDialog, setShowProjectDialog] = useState(false);
-  const [selectedProject, setSelectedProject] = useState<any>(null);
-  const navigate = useNavigate();
+  const [followingCount, setFollowingCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [showContactDialog, setShowContactDialog] = useState(false);
 
-  useEffect(() => {
-    if (!user) {
-      navigate('/auth');
-      return;
-    }
+  const fetchProfileData = useCallback(async () => {
+    if (!userId) return;
 
-    if (profileUserId) {
-      setIsCurrentUserProfile(user.id === profileUserId);
-    } else {
-      setIsCurrentUserProfile(true);
-    }
-  }, [user, profileUserId, navigate]);
-
-  useEffect(() => {
-    if (user) {
-      fetchUserProfile();
-      fetchUserProjects();
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (user && profileUserId) {
-      fetchFollowState();
-      fetchFollowersCount();
-      fetchSubscriptionsCount();
-    }
-  }, [user, profileUserId]);
-
-  // Fix the telephone property access
-  const fetchUserProfile = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      if (!user) return;
-
       const { data, error } = await supabase
         .from('utilisateur')
-        .select('*')
-        .eq('id_utilisateur', user.id)
+        .select('id_utilisateur, nom, prenoms, email, photo_profil, roles(nom_role)')
+        .eq('id_utilisateur', userId)
         .single();
 
       if (error) throw error;
 
       if (data) {
-        // Fetch telephones separately
-        const { data: telephones, error: telephoneError } = await supabase
-          .from('telephone')
-          .select('*')
-          .eq('id_utilisateur', user.id);
-
-        if (telephoneError) throw telephoneError;
-
-        setProfile({
-          ...data,
-          telephones: telephones || []
+        setUserData({
+          id_utilisateur: data.id_utilisateur,
+          nom: data.nom,
+          prenoms: data.prenoms,
+          email: data.email,
+          photo_profil: data.photo_profil,
+          nom_role: data.roles?.nom_role
         });
       }
     } catch (error) {
-      console.error('Error fetching profile:', error);
+      console.error("Error fetching profile data:", error);
+      toast.error("Erreur lors du chargement du profil");
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId]);
 
-  const fetchUserProjects = async () => {
+  async function fetchFollowStatus() {
+    if (!user?.id || !userId) return;
+
     try {
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from('projet')
-        .select('*')
-        .eq('id_tantsaha', user.id);
-
-      if (error) throw error;
-
-      setUserProjects(data || []);
-    } catch (error) {
-      console.error('Error fetching user projects:', error);
-    }
-  };
-
-  const fetchFollowState = async () => {
-    try {
-      if (!user || !profileUserId) return;
-
       const { data, error } = await supabase
         .from('abonnement')
         .select('*')
-        .eq('id_suivi', profileUserId)
         .eq('id_abonne', user.id)
+        .eq('id_suivi', userId)
         .single();
 
-      if (error && error.code !== 'PGRST116') throw error;
-
+      if (error) throw error;
       setIsFollowing(!!data);
     } catch (error) {
-      console.error('Error fetching follow state:', error);
+      console.error('Error fetching follow status:', error);
+      toast.error("Erreur lors du chargement du statut d'abonnement");
     }
-  };
+  }
 
-  // Fix the RPC calls
-  const fetchFollowersCount = async () => {
+  async function fetchFollowersCount() {
     try {
-      const { data, error } = await supabase
-        .rpc('count_followers', { user_id: user?.id });
-
+      const { data, error } = await supabase.rpc('count_followers', { user_id: userId });
       if (error) throw error;
-      setFollowersCount(data || 0);
+      setFollowersCount(data as number || 0);
     } catch (error) {
       console.error('Error fetching followers count:', error);
+      toast.error("Erreur lors du chargement des abonnés");
     }
-  };
+  }
 
-  const fetchSubscriptionsCount = async () => {
+  async function fetchFollowingCount() {
     try {
-      const { data, error } = await supabase
-        .rpc('count_subscriptions', { user_id: user?.id });
-
+      const { data, error } = await supabase.rpc('count_subscriptions', { user_id: userId });
       if (error) throw error;
-      setSubscriptionsCount(data || 0);
+      setFollowingCount(data as number || 0);
     } catch (error) {
-      console.error('Error fetching subscriptions count:', error);
+      console.error('Error fetching following count:', error);
+      toast.error("Erreur lors du chargement des abonnements");
     }
-  };
+  }
 
-  const handleViewProjectDetails = (project: any) => {
-    setSelectedProject(project);
-    setShowProjectDialog(true);
-  };
+  useEffect(() => {
+    fetchProfileData();
+    fetchFollowStatus();
+    fetchFollowersCount();
+    fetchFollowingCount();
+  }, [userId, user, fetchProfileData]);
 
-  const handleCloseProjectDialog = () => {
-    setShowProjectDialog(false);
-    setSelectedProject(null);
-  };
+  const handleFollowUser = async () => {
+    if (!user?.id) {
+      toast.error("Vous devez être connecté pour vous abonner");
+      return;
+    }
 
-  // Fix the create_subscription RPC call
-  const handleFollow = async () => {
     try {
-      setFollowActionInProgress(true);
-      if (!isFollowing) {
-        const { error } = await supabase
-          .from('abonnement')
-          .insert({
-            id_suivi: profileUserId,
-            id_abonne: user?.id
-          });
-
-        if (error) throw error;
-      
-        setIsFollowing(true);
-        setFollowersCount((prev) => prev + 1);
-      } else {
+      if (isFollowing) {
+        // Unfollow
         const { error } = await supabase
           .from('abonnement')
           .delete()
-          .eq('id_suivi', profileUserId)
-          .eq('id_abonne', user?.id);
+          .eq('id_abonne', user.id)
+          .eq('id_suivi', userId);
 
         if (error) throw error;
-      
         setIsFollowing(false);
-        setFollowersCount((prev) => Math.max(0, prev - 1));
+        setFollowersCount(prev => Math.max(0, prev - 1));
+        toast.success(`Vous ne suivez plus ${userData?.nom || 'cet utilisateur'}`);
+      } else {
+        // Follow
+        const { error } = await supabase.rpc('create_subscription', {
+          follower_id: user.id,
+          followed_id: userId
+        });
+
+        if (error) throw error;
+        setIsFollowing(true);
+        setFollowersCount(prev => prev + 1);
+        toast.success(`Vous suivez maintenant ${userData?.nom || 'cet utilisateur'}`);
       }
     } catch (error) {
-      console.error('Error following/unfollowing:', error);
+      console.error('Error updating follow status:', error);
       toast.error("Une erreur est survenue");
-    } finally {
-      setFollowActionInProgress(false);
     }
   };
 
-  const handleAddProject = () => {
-    setSelectedProject(null);
-    setShowProjectDialog(true);
+  const handleContactUser = () => {
+    setShowContactDialog(true);
   };
 
-  const handleEditProject = (project: any) => {
-    setSelectedProject(project);
-    setShowProjectDialog(true);
+  const handleCloseContactDialog = () => {
+    setShowContactDialog(false);
   };
 
-  const handleProjectSubmitSuccess = () => {
-    fetchUserProjects();
-    handleCloseProjectDialog();
-  };
+  if (loading) {
+    return <div className="text-center">Chargement du profil...</div>;
+  }
+
+  if (!userData) {
+    return <div className="text-center">Profil non trouvé.</div>;
+  }
+
+  const isOwnProfile = user?.id === userId;
 
   return (
-    <div className="container mx-auto py-6">
-      {loading ? (
-        <div className="flex justify-center items-center h-48">
-          Chargement du profil...
-        </div>
-      ) : (
-        <>
+    <div className="container mx-auto py-8">
+      <Card className="w-full max-w-md mx-auto">
+        <CardContent className="p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-4">
               <Avatar>
-                <AvatarImage src="https://github.com/shadcn.png" />
-                <AvatarFallback>{profile?.nom?.charAt(0)}{profile?.prenoms?.charAt(0)}</AvatarFallback>
+                <AvatarImage src={userData.photo_profil} alt={userData.nom} />
+                <AvatarFallback>{userData.nom.charAt(0)}</AvatarFallback>
               </Avatar>
               <div>
-                <h1 className="text-2xl font-bold">{profile?.nom} {profile?.prenoms}</h1>
-                <p className="text-sm text-gray-500">{profile?.email}</p>
+                <h2 className="text-lg font-semibold">{userData.nom} {userData.prenoms}</h2>
+                <p className="text-sm text-gray-500">{userData.email}</p>
+                {userData.nom_role && (
+                  <p className="text-sm text-gray-500">Role: {userData.nom_role}</p>
+                )}
               </div>
             </div>
-            {!isCurrentUserProfile && (
-              <Button
-                variant="outline"
-                disabled={followActionInProgress}
-                onClick={handleFollow}
-              >
-                {isFollowing ? "Se désabonner" : "S'abonner"}
-              </Button>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <div className="p-4 border rounded-lg">
-              <h2 className="text-lg font-medium mb-2">Informations</h2>
-              <p>Role: {profile?.nom_role}</p>
-              <p>Téléphone: {profile?.telephones?.map((tel: any) => tel.numero).join(', ') || 'Non renseigné'}</p>
-              <p>Abonnés: {followersCount}</p>
-              <p>Abonnements: {subscriptionsCount}</p>
-            </div>
-
-            <div className="p-4 border rounded-lg">
-              <h2 className="text-lg font-medium mb-2">Projets</h2>
-              <Button variant="outline" size="sm" onClick={handleAddProject}>
-                Ajouter un projet
-              </Button>
-              <ScrollArea className="h-[200px] mt-3">
-                {userProjects.length > 0 ? (
-                  // Fix the financement_actuel property access in project listings
-                  userProjects.map((project) => (
-                    <div key={project.id_projet} className="p-4 border rounded-lg">
-                      <h3 className="text-lg font-medium">{project.titre}</h3>
-                      <p className="text-sm text-gray-600 mb-2">{project.description}</p>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm">
-                          {/* Use optional chaining and default to 0 */}
-                          Financement: {project.financement_actuel || 0}/{project.cout_total || 0} Ar
-                        </span>
-                        <Button variant="outline" size="sm" onClick={() => handleViewProjectDetails(project)}>
-                          Détails
-                        </Button>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p>Aucun projet trouvé.</p>
-                )}
-              </ScrollArea>
+            <div>
+              {isOwnProfile ? (
+                <Link to="/settings">
+                  <Button variant="outline" size="icon">
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                </Link>
+              ) : (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="h-8 w-8 p-0">
+                      <span className="sr-only">Ouvrir le menu</span>
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                    <DropdownMenuItem onClick={handleContactUser}>
+                      <MessageSquare className="mr-2 h-4 w-4" />
+                      Contacter
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleFollowUser}>
+                      {isFollowing ? (
+                        <>
+                          <UserMinus className="mr-2 h-4 w-4" />
+                          Ne plus suivre
+                        </>
+                      ) : (
+                        <>
+                          <UserPlus className="mr-2 h-4 w-4" />
+                          Suivre
+                        </>
+                      )}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
           </div>
-        </>
+
+          <div className="flex justify-around mt-6">
+            <div>
+              <p className="text-center font-bold">{followersCount}</p>
+              <p className="text-center text-gray-500">Abonnés</p>
+            </div>
+            <div>
+              <p className="text-center font-bold">{followingCount}</p>
+              <p className="text-center text-gray-500">Abonnements</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {showContactDialog && (
+        <MessageDialog
+          isOpen={showContactDialog}
+          onClose={handleCloseContactDialog}
+          recipient={{
+            id: userData.id_utilisateur,
+            name: `${userData.nom} ${userData.prenoms || ''}`
+          }}
+          subject="Contact depuis votre profil"
+        />
       )}
-
-      <ProjectEditDialog
-        isOpen={showProjectDialog}
-        onClose={handleCloseProjectDialog}
-        project={selectedProject}
-        onSubmitSuccess={handleProjectSubmitSuccess}
-        userId={user?.id || ""}
-      />
     </div>
   );
 };

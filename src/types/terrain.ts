@@ -1,48 +1,3 @@
-
-export interface TerrainData {
-  id_terrain?: number;
-  id_tantsaha?: string;
-  id_region?: number | null;
-  id_district?: number | null;
-  id_commune?: number | null;
-  surface_proposee: number;
-  surface_validee?: number;
-  acces_eau?: boolean | null;
-  acces_route?: boolean | null;
-  statut?: boolean;
-  id_technicien?: string | null;
-  id_superviseur?: string | null;
-  region_name?: string;
-  district_name?: string;
-  commune_name?: string;
-  created_at?: string;
-  techniqueNom?: string;
-  techniquePrenoms?: string;
-  nom_terrain?: string;
-  photos?: string | string[];
-  geom?: any;
-}
-
-export interface TerrainFormData {
-  id_terrain?: number;
-  id_tantsaha?: string;
-  id_region: string;
-  id_district: string;
-  id_commune: string;
-  surface_proposee: number;
-  acces_eau: boolean;
-  acces_route: boolean;
-  nom_terrain: string;
-  photos?: string | string[];
-  geom?: any;
-}
-
-export interface ProjetStatus {
-  id_terrain: number;
-  statut: string;
-  has_investisseur: boolean;
-}
-
 export interface RegionData {
   id_region: number;
   nom_region: string;
@@ -50,12 +5,39 @@ export interface RegionData {
 
 export interface DistrictData {
   id_district: number;
-  nom_district: string;
   id_region: number;
+  nom_district: string;
 }
 
 export interface CommuneData {
   id_commune: number;
-  nom_commune: string;
   id_district: number;
+  nom_commune: string;
+}
+
+export interface TerrainData {
+  id_terrain?: number;
+  id_tantsaha?: string;
+  id_region?: number;
+  id_district?: number;
+  id_commune?: number;
+  surface_proposee: number;
+  surface_validee?: number;
+  acces_eau?: boolean;
+  acces_route?: boolean;
+  statut?: boolean;
+  nom_terrain?: string;
+  created_at?: string;
+  modified_at?: string;
+  id_technicien?: string;
+  id_superviseur?: string;
+  techniqueNom?: string;
+  techniquePrenoms?: string;
+  photos: string;
+  archive?: boolean;
+  created_by?: string;
+  region_name?: string;
+  district_name?: string;
+  commune_name?: string;
+  geom?: any;
 }

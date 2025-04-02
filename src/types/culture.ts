@@ -2,12 +2,11 @@
 export interface CultureData {
   id_culture: number;
   nom_culture: string;
-  nom_scientifique?: string;
-  description?: string;
-  duree_cycle?: number;
+  fiche_technique?: string;
+  rendement_ha?: number;
+  cout_exploitation_ha?: number;
   prix_tonne?: number;
-  unite?: string;
-  photo?: string;
   created_at?: string;
   modified_at?: string;
+  created_by?: string;
 }
