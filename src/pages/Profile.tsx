@@ -90,21 +90,23 @@ export const Profile = () => {
   
   const fetchFollowStatus = async (userId: string) => {
     try {
-      const { data, error } = await supabase.rpc(
-        "count_followers",
-        { user_id: userId }
-      );
+      const { data: followersData, error: followersError } = await supabase
+        .from('abonnement')
+        .select('id_abonnement', { count: 'exact' })
+        .eq('id_suivi', userId);
+        
+      if (followersError) throw followersError;
+      const followersCount = followersData ? followersData.length : 0;
+      setFollowersCount(followersCount);
       
-      if (error) throw error;
-      setFollowersCount(data || 0);
-      
-      const { data: subscriptions, error: subscriptionsError } = await supabase.rpc(
-        "count_subscriptions",
-        { user_id: userId }
-      );
-      
+      const { data: subscriptionsData, error: subscriptionsError } = await supabase
+        .from('abonnement')
+        .select('id_abonnement', { count: 'exact' })
+        .eq('id_abonne', userId);
+        
       if (subscriptionsError) throw subscriptionsError;
-      setFollowingCount(subscriptions || 0);
+      const subscriptionsCount = subscriptionsData ? subscriptionsData.length : 0;
+      setFollowingCount(subscriptionsCount);
       
       if (user && userId !== user.id) {
         const { data, error } = await supabase
@@ -117,7 +119,6 @@ export const Profile = () => {
         if (error) throw error;
         setIsFollowing(!!data);
       }
-      
     } catch (error) {
       console.error('Error fetching follow status:', error);
     }
@@ -155,6 +156,8 @@ export const Profile = () => {
           0
         );
         
+        const financementActuel = (project as any).financement_actuel || 0;
+        
         return {
           id: project.id_projet.toString(),
           title: project.titre || `Projet #${project.id_projet}`,
@@ -178,7 +181,7 @@ export const Profile = () => {
           images: [],
           description: project.description || "",
           fundingGoal: totalCost,
-          currentFunding: project.financement_actuel || 0,
+          currentFunding: financementActuel,
           likes: 0,
           comments: 0,
           shares: 0,
@@ -254,13 +257,12 @@ export const Profile = () => {
         setFollowersCount(prev => prev - 1);
         toast.success(`Vous ne suivez plus ${profile.nom}`);
       } else {
-        const { error } = await supabase.rpc(
-          "create_subscription",
-          {
-            abonne_id: user.id,
-            abonnement_id: profile.id
-          }
-        );
+        const { error } = await supabase
+          .from('abonnement')
+          .insert({
+            id_abonne: user.id,
+            id_suivi: profile.id
+          });
         
         if (error) throw error;
         

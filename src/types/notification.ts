@@ -7,7 +7,7 @@ export interface Notification {
   read: boolean;
   type: 'info' | 'success' | 'warning' | 'error';
   link?: string;
-  entity_id?: string | number;
+  entity_id?: string;
   entity_type?: 'terrain' | 'projet' | 'jalon' | 'investissement';
 }
 

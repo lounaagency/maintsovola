@@ -190,7 +190,7 @@ const Terrain: React.FC = () => {
     if (statut === undefined) {
       return <Badge variant="outline">Inconnu</Badge>;
     } else if (statut) {
-      return <Badge variant="success"><CheckCircle className="mr-2 h-4 w-4" />Validé</Badge>;
+      return <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200"><CheckCircle className="mr-2 h-4 w-4" />Validé</Badge>;
     } else {
       return <Badge variant="destructive"><AlertCircle className="mr-2 h-4 w-4" />Non validé</Badge>;
     }
@@ -349,7 +349,7 @@ const Terrain: React.FC = () => {
         terrain={selectedTerrain || undefined}
         onSubmitSuccess={handleEditSuccess}
         userId={user?.id || ""}
-        userRole={profile?.role}
+        userRole={profile?.nom_role}
         agriculteurs={agriculteurs}
       />
 

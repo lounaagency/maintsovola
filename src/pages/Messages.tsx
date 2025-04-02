@@ -21,7 +21,7 @@ interface ConversationMessage {
   id_conversation: number;
   id_expediteur: string;
   id_destinataire: string;
-  message: string;
+  contenu: string;
   date_envoi: string;
   lu: boolean;
 }
@@ -89,8 +89,17 @@ const Messages: React.FC = () => {
         setError(error.message);
         console.error('Error fetching messages:', error);
       } else {
-        setMessages(data || []);
-        // Mark messages as read when the conversation is opened
+        const transformedMessages = data?.map(msg => ({
+          id_message: msg.id_message,
+          id_conversation: msg.id_conversation,
+          id_expediteur: msg.id_expediteur,
+          id_destinataire: msg.id_destinataire,
+          contenu: msg.contenu,
+          date_envoi: msg.date_envoi,
+          lu: msg.lu
+        })) || [];
+        
+        setMessages(transformedMessages);
         if (user && data) {
           const otherUserId = selectedConversation?.user1_id === user.id ? selectedConversation.user2_id : selectedConversation?.user1_id;
           if (otherUserId) {
@@ -120,7 +129,7 @@ const Messages: React.FC = () => {
             id_conversation: selectedConversation.id_conversation,
             id_expediteur: user.id,
             id_destinataire: selectedConversation.user1_id === user.id ? selectedConversation.user2_id : selectedConversation.user1_id,
-            message: trimmedMessage,
+            contenu: trimmedMessage,
             lu: false,
           },
         ]);
@@ -141,7 +150,6 @@ const Messages: React.FC = () => {
     }
   };
 
-  // Fix property access on ConversationMessage
   const markConversationAsRead = async (conversationId: number, otherUserId: string) => {
     if (!user) return;
     
@@ -210,7 +218,7 @@ const Messages: React.FC = () => {
                       key={msg.id_message}
                       className={`mb-2 p-2 rounded-md ${msg.id_expediteur === user?.id ? 'bg-blue-100 self-end text-right' : 'bg-gray-100 self-start'}`}
                     >
-                      <p>{msg.message}</p>
+                      <p>{msg.contenu}</p>
                       <p className="text-xs text-gray-500">{new Date(msg.date_envoi).toLocaleString()}</p>
                     </div>
                   ))}

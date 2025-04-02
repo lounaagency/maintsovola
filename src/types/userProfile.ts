@@ -1,13 +1,12 @@
 
 export interface UserProfile {
   id_utilisateur: string;
-  id?: string; // For compatibility with existing code
+  id?: string; // Pour la compatibilité avec le code existant
   nom: string;
   prenoms?: string;
   email?: string;
   photo_profil?: string;
   photo_couverture?: string;
-  telephone?: string; // Keep for backward compatibility
   adresse?: string;
   bio?: string;
   id_role?: number;
@@ -15,9 +14,10 @@ export interface UserProfile {
   telephones?: UserTelephone[];
   is_investor?: boolean;
   is_farming_owner?: boolean;
-  // For compatibility with Messages.tsx
-  name?: string; // Alias for nom + prenoms
-  photo?: string; // Alias for photo_profil
+  // Pour la compatibilité avec Messages.tsx
+  name?: string; // Alias pour nom + prenoms
+  photo?: string; // Alias pour photo_profil
+  refreshProfile?: () => Promise<void>;
 }
 
 export interface UserTelephone {
