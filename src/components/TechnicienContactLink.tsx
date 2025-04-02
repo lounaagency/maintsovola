@@ -1,97 +1,102 @@
 
 import React, { useState } from "react";
-import { Button } from "./ui/button";
+import { Button } from "@/components/ui/button";
 import { MessageCircle } from "lucide-react";
+import MessageDialog from "@/components/MessageDialog";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
-import UserAvatar from "./UserAvatar";
-import MessageDialog from "./MessageDialog";
+import { toast } from "sonner";
 
 interface TechnicienContactLinkProps {
-  technicienId: string;
+  technicienId?: string;
+  technicienNom?: string;
+  technicienPrenoms?: string;
+  terrainId?: number;
+  buttonVariant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
   className?: string;
-  size?: "sm" | "md" | "lg";
-  showName?: boolean;
+  actionType?: "modify" | "delete" | "contact";
+  children?: React.ReactNode;
 }
 
 const TechnicienContactLink: React.FC<TechnicienContactLinkProps> = ({
   technicienId,
-  className = "",
-  size = "sm",
-  showName = false
+  technicienNom,
+  technicienPrenoms,
+  terrainId,
+  buttonVariant = "default",
+  className,
+  actionType = "contact",
+  children
 }) => {
+  const [messageDialogOpen, setMessageDialogOpen] = useState(false);
   const { user } = useAuth();
-  const [isMessageDialogOpen, setIsMessageDialogOpen] = useState(false);
-  const [technicien, setTechnicien] = useState<{
-    id: string;
-    name: string;
-    photo?: string;
-  } | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
 
-  // Fetch technicien details when needed
-  const fetchTechnicienDetails = async () => {
-    if (!technicienId || technicien) return;
-    
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('utilisateur')
-        .select('id_utilisateur, nom, prenoms, photo_profil')
-        .eq('id_utilisateur', technicienId)
-        .single();
-        
-      if (error) throw error;
-      
-      if (data) {
-        setTechnicien({
-          id: data.id_utilisateur,
-          name: `${data.nom} ${data.prenoms || ''}`.trim(),
-          photo: data.photo_profil
-        });
-      }
-    } catch (error) {
-      console.error('Erreur lors de la récupération des détails du technicien:', error);
-    } finally {
-      setIsLoading(false);
+  const handleContactClick = () => {
+    if (!user) {
+      toast.error("Vous devez être connecté pour contacter un technicien");
+      return;
+    }
+
+    if (!technicienId) {
+      toast.error("Aucun technicien assigné à ce terrain");
+      return;
+    }
+
+    setMessageDialogOpen(true);
+  };
+
+  const getSubject = () => {
+    switch (actionType) {
+      case "modify":
+        return `Demande de modification du terrain #${terrainId}`;
+      case "delete":
+        return `Demande de suppression du terrain #${terrainId}`;
+      default:
+        return `Concernant le terrain #${terrainId}`;
     }
   };
 
-  const handleClick = async () => {
-    await fetchTechnicienDetails();
-    setIsMessageDialogOpen(true);
+  const getMessage = () => {
+    switch (actionType) {
+      case "modify":
+        return `Bonjour,\nJ'aimerais demander la modification de mon terrain #${terrainId}. Pouvez-vous m'aider dans cette démarche ?\nMerci.`;
+      case "delete":
+        return `Bonjour,\nJ'aimerais demander la suppression de mon terrain #${terrainId}. Pouvez-vous m'aider dans cette démarche ?\nMerci.`;
+      default:
+        return "";
+    }
   };
 
-  if (!user || user.id === technicienId) {
-    return null;
-  }
-
-  const buttonSize = {
-    sm: "h-8 px-2 text-xs",
-    md: "h-9 px-3 text-sm",
-    lg: "h-10 px-4"
-  }[size];
+  const technicienName = technicienPrenoms && technicienNom 
+    ? `${technicienPrenoms} ${technicienNom}` 
+    : "Technicien";
 
   return (
     <>
       <Button 
-        variant="ghost" 
-        size="sm"
-        className={`${buttonSize} flex items-center gap-1 hover:bg-muted/50 ${className}`}
-        onClick={handleClick}
+        variant={buttonVariant} 
+        size="sm" 
+        className={className}
+        onClick={handleContactClick}
+        disabled={!technicienId}
       >
-        <MessageCircle className="h-4 w-4" />
-        {showName && <span>Contacter</span>}
+        {children || (
+          <>
+            <MessageCircle className="h-4 w-4 mr-2" />
+            Contacter le technicien
+          </>
+        )}
       </Button>
 
-      {isMessageDialogOpen && technicien && (
+      {messageDialogOpen && (
         <MessageDialog
-          isOpen={isMessageDialogOpen}
-          onClose={() => setIsMessageDialogOpen(false)}
+          isOpen={messageDialogOpen}
+          onClose={() => setMessageDialogOpen(false)}
           recipient={{
-            id: technicien.id,
-            name: technicien.name
+            id: technicienId as string,
+            name: technicienName
           }}
+          subject={getSubject()}
+          initialMessage={getMessage()}
         />
       )}
     </>

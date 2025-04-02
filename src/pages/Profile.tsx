@@ -1,22 +1,13 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { useAuth } from "@/contexts/AuthContext";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { toast } from "sonner";
-import { Link } from "react-router-dom";
-import { Edit, Check, UserPlus, UserMinus, MessageSquare } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { MoreHorizontal } from "lucide-react";
-import MessageDialog from "@/components/MessageDialog";
+import { useAuth } from '@/contexts/AuthContext';
+import { Loader2, UserPlus, Calendar, Phone, MapPin, Mail } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/integrations/supabase/client';
 
 const Profile: React.FC = () => {
   const { userId } = useParams<{ userId: string }>();
