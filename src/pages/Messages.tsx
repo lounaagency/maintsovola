@@ -21,7 +21,7 @@ const Messages: React.FC = () => {
   // Mark messages as read when conversation is selected
   useEffect(() => {
     if (selectedConversation && user) {
-      markConversationAsRead(selectedConversation.id_utilisateur);
+      markConversationAsRead(selectedConversation.id);
     }
   }, [selectedConversation, user, markConversationAsRead]);
 
