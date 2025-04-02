@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -29,7 +28,6 @@ const Messages: React.FC = () => {
   const [activeConversation, setActiveConversation] = useState<string | null>(null);
   const [conversationMessages, setConversationMessages] = useState<any[]>([]);
 
-  // Redirect to auth if not logged in
   if (!user) {
     return <Navigate to="/auth" replace />;
   }
@@ -56,7 +54,6 @@ const Messages: React.FC = () => {
     if (!user) return;
     
     try {
-      // First get all conversations for the current user
       const { data: conversationsData, error: conversationsError } = await supabase
         .from('conversation')
         .select('id_conversation, id_utilisateur1, id_utilisateur2, derniere_activite')
@@ -72,15 +69,12 @@ const Messages: React.FC = () => {
         return;
       }
       
-      // Get user details for conversation participants
       const conversationIds = conversationsData.map(conv => conv.id_conversation);
       const formattedMessages: ConversationMessage[] = [];
       
       for (const conv of conversationsData) {
-        // Determine the other user in the conversation
         const otherUserId = conv.id_utilisateur1 === user.id ? conv.id_utilisateur2 : conv.id_utilisateur1;
         
-        // Get user details
         const { data: userData, error: userError } = await supabase
           .from('utilisateur')
           .select('id_utilisateur, nom, prenoms, photo_profil')
@@ -92,7 +86,6 @@ const Messages: React.FC = () => {
           continue;
         }
         
-        // Get last message in the conversation
         const { data: lastMessageData, error: lastMessageError } = await supabase
           .from('message')
           .select('*')
@@ -101,12 +94,11 @@ const Messages: React.FC = () => {
           .limit(1)
           .single();
         
-        if (lastMessageError && lastMessageError.code !== 'PGRST116') { // PGRST116 is "no rows returned"
+        if (lastMessageError && lastMessageError.code !== 'PGRST116') {
           console.error("Error fetching last message:", lastMessageError);
           continue;
         }
         
-        // Count unread messages
         const { count: unreadCount, error: unreadError } = await supabase
           .from('message')
           .select('*', { count: 'exact', head: true })
@@ -130,7 +122,7 @@ const Messages: React.FC = () => {
             id: userData.id_utilisateur,
             name: `${userData.nom} ${userData.prenoms || ''}`.trim(),
             photo_profil: userData.photo_profil,
-            status: "online" // Default status
+            status: "online"
           },
           lastMessage: lastMessageData?.contenu || "Nouvelle conversation",
           timestamp: lastMessageData?.date_envoi || conv.derniere_activite,
@@ -177,7 +169,7 @@ const Messages: React.FC = () => {
   const startConversation = (selectedUser: UserProfile) => {
     setSelectedUser({
       ...selectedUser,
-      id: selectedUser.id_utilisateur,
+      id_utilisateur: selectedUser.id_utilisateur,
       name: `${selectedUser.nom} ${selectedUser.prenoms || ''}`.trim()
     });
     setIsSearchingUser(false);
@@ -207,7 +199,6 @@ const Messages: React.FC = () => {
       
       setConversationMessages(data || []);
       
-      // Mark messages as read
       await supabase
         .from('message')
         .update({ lu: true })
@@ -215,7 +206,6 @@ const Messages: React.FC = () => {
         .eq('id_destinataire', user.id)
         .eq('lu', false);
       
-      // Refresh conversations to update unread count
       fetchConversations();
     } catch (error) {
       console.error("Error opening conversation:", error);
@@ -236,7 +226,6 @@ const Messages: React.FC = () => {
   
   return (
     <div className="flex h-screen overflow-hidden">
-      {/* Left sidebar - Conversations list */}
       <div className="w-1/3 border-r flex flex-col">
         <div className="p-4 border-b flex justify-between items-center">
           <h1 className="text-xl font-bold">Messages</h1>
@@ -343,11 +332,9 @@ const Messages: React.FC = () => {
         )}
       </div>
       
-      {/* Right side - Active conversation */}
       <div className="w-2/3 flex flex-col">
         {activeConversation ? (
           <>
-            {/* Conversation header */}
             <div className="p-4 border-b flex items-center">
               {messages.find(m => m.id === activeConversation)?.user?.photo_profil && (
                 <div className="w-10 h-10 rounded-full bg-gray-300 overflow-hidden mr-3">
@@ -368,7 +355,6 @@ const Messages: React.FC = () => {
               </div>
             </div>
             
-            {/* Messages */}
             <ScrollArea className="flex-1 p-4">
               {conversationMessages.map(msg => (
                 <div key={msg.id_message} className={`mb-4 flex ${msg.id_expediteur === user?.id ? 'justify-end' : 'justify-start'}`}>
@@ -388,7 +374,6 @@ const Messages: React.FC = () => {
               ))}
             </ScrollArea>
             
-            {/* Message input */}
             <div className="p-4 border-t">
               <form 
                 className="flex items-center"
@@ -403,7 +388,6 @@ const Messages: React.FC = () => {
                     const recipientId = messages.find(m => m.id === activeConversation)?.user?.id;
                     if (!recipientId) throw new Error("Destinataire introuvable");
                     
-                    // Send message
                     const { error } = await supabase.from("message").insert({
                       id_conversation: parseInt(activeConversation),
                       id_expediteur: user.id,
@@ -414,13 +398,11 @@ const Messages: React.FC = () => {
                     
                     if (error) throw error;
                     
-                    // Update conversation activity
                     await supabase
                       .from('conversation')
                       .update({ derniere_activite: new Date().toISOString() })
                       .eq('id_conversation', parseInt(activeConversation));
                     
-                    // Refresh messages
                     openConversation({ id: activeConversation } as ConversationMessage);
                     input.value = '';
                   } catch (error) {
@@ -465,7 +447,7 @@ const Messages: React.FC = () => {
             fetchConversations();
           }}
           recipient={{
-            id: selectedUser.id || selectedUser.id_utilisateur,
+            id: selectedUser.id_utilisateur,
             name: selectedUser.name || `${selectedUser.nom} ${selectedUser.prenoms || ''}`.trim()
           }}
         />

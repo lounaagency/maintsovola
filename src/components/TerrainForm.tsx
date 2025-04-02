@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
@@ -296,20 +295,22 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       // Convert form data to the correct types
       const terrainData = convertFormDataToTerrainData(formData);
       terrainData.id_tantsaha = user.id;
-      terrainData.photos = allPhotoUrls.join(',');
+      
+      // Join photo URLs as a string to match the expected type in the database
+      terrainData.photos = allPhotoUrls.length > 0 ? allPhotoUrls.join(',') : null;
 
       let response;
       if (isEditMode && id) {
         response = await supabase
           .from('terrain')
-          .update(terrainData)
+          .update(terrainData as any)
           .eq('id_terrain', id)
           .single();
       } else {
         const { id_terrain, ...newTerrainData } = terrainData;
         response = await supabase
           .from('terrain')
-          .insert([newTerrainData])
+          .insert([newTerrainData as any])
           .single();
       }
 

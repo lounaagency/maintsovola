@@ -7,7 +7,7 @@ export interface Notification {
   message: string;
   lu: boolean;
   date_creation: string;
-  type: 'info' | 'validation' | 'alerte' | 'erreur' | 'assignment';
+  type: 'info' | 'validation' | 'alerte' | 'erreur' | 'assignment' | 'success';
   entity_id?: string; // Changed from number to string to handle UUID values
   entity_type?: 'terrain' | 'projet' | 'jalon' | 'investissement';
   projet_id?: number;

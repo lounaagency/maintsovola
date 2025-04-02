@@ -11,7 +11,7 @@ export interface TerrainFormData {
   acces_route: boolean;
 }
 
-export const convertFormDataToTerrainData = (formData: TerrainFormData): TerrainData => {
+export const convertFormDataToTerrainData = (formData: TerrainFormData): Partial<TerrainData> => {
   return {
     id_region: formData.id_region ? parseInt(formData.id_region) : undefined,
     id_district: formData.id_district ? parseInt(formData.id_district) : undefined,
