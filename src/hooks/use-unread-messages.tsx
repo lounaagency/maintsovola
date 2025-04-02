@@ -28,30 +28,6 @@ export const useUnreadMessagesCount = (userId?: string) => {
     setUnreadCount(prev => Math.max(0, prev - amount));
   }, []);
   
-  // Function to mark messages as read for a specific conversation
-  const markConversationAsRead = useCallback(async (otherUserId: string) => {
-    if (!userId || !otherUserId) {
-      console.log("Missing userId or otherUserId:", { userId, otherUserId });
-      return;
-    }
-    
-    try {
-      const { error } = await supabase
-        .from('message')
-        .update({ lu: true })
-        .eq('id_destinataire', userId)
-        .eq('id_expediteur', otherUserId)
-        .eq('lu', false);
-      
-      if (error) throw error;
-      
-      // Update local count after marking messages as read
-      await fetchUnreadCount();
-    } catch (error) {
-      console.error("Error marking messages as read:", error);
-    }
-  }, [userId, fetchUnreadCount]);
-  
   useEffect(() => {
     if (!userId) return;
     
@@ -80,5 +56,5 @@ export const useUnreadMessagesCount = (userId?: string) => {
     };
   }, [userId, fetchUnreadCount]);
   
-  return { unreadCount, fetchUnreadCount, decrementCount, markConversationAsRead };
+  return { unreadCount, fetchUnreadCount, decrementCount };
 };

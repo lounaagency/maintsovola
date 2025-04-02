@@ -40,14 +40,22 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
   const handleValidate = async (terrainId: number) => {
     try {
       if (!['technicien', 'superviseur'].includes(userRole || '')) {
-        toast("Vous n'avez pas les permissions nécessaires pour valider ce terrain");
+        toast({
+          title: "Accès refusé",
+          description: "Vous n'avez pas les permissions nécessaires pour valider ce terrain",
+          variant: "destructive"
+        });
         return;
       }
 
       if (userRole === 'technicien') {
         const terrain = terrains.find(t => t.id_terrain === terrainId);
         if (terrain?.id_technicien !== user?.id) {
-          toast("Vous pouvez uniquement valider les terrains qui vous sont assignés");
+          toast({
+            title: "Accès refusé",
+            description: "Vous pouvez uniquement valider les terrains qui vous sont assignés",
+            variant: "destructive"
+          });
           return;
         }
       }
@@ -62,19 +70,30 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
 
       if (error) throw error;
       
-      toast("Le terrain a été validé avec succès");
+      toast({
+        title: "Succès",
+        description: "Le terrain a été validé avec succès",
+      });
       
       if (onTerrainUpdate) onTerrainUpdate();
     } catch (error) {
       console.error('Erreur lors de la validation du terrain:', error);
-      toast("Impossible de valider le terrain");
+      toast({
+        title: "Erreur",
+        description: "Impossible de valider le terrain",
+        variant: "destructive"
+      });
     }
   };
 
   const handleAssignTechnician = async (terrainId: number, technicianId: string) => {
     try {
       if (userRole !== 'superviseur') {
-        toast("Seuls les superviseurs peuvent assigner des techniciens");
+        toast({
+          title: "Accès refusé",
+          description: "Seuls les superviseurs peuvent assigner des techniciens",
+          variant: "destructive"
+        });
         return;
       }
 

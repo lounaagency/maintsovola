@@ -8,7 +8,7 @@ export interface Notification {
   lu: boolean;
   date_creation: string;
   type: 'info' | 'validation' | 'alerte' | 'erreur' | 'assignment';
-  entity_id?: string | number;
+  entity_id?: string;
   entity_type?: 'terrain' | 'projet' | 'jalon' | 'investissement';
   projet_id?: number;
 }
@@ -23,7 +23,7 @@ export interface DatabaseNotification {
   lu: boolean;
   date_creation: string;
   type: string;
-  entity_id?: string | number;  // Accept both string and number for entity_id
+  entity_id?: string | number;  // Accept both string and number
   entity_type?: string;
   projet_id?: number;
 }
