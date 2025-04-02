@@ -30,7 +30,10 @@ export const useUnreadMessagesCount = (userId?: string) => {
   
   // Function to mark messages as read for a specific conversation
   const markConversationAsRead = useCallback(async (otherUserId: string) => {
-    if (!userId) return;
+    if (!userId || !otherUserId) {
+      console.log("Missing userId or otherUserId:", { userId, otherUserId });
+      return;
+    }
     
     try {
       const { error } = await supabase

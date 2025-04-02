@@ -11,6 +11,7 @@ export interface TerrainFormData {
   acces_eau: boolean;
   acces_route: boolean;
   photos?: string[];
+  id_tantsaha?: string;
 }
 
 // Convert from form data (strings) to API data (numbers)
@@ -30,5 +31,6 @@ export const convertTerrainDataToFormData = (terrainData: TerrainData): TerrainF
     id_region: terrainData.id_region?.toString() || '',
     id_district: terrainData.id_district?.toString() || '',
     id_commune: terrainData.id_commune?.toString() || '',
+    nom_terrain: terrainData.nom_terrain || '',
   };
 };
