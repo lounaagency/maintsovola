@@ -11,7 +11,7 @@ import ProjectForm from "./ProjectForm";
 interface ProjectEditDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  project?: any;
+  project: any;
   onSubmitSuccess: () => void;
   userId: string;
   userRole?: string;
@@ -23,21 +23,19 @@ const ProjectEditDialog: React.FC<ProjectEditDialogProps> = ({
   project,
   onSubmitSuccess,
   userId,
-  userRole = "agriculteur"
+  userRole
 }) => {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {project?.id_projet ? "Modifier le projet" : "Ajouter un projet"}
-          </DialogTitle>
+          <DialogTitle>Modifier le projet</DialogTitle>
         </DialogHeader>
         <ProjectForm
           initialData={project}
-          onSubmitSuccess={onSubmitSuccess}
+          onSuccess={onSubmitSuccess} // Changed from onSubmitSuccess to onSuccess
           onCancel={onClose}
-          isEditing={!!project?.id_projet}
+          isEditing={!!project}
           userId={userId}
           userRole={userRole}
         />

@@ -1,104 +1,144 @@
 
-import React, { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
+import React, { useState, useEffect } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { SendHorizonal } from "lucide-react";
-import { toast } from "sonner";
+import { Textarea } from "@/components/ui/textarea";
+import { Loader2, Send } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { createConversation, sendMessage } from "@/lib/messagerie";
+import { useToast } from "@/components/ui/use-toast";
+import { createConversationIfNotExists } from "@/lib/messagerie";
 
-export interface MessageDialogProps {
+interface MessageDialogProps {
   isOpen: boolean;
   onClose: () => void;
   recipient: {
     id: string;
     name: string;
   };
-  subject: string;
-  initialMessage?: string;
+  subject?: string;
 }
 
 const MessageDialog: React.FC<MessageDialogProps> = ({
   isOpen,
   onClose,
   recipient,
-  subject,
-  initialMessage = ""
+  subject = "",
 }) => {
-  const [message, setMessage] = useState(initialMessage || "");
-  const [sending, setSending] = useState(false);
+  const [message, setMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useAuth();
+  const { toast } = useToast();
 
-  const handleSend = async () => {
-    if (!user) {
-      toast.error("Vous devez être connecté pour envoyer un message");
-      return;
+  useEffect(() => {
+    if (subject) {
+      setMessage(`Concernant ${subject}:\n\n`);
+    } else {
+      setMessage("");
     }
+  }, [subject, isOpen]);
 
-    if (!message.trim()) {
-      toast.error("Le message ne peut pas être vide");
-      return;
-    }
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !message.trim()) return;
 
-    setSending(true);
     try {
-      const conversation = await createConversation(user.id, recipient.id);
-      if (!conversation) {
-        toast.error("Impossible de créer la conversation");
-        return;
-      }
+      setIsSubmitting(true);
 
-      const sent = await sendMessage(
-        conversation.id_conversation,
+      // Create or get a conversation
+      const conversationId = await createConversationIfNotExists(
         user.id,
         recipient.id,
-        message
       );
 
-      if (sent) {
-        toast.success("Message envoyé avec succès");
-        setMessage("");
-        onClose();
-      } else {
-        toast.error("Impossible d'envoyer le message");
+      if (!conversationId) {
+        throw new Error("Impossible de créer une conversation");
       }
+
+      // Send the message
+      const { error } = await supabase.from("message").insert({
+        id_conversation: conversationId,
+        id_expediteur: user.id,
+        id_destinataire: recipient.id,
+        contenu: message.trim(),
+        date_envoi: new Date().toISOString(),
+      });
+
+      if (error) throw error;
+
+      // Update conversation activity
+      await supabase
+        .from("conversation")
+        .update({ derniere_activite: new Date().toISOString() })
+        .eq("id_conversation", conversationId);
+
+      toast({
+        title: "Message envoyé",
+        description: `Votre message a été envoyé à ${recipient.name}`,
+      });
+
+      setMessage("");
+      onClose();
     } catch (error) {
       console.error("Error sending message:", error);
-      toast.error("Une erreur est survenue");
+      toast({
+        title: "Erreur",
+        description: "Impossible d'envoyer le message",
+        variant: "destructive",
+      });
     } finally {
-      setSending(false);
+      setIsSubmitting(false);
     }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            Message à {recipient.name} - {subject}
+            Message à {recipient.name}
           </DialogTitle>
         </DialogHeader>
-
-        <div className="mt-4">
-          <Textarea
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="Écrivez votre message..."
-            rows={6}
-            className="resize-none"
-          />
-
-          <div className="mt-4 flex justify-between">
-            <Button variant="outline" onClick={onClose} disabled={sending}>
+        <form onSubmit={handleSubmit}>
+          <div className="space-y-4 mt-4">
+            <Textarea
+              placeholder="Écrivez votre message ici..."
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              className="min-h-[150px]"
+              required
+            />
+          </div>
+          <DialogFooter className="mt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              disabled={isSubmitting}
+            >
               Annuler
             </Button>
-            <Button onClick={handleSend} disabled={sending || !message.trim()}>
-              <SendHorizonal className="mr-2 h-4 w-4" />
-              Envoyer
+            <Button type="submit" disabled={isSubmitting || !message.trim()}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Envoi...
+                </>
+              ) : (
+                <>
+                  <Send className="mr-2 h-4 w-4" />
+                  Envoyer
+                </>
+              )}
             </Button>
-          </div>
-        </div>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );

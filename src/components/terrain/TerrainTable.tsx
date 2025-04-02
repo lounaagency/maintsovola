@@ -43,14 +43,14 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
       if (!user) return;
       
       if (!['technicien', 'superviseur'].includes(userRole || '')) {
-        toast("Vous n'avez pas les permissions nécessaires pour valider ce terrain");
+        toast.error("Vous n'avez pas les permissions nécessaires pour valider ce terrain");
         return;
       }
 
       if (userRole === 'technicien') {
         const terrain = terrains.find(t => t.id_terrain === terrainId);
         if (terrain?.id_technicien !== user?.id) {
-          toast("Vous pouvez uniquement valider les terrains qui vous sont assignés");
+          toast.error("Vous pouvez uniquement valider les terrains qui vous sont assignés");
           return;
         }
       }
@@ -79,12 +79,12 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
         }]);
       }
       
-      toast("Le terrain a été validé avec succès");
+      toast.success("Le terrain a été validé avec succès");
       
       if (onTerrainUpdate) onTerrainUpdate();
     } catch (error: any) {
       console.error('Erreur lors de la validation du terrain:', error);
-      toast("Impossible de valider le terrain: " + error.message);
+      toast.error("Impossible de valider le terrain: " + error.message);
     }
   };
 
@@ -93,7 +93,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
       if (!user) return;
       
       if (userRole !== 'simple' && userRole !== 'technicien' && userRole !== 'superviseur') {
-        toast("Vous n'avez pas les permissions nécessaires");
+        toast.error("Vous n'avez pas les permissions nécessaires");
         return;
       }
 
@@ -106,7 +106,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
       if (projectsError) throw projectsError;
       
       if (projects && projects.length > 0) {
-        toast("Impossible de supprimer ce terrain car il est associé à des projets");
+        toast.error("Impossible de supprimer ce terrain car il est associé à des projets");
         return;
       }
 
@@ -117,12 +117,12 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
 
       if (error) throw error;
       
-      toast("Le terrain a été supprimé avec succès");
+      toast.success("Le terrain a été supprimé avec succès");
       
       if (onTerrainUpdate) onTerrainUpdate();
     } catch (error: any) {
       console.error('Erreur lors de la suppression du terrain:', error);
-      toast("Impossible de supprimer le terrain: " + error.message);
+      toast.error("Impossible de supprimer le terrain: " + error.message);
     }
   };
 
@@ -131,7 +131,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
       if (!user) return;
       
       if (userRole !== 'superviseur') {
-        toast("Seuls les superviseurs peuvent assigner des techniciens");
+        toast.error("Seuls les superviseurs peuvent assigner des techniciens");
         return;
       }
 
@@ -153,11 +153,11 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
         entity_id: terrainId
       }]);
       
-      toast("Technicien assigné avec succès!");
+      toast.success("Technicien assigné avec succès!");
       if (onTerrainUpdate) onTerrainUpdate();
     } catch (error: any) {
       console.error("Error assigning technician:", error);
-      toast("Erreur lors de l'assignation du technicien: " + error.message);
+      toast.error("Erreur lors de l'assignation du technicien: " + error.message);
     }
   };
 
