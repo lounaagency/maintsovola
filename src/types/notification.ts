@@ -8,7 +8,7 @@ export interface Notification {
   lu: boolean;
   date_creation: string;
   type: 'info' | 'validation' | 'alerte' | 'erreur' | 'assignment';
-  entity_id?: string;
+  entity_id?: string | number;
   entity_type?: 'terrain' | 'projet' | 'jalon' | 'investissement';
   projet_id?: number;
 }

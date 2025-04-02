@@ -10,7 +10,7 @@ export interface TerrainFormData {
   id_commune: string; // Form will use string for select inputs
   acces_eau: boolean;
   acces_route: boolean;
-  photos?: string[];
+  photos?: string | string[]; // Allow both string and string[] types
   id_tantsaha?: string;
 }
 
@@ -32,5 +32,7 @@ export const convertTerrainDataToFormData = (terrainData: TerrainData): TerrainF
     id_district: terrainData.id_district?.toString() || '',
     id_commune: terrainData.id_commune?.toString() || '',
     nom_terrain: terrainData.nom_terrain || '',
+    acces_eau: terrainData.acces_eau || false,
+    acces_route: terrainData.acces_route || false,
   };
 };
