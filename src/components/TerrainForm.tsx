@@ -93,7 +93,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     }
   });
 
-  const { handleSubmit, setValue, formState: { errors } } = form;
+  const { handleSubmit, setValue, control, formState: { errors } } = form;
 
   useEffect(() => {
     fetchRegions();
@@ -321,7 +321,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
         };
       }
       
-      const terrainData: Partial<TerrainData> = {
+      const terrainData = {
         id_region: parseInt(formData.id_region),
         id_district: parseInt(formData.id_district),
         id_commune: parseInt(formData.id_commune),
@@ -339,7 +339,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
         response = await supabase
           .from('terrain')
           .update(terrainData)
-          .eq('id_terrain', id);
+          .eq('id_terrain', parseInt(id));
       } else {
         response = await supabase
           .from('terrain')

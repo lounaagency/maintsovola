@@ -20,6 +20,12 @@ export interface UserTelephone {
   id_utilisateur: string;
   numero: string;
   is_primary: boolean;
+  // Ajout des nouveaux champs requis pour la compatibilité
+  type?: "principal" | "whatsapp" | "mobile_banking" | "autre";
+  est_whatsapp?: boolean;
+  est_mobile_banking?: boolean;
+  created_at?: string;
+  modified_at?: string;
 }
 
 export interface UserAvatarProps {
@@ -27,5 +33,5 @@ export interface UserAvatarProps {
   alt: string;
   size?: "sm" | "md" | "lg" | "xl";
   status?: "online" | "offline" | "away" | "busy";
-  className?: string;
+  className?: string; // Ajout de la prop className manquante
 }

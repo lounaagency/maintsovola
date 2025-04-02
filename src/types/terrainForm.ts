@@ -21,6 +21,6 @@ export const convertFormDataToTerrainData = (formData: TerrainFormData): Partial
     surface_proposee: formData.surface_proposee,
     acces_eau: formData.acces_eau,
     acces_route: formData.acces_route,
-    photos: Array.isArray(formData.photos) ? formData.photos.join(',') : formData.photos || '' // Convertir array en string
+    photos: formData.photos // Laissons le type tel quel, nous traiterons les conversions dans le composant
   };
 };
