@@ -121,3 +121,27 @@ export const getUnreadMessagesCount = async (userId: string) => {
     return 0;
   }
 };
+
+/**
+ * Marque tous les messages d'une conversation comme lus par un utilisateur donné.
+ *
+ * @param conversationId - ID de la conversation
+ * @param userId - ID de l'utilisateur qui a lu les messages
+ * @returns {Promise<void>}
+ */
+export async function markMessagesAsRead(conversationId: number, userId: number): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from("messages")
+      .update({ is_read: true })
+      .match({ id_conversation: conversationId })
+      .neq("id_user", userId); // On ne marque pas comme lus les messages de l'utilisateur lui-même
+
+    if (error) throw error;
+
+    console.log(`Messages marqués comme lus pour la conversation ${conversationId}`);
+  } catch (err) {
+    console.error("Erreur lors de la mise à jour des messages :", err);
+  }
+};
+
