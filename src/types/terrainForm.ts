@@ -19,9 +19,9 @@ export interface TerrainFormData {
 export const convertFormDataToTerrainData = (formData: TerrainFormData): TerrainData => {
   return {
     ...formData,
-    id_region: Number(formData.id_region),
-    id_district: Number(formData.id_district),
-    id_commune: Number(formData.id_commune),
+    id_region: formData.id_region ? Number(formData.id_region) : null,
+    id_district: formData.id_district ? Number(formData.id_district) : null,
+    id_commune: formData.id_commune ? Number(formData.id_commune) : null,
   };
 };
 
@@ -35,5 +35,6 @@ export const convertTerrainDataToFormData = (terrainData: TerrainData): TerrainF
     nom_terrain: terrainData.nom_terrain || '',
     acces_eau: terrainData.acces_eau || false,
     acces_route: terrainData.acces_route || false,
+    surface_proposee: terrainData.surface_proposee,
   };
 };

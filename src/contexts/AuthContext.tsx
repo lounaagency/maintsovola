@@ -1,285 +1,364 @@
-
-import React, { createContext, useContext, useEffect, useState } from "react";
-import { Session, User } from "@supabase/supabase-js";
+import React, {
+  createContext,
+  useState,
+  useEffect,
+  useContext,
+  ReactNode,
+} from "react";
+import {
+  Session,
+  User,
+  AuthChangeEvent,
+  SignUpWithPasswordCredentials,
+} from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
+import { UserProfile, UserTelephone } from "@/types/userProfile";
 import { toast } from "sonner";
-import { UserProfile } from "@/types/userProfile";
-import { isValidEmail } from "@/lib/utils";
 
 interface AuthContextType {
+  session: Session | null;
   user: User | null;
   profile: UserProfile | null;
   loading: boolean;
-  error: Error | null;
-  signIn: (identifier: string, password: string) => Promise<void>;
-  signUp: (identifier: string, password: string, userData: any) => Promise<void>;
+  signUp: (
+    email: string,
+    password: string,
+    userData: {
+      nom: string;
+      prenoms: string;
+      role: string;
+      is_investor: boolean;
+      is_farming_owner: boolean;
+    }
+  ) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
-  refreshProfile: () => Promise<void>;
+  updateProfile: (updates: {
+    nom?: string;
+    prenoms?: string;
+    email?: string;
+    photo_profil?: string;
+    photo_couverture?: string;
+    adresse?: string;
+    bio?: string;
+    is_investor?: boolean;
+    is_farming_owner?: boolean;
+  }) => Promise<void>;
+  addTelephone: (telephone: Omit<UserTelephone, 'id_telephone' | 'created_at' | 'modified_at'>) => Promise<void>;
+  updateTelephone: (telephone: UserTelephone) => Promise<void>;
+  deleteTelephone: (id_telephone: number) => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType>({
-  user: null,
-  profile: null,
-  loading: true,
-  error: null,
-  signIn: async () => {},
-  signUp: async () => {},
-  signOut: async () => {},
-  refreshProfile: async () => {},
-});
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+interface AuthProviderProps {
+  children: ReactNode;
+}
+
+const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-  const navigate = useNavigate();
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, newSession) => {
-        setSession(newSession);
-        setUser(newSession?.user ?? null);
+    const getInitialSession = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-        if (newSession?.user) {
-          setTimeout(() => {
-            fetchUserProfile(newSession.user.id);
-          }, 0);
+      setSession(session);
+      setUser(session?.user || null);
+      setLoading(false);
+    };
+
+    getInitialSession();
+
+    supabase.auth.onAuthStateChange(
+      async (event: AuthChangeEvent, session: Session | null) => {
+        setSession(session);
+        setUser(session?.user || null);
+        if (session?.user) {
+          const userProfile = await getUserProfile(session.user.id);
+          setProfile(userProfile);
         } else {
           setProfile(null);
         }
       }
     );
-
-    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-      setSession(currentSession);
-      setUser(currentSession?.user ?? null);
-      
-      if (currentSession?.user) {
-        fetchUserProfile(currentSession.user.id);
-      }
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
   }, []);
 
-  const fetchUserProfile = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('utilisateur')
-        .select(`
-          *,
-          role:id_role(nom_role),
-          telephones:telephone(*)
-        `)
-        .eq('id_utilisateur', userId)
-        .single();
-
-      if (error) {
-        console.error("Error fetching profile:", error);
-        return;
-      }
-      
-      // Convert to UserProfile type
-      const userProfile: UserProfile = {
-        id_utilisateur: data.id_utilisateur,
-        id: data.id_utilisateur,
-        nom: data.nom,
-        prenoms: data.prenoms,
-        email: data.email,
-        photo_profil: data.photo_profil,
-        photo_couverture: data.photo_couverture,
-        telephone: data.telephone || undefined,
-        adresse: data.adresse || undefined,
-        bio: data.bio || undefined,
-        id_role: data.id_role,
-        nom_role: data.role?.nom_role,
-        telephones: data.telephones || []
-      };
-      
-      setProfile(userProfile);
-    } catch (error) {
-      console.error("Error fetching profile:", error);
+  useEffect(() => {
+    if (user) {
+      getUserProfile(user.id)
+        .then((userProfile) => {
+          setProfile(userProfile);
+        })
+        .catch((error) => {
+          console.error("Error fetching user profile:", error);
+        });
+    } else {
+      setProfile(null);
     }
-  };
+  }, [user]);
 
-  const signUp = async (identifier: string, password: string, userData: any) => {
+  const signUp = async (
+    email: string,
+    password: string,
+    userData: {
+      nom: string;
+      prenoms: string;
+      role: string;
+      is_investor: boolean;
+      is_farming_owner: boolean;
+    }
+  ) => {
+    setLoading(true);
     try {
-      setLoading(true);
-      
-      const isEmail = isValidEmail(identifier);
-      
-      // Set up the user data
-      const authData = {
-        ...(isEmail ? { email: identifier } : {}),
+      const { data, error } = await supabase.auth.signUp({
+        email,
         password,
         options: {
           data: {
             nom: userData.nom,
             prenoms: userData.prenoms,
-            role: userData.role || 'simple',
-            is_investor: userData.is_investor || false,
-            is_farming_owner: userData.is_farming_owner || false
-          }
-        }
-      };
+            role: userData.role,
+            is_investor: userData.is_investor,
+            is_farming_owner: userData.is_farming_owner,
+          },
+        },
+      });
 
-      // Create the user in auth
-      const { data, error } = isEmail 
-        ? await supabase.auth.signUp(authData)
-        : await supabase.auth.signUp({
-            phone: identifier,
-            password,
-            options: authData.options
-          });
-
-      if (error) throw error;
-      if (!data.user) throw new Error("L'utilisateur n'a pas été créé.");
-      
-      // Insert user data into public.utilisateur table
-      const { error: dbError } = await supabase.from("utilisateur").insert([
-        {
-          id_utilisateur: data.user.id,
-          email: isEmail ? identifier : userData.email,
-          nom: userData.nom,
-          prenoms: userData.prenoms,
-          id_role: userData.role === 'technicien' ? 3 : userData.role === 'superviseur' ? 4 : 2 // 2=simple, 3=technicien, 4=superviseur
-        }
-      ]);
-
-      if (dbError) throw dbError;
-      
-      // Insert phone number if provided
-      if (!isEmail || userData.telephone) {
-        const { error: phoneError } = await supabase.from("telephone").insert([
-          {
-            id_utilisateur: data.user.id,
-            numero: isEmail ? userData.telephone : identifier,
-            type: 'principal'
-          }
-        ]);
-        
-        if (phoneError) console.error("Error saving phone:", phoneError);
+      if (error) {
+        throw error;
       }
 
-      toast.success("Inscription réussie ! Vérifiez votre email pour confirmer.");
+      toast.success("Inscription réussie ! Veuillez vérifier votre email.");
     } catch (error: any) {
-      toast.error(error.message || "Erreur lors de l'inscription");
       console.error("Error signing up:", error);
-      throw error;
+      toast.error(
+        error.message || "Une erreur est survenue lors de l'inscription."
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  const signIn = async (identifier: string, password: string) => {
+  const signIn = async (email: string, password: string) => {
+    setLoading(true);
     try {
-      setLoading(true);
-      
-      // Check if identifier is an email or phone number
-      const isEmail = isValidEmail(identifier);
-      
-      let authResponse;
-      
-      if (isEmail) {
-        // Try sign in with email
-        authResponse = await supabase.auth.signInWithPassword({
-          email: identifier,
-          password
-        });
-      } else {
-        // Try sign in with phone number
-        authResponse = await supabase.auth.signInWithPassword({
-          phone: identifier,
-          password
-        });
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password,
+      });
+
+      if (error) {
+        throw error;
       }
-      
-      const { data, error } = authResponse;
-      
-      if (error) throw error;
-      
       toast.success("Connexion réussie !");
-      navigate("/feed");
     } catch (error: any) {
-      toast.error(error.message || "Erreur lors de la connexion");
       console.error("Error signing in:", error);
-      throw error;
+      toast.error(
+        error.message || "Une erreur est survenue lors de la connexion."
+      );
     } finally {
       setLoading(false);
     }
   };
 
   const signOut = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
       const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      
-      toast.success("Déconnexion réussie");
-      navigate("/auth");
+      if (error) {
+        throw error;
+      }
+      toast.success("Déconnexion réussie !");
     } catch (error: any) {
-      toast.error(error.message || "Erreur lors de la déconnexion");
+      console.error("Error signing out:", error);
+      toast.error(
+        error.message || "Une erreur est survenue lors de la déconnexion."
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  const refreshProfile = async () => {
-    if (!user) return;
-    
+  const updateProfile = async (updates: {
+    nom?: string;
+    prenoms?: string;
+    email?: string;
+    photo_profil?: string;
+    photo_couverture?: string;
+    adresse?: string;
+    bio?: string;
+    is_investor?: boolean;
+    is_farming_owner?: boolean;
+  }) => {
+    setLoading(true);
     try {
       const { data, error } = await supabase
-        .from('utilisateur')
-        .select(`
-          *,
-          role:id_role(nom_role),
-          telephones:telephone(*)
-        `)
-        .eq('id_utilisateur', user.id)
-        .single();
-      
-      if (error) throw error;
-      
-      const userProfile: UserProfile = {
-        id_utilisateur: data.id_utilisateur,
-        id: data.id_utilisateur,
-        nom: data.nom,
-        prenoms: data.prenoms,
-        email: data.email,
-        photo_profil: data.photo_profil,
-        photo_couverture: data.photo_couverture,
-        telephone: data.telephone || undefined,
-        adresse: data.adresse || undefined,
-        bio: data.bio || undefined,
-        id_role: data.id_role,
-        nom_role: data.role?.nom_role,
-        telephones: data.telephones || []
-      };
-      
-      setProfile(userProfile);
-      
-    } catch (error) {
-      console.error('Error refreshing user profile:', error);
+        .from("utilisateur")
+        .update(updates)
+        .eq("id_utilisateur", user?.id);
+
+      if (error) {
+        throw error;
+      }
+
+      // Optimistically update the profile in the context
+      setProfile((prevProfile) => {
+        return prevProfile ? { ...prevProfile, ...updates } : null;
+      });
+
+      toast.success("Profil mis à jour avec succès !");
+    } catch (error: any) {
+      console.error("Error updating profile:", error);
+      toast.error(
+        error.message || "Une erreur est survenue lors de la mise à jour du profil."
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
-  return (
-    <AuthContext.Provider
-      value={{ user, profile, loading, error, signIn, signUp, signOut, refreshProfile }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
+  const addTelephone = async (telephone: Omit<UserTelephone, 'id_telephone' | 'created_at' | 'modified_at'>) => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("telephone")
+        .insert([{ ...telephone, id_utilisateur: user?.id }]);
+  
+      if (error) {
+        throw error;
+      }
+  
+      // Refresh user profile to get updated telephones
+      const updatedProfile = await getUserProfile(user?.id || '');
+      setProfile(updatedProfile);
+  
+      toast.success("Téléphone ajouté avec succès !");
+    } catch (error: any) {
+      console.error("Error adding telephone:", error);
+      toast.error(
+        error.message || "Une erreur est survenue lors de l'ajout du téléphone."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const updateTelephone = async (telephone: UserTelephone) => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("telephone")
+        .update(telephone)
+        .eq("id_telephone", telephone.id_telephone);
+  
+      if (error) {
+        throw error;
+      }
+  
+      // Refresh user profile to get updated telephones
+      const updatedProfile = await getUserProfile(user?.id || '');
+      setProfile(updatedProfile);
+  
+      toast.success("Téléphone mis à jour avec succès !");
+    } catch (error: any) {
+      console.error("Error updating telephone:", error);
+      toast.error(
+        error.message || "Une erreur est survenue lors de la mise à jour du téléphone."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const deleteTelephone = async (id_telephone: number) => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("telephone")
+        .delete()
+        .eq("id_telephone", id_telephone);
+  
+      if (error) {
+        throw error;
+      }
+  
+      // Refresh user profile to get updated telephones
+      const updatedProfile = await getUserProfile(user?.id || '');
+      setProfile(updatedProfile);
+  
+      toast.success("Téléphone supprimé avec succès !");
+    } catch (error: any) {
+      console.error("Error deleting telephone:", error);
+      toast.error(
+        error.message || "Une erreur est survenue lors de la suppression du téléphone."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getUserProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("utilisateur")
+        .select("*")
+        .eq("id_utilisateur", userId)
+        .single();
+
+      if (error) throw error;
+
+      // Get user's telephones
+      const { data: telephonesData, error: telephonesError } = await supabase
+        .from("telephone")
+        .select("*")
+        .eq("id_utilisateur", userId);
+
+      if (telephonesError) throw telephonesError;
+
+      // Map telephone data to match UserTelephone type
+      const formattedTelephones = telephonesData.map(tel => ({
+        ...tel,
+        type: tel.type as "principal" | "whatsapp" | "mobile_banking" | "autre"
+      }));
+
+      return {
+        ...data,
+        telephones: formattedTelephones
+      };
+    } catch (error) {
+      console.error("Error getting user profile:", error);
+      return null;
+    }
+  };
+
+  const value: AuthContextType = {
+    session,
+    user,
+    profile,
+    loading,
+    signUp,
+    signIn,
+    signOut,
+    updateProfile,
+    addTelephone,
+    updateTelephone,
+    deleteTelephone,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-export const useAuth = () => {
+const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };
+
+export { AuthProvider, useAuth };

@@ -35,14 +35,12 @@ export const Profile = () => {
   const [projectsCount, setProjectsCount] = useState(0);
   const [loading, setLoading] = useState(true);
   
-  // Redirect to auth if not logged in
   if (!user) {
     return <Navigate to="/auth" replace />;
   }
   useEffect(() => {
     if (!id) return;
     
-    // Vérifier si c'est le profil de l'utilisateur actuel
     if (user?.id === id) {
       setIsCurrentUser(true);
       if (currentUserProfile) {
@@ -92,21 +90,22 @@ export const Profile = () => {
   
   const fetchFollowStatus = async (userId: string) => {
     try {
-      // Nombre de followers
-      const { count: followersResult, error: followersError } = await supabase
-        .rpc('count_followers', { user_id: userId });
+      const { data, error } = await supabase.rpc(
+        "count_followers",
+        { user_id: userId }
+      );
       
-      if (followersError) throw followersError;
-      setFollowersCount(followersResult || 0);
+      if (error) throw error;
+      setFollowersCount(data || 0);
       
-      // Nombre d'abonnements
-      const { count: followingResult, error: followingError } = await supabase
-        .rpc('count_subscriptions', { user_id: userId });
+      const { data: subscriptions, error: subscriptionsError } = await supabase.rpc(
+        "count_subscriptions",
+        { user_id: userId }
+      );
       
-      if (followingError) throw followingError;
-      setFollowingCount(followingResult || 0);
+      if (subscriptionsError) throw subscriptionsError;
+      setFollowingCount(subscriptions || 0);
       
-      // Vérifier si l'utilisateur actuel suit ce profil
       if (user && userId !== user.id) {
         const { data, error } = await supabase
           .from('abonnement')
@@ -128,7 +127,6 @@ export const Profile = () => {
     try {
       setLoading(true);
       
-      // Récupérer les projets créés par l'utilisateur
       const { data, error, count } = await supabase
         .from('projet')
         .select(`
@@ -141,21 +139,17 @@ export const Profile = () => {
       
       if (error) throw error;
       
-      // Transformer les données en format AgriculturalProject
       const formattedProjects: AgriculturalProject[] = (data || []).map(project => {
-        // Calculer le coût total d'exploitation
         const totalCost = project.projet_culture.reduce(
           (sum: number, pc: any) => sum + (pc.cout_exploitation_previsionnel || 0), 
           0
         );
         
-        // Calculer le rendement total
         const totalYield = project.projet_culture.reduce(
           (sum: number, pc: any) => sum + (pc.rendement_previsionnel || 0), 
           0
         );
         
-        // Calculer le revenu attendu
         const expectedRevenue = project.projet_culture.reduce(
           (sum: number, pc: any) => sum + (pc.rendement_previsionnel * (pc.culture?.prix_tonne || 0)), 
           0
@@ -203,7 +197,6 @@ export const Profile = () => {
   
   const fetchInvestedProjects = async (userId: string) => {
     try {
-      // Récupérer les projets dans lesquels l'utilisateur a investi
       const { data, error } = await supabase
         .from('investissement')
         .select(`
@@ -218,7 +211,6 @@ export const Profile = () => {
       
       if (error) throw error;
       
-      // Regrouper les investissements par projet
       const projectsMap = new Map();
       
       data?.forEach(investment => {
@@ -250,7 +242,6 @@ export const Profile = () => {
     
     try {
       if (isFollowing) {
-        // Unfollow
         const { error } = await supabase
           .from('abonnement')
           .delete()
@@ -263,12 +254,13 @@ export const Profile = () => {
         setFollowersCount(prev => prev - 1);
         toast.success(`Vous ne suivez plus ${profile.nom}`);
       } else {
-        // Follow
-        const { error } = await supabase
-          .rpc('create_subscription', { 
-            abonne_id: user.id, 
-            suivi_id: profile.id_utilisateur
-          });
+        const { error } = await supabase.rpc(
+          "create_subscription",
+          {
+            abonne_id: user.id,
+            abonnement_id: profile.id
+          }
+        );
         
         if (error) throw error;
         
@@ -296,7 +288,6 @@ export const Profile = () => {
 
   return (
     <div className="container max-w-4xl py-6 space-y-6">
-      {/* Header Profile */}
       <div className="flex flex-col md:flex-row gap-6 items-start">
         <Avatar className="h-24 w-24 rounded-full border-4 border-background">
           {profile.photo_profil ? (
@@ -333,10 +324,10 @@ export const Profile = () => {
               <span>{profile.adresse || 'Aucune adresse'}</span>
             </div>
             
-            {profile.telephone && (
+            {profile.telephones?.find(t => t.type === 'principal')?.numero && (
               <div className="flex items-center text-sm text-muted-foreground">
                 <Phone size={16} className="mr-1" />
-                <span>{profile.telephone}</span>
+                <span>{profile.telephones.find(t => t.type === 'principal')?.numero}</span>
               </div>
             )}
             
@@ -403,7 +394,6 @@ export const Profile = () => {
       
       <Separator />
       
-      {/* Content Tabs */}
       <Tabs defaultValue="projects">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="projects" className="flex items-center">

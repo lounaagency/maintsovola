@@ -7,7 +7,7 @@ export interface UserProfile {
   email?: string;
   photo_profil?: string;
   photo_couverture?: string;
-  telephone?: string;
+  telephone?: string; // Keep for backward compatibility
   adresse?: string;
   bio?: string;
   id_role?: number;
@@ -24,7 +24,7 @@ export interface UserTelephone {
   id_telephone?: number;
   id_utilisateur: string;
   numero: string;
-  type: "principal" | "whatsapp" | "mobile_banking" | "autre";
+  type: "principal" | "whatsapp" | "mobile_banking" | "autre" | string; // Added string for compatibility
   est_whatsapp: boolean;
   est_mobile_banking: boolean;
   created_at?: string;
