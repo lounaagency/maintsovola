@@ -29,12 +29,13 @@ const ProjectEditDialog: React.FC<ProjectEditDialogProps> = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{project?.id_projet ? "Modifier le projet" : "Créer un projet"}</DialogTitle>
+          <DialogTitle>Modifier le projet</DialogTitle>
         </DialogHeader>
         <ProjectForm
           initialData={project}
+          onSubmitSuccess={onSubmitSuccess}
           onCancel={onClose}
-          isEditing={!!project?.id_projet}
+          isEditing={true}
           userId={userId}
           userRole={userRole}
         />

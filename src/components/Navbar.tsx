@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 
 const Navbar: React.FC = () => {
   const location = useLocation();
-  const { user, profile, logout } = useAuth();
+  const { user, profile, signOut } = useAuth();
   const isMobile = useIsMobile();
   
   const isActive = (path: string) => {
@@ -95,7 +95,7 @@ const Navbar: React.FC = () => {
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={logout} className="flex items-center space-x-2 cursor-pointer">
+            <DropdownMenuItem onClick={signOut} className="flex items-center space-x-2 cursor-pointer">
               <LogOut size={16} />
               <span>Déconnexion</span>
             </DropdownMenuItem>

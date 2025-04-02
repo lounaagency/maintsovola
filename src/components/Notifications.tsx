@@ -1,58 +1,205 @@
 
 import React, { useState, useEffect } from "react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Bell } from "lucide-react";
-import { Avatar } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "./ui/button";
+import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
+import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Notification, DatabaseNotification } from "@/types/notification";
-import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { Notification, DatabaseNotification } from "@/types/notification";
 
-const typeIcons = {
-  info: "💬",
-  validation: "✅",
-  alerte: "⚠️",
-  erreur: "❌",
-  assignment: "📋",
+interface NotificationItem {
+  id: string;
+  title: string;
+  message: string;
+  timestamp: string;
+  read: boolean;
+  type: "info" | "success" | "warning" | "error";
+  link?: string;
+  entity_id?: string;
+  entity_type?: "terrain" | "projet" | "jalon" | "investissement";
+}
+
+const NotificationItem: React.FC<{ notification: NotificationItem; onRead: (id: string) => void }> = ({ 
+  notification,
+  onRead 
+}) => {
+  const typeStyles = {
+    info: "bg-blue-50 border-blue-200",
+    success: "bg-green-50 border-green-200",
+    warning: "bg-amber-50 border-amber-200",
+    error: "bg-red-50 border-red-200",
+  };
+
+  const handleClick = () => {
+    if (!notification.read) {
+      onRead(notification.id);
+    }
+  };
+
+  const content = (
+    <motion.div
+      initial={{ opacity: 0, y: 5 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={cn(
+        "p-3 border rounded-md mb-2 relative",
+        notification.read ? "bg-gray-50 border-gray-200" : typeStyles[notification.type],
+        !notification.read && "font-medium"
+      )}
+      onClick={handleClick}
+    >
+      {!notification.read && (
+        <span className="absolute top-3 right-3 w-2 h-2 rounded-full bg-blue-500"></span>
+      )}
+      <h4 className="font-medium">{notification.title}</h4>
+      <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
+      <p className="text-xs text-gray-500 mt-2">
+        {new Date(notification.timestamp).toLocaleDateString()} • {new Date(notification.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+      </p>
+    </motion.div>
+  );
+
+  return notification.link ? (
+    <Link to={notification.link} className="block">
+      {content}
+    </Link>
+  ) : (
+    content
+  );
 };
 
 const Notifications: React.FC = () => {
-  const { user } = useAuth();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [open, setOpen] = useState(false);
+  const { user, profile } = useAuth();
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
-  useEffect(() => {
-    if (user) {
-      fetchNotifications();
+  const fetchNotifications = async () => {
+    if (!user) return;
+    
+    try {
+      setLoading(true);
       
-      // Subscribe to new notifications
+      // Instead of using rpc, use direct query to notification table
+      const { data, error } = await supabase
+        .from('notification')
+        .select('*')
+        .eq('id_destinataire', user.id)
+        .order('date_creation', { ascending: false })
+        .limit(20);
+        
+      if (error) throw error;
+      
+      // Transform database notifications to our NotificationItem format
+      const transformedNotifications: NotificationItem[] = (data as DatabaseNotification[]).map((notification) => {
+        // Determine notification type based on status or other fields
+        let type: "info" | "success" | "warning" | "error" = "info";
+        if (notification.type === "validation") type = "success";
+        if (notification.type === "alerte") type = "warning";
+        if (notification.type === "erreur") type = "error";
+        
+        // Create link based on entity type
+        let link = "";
+        if (notification.entity_type === "terrain") {
+          link = `/terrain?id=${notification.entity_id}`;
+        } else if (notification.entity_type === "projet") {
+          link = `/feed?project=${notification.entity_id}`;
+        } else if (notification.entity_type === "jalon") {
+          link = `/projet?id=${notification.projet_id}#jalons`;
+        } else if (notification.entity_type === "investissement") {
+          link = `/projet?id=${notification.projet_id}#investissements`;
+        }
+        
+        return {
+          id: notification.id_notification.toString(),
+          title: notification.titre,
+          message: notification.message,
+          timestamp: notification.date_creation,
+          read: notification.lu,
+          type,
+          link,
+          entity_id: notification.entity_id,
+          entity_type: notification.entity_type as "terrain" | "projet" | "jalon" | "investissement" | undefined
+        };
+      });
+      
+      setNotifications(transformedNotifications);
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+      toast.error("Impossible de charger les notifications");
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  useEffect(() => {
+    fetchNotifications();
+    
+    // Subscribe to new notifications via Supabase Realtime
+    if (user) {
       const channel = supabase
         .channel('notification-changes')
-        .on('postgres_changes', 
-          { 
-            event: 'INSERT', 
-            schema: 'public', 
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
             table: 'notification',
             filter: `id_destinataire=eq.${user.id}`
-          }, 
+          },
           (payload) => {
-            console.log('Nouvelle notification:', payload);
-            fetchNotifications();
+            const newNotification = payload.new as DatabaseNotification;
             
-            // Show toast for new notification
-            const newNotif = payload.new as DatabaseNotification;
-            toast.info(newNotif.titre, {
-              description: newNotif.message?.substring(0, 100),
-              duration: 5000,
+            // Add the new notification to the list
+            setNotifications(prev => {
+              // Check if notification already exists
+              const exists = prev.some(n => n.id === newNotification.id_notification.toString());
+              if (exists) return prev;
+              
+              // Determine notification type
+              let type: "info" | "success" | "warning" | "error" = "info";
+              if (newNotification.type === "validation") type = "success";
+              if (newNotification.type === "alerte") type = "warning";
+              if (newNotification.type === "erreur") type = "error";
+              
+              // Create link based on entity type
+              let link = "";
+              if (newNotification.entity_type === "terrain") {
+                link = `/terrain?id=${newNotification.entity_id}`;
+              } else if (newNotification.entity_type === "projet") {
+                link = `/feed?project=${newNotification.entity_id}`;
+              } else if (newNotification.entity_type === "jalon") {
+                link = `/projet?id=${newNotification.projet_id}#jalons`;
+              } else if (newNotification.entity_type === "investissement") {
+                link = `/projet?id=${newNotification.projet_id}#investissements`;
+              }
+              
+              const formattedNotification: NotificationItem = {
+                id: newNotification.id_notification.toString(),
+                title: newNotification.titre,
+                message: newNotification.message,
+                timestamp: newNotification.date_creation,
+                read: newNotification.lu,
+                type,
+                link,
+                entity_id: newNotification.entity_id,
+                entity_type: newNotification.entity_type as "terrain" | "projet" | "jalon" | "investissement" | undefined
+              };
+              
+              // Show toast for new notification
+              toast(formattedNotification.title, {
+                description: formattedNotification.message,
+              });
+              
+              return [formattedNotification, ...prev];
             });
           }
         )
@@ -64,181 +211,101 @@ const Notifications: React.FC = () => {
     }
   }, [user]);
 
-  const fetchNotifications = async () => {
-    if (!user) return;
-    
+  const markAsRead = async (notificationId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('notification')
-        .select('*')
-        .eq('id_destinataire', user.id)
-        .order('date_creation', { ascending: false })
-        .limit(50);
-
-      if (error) {
-        console.error("Error fetching notifications:", error);
-        return;
-      }
-      
-      // Type conversion with proper casting
-      const typedNotifications: Notification[] = (data || []).map(notif => ({
-        ...notif,
-        entity_id: notif.entity_id?.toString() || null,
-        type: (notif.type || 'info') as Notification['type']
-      }));
-      
-      setNotifications(typedNotifications);
-      setUnreadCount(typedNotifications.filter(notif => !notif.lu).length);
-    } catch (error) {
-      console.error("Error in notification retrieval:", error);
-    }
-  };
-
-  const markAsRead = async (notificationId: number) => {
-    if (!user) return;
-    
-    try {
+      // Direct update of notification record instead of using rpc
       const { error } = await supabase
         .from('notification')
         .update({ lu: true })
-        .eq('id_notification', notificationId);
-
-      if (error) {
-        console.error("Error marking notification as read:", error);
-        return;
-      }
+        .eq('id_notification', parseInt(notificationId));
+        
+      if (error) throw error;
       
-      setNotifications(notifications.map(n => 
-        n.id_notification === notificationId ? { ...n, lu: true } : n
-      ));
-      setUnreadCount(prevCount => Math.max(0, prevCount - 1));
+      // Update local state
+      setNotifications(prevNotifications => 
+        prevNotifications.map(notification => 
+          notification.id === notificationId 
+            ? { ...notification, read: true }
+            : notification
+        )
+      );
     } catch (error) {
-      console.error("Error updating notification:", error);
+      console.error("Error marking notification as read:", error);
     }
   };
-  
+
   const markAllAsRead = async () => {
-    if (!user || unreadCount === 0) return;
+    if (!user) return;
     
     try {
+      // Direct update all unread notifications for this user
       const { error } = await supabase
         .from('notification')
         .update({ lu: true })
         .eq('id_destinataire', user.id)
         .eq('lu', false);
-
-      if (error) {
-        console.error("Error marking all notifications as read:", error);
-        return;
-      }
+        
+      if (error) throw error;
       
-      setNotifications(notifications.map(n => ({ ...n, lu: true })));
-      setUnreadCount(0);
+      // Update local state
+      setNotifications(prevNotifications => 
+        prevNotifications.map(notification => ({ ...notification, read: true }))
+      );
+      
       toast.success("Toutes les notifications ont été marquées comme lues");
     } catch (error) {
-      console.error("Error updating notifications:", error);
-    }
-  };
-  
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffTime = Math.abs(now.getTime() - date.getTime());
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 0) {
-      return `Aujourd'hui à ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-    } else if (diffDays === 1) {
-      return `Hier à ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-    } else if (diffDays < 7) {
-      const days = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
-      return `${days[date.getDay()]} à ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-    } else {
-      return date.toLocaleDateString();
+      console.error("Error marking all notifications as read:", error);
+      toast.error("Une erreur s'est produite");
     }
   };
 
-  if (!user) return null;
-  
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
-      <DropdownMenuTrigger asChild>
-        <button
-          className="p-2 rounded-md relative text-gray-700 hover:bg-gray-100" 
-          title="Notifications"
-        >
-          <Bell size={22} />
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="ghost" size="icon" className="relative">
+          <Bell size={20} />
           {unreadCount > 0 && (
-            <Badge 
-              className="absolute -top-1 -right-1 flex items-center justify-center w-5 h-5 p-0 bg-red-500" 
-              variant="destructive"
-            >
-              {unreadCount > 9 ? "9+" : unreadCount}
-            </Badge>
+            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
+              {unreadCount}
+            </span>
           )}
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-[380px]">
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-80 p-0" align="end">
         <div className="flex items-center justify-between p-4 border-b">
-          <h2 className="font-semibold">Notifications</h2>
+          <h3 className="font-semibold">Notifications</h3>
           {unreadCount > 0 && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={markAllAsRead}
-              className="text-xs text-blue-600 hover:text-blue-800"
+              className="text-xs h-8"
             >
               Tout marquer comme lu
             </Button>
           )}
         </div>
-        
-        <ScrollArea className="h-[400px] max-h-[70vh]">
-          {notifications.length === 0 ? (
-            <div className="py-10 text-center text-muted-foreground">
+        <ScrollArea className="h-[300px] p-4">
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-primary"></div>
+            </div>
+          ) : notifications.length > 0 ? (
+            notifications.map((notification) => (
+              <NotificationItem 
+                key={notification.id} 
+                notification={notification} 
+                onRead={markAsRead}
+              />
+            ))
+          ) : (
+            <div className="text-center py-8 text-gray-500">
               Aucune notification
             </div>
-          ) : (
-            notifications.map((notification) => (
-              <DropdownMenuItem
-                key={notification.id_notification}
-                className={`flex flex-col items-start p-3 border-b cursor-pointer ${
-                  !notification.lu ? 'bg-blue-50' : ''
-                }`}
-                onClick={() => markAsRead(notification.id_notification)}
-              >
-                <div className="flex w-full">
-                  <Avatar className="h-10 w-10 mr-3 flex items-center justify-center bg-blue-100 text-lg">
-                    {typeIcons[notification.type] || "📩"}
-                  </Avatar>
-                  
-                  <div className="flex-1">
-                    <div className="flex justify-between items-start w-full">
-                      <h4 className={`text-sm font-medium ${!notification.lu ? 'text-blue-600' : ''}`}>
-                        {notification.titre}
-                      </h4>
-                      <span className="text-xs text-gray-500 whitespace-nowrap ml-2">
-                        {formatDate(notification.date_creation)}
-                      </span>
-                    </div>
-                    
-                    <p className="text-sm text-gray-600 line-clamp-2 mt-0.5">
-                      {notification.message}
-                    </p>
-                    
-                    {!notification.lu && (
-                      <div className="mt-1.5">
-                        <span className="inline-block h-2 w-2 bg-blue-600 rounded-full"></span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </DropdownMenuItem>
-            ))
           )}
         </ScrollArea>
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </PopoverContent>
+    </Popover>
   );
 };
 

@@ -1,10 +1,14 @@
 
-import React from "react";
+import React, { useState } from "react";
 import Navbar from "./Navbar";
-import { useLocation, Outlet } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 
-const Layout = () => {
+interface LayoutProps {
+  children: React.ReactNode;
+}
+
+const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
 
   const pageVariants = {
@@ -42,7 +46,7 @@ const Layout = () => {
             transition={pageTransition}
             className="h-full"
           >
-            <Outlet />
+            {children}
           </motion.div>
         </AnimatePresence>
       </main>

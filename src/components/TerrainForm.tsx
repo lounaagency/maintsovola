@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import {
@@ -29,19 +30,17 @@ import { useAuth } from '@/contexts/AuthContext';
 import { MapContainer, TileLayer, Marker, useMapEvents, Polygon, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Upload, X, Loader2, MapPin } from 'lucide-react';
+import { Upload, X, Loader2 } from 'lucide-react';
 
-const formSchema = yup.object({
+const formSchema = yup.object().shape({
   nom_terrain: yup.string().required('Le nom du terrain est obligatoire'),
   surface_proposee: yup.number().required('La surface proposée est obligatoire').positive('La surface doit être positive'),
   id_region: yup.string().required('La région est obligatoire'),
   id_district: yup.string().required('Le district est obligatoire'),
   id_commune: yup.string().required('La commune est obligatoire'),
-  acces_eau: yup.boolean().default(false),
-  acces_route: yup.boolean().default(false),
-}).required();
-
-type FormData = yup.InferType<typeof formSchema>;
+  acces_eau: yup.boolean().nullable(),
+  acces_route: yup.boolean().nullable(),
+});
 
 interface TerrainFormProps {
   id?: string;
@@ -65,8 +64,6 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
   const [loading, setLoading] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [mapInitialized, setMapInitialized] = useState(false);
-  const [isDrawingMode, setIsDrawingMode] = useState(false);
-  const [drawPoints, setDrawPoints] = useState<L.LatLngExpression[]>([]);
   const [polygonCoordinates, setPolygonCoordinates] = useState<L.LatLngExpression[]>([
     [-18.913684, 47.536131],
     [-18.913684, 47.546131],
@@ -80,7 +77,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const form = useForm<FormData>({
+  const form = useForm<TerrainFormData>({
     resolver: yupResolver(formSchema),
     defaultValues: {
       nom_terrain: '',
@@ -93,7 +90,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     }
   });
 
-  const { handleSubmit, setValue, control, formState: { errors } } = form;
+  const { control, handleSubmit, setValue, formState: { errors } } = form;
 
   useEffect(() => {
     fetchRegions();
@@ -219,13 +216,6 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     }
   };
 
-  const toggleDrawingMode = () => {
-    setIsDrawingMode(!isDrawingMode);
-    if (!isDrawingMode) {
-      setDrawPoints([]);
-    }
-  };
-
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     
@@ -292,7 +282,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     }
   };
 
-  const onSubmit = async (formData: FormData) => {
+  const onSubmit = async (formData: TerrainFormData) => {
     setLoading(true);
     try {
       if (!user || !user.id) {
@@ -303,47 +293,24 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       
       const allPhotoUrls = [...photoUrls.filter(url => url.includes('supabase.co')), ...uploadedPhotoUrls];
       
-      let geomData = null;
-      if (drawPoints.length >= 3) {
-        const closedPoints = [...drawPoints];
-        if (closedPoints[0] !== closedPoints[closedPoints.length - 1]) {
-          closedPoints.push(closedPoints[0]);
-        }
-        
-        const geoJsonCoords = closedPoints.map(point => {
-          const latLng = Array.isArray(point) ? point : [point.lat, point.lng];
-          return [latLng[1], latLng[0]];
-        });
-        
-        geomData = {
-          type: 'Polygon',
-          coordinates: [geoJsonCoords]
-        };
-      }
-      
-      const terrainData = {
-        id_region: parseInt(formData.id_region),
-        id_district: parseInt(formData.id_district),
-        id_commune: parseInt(formData.id_commune),
-        nom_terrain: formData.nom_terrain,
-        surface_proposee: formData.surface_proposee,
-        acces_eau: formData.acces_eau,
-        acces_route: formData.acces_route,
-        photos: allPhotoUrls.join(','),
-        id_tantsaha: user.id,
-        geom: geomData ? JSON.stringify(geomData) : null
-      };
+      // Convert form data to the correct types
+      const terrainData = convertFormDataToTerrainData(formData);
+      terrainData.id_tantsaha = user.id;
+      terrainData.photos = allPhotoUrls.join(',');
 
       let response;
       if (isEditMode && id) {
         response = await supabase
           .from('terrain')
           .update(terrainData)
-          .eq('id_terrain', parseInt(id));
+          .eq('id_terrain', id)
+          .single();
       } else {
+        const { id_terrain, ...newTerrainData } = terrainData;
         response = await supabase
           .from('terrain')
-          .insert([terrainData]);
+          .insert([newTerrainData])
+          .single();
       }
 
       if (response.error) {
@@ -373,20 +340,11 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
   };
 
   const MapEvents = () => {
-    const map = useMapEvents({
-      click(e) {
-        if (isDrawingMode) {
-          const { lat, lng } = e.latlng;
-          setDrawPoints(prev => [...prev, [lat, lng]]);
-        }
-      },
-    });
+    const map = useMap();
 
     useEffect(() => {
-      if (map) {
-        mapRef.current = map;
-        setMapInitialized(true);
-      }
+      mapRef.current = map;
+      setMapInitialized(true);
     }, [map]);
 
     return null;
@@ -581,30 +539,6 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
           </div>
           <div>
             <FormLabel>Définir la zone sur la carte</FormLabel>
-            <div className="flex justify-between items-center mb-2">
-              <Button
-                type="button"
-                variant={isDrawingMode ? "default" : "outline"}
-                size="sm"
-                onClick={toggleDrawingMode}
-              >
-                <MapPin className="h-4 w-4 mr-2" />
-                {isDrawingMode ? 'Terminer le tracé' : 'Tracer le contour'}
-              </Button>
-              
-              {isDrawingMode && (
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => setDrawPoints([])}
-                >
-                  <X className="h-4 w-4 mr-1" />
-                  Effacer
-                </Button>
-              )}
-            </div>
-            
             <MapContainer
               center={[-18.913684, 47.536131]}
               zoom={13}
@@ -616,18 +550,10 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
-              {polygonCoordinates.length >= 3 && (
-                <Polygon
-                  positions={polygonCoordinates}
-                  pathOptions={{ color: '#16a34a', weight: 2, fillOpacity: 0.2, fillColor: '#16a34a' }}
-                />
-              )}
-              {drawPoints.map((point, index) => (
-                <Marker 
-                  key={index}
-                  position={point}
-                />
-              ))}
+              <Polygon
+                positions={polygonCoordinates}
+                pathOptions={{ color: '#ff4444', weight: 2, fillOpacity: 0.5, fillColor: '#ff4444' }}
+              />
               <MapEvents />
             </MapContainer>
           </div>

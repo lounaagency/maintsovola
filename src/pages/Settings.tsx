@@ -13,11 +13,11 @@ import { User, Phone, Upload, Plus, Trash2, Check, X } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
 const Settings = () => {
-  const { user, profile } = useAuth();
+const { user, profile } = useAuth();
   // Redirect to auth if not logged in
   if (!user) {
     return <Navigate to="/auth" replace />;
-  }
+}
   const { toast } = useToast();
 
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -30,11 +30,9 @@ const Settings = () => {
   const [prenoms, setPrenoms] = useState("");
   const [telephones, setTelephones] = useState<UserTelephone[]>([]);
   const [newPhone, setNewPhone] = useState<UserTelephone>({
-    id_telephone: 0,
-    id_utilisateur: "",
     numero: "",
-    is_primary: false,
-    type: "principal", 
+    id_utilisateur: "",
+    type: "principal",
     est_whatsapp: false,
     est_mobile_banking: false
   });
@@ -68,7 +66,6 @@ const Settings = () => {
         type: item.type as "principal" | "whatsapp" | "mobile_banking" | "autre",
         est_whatsapp: item.est_whatsapp,
         est_mobile_banking: item.est_mobile_banking,
-        is_primary: item.type === "principal", // Compatibilité avec l'interface UserTelephone
         created_at: item.created_at,
         modified_at: item.modified_at
       })) || [];
@@ -205,18 +202,15 @@ const Settings = () => {
           numero: data[0].numero,
           type: data[0].type as "principal" | "whatsapp" | "mobile_banking" | "autre",
           est_whatsapp: data[0].est_whatsapp,
-          est_mobile_banking: data[0].est_mobile_banking,
-          is_primary: data[0].type === "principal", // Compatibilité avec l'interface UserTelephone
+          est_mobile_banking: data[0].est_mobile_banking
         };
         
         setTelephones([...telephones, newPhoneWithId]);
       }
       
       setNewPhone({
-        id_telephone: 0,
-        id_utilisateur: "",
         numero: "",
-        is_primary: false,
+        id_utilisateur: "",
         type: "principal",
         est_whatsapp: false,
         est_mobile_banking: false
@@ -444,8 +438,7 @@ const Settings = () => {
                         value={newPhone.type}
                         onChange={(e) => setNewPhone({
                           ...newPhone, 
-                          type: e.target.value as "principal" | "whatsapp" | "mobile_banking" | "autre",
-                          is_primary: e.target.value === "principal"
+                          type: e.target.value as "principal" | "whatsapp" | "mobile_banking" | "autre"
                         })}
                       >
                         <option value="principal">Principal</option>

@@ -1,419 +1,421 @@
-
-import React, { useState, useEffect, Suspense } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
+import React, { useState, useEffect } from "react";
+import { Navigate } from "react-router-dom";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import NewProject from "@/components/NewProject";
+import { motion } from "framer-motion";
+import { AgriculturalProject } from "@/types/agriculturalProject";
 import { supabase } from "@/integrations/supabase/client";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuRadioGroup, DropdownMenuRadioItem } from "@/components/ui/dropdown-menu";
-import { Search, Filter, ChevronRight } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
-import LandingPages from "@/components/LandingPages";
-import AgriculturalProjectCard from "@/components/AgriculturalProjectCard";
-import ProjectDetailsDialog from "@/components/ProjectDetailsDialog";
-import { useToast } from "@/components/ui/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
+import { Link } from "react-router-dom";
+import AgriculturalProjectCard from '@/components/AgriculturalProjectCard';
 
-interface Project {
-  id_projet: number;
-  surface_ha: number;
-  statut: string;
-  created_at: string;
-  id_tantsaha: string;
-  id_commune: number;
-  id_technicien: string;
-  titre?: string;
-  description?: string;
-  financement_actuel?: number;
-  cout_total?: number;
-  utilisateur: {
-    id_utilisateur: string;
-    nom: string;
-    prenoms: string;
-    photo_profil: string;
-  };
-  commune: {
-    nom_commune: string;
-    district: {
-      nom_district: string;
-      region: {
-        nom_region: string;
-      };
-    };
-  };
-}
-
-export const Feed = () => {
-  const navigate = useNavigate();
+const Feed: React.FC = () => {
+  const [projects, setProjects] = useState<AgriculturalProject[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeFilters, setActiveFilters] = useState<{
+    culture?: string;
+    region?: string;
+    district?: string;
+    commune?: string;
+  }>({});
   const { user } = useAuth();
-  const { toast } = useToast();
   
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState<'funding' | 'production'>('funding');
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-  const [regionFilter, setRegionFilter] = useState<string>("all");
-  const [cultureFilter, setCultureFilter] = useState<string>("all");
-  const [showLanding, setShowLanding] = useState(false);
-  const [regions, setRegions] = useState<{id_region: number, nom_region: string}[]>([]);
-  const [cultures, setCultures] = useState<{id_culture: number, nom_culture: string}[]>([]);
-  
+  // Redirect to auth if not logged in
+  if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
   useEffect(() => {
-    if (user) {
-      // Check if this is user's first visit
-      const hasSeenLanding = localStorage.getItem('hasSeenLanding');
-      if (!hasSeenLanding) {
-        setShowLanding(true);
-      }
-      
-      fetchProjects();
-      fetchFilters();
-    }
-  }, [user]);
-  
-  useEffect(() => {
-    applyFilters();
-  }, [searchTerm, regionFilter, cultureFilter, projects, activeTab]);
-  
-  const fetchFilters = async () => {
-    try {
-      // Fetch regions
-      const { data: regionsData, error: regionsError } = await supabase
-        .from('region')
-        .select('id_region, nom_region')
-        .order('nom_region', { ascending: true });
-        
-      if (regionsError) throw regionsError;
-      setRegions(regionsData || []);
-      
-      // Fetch cultures
-      const { data: culturesData, error: culturesError } = await supabase
-        .from('culture')
-        .select('id_culture, nom_culture')
-        .order('nom_culture', { ascending: true });
-        
-      if (culturesError) throw culturesError;
-      setCultures(culturesData || []);
-    } catch (error) {
-      console.error("Error fetching filters:", error);
-    }
-  };
+    fetchProjects();
+  }, [activeFilters]);
   
   const fetchProjects = async () => {
-    setIsLoading(true);
     try {
-      const { data, error } = await supabase
+      setLoading(true);
+      
+      let query = supabase
         .from('projet')
         .select(`
           id_projet,
           surface_ha,
           statut,
           created_at,
-          titre,
-          description,
           id_tantsaha,
           id_commune,
           id_technicien,
-          financement_actuel,
-          cout_total,
-          utilisateur:id_tantsaha(
-            id_utilisateur,
-            nom,
-            prenoms,
-            photo_profil
-          ),
-          commune:id_commune(
-            nom_commune,
-            district:id_district(
-              nom_district,
-              region:id_region(
-                nom_region
-              )
-            )
-          ),
-          projet_culture(
-            id_culture,
-            culture:id_culture(
-              nom_culture
-            )
-          )
+          utilisateur!id_tantsaha(id_utilisateur, nom, prenoms, photo_profil),
+          commune(nom_commune, district(nom_district, region(nom_region)))
         `)
-        .in('statut', ['validé', 'en_financement', 'en cours', 'en_production']);
-      
-      if (error) {
-        throw error;
+        .eq('statut', 'En finanement')
+        .order('created_at', { ascending: false });
+      if (activeFilters.region) {
+        query = query.eq('commune.district.region.nom_region', activeFilters.region);
       }
       
-      if (data) {
-        setProjects(data as any[]);
+      if (activeFilters.district) {
+        query = query.eq('commune.district.nom_district', activeFilters.district);
       }
-    } catch (error) {
-      console.error("Error fetching projects:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger les projets",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  const applyFilters = () => {
-    let filtered = [...projects];
-    
-    // Filter by tab (funding status)
-    if (activeTab === 'funding') {
-      filtered = filtered.filter(p => p.statut === 'validé' || p.statut === 'en_financement');
-    } else {
-      filtered = filtered.filter(p => p.statut === 'en cours' || p.statut === 'en_production');
-    }
-    
-    // Filter by search term
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(p => 
-        p.titre?.toLowerCase().includes(term) || 
-        p.description?.toLowerCase().includes(term) ||
-        p.utilisateur.nom.toLowerCase().includes(term) ||
-        p.commune.nom_commune.toLowerCase().includes(term) ||
-        p.commune.district.nom_district.toLowerCase().includes(term) ||
-        p.commune.district.region.nom_region.toLowerCase().includes(term)
-      );
-    }
-    
-    // Filter by region
-    if (regionFilter !== 'all') {
-      filtered = filtered.filter(p => 
-        p.commune.district.region.nom_region === regionFilter
-      );
-    }
-    
-    // Filter by culture
-    if (cultureFilter !== 'all') {
-      filtered = filtered.filter(p => 
-        p.projet_culture?.some((pc: any) => 
-          pc.culture?.nom_culture === cultureFilter
-        )
-      );
-    }
-    
-    setFilteredProjects(filtered);
-  };
-  
-  const handleProjectClick = (project: Project) => {
-    setSelectedProject(project);
-    setIsDetailsOpen(true);
-  };
-  
-  const finishLanding = () => {
-    localStorage.setItem('hasSeenLanding', 'true');
-    setShowLanding(false);
-  };
-  
-  if (!user) {
-    navigate('/auth');
-    return null;
-  }
-  
-  if (showLanding) {
-    return <LandingPages onFinish={finishLanding} />;
-  }
-  
-  return (
-    <div className="container py-6 max-w-5xl">
-      <h1 className="text-2xl font-bold mb-6">Projets agricoles</h1>
       
-      <div className="flex flex-col md:flex-row gap-4 mb-6">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-          <Input 
-            placeholder="Rechercher un projet..." 
-            className="pl-10"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
+      if (activeFilters.commune) {
+        query = query.eq('commune.nom_commune', activeFilters.commune);
+      }
         
-        <div className="flex gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="flex items-center gap-2">
-                <Filter size={16} />
-                Région
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuRadioGroup value={regionFilter} onValueChange={setRegionFilter}>
-                <DropdownMenuRadioItem value="all">Toutes les régions</DropdownMenuRadioItem>
-                {regions.map(region => (
-                  <DropdownMenuRadioItem key={region.id_region} value={region.nom_region}>
-                    {region.nom_region}
-                  </DropdownMenuRadioItem>
-                ))}
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="flex items-center gap-2">
-                <Filter size={16} />
-                Culture
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuRadioGroup value={cultureFilter} onValueChange={setCultureFilter}>
-                <DropdownMenuRadioItem value="all">Toutes les cultures</DropdownMenuRadioItem>
-                {cultures.map(culture => (
-                  <DropdownMenuRadioItem key={culture.id_culture} value={culture.nom_culture}>
-                    {culture.nom_culture}
-                  </DropdownMenuRadioItem>
-                ))}
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
+      const { data: projetsData, error: projetsError } = await query;
+        
+      if (projetsError) {
+        throw projetsError;
+      }
       
-      <Tabs 
-        defaultValue="funding"
-        value={activeTab}
-        onValueChange={(value) => setActiveTab(value as 'funding' | 'production')}
-        className="w-full"
-      >
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="funding">En cours de financement</TabsTrigger>
-          <TabsTrigger value="production">Production en cours</TabsTrigger>
+      const { data: culturesData, error: culturesError } = await supabase
+        .from('projet_culture')
+        .select(`
+          id_projet,
+          id_culture,
+          cout_exploitation_previsionnel,
+          rendement_previsionnel,
+          culture(nom_culture)
+        `);
+        
+      if (culturesError) {
+        throw culturesError;
+      }
+      
+      let filteredCultures = culturesData;
+      if (activeFilters.culture) {
+        filteredCultures = culturesData.filter(
+          pc => pc.culture && pc.culture.nom_culture === activeFilters.culture
+        );
+      }
+      
+      const { data: investissementsData, error: investissementsError } = await supabase
+        .from('investissement')
+        .select(`
+          id_projet,
+          montant
+        `);
+        
+      if (investissementsError) {
+        throw investissementsError;
+      }
+      
+      const { data: likesData, error: likesError } = await supabase
+        .from('aimer_projet')
+        .select(`
+          id_projet,
+          id_utilisateur
+        `);
+        
+      if (likesError) {
+        throw likesError;
+      }
+      
+      const { data: commentsCountData, error: commentsError } = await supabase
+        .from('commentaire')
+        .select('id_projet');
+        
+      if (commentsError) {
+        throw commentsError;
+      }
+      
+      const commentsCount: Record<string, number> = {};
+      commentsCountData.forEach(comment => {
+        const projectId = comment.id_projet.toString();
+        commentsCount[projectId] = (commentsCount[projectId] || 0) + 1;
+      });
+      
+      let finalProjects = projetsData;
+      if (activeFilters.culture) {
+        const filteredProjectIds = filteredCultures.map(fc => fc.id_projet);
+        finalProjects = projetsData.filter(
+          project => filteredProjectIds.includes(project.id_projet)
+        );
+      }
+      
+      const transformedProjects = finalProjects.map(projet => {
+        const projetCultures = culturesData.filter(pc => pc.id_projet === projet.id_projet);
+        
+        const currentFunding = investissementsData
+          .filter(inv => inv.id_projet === projet.id_projet)
+          .reduce((sum, inv) => sum + inv.montant, 0);
+        
+        const likes = likesData.filter(like => like.id_projet === projet.id_projet).length;
+        
+        const isLiked = user ? 
+          likesData.some(like => like.id_projet === projet.id_projet && like.id_utilisateur === user.id) : 
+          false;
+        
+        const commentCount = commentsCount[projet.id_projet.toString()] || 0;
+        
+        const cultivationType = projetCultures.length > 0 
+          ? projetCultures[0].culture.nom_culture 
+          : "Non spécifié";
+        
+        const farmingCost = projetCultures.length > 0 
+          ? projetCultures[0].cout_exploitation_previsionnel || 0 
+          : 0;
+        
+        const expectedYield = projetCultures.length > 0 
+          ? projetCultures[0].rendement_previsionnel || 0 
+          : 0;
+        
+        const expectedRevenue = expectedYield * projet.surface_ha * 1.5 * farmingCost;
+        
+        const tantsaha = projet.utilisateur;
+        const farmer = tantsaha ? {
+          id: tantsaha.id_utilisateur,
+          name: `${tantsaha.nom} ${tantsaha.prenoms || ''}`.trim(),
+          username: tantsaha.nom.toLowerCase().replace(/\s+/g, ''),
+          avatar: tantsaha.photo_profil,
+        } : {
+          id: "",
+          name: "Utilisateur inconnu",
+          username: "inconnu",
+          avatar: undefined,
+        };
+        
+        return {
+          id: projet.id_projet.toString(),
+          title: projet.titre || `Projet de culture de ${cultivationType}`,
+          farmer,
+          location: {
+            region: projet.commune?.district?.region?.nom_region || "Non spécifié",
+            district: projet.commune?.district?.nom_district || "Non spécifié",
+            commune: projet.commune?.nom_commune || "Non spécifié"
+          },
+          cultivationArea: projet.surface_ha,
+          cultivationType,
+          farmingCost,
+          expectedYield,
+          expectedRevenue,
+          creationDate: new Date(projet.created_at).toISOString().split('T')[0],
+          images: [],
+          description: projet.description || `Projet de culture de ${cultivationType} sur un terrain de ${projet.surface_ha} hectares.`,
+          fundingGoal: farmingCost * projet.surface_ha,
+          currentFunding,
+          likes,
+          comments: commentCount,
+          shares: 0,
+          isLiked,
+          technicienId: projet.id_technicien,
+        };
+      });
+      
+      setProjects(transformedProjects);
+    } catch (error) {
+      console.error("Erreur lors de la récupération des projets:", error);
+      toast.error("Erreur lors du chargement des projets");
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const handleNewProject = (newProject: AgriculturalProject) => {
+    setProjects(prevProjects => [newProject, ...prevProjects]);
+    toast.success("Projet créé avec succès!");
+  };
+  
+  const handleToggleLike = async (projectId: string, isCurrentlyLiked: boolean) => {
+    if (!user) {
+      toast.error("Vous devez être connecté pour aimer un projet");
+      return;
+    }
+    
+    try {
+      if (isCurrentlyLiked) {
+        const { error } = await supabase
+          .from('aimer_projet')
+          .delete()
+          .match({ 
+            id_projet: parseInt(projectId), 
+            id_utilisateur: user.id 
+          });
+          
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('aimer_projet')
+          .insert({ 
+            id_projet: parseInt(projectId), 
+            id_utilisateur: user.id 
+          });
+          
+        if (error) throw error;
+      }
+      
+      setProjects(projects.map(project => {
+        if (project.id === projectId) {
+          return {
+            ...project,
+            likes: isCurrentlyLiked ? project.likes - 1 : project.likes + 1,
+            isLiked: !isCurrentlyLiked
+          };
+        }
+        return project;
+      }));
+    } catch (error) {
+      console.error("Erreur lors de la gestion du like:", error);
+      toast.error("Erreur lors de la gestion du like");
+    }
+  };
+  
+  const applyFilter = (filterType: string, value: string) => {
+    setActiveFilters(prev => ({
+      ...prev,
+      [filterType]: value
+    }));
+  };
+  
+  const clearFilters = () => {
+    setActiveFilters({});
+  };
+  
+  const container = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+  
+  const item = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 200, damping: 25 } }
+  };
+
+  const renderActiveFilters = () => {
+    if (Object.keys(activeFilters).length === 0) return null;
+    
+    return (
+      <div className="mb-4 p-2 bg-muted rounded-lg flex flex-wrap items-center gap-2">
+        <span className="text-sm font-medium">Filtres :</span>
+        {Object.entries(activeFilters).map(([key, value]) => (
+          <span 
+            key={key} 
+            className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary text-primary-foreground"
+          >
+            {key}: {value}
+            <button 
+              className="ml-1 rounded-full" 
+              onClick={() => {
+                const newFilters = {...activeFilters};
+                delete newFilters[key as keyof typeof activeFilters];
+                setActiveFilters(newFilters);
+              }}
+            >
+              ×
+            </button>
+          </span>
+        ))}
+        <button 
+          className="text-xs text-muted-foreground hover:text-primary ml-auto"
+          onClick={clearFilters}
+        >
+          Effacer tout
+        </button>
+      </div>
+    );
+  };
+
+  return (
+    <div className="max-w-md mx-auto px-4 py-4">
+      <header className="mb-4">
+        <h1 className="text-2xl font-bold text-gray-900">Projets agricoles</h1>
+      </header>
+      
+      <Tabs defaultValue="for-you" className="mb-6">
+        <TabsList className="grid w-full grid-cols-2 bg-muted rounded-lg">
+          <TabsTrigger value="for-you" className="rounded-md">Les opportunités ouvertes</TabsTrigger>
+          <TabsTrigger value="following" className="rounded-md">Production en cours</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="funding" className="pt-6">
-          {isLoading ? (
-            <div className="grid grid-cols-1 gap-6">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="border rounded-lg p-4 space-y-4">
-                  <div className="flex items-center gap-3">
-                    <Skeleton className="h-12 w-12 rounded-full" />
-                    <div className="space-y-2">
-                      <Skeleton className="h-4 w-40" />
-                      <Skeleton className="h-3 w-24" />
-                    </div>
-                  </div>
-                  <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-3 w-1/2" />
-                  <Skeleton className="h-40 w-full rounded-md" />
-                  <Skeleton className="h-8 w-full rounded-md" />
-                  <div className="flex justify-between">
-                    <Skeleton className="h-8 w-20" />
-                    <Skeleton className="h-8 w-20" />
-                    <Skeleton className="h-8 w-20" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : filteredProjects.length > 0 ? (
-            <div className="grid grid-cols-1 gap-6">
-              {filteredProjects.map((project) => (
-                <AgriculturalProjectCard
-                  key={project.id_projet}
-                  project={project as any}
-                  onDetailsClick={() => handleProjectClick(project)}
-                />
-              ))}
+        <TabsContent value="for-you" className="mt-4">
+          <NewProject onProjectCreated={handleNewProject} />
+          
+          {renderActiveFilters()}
+          
+          {loading ? (
+            <div className="flex items-center justify-center h-40">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : (
-            <div className="text-center py-16 border rounded-lg border-dashed">
-              <h3 className="text-xl font-semibold text-gray-600">Aucun projet trouvé</h3>
-              <p className="text-gray-500 mt-2">
-                Aucun projet ne correspond à vos critères de recherche.
-              </p>
-              {searchTerm || regionFilter !== 'all' || cultureFilter !== 'all' ? (
-                <Button 
-                  variant="link" 
-                  onClick={() => {
-                    setSearchTerm('');
-                    setRegionFilter('all');
-                    setCultureFilter('all');
-                  }}
-                  className="mt-2"
-                >
-                  Réinitialiser les filtres
-                </Button>
+            <motion.div
+              className="space-y-4"
+              variants={container}
+              initial="hidden"
+              animate="show"
+            >
+              {projects.length > 0 ? (
+                projects.map((project) => (
+                  <motion.div key={project.id} variants={item}>
+                    <AgriculturalProjectCard 
+                      project={{
+                        ...project,
+                        farmer: {
+                          ...project.farmer,
+                          name: (
+                            <Link to={`/profile/${project.farmer.id}`} className="hover:underline">
+                              {project.farmer.name}
+                            </Link>
+                          )
+                        },
+                        cultivationType: (
+                          <button 
+                            className="text-primary hover:underline" 
+                            onClick={() => applyFilter('culture', project.cultivationType as string)}
+                          >
+                            {project.cultivationType}
+                          </button>
+                        ),
+                        location: {
+                          region: (
+                            <button 
+                              className="text-primary hover:underline" 
+                              onClick={() => applyFilter('region', project.location.region as string)}
+                            >
+                              {project.location.region}
+                            </button>
+                          ),
+                          district: (
+                            <button 
+                              className="text-primary hover:underline" 
+                              onClick={() => applyFilter('district', project.location.district as string)}
+                            >
+                              {project.location.district}
+                            </button>
+                          ),
+                          commune: (
+                            <button 
+                              className="text-primary hover:underline" 
+                              onClick={() => applyFilter('commune', project.location.commune as string)}
+                            >
+                              {project.location.commune}
+                            </button>
+                          )
+                        }
+                      }}
+                      onLikeToggle={(isLiked) => handleToggleLike(project.id, isLiked)}
+                    />
+                  </motion.div>
+                ))
               ) : (
-                <Button onClick={() => navigate('/terrain')} className="mt-4">
-                  Créer un projet
-                  <ChevronRight className="ml-1 h-4 w-4" />
-                </Button>
+                <div className="flex items-center justify-center h-40 border rounded-lg border-dashed text-gray-500">
+                  {Object.keys(activeFilters).length > 0 
+                    ? "Aucun projet ne correspond à ces filtres" 
+                    : "Aucun projet disponible pour le moment"}
+                </div>
               )}
-            </div>
+            </motion.div>
           )}
         </TabsContent>
         
-        <TabsContent value="production" className="pt-6">
-          {isLoading ? (
-            <div className="grid grid-cols-1 gap-6">
-              {[1, 2].map((i) => (
-                <div key={i} className="border rounded-lg p-4 space-y-4">
-                  <div className="flex items-center gap-3">
-                    <Skeleton className="h-12 w-12 rounded-full" />
-                    <div className="space-y-2">
-                      <Skeleton className="h-4 w-40" />
-                      <Skeleton className="h-3 w-24" />
-                    </div>
-                  </div>
-                  <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-3 w-1/2" />
-                  <Skeleton className="h-40 w-full rounded-md" />
-                  <Skeleton className="h-8 w-full rounded-md" />
-                </div>
-              ))}
-            </div>
-          ) : filteredProjects.length > 0 ? (
-            <div className="grid grid-cols-1 gap-6">
-              {filteredProjects.map((project) => (
-                <AgriculturalProjectCard
-                  key={project.id_projet}
-                  project={project as any}
-                  onDetailsClick={() => handleProjectClick(project)}
-                  isProduction={true}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-16 border rounded-lg border-dashed">
-              <h3 className="text-xl font-semibold text-gray-600">Aucun projet en production</h3>
-              <p className="text-gray-500 mt-2">
-                Aucun projet en cours de production ne correspond à vos critères
-              </p>
-              {searchTerm || regionFilter !== 'all' || cultureFilter !== 'all' ? (
-                <Button 
-                  variant="link" 
-                  onClick={() => {
-                    setSearchTerm('');
-                    setRegionFilter('all');
-                    setCultureFilter('all');
-                  }}
-                  className="mt-2"
-                >
-                  Réinitialiser les filtres
-                </Button>
-              ) : null}
-            </div>
-          )}
+        <TabsContent value="following" className="mt-4">
+          <div className="flex items-center justify-center h-40 border rounded-lg border-dashed text-gray-500">
+            Suivez des agriculteurs pour voir leurs projets
+          </div>
         </TabsContent>
       </Tabs>
-      
-      {selectedProject && (
-        <ProjectDetailsDialog
-          isOpen={isDetailsOpen}
-          onClose={() => setIsDetailsOpen(false)}
-          projectId={selectedProject.id_projet}
-          userRole="simple" // Default view
-        />
-      )}
     </div>
   );
 };
