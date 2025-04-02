@@ -47,34 +47,32 @@ const MessageDialog: React.FC<MessageDialogProps> = ({
       toast.error("Vous devez être connecté pour envoyer un message.");
       return;
     }
-
+  
     setLoading(true);
     try {
       const { error } = await supabase.from("message").insert([
         {
-          id_expediteur: user.id,
-          id_destinataire: recipient.id,
-          message: data.message,
-          sujet: data.subject || subject,
-          lu: false,
-        },
+          id_expediteur: user.id, // Utiliser l'ID réel de l'utilisateur
+          id_destinataire: recipient.id, // Utiliser l'ID du destinataire
+          contenu: data.message, // Utiliser la valeur du formulaire
+          lu: false // Un message n'est pas encore lu par défaut
+        }
       ]);
-
+  
       if (error) {
         throw error;
       }
-
+  
       toast.success("Message envoyé !");
       onClose();
     } catch (error: any) {
       console.error("Error sending message:", error);
-      toast.error(
-        error.message || "Une erreur est survenue lors de l'envoi du message."
-      );
+      toast.error(error.message || "Une erreur est survenue lors de l'envoi du message.");
     } finally {
       setLoading(false);
     }
   };
+  
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

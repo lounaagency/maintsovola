@@ -72,6 +72,7 @@ const formSchema = z.object({
 
 interface ProjectFormProps {
   onSubmit: (data: z.infer<typeof formSchema>) => void;
+  onSubmitSuccess: () => void;  // Ajout du traitement de la soumission
   disabled?: boolean;
   initialData?: any;
   isEditing?: boolean;
@@ -107,8 +108,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
   const { handleSubmit, control, setValue, getValues } = form;
 
   const handleInputChange = (name: string, value: any) => {
-    setValue(name, value, { shouldValidate: true });
+    setValue(name, String(value), { shouldValidate: true });
   };
+
 
   const onSubmitHandler = async (data: z.infer<typeof formSchema>) => {
     try {
