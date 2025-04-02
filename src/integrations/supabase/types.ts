@@ -1370,7 +1370,22 @@ export type Database = {
           numero?: string
           type?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "telephone_id_utilisateur_fkey1"
+            columns: ["id_utilisateur"]
+            isOneToOne: false
+            referencedRelation: "utilisateur"
+            referencedColumns: ["id_utilisateur"]
+          },
+          {
+            foreignKeyName: "telephone_id_utilisateur_fkey1"
+            columns: ["id_utilisateur"]
+            isOneToOne: false
+            referencedRelation: "utilisateurs_par_role"
+            referencedColumns: ["id_utilisateur"]
+          },
+        ]
       }
       terrain: {
         Row: {
