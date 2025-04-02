@@ -13,59 +13,63 @@ import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import { AnimatePresence } from "framer-motion";
 import Auth from "./pages/Auth";
-import { Terrain } from "./pages/Terrain"; // Fixed import
+import { Terrain } from "./pages/Terrain";
 import { AuthProvider } from "./contexts/AuthContext";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
+// Fix: Make sure App is a proper React component function
+const App = () => {
+  return (
+    <QueryClientProvider client={queryClient}>
+      {/* Fix: Move TooltipProvider inside the component rendering */}
       <BrowserRouter>
         <AuthProvider>
           <AnimatePresence mode="wait">
-            <Routes>
-              <Route path="/" element={<Navigate to="/feed" replace />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/feed" element={
-                <Layout>
-                  <Feed />
-                </Layout>
-              } />
-              <Route path="/messages" element={
-                <Layout>
-                  <Messages />
-                </Layout>
-              } />
-              <Route path="/profile" element={
-                <Layout>
-                  <Profile />
-                </Layout>
-              } />
-              <Route path="/terrain" element={
-                <Layout>
-                  <Terrain />
-                </Layout>
-              } />
-              <Route path="/settings" element={
-                <Layout>
-                  <Settings />
-                </Layout>
-              } />
-              <Route path="/404" element={
-                <Layout>
-                  <NotFound />
-                </Layout>
-              } />
-              <Route path="*" element={<Navigate to="/feed" replace />} />
-            </Routes>
+            <TooltipProvider>
+              <Routes>
+                <Route path="/" element={<Navigate to="/feed" replace />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/feed" element={
+                  <Layout>
+                    <Feed />
+                  </Layout>
+                } />
+                <Route path="/messages" element={
+                  <Layout>
+                    <Messages />
+                  </Layout>
+                } />
+                <Route path="/profile" element={
+                  <Layout>
+                    <Profile />
+                  </Layout>
+                } />
+                <Route path="/terrain" element={
+                  <Layout>
+                    <Terrain />
+                  </Layout>
+                } />
+                <Route path="/settings" element={
+                  <Layout>
+                    <Settings />
+                  </Layout>
+                } />
+                <Route path="/404" element={
+                  <Layout>
+                    <NotFound />
+                  </Layout>
+                } />
+                <Route path="*" element={<Navigate to="/feed" replace />} />
+              </Routes>
+              <Toaster />
+              <Sonner />
+            </TooltipProvider>
           </AnimatePresence>
         </AuthProvider>
       </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+    </QueryClientProvider>
+  );
+};
 
 export default App;
