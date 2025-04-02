@@ -9,6 +9,7 @@ export interface TerrainFormData {
   id_commune: string;
   acces_eau: boolean;
   acces_route: boolean;
+  photos?: string | string[];
 }
 
 export const convertFormDataToTerrainData = (formData: TerrainFormData): TerrainData => {
@@ -20,6 +21,6 @@ export const convertFormDataToTerrainData = (formData: TerrainFormData): Terrain
     surface_proposee: formData.surface_proposee,
     acces_eau: formData.acces_eau,
     acces_route: formData.acces_route,
-    photos: [] // Initialize with empty array
+    photos: formData.photos || [] // Initialize with empty array
   };
 };

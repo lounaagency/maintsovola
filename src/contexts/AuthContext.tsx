@@ -16,6 +16,7 @@ interface AuthContextType {
   isSimpleUser: () => boolean;
   isTechnicien: () => boolean;
   isSuperviseur: () => boolean;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -94,10 +95,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .eq('id_utilisateur', userId);
         
         if (telephonesData) {
-          telephones = telephonesData;
+          telephones = telephonesData.map(phone => ({
+            id_telephone: phone.id_telephone,
+            id_utilisateur: phone.id_utilisateur,
+            numero: phone.numero,
+            type: phone.type as "principal" | "whatsapp" | "mobile_banking" | "autre",
+            est_whatsapp: phone.est_whatsapp,
+            est_mobile_banking: phone.est_mobile_banking,
+            created_at: phone.created_at,
+            modified_at: phone.modified_at
+          }));
         }
       } else {
-        telephones = profileData.telephones;
+        telephones = profileData.telephones.map(phone => ({
+          id_telephone: phone.id_telephone,
+          id_utilisateur: phone.id_utilisateur,
+          numero: phone.numero,
+          type: phone.type as "principal" | "whatsapp" | "mobile_banking" | "autre",
+          est_whatsapp: phone.est_whatsapp,
+          est_mobile_banking: phone.est_mobile_banking,
+          created_at: phone.created_at,
+          modified_at: phone.modified_at
+        }));
       }
 
       setProfile({
@@ -106,6 +125,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
     } catch (error) {
       console.error('Error fetching user profile:', error);
+    }
+  };
+
+  const refreshProfile = async () => {
+    if (user?.id) {
+      await fetchUserProfile(user.id);
     }
   };
 
@@ -303,7 +328,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       setUser(null);
       setProfile(null);
-      navigate('/');
+      navigate('/auth');
       toast.success('Déconnexion réussie');
     } catch (error: any) {
       console.error('Logout error:', error);
@@ -376,15 +401,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // User role helper functions
   const isSimpleUser = () => {
-    return profile?.role?.nom_role === 'simple';
+    return profile?.nom_role === 'simple';
   };
 
   const isTechnicien = () => {
-    return profile?.role?.nom_role === 'technicien';
+    return profile?.nom_role === 'technicien';
   };
 
   const isSuperviseur = () => {
-    return profile?.role?.nom_role === 'superviseur';
+    return profile?.nom_role === 'superviseur';
   };
 
   const contextValue: AuthContextType = {
@@ -397,7 +422,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     updateProfile,
     isSimpleUser,
     isTechnicien,
-    isSuperviseur
+    isSuperviseur,
+    refreshProfile
   };
 
   return (

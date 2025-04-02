@@ -1,376 +1,275 @@
-import React from "react";
-import { TerrainData } from "@/types/terrain";
+
+import React, { useState } from "react";
+import { TrashIcon, PencilIcon, MessageSquareIcon, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from "@/components/ui/table";
-import { Check, Edit, MessageSquare } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
+import { TerrainData } from "@/types/terrain";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useIsMobile } from "@/hooks/use-mobile";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface TerrainTableProps {
   terrains: TerrainData[];
-  type?: 'validated' | 'pending';
+  type: "pending" | "validated";
   userRole?: string;
-  onTerrainUpdate?: () => void;
-  techniciens?: { id_utilisateur: string; nom: string; prenoms?: string }[];
   onEdit?: (terrain: TerrainData) => void;
+  onTerrainUpdate?: () => void;
   onContactTechnicien?: (terrain: TerrainData) => void;
+  techniciens?: { id_utilisateur: string; nom: string; prenoms?: string }[];
 }
 
-const TerrainTable: React.FC<TerrainTableProps> = ({ 
-  terrains, 
-  type = 'pending', 
-  userRole, 
-  onTerrainUpdate,
-  techniciens,
+const TerrainTable: React.FC<TerrainTableProps> = ({
+  terrains,
+  type,
+  userRole,
   onEdit,
-  onContactTechnicien
+  onTerrainUpdate,
+  onContactTechnicien,
+  techniciens,
 }) => {
-  const { user } = useAuth();
-  const isMobile = useIsMobile();
+  const [assignTechnicienId, setAssignTechnicienId] = useState<string>("");
+  const [pendingUpdate, setPendingUpdate] = useState<boolean>(false);
 
-  const handleValidate = async (terrainId: number) => {
+  const handleDeleteTerrain = async (terrainId: number | undefined) => {
+    if (!terrainId) return;
+
     try {
-      if (!['technicien', 'superviseur'].includes(userRole || '')) {
-        toast({
-          title: "Accès refusé",
-          description: "Vous n'avez pas les permissions nécessaires pour valider ce terrain",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      if (userRole === 'technicien') {
-        const terrain = terrains.find(t => t.id_terrain === terrainId);
-        if (terrain?.id_technicien !== user?.id) {
-          toast({
-            title: "Accès refusé",
-            description: "Vous pouvez uniquement valider les terrains qui vous sont assignés",
-            variant: "destructive"
-          });
-          return;
-        }
-      }
-
+      setPendingUpdate(true);
       const { error } = await supabase
-        .from('terrain')
-        .update({ 
-          statut: true,
-          surface_validee: terrains.find(t => t.id_terrain === terrainId)?.surface_proposee
-        })
-        .eq('id_terrain', terrainId);
+        .from("terrain")
+        .update({ archive: true })
+        .eq("id_terrain", terrainId);
 
       if (error) throw error;
-      
-      toast({
-        title: "Succès",
-        description: "Le terrain a été validé avec succès",
-      });
-      
+
+      toast.success("Terrain supprimé avec succès");
       if (onTerrainUpdate) onTerrainUpdate();
     } catch (error) {
-      console.error('Erreur lors de la validation du terrain:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de valider le terrain",
-        variant: "destructive"
-      });
+      console.error("Error deleting terrain:", error);
+      toast.error("Erreur lors de la suppression du terrain");
+    } finally {
+      setPendingUpdate(false);
     }
   };
 
-  const handleAssignTechnician = async (terrainId: number, technicianId: string) => {
-    try {
-      if (userRole !== 'superviseur') {
-        toast({
-          title: "Accès refusé",
-          description: "Seuls les superviseurs peuvent assigner des techniciens",
-          variant: "destructive"
-        });
-        return;
-      }
+  const handleAssignTechnicien = async (terrainId: number | undefined) => {
+    if (!terrainId || !assignTechnicienId) return;
 
+    try {
+      setPendingUpdate(true);
       const { error } = await supabase
-        .from('terrain')
-        .update({ id_technicien: technicianId })
-        .eq('id_terrain', terrainId);
+        .from("terrain")
+        .update({ id_technicien: assignTechnicienId })
+        .eq("id_terrain", terrainId);
 
       if (error) throw error;
 
-      await supabase.from('notification')
-        .insert([{
-          id_destinataire: technicianId,
-          id_expediteur: user?.id,
-          titre: "Nouvelle affectation de terrain",
-          message: `Vous avez été assigné au terrain #${terrainId}`,
-          entity_type: "terrain",
-          entity_id: terrainId
-        }]);
-      
-      toast("Technicien assigné avec succès!");
+      toast.success("Technicien assigné avec succès");
       if (onTerrainUpdate) onTerrainUpdate();
     } catch (error) {
       console.error("Error assigning technician:", error);
-      toast("Erreur lors de l'assignation du technicien");
+      toast.error("Erreur lors de l'assignation du technicien");
+    } finally {
+      setPendingUpdate(false);
+      setAssignTechnicienId("");
     }
   };
 
-  const canEdit = (terrain: TerrainData): boolean => {
-    if (!user) return false;
-    
-    if (['agriculteur', 'investisseur'].includes(userRole || '') && terrain.id_tantsaha === user.id) {
-      return terrain.statut === false;
-    }
-    
-    if (userRole === 'technicien' && terrain.id_technicien === user.id) {
-      return true;
-    }
-    
-    if (userRole === 'superviseur') return true;
-    
-    return false;
-  };
+  const handleValidateTerrain = async (terrainId: number | undefined) => {
+    if (!terrainId) return;
 
-  const canContactTechnicien = (terrain: TerrainData): boolean => {
-    if (!user) return false;
-    
-    if (['agriculteur', 'investisseur'].includes(userRole || '') && terrain.id_tantsaha === user.id) {
-      return terrain.statut === true && !!terrain.id_technicien;
-    }
-    
-    return false;
-  };
+    try {
+      setPendingUpdate(true);
+      const { error } = await supabase
+        .from("terrain")
+        .update({ statut: true })
+        .eq("id_terrain", terrainId);
 
-  const handleEdit = (terrain: TerrainData) => {
-    if (onEdit) {
-      onEdit(terrain);
+      if (error) throw error;
+
+      toast.success("Terrain validé avec succès");
+      if (onTerrainUpdate) onTerrainUpdate();
+    } catch (error) {
+      console.error("Error validating terrain:", error);
+      toast.error("Erreur lors de la validation du terrain");
+    } finally {
+      setPendingUpdate(false);
     }
   };
 
-  const handleContactTechnicien = (terrain: TerrainData) => {
-    if (onContactTechnicien) {
-      onContactTechnicien(terrain);
-    }
-  };
-
-  const filteredTerrains = terrains.filter(terrain => 
-    type === 'validated' ? terrain.statut === true : terrain.statut === false
-  );
-
-  if (isMobile) {
+  if (terrains.length === 0) {
     return (
-      <div className="space-y-4">
-        {filteredTerrains.length > 0 ? (
-          filteredTerrains.map((terrain) => (
-            <div key={terrain.id_terrain} className="border rounded-md p-3 bg-white">
-              <div className="grid grid-cols-2 gap-2 mb-3">
-                <div>
-                  <p className="text-xs text-muted-foreground">ID</p>
-                  <p className="text-sm font-medium">{terrain.id_terrain}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Nom</p>
-                  <p className="text-sm font-medium">{terrain.nom_terrain}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Surface</p>
-                  <p className="text-sm font-medium">{terrain.surface_proposee} ha</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Région</p>
-                  <p className="text-sm font-medium">{terrain.region_name}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Accès eau</p>
-                  <p className="text-sm font-medium">{terrain.acces_eau ? "Oui" : "Non"}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Accès route</p>
-                  <p className="text-sm font-medium">{terrain.acces_route ? "Oui" : "Non"}</p>
-                </div>
-              </div>
-
-              {type === 'pending' && userRole === 'superviseur' && (
-                <div className="mb-3">
-                  <p className="text-xs text-muted-foreground mb-1">Technicien</p>
-                  {terrain.id_technicien ? (
-                    <p className="text-sm">{terrain.techniqueNom || 'Non spécifié'}</p>
-                  ) : (
-                    <select
-                      className="border p-1 rounded-md w-full text-sm"
-                      onChange={(e) => handleAssignTechnician(terrain.id_terrain || 0, e.target.value)}
-                    >
-                      <option value="">Sélectionner un technicien</option>
-                      {techniciens?.map((tech) => (
-                        <option key={tech.id_utilisateur} value={tech.id_utilisateur}>
-                          {tech.nom} {tech.prenoms || ''}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-              )}
-              
-              {type === 'validated' && (
-                <div className="mb-3">
-                  <p className="text-xs text-muted-foreground">Surface validée</p>
-                  <p className="text-sm font-medium">{terrain.surface_validee || terrain.surface_proposee} ha</p>
-                </div>
-              )}
-              
-              <div className="flex justify-end gap-2 mt-2">
-                {type === 'pending' && (userRole === 'technicien' || userRole === 'superviseur') && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleValidate(terrain.id_terrain || 0)}
-                    disabled={userRole === 'technicien' && terrain.id_technicien !== user?.id}
-                  >
-                    <Check className="h-4 w-4 mr-1" />
-                    Valider
-                  </Button>
-                )}
-                {canEdit(terrain) && (
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => handleEdit(terrain)}
-                  >
-                    <Edit className="h-4 w-4 mr-1" />
-                    Modifier
-                  </Button>
-                )}
-                {canContactTechnicien(terrain) && (
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => handleContactTechnicien(terrain)}
-                  >
-                    <MessageSquare className="h-4 w-4 mr-1" />
-                    Contacter
-                  </Button>
-                )}
-              </div>
-            </div>
-          ))
-        ) : (
-          <div className="text-center py-4 border rounded-md">
-            Aucun terrain {type === 'validated' ? 'validé' : 'en attente'} disponible
-          </div>
-        )}
+      <div className="text-center py-8 border rounded-md border-dashed">
+        <p className="text-gray-500">Aucun terrain {type === "pending" ? "en attente" : "validé"}</p>
       </div>
     );
   }
 
+  const renderTerrainTableHeader = () => (
+    <thead>
+      <tr className="border-b bg-muted/50">
+        <th className="text-left p-2">Nom</th>
+        <th className="text-left p-2">Surface (ha)</th>
+        <th className="text-left p-2">Localisation</th>
+        {userRole === "superviseur" && type === "pending" && (
+          <th className="text-left p-2">Technicien</th>
+        )}
+        {type === "validated" && <th className="text-left p-2">Technicien</th>}
+        <th className="text-right p-2">Actions</th>
+      </tr>
+    </thead>
+  );
+
   return (
-    <div className="rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>ID</TableHead>
-            <TableHead>Nom</TableHead>
-            <TableHead>Surface</TableHead>
-            <TableHead>Zone géographique</TableHead>
-            <TableHead>Accès eau</TableHead>
-            <TableHead>Accès route</TableHead>
-            {type === 'pending' && userRole === 'superviseur' && (
-              <TableHead>Technicien</TableHead>
-            )}
-            {type === 'validated' && (
-              <TableHead>Surface validée</TableHead>
-            )}
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {filteredTerrains.length > 0 ? (
-            filteredTerrains.map((terrain) => (
-              <TableRow key={terrain.id_terrain}>
-                <TableCell>{terrain.id_terrain}</TableCell>
-                <TableCell>{terrain.nom_terrain}</TableCell>
-                <TableCell>{terrain.surface_proposee} ha</TableCell>
-                <TableCell>
-                  {terrain.region_name || 'N/A'}, 
-                  {terrain.district_name || 'N/A'}, 
-                  {terrain.commune_name || 'N/A'}
-                </TableCell>
-                <TableCell>{terrain.acces_eau ? "Oui" : "Non"}</TableCell>
-                <TableCell>{terrain.acces_route ? "Oui" : "Non"}</TableCell>
-                {type === 'pending' && userRole === 'superviseur' && (
-                  <TableCell>
-                    {terrain.id_technicien ? (
-                      `${terrain.techniqueNom || 'Non spécifié'}`
-                    ) : (
-                      <select
-                        className="border p-1 rounded-md w-full"
-                        onChange={(e) => handleAssignTechnician(terrain.id_terrain || 0, e.target.value)}
-                      >
-                        <option value="">Sélectionner un technicien</option>
-                        {techniciens?.map((tech) => (
-                          <option key={tech.id_utilisateur} value={tech.id_utilisateur}>
-                            {tech.nom} {tech.prenoms || ''}
-                          </option>
+    <div className="overflow-x-auto rounded-md border">
+      <table className="w-full text-sm">
+        {renderTerrainTableHeader()}
+        <tbody>
+          {terrains.map((terrain) => (
+            <tr key={terrain.id_terrain} className="border-b hover:bg-muted/50">
+              <td className="p-2">{terrain.nom_terrain}</td>
+              <td className="p-2">{terrain.surface_proposee}</td>
+              <td className="p-2">
+                {terrain.commune_name && terrain.district_name && terrain.region_name
+                  ? `${terrain.commune_name}, ${terrain.district_name}, ${terrain.region_name}`
+                  : "Non spécifié"}
+              </td>
+
+              {/* Technicien column for supervisor (pending terrains) */}
+              {userRole === "superviseur" && type === "pending" && (
+                <td className="p-2">
+                  {terrain.id_technicien ? (
+                    terrain.techniqueNom || "Assigné"
+                  ) : techniciens ? (
+                    <Select
+                      value={assignTechnicienId}
+                      onValueChange={(value) => setAssignTechnicienId(value)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Assigner..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {techniciens.map((tech) => (
+                          <SelectItem key={tech.id_utilisateur} value={tech.id_utilisateur}>
+                            {tech.nom} {tech.prenoms || ""}
+                          </SelectItem>
                         ))}
-                      </select>
-                    )}
-                  </TableCell>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    "Non assigné"
+                  )}
+                </td>
+              )}
+
+              {/* Technicien column for validated terrains */}
+              {type === "validated" && (
+                <td className="p-2">{terrain.techniqueNom || "Non assigné"}</td>
+              )}
+
+              <td className="p-2 text-right space-x-1 whitespace-nowrap">
+                {/* Edit button */}
+                {onEdit && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onEdit(terrain)}
+                    className="px-2"
+                  >
+                    <PencilIcon className="h-4 w-4" />
+                    <span className="sr-only">Modifier</span>
+                  </Button>
                 )}
-                {type === 'validated' && (
-                  <TableCell>{terrain.surface_validee || terrain.surface_proposee} ha</TableCell>
+
+                {/* Assign technicien button for superviseur */}
+                {userRole === "superviseur" &&
+                  type === "pending" &&
+                  !terrain.id_technicien &&
+                  assignTechnicienId && (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => handleAssignTechnicien(terrain.id_terrain)}
+                      disabled={pendingUpdate}
+                      className="px-2"
+                    >
+                      <Check className="h-4 w-4" />
+                      <span className="sr-only">Assigner</span>
+                    </Button>
+                  )}
+
+                {/* Validate button for technicien and superviseur */}
+                {((userRole === "technicien" && terrain.id_technicien) ||
+                  (userRole === "superviseur" && terrain.id_technicien)) &&
+                  type === "pending" && (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => handleValidateTerrain(terrain.id_terrain)}
+                      disabled={pendingUpdate}
+                    >
+                      Valider
+                    </Button>
+                  )}
+
+                {/* Delete button */}
+                {((userRole === "simple" && type === "pending") ||
+                  userRole === "technicien") && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="px-2">
+                        <TrashIcon className="h-4 w-4 text-destructive" />
+                        <span className="sr-only">Supprimer</span>
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Confirmation</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Êtes-vous sûr de vouloir supprimer ce terrain ?
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                        <AlertDialogAction
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          onClick={() => handleDeleteTerrain(terrain.id_terrain)}
+                        >
+                          Supprimer
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 )}
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    {type === 'pending' && (userRole === 'technicien' || userRole === 'superviseur') && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleValidate(terrain.id_terrain || 0)}
-                        disabled={userRole === 'technicien' && terrain.id_technicien !== user?.id}
-                      >
-                        <Check className="h-4 w-4 mr-1" />
-                        Valider
-                      </Button>
-                    )}
-                    {canEdit(terrain) && (
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => handleEdit(terrain)}
-                      >
-                        <Edit className="h-4 w-4 mr-1" />
-                        Modifier
-                      </Button>
-                    )}
-                    {canContactTechnicien(terrain) && (
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => handleContactTechnicien(terrain)}
-                      >
-                        <MessageSquare className="h-4 w-4 mr-1" />
-                        Contacter
-                      </Button>
-                    )}
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))
-          ) : (
-            <TableRow>
-              <TableCell colSpan={type === 'pending' && userRole === 'superviseur' ? 9 : 8} className="text-center py-4">
-                Aucun terrain {type === 'validated' ? 'validé' : 'en attente'} disponible
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
+
+                {/* Contact technicien button */}
+                {type === "validated" &&
+                  userRole === "simple" &&
+                  onContactTechnicien && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onContactTechnicien(terrain)}
+                    >
+                      <MessageSquareIcon className="h-4 w-4 mr-1" />
+                      Contact
+                    </Button>
+                  )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 };

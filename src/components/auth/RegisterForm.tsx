@@ -1,11 +1,19 @@
 
 import React, { useState } from "react";
-import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
-import { container, item, fadeIn } from "./motionConstants";
+import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+  FormDescription,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { useForm } from "react-hook-form";
+import { Loader2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { isValidEmail, isValidPhoneNumber } from "@/lib/utils";
 
@@ -14,229 +22,239 @@ interface RegisterFormProps {
 }
 
 const RegisterForm: React.FC<RegisterFormProps> = ({ switchToLogin }) => {
-  const { signUp } = useAuth();
-  const [nom, setNom] = useState("");
-  const [prenoms, setPrenoms] = useState("");
-  const [email, setEmail] = useState("");
-  const [telephone, setTelephone] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [isInvestor, setIsInvestor] = useState(false);
-  const [isFarmingOwner, setIsFarmingOwner] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const { signup, loading } = useAuth();
+  const [errorMessage, setErrorMessage] = useState("");
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-    
-    if (!nom.trim()) {
-      newErrors.nom = "Le nom est obligatoire";
-    }
-    
-    if (!email.trim() && !telephone.trim()) {
-      newErrors.email = "Au moins un email ou un numéro de téléphone est obligatoire";
-      newErrors.telephone = "Au moins un email ou un numéro de téléphone est obligatoire";
-    }
-    
-    if (email && !isValidEmail(email)) {
-      newErrors.email = "Format d'email invalide";
-    }
-    
-    if (telephone && !isValidPhoneNumber(telephone)) {
-      newErrors.telephone = "Format de téléphone invalide";
-    }
-    
-    if (!password) {
-      newErrors.password = "Le mot de passe est obligatoire";
-    } else if (password.length < 6) {
-      newErrors.password = "Le mot de passe doit contenir au moins 6 caractères";
-    }
-    
-    if (password !== confirmPassword) {
-      newErrors.confirmPassword = "Les mots de passe ne correspondent pas";
-    }
-    
-    return newErrors;
-  };
+  const form = useForm({
+    defaultValues: {
+      nom: "",
+      prenoms: "",
+      email: "",
+      phone: "",
+      password: "",
+      confirmPassword: "",
+      is_investor: false,
+      is_farming_owner: false
+    },
+  });
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const onSubmit = async (values: {
+    nom: string;
+    prenoms: string;
+    email: string;
+    phone: string;
+    password: string;
+    confirmPassword: string;
+    is_investor: boolean;
+    is_farming_owner: boolean;
+  }) => {
+    setErrorMessage("");
     
-    const formErrors = validateForm();
-    if (Object.keys(formErrors).length > 0) {
-      setErrors(formErrors);
+    if (!values.nom.trim()) {
+      setErrorMessage("Le nom est obligatoire.");
       return;
     }
-    
-    setIsSubmitting(true);
-    setErrors({});
+
+    if (!values.email.trim() && !values.phone.trim()) {
+      setErrorMessage("Email ou numéro de téléphone obligatoire.");
+      return;
+    }
+
+    if (values.email && !isValidEmail(values.email)) {
+      setErrorMessage("Format d'email invalide.");
+      return;
+    }
+
+    if (values.phone && !isValidPhoneNumber(values.phone)) {
+      setErrorMessage("Format de téléphone invalide (ex: 0XXXXXXXXX ou +261XXXXXXXXX).");
+      return;
+    }
+
+    if (!values.password) {
+      setErrorMessage("Mot de passe obligatoire.");
+      return;
+    }
+
+    if (values.password !== values.confirmPassword) {
+      setErrorMessage("Les mots de passe ne correspondent pas.");
+      return;
+    }
 
     try {
-      const userData = {
-        nom,
-        prenoms,
-        email: email || undefined,
-        telephone: telephone || undefined,
-        is_investor: isInvestor,
-        is_farming_owner: isFarmingOwner,
-        role: "simple" // Default role is simple
-      };
-      
-      await signUp(email || telephone, password, userData);
-      switchToLogin(); // Redirect to login after successful registration
-    } catch (error: any) {
-      console.error("Registration error:", error);
-      setErrors({
-        form: error.message || "Une erreur est survenue lors de l'inscription"
+      await signup({
+        nom: values.nom,
+        prenoms: values.prenoms,
+        email: values.email || undefined,
+        phone: values.phone || undefined,
+        password: values.password,
+        is_investor: values.is_investor,
+        is_farming_owner: values.is_farming_owner
       });
-    } finally {
-      setIsSubmitting(false);
+      
+      // The switchToLogin will be called inside the signup function after success
+    } catch (error) {
+      console.error("Registration error:", error);
+      setErrorMessage("Erreur lors de l'inscription. Veuillez réessayer.");
     }
   };
 
   return (
-    <motion.div 
-      variants={container}
-      initial="hidden"
-      animate="show"
-      className="space-y-6 w-full"
-    >
-      {errors.form && (
-        <motion.div
-          variants={fadeIn}
-          className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-md text-sm"
-        >
-          {errors.form}
-        </motion.div>
-      )}
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="nom"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Nom <span className="text-red-500">*</span></FormLabel>
+              <FormControl>
+                <Input placeholder="Votre nom" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <motion.div variants={item} className="space-y-2">
-          <Label htmlFor="nom">Nom <span className="text-red-500">*</span></Label>
-          <Input
-            id="nom"
-            type="text"
-            value={nom}
-            onChange={(e) => setNom(e.target.value)}
-            placeholder="Votre nom"
-            className={errors.nom ? "border-red-500" : ""}
-          />
-          {errors.nom && <p className="text-sm text-red-500">{errors.nom}</p>}
-        </motion.div>
-        
-        <motion.div variants={item} className="space-y-2">
-          <Label htmlFor="prenoms">Prénoms</Label>
-          <Input
-            id="prenoms"
-            type="text"
-            value={prenoms}
-            onChange={(e) => setPrenoms(e.target.value)}
-            placeholder="Vos prénoms"
-          />
-        </motion.div>
+        <FormField
+          control={form.control}
+          name="prenoms"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Prénoms</FormLabel>
+              <FormControl>
+                <Input placeholder="Vos prénoms" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-        <motion.div variants={item} className="space-y-2">
-          <Label htmlFor="email">Email {!telephone && <span className="text-red-500">*</span>}</Label>
-          <Input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="votre@email.com"
-            className={errors.email ? "border-red-500" : ""}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email</FormLabel>
+                <FormControl>
+                  <Input placeholder="nom@exemple.com" type="email" {...field} />
+                </FormControl>
+                <FormDescription>
+                  Email ou téléphone obligatoire
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
           />
-          {errors.email && <p className="text-sm text-red-500">{errors.email}</p>}
-        </motion.div>
-        
-        <motion.div variants={item} className="space-y-2">
-          <Label htmlFor="telephone">Téléphone {!email && <span className="text-red-500">*</span>}</Label>
-          <Input
-            id="telephone"
-            type="tel"
-            value={telephone}
-            onChange={(e) => setTelephone(e.target.value)}
-            placeholder="032 00 000 00"
-            className={errors.telephone ? "border-red-500" : ""}
-          />
-          {errors.telephone && <p className="text-sm text-red-500">{errors.telephone}</p>}
-          <p className="text-xs text-muted-foreground">Format: 032XXXXXXX ou 033XXXXXXX</p>
-        </motion.div>
-        
-        <motion.div variants={item} className="space-y-2">
-          <Label htmlFor="password">Mot de passe <span className="text-red-500">*</span></Label>
-          <Input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="********"
-            className={errors.password ? "border-red-500" : ""}
-          />
-          {errors.password && <p className="text-sm text-red-500">{errors.password}</p>}
-        </motion.div>
-        
-        <motion.div variants={item} className="space-y-2">
-          <Label htmlFor="confirmPassword">Confirmer mot de passe <span className="text-red-500">*</span></Label>
-          <Input
-            id="confirmPassword"
-            type="password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            placeholder="********"
-            className={errors.confirmPassword ? "border-red-500" : ""}
-          />
-          {errors.confirmPassword && <p className="text-sm text-red-500">{errors.confirmPassword}</p>}
-        </motion.div>
 
-        <motion.div variants={item} className="space-y-2 pt-2">
-          <Label>Pourquoi rejoindre Maintso Vola ?</Label>
-          <div className="flex items-center space-x-2">
-            <Checkbox 
-              id="isInvestor" 
-              checked={isInvestor}
-              onCheckedChange={(checked) => setIsInvestor(checked === true)}
-            />
-            <label
-              htmlFor="isInvestor"
-              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-            >
-              Je souhaite investir dans l'agriculture
-            </label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Checkbox 
-              id="isFarmingOwner" 
-              checked={isFarmingOwner}
-              onCheckedChange={(checked) => setIsFarmingOwner(checked === true)}
-            />
-            <label
-              htmlFor="isFarmingOwner"
-              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-            >
-              Je cherche des investisseurs pour mon projet agricole
-            </label>
-          </div>
-        </motion.div>
-        
-        <motion.div variants={item}>
-          <Button type="submit" className="w-full" disabled={isSubmitting}>
-            {isSubmitting ? "Inscription en cours..." : "S'inscrire"}
-          </Button>
-        </motion.div>
-      </form>
-      
-      <motion.div variants={item} className="text-center">
-        <p className="text-sm text-muted-foreground">
-          Déjà un compte ?{" "}
-          <button 
-            type="button" 
-            onClick={switchToLogin} 
-            className="text-green-600 hover:underline font-medium">
+          <FormField
+            control={form.control}
+            name="phone"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Téléphone</FormLabel>
+                <FormControl>
+                  <Input placeholder="+261XXXXXXXXX" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Mot de passe <span className="text-red-500">*</span></FormLabel>
+                <FormControl>
+                  <Input type="password" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="confirmPassword"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Confirmer le mot de passe <span className="text-red-500">*</span></FormLabel>
+                <FormControl>
+                  <Input type="password" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <FormField
+            control={form.control}
+            name="is_investor"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+                <FormLabel className="font-normal">
+                  Je souhaite investir dans des projets agricoles
+                </FormLabel>
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="is_farming_owner"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+                <FormLabel className="font-normal">
+                  Je cherche des investisseurs pour mes terrains
+                </FormLabel>
+              </FormItem>
+            )}
+          />
+        </div>
+
+        {errorMessage && <p className="text-sm font-medium text-destructive">{errorMessage}</p>}
+
+        <Button type="submit" className="w-full" disabled={loading}>
+          {loading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Création du compte...
+            </>
+          ) : (
+            "S'inscrire"
+          )}
+        </Button>
+
+        <p className="text-center text-sm text-muted-foreground">
+          Vous avez déjà un compte ?{" "}
+          <button
+            type="button"
+            onClick={switchToLogin}
+            className="text-green-600 font-medium hover:underline"
+          >
             Se connecter
           </button>
         </p>
-      </motion.div>
-    </motion.div>
+      </form>
+    </Form>
   );
 };
 

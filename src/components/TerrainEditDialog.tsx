@@ -30,7 +30,7 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
 }) => {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {terrain?.id_terrain ? "Modifier le terrain" : "Ajouter un terrain"}
