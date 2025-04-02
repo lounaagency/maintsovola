@@ -173,7 +173,6 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
               </button>
             </div>
             
-            {canInvest && (
               <Button 
                 size="sm" 
                 className="text-xs" 
@@ -182,7 +181,6 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
               >
                 {fundingGap > 0 ? "S'investir" : "Financé"}
               </Button>
-            )}
           </div>
         </div>
       </Card>

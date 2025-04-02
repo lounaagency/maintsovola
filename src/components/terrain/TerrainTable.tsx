@@ -134,17 +134,15 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
         toast.error("Seuls les superviseurs peuvent assigner des techniciens");
         return;
       }
-
       const { error } = await supabase
         .from('terrain')
-        .update({ id_technicien: technicianId })
+        .update({ id_technicien: String(technicianId) })
         .eq('id_terrain', terrainId);
-
       if (error) throw error;
-
+      
       // Notify the technician
       await supabase.from('notification').insert([{
-        id_expediteur: user.id,
+        id_expediteur: String(user.id),
         id_destinataire: technicianId,
         titre: "Nouvelle affectation de terrain",
         message: `Vous avez été assigné au terrain #${terrainId}`,
@@ -157,7 +155,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
       if (onTerrainUpdate) onTerrainUpdate();
     } catch (error: any) {
       console.error("Error assigning technician:", error);
-      toast.error("Erreur lors de l'assignation du technicien: " + error.message);
+      toast.error("Ersddsr lors de l'assignation du technicien: " + error.message + typeof user.id+' le type de'+ String(user.id));
     }
   };
 

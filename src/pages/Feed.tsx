@@ -46,8 +46,8 @@ const Feed: React.FC = () => {
           utilisateur!id_tantsaha(id_utilisateur, nom, prenoms, photo_profil),
           commune(nom_commune, district(nom_district, region(nom_region)))
         `)
+        .eq('statut', 'En finanement')
         .order('created_at', { ascending: false });
-      
       if (activeFilters.region) {
         query = query.eq('commune.district.region.nom_region', activeFilters.region);
       }
@@ -175,7 +175,7 @@ const Feed: React.FC = () => {
         
         return {
           id: projet.id_projet.toString(),
-          title: `Projet de culture de ${cultivationType}`,
+          title: projet.titre || `Projet de culture de ${cultivationType}`,
           farmer,
           location: {
             region: projet.commune?.district?.region?.nom_region || "Non spécifié",
@@ -189,7 +189,7 @@ const Feed: React.FC = () => {
           expectedRevenue,
           creationDate: new Date(projet.created_at).toISOString().split('T')[0],
           images: [],
-          description: `Projet de culture de ${cultivationType} sur un terrain de ${projet.surface_ha} hectares.`,
+          description: projet.description || `Projet de culture de ${cultivationType} sur un terrain de ${projet.surface_ha} hectares.`,
           fundingGoal: farmingCost * projet.surface_ha,
           currentFunding,
           likes,
@@ -326,8 +326,8 @@ const Feed: React.FC = () => {
       
       <Tabs defaultValue="for-you" className="mb-6">
         <TabsList className="grid w-full grid-cols-2 bg-muted rounded-lg">
-          <TabsTrigger value="for-you" className="rounded-md">Pour vous</TabsTrigger>
-          <TabsTrigger value="following" className="rounded-md">Abonnements</TabsTrigger>
+          <TabsTrigger value="for-you" className="rounded-md">Les opportunités ouvertes</TabsTrigger>
+          <TabsTrigger value="following" className="rounded-md">Production en cours</TabsTrigger>
         </TabsList>
         
         <TabsContent value="for-you" className="mt-4">
