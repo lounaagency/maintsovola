@@ -11,9 +11,9 @@ interface MessageItemProps {
     photo_profil?: string;
     status?: "online" | "offline" | "away" | "busy" | "none";
   };
-  lastMessage: string;
+  lastMessage: string; // Changed from object to string
   timestamp: string;
-  unread: number;
+  unread: number; // Changed from boolean to number
   onClick?: () => void;
 }
 const MessageItem: React.FC<MessageItemProps> = ({

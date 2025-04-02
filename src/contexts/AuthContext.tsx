@@ -1,74 +1,77 @@
 
-import React, { createContext, useContext, useEffect, useState } from "react";
-import { Session, User } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
-import { UserProfile } from "@/types/userProfile";
-import { isValidEmail } from "@/lib/utils";
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+import { UserProfile, UserTelephone } from '@/types/userProfile';
 
 interface AuthContextType {
-  user: User | null;
+  user: any | null;
   profile: UserProfile | null;
   loading: boolean;
-  error: Error | null;
-  signIn: (identifier: string, password: string) => Promise<void>;
-  signUp: (identifier: string, password: string, userData: any) => Promise<void>;
-  signOut: () => Promise<void>;
-  refreshProfile: () => Promise<void>;
+  login: (credentials: { email?: string; phone?: string; password: string }) => Promise<void>;
+  signup: (credentials: { nom: string; prenoms?: string; email?: string; phone?: string; password: string; is_investor?: boolean; is_farming_owner?: boolean; }) => Promise<void>;
+  logout: () => Promise<void>;
+  updateProfile: (data: Partial<UserProfile>) => Promise<void>;
+  isSimpleUser: () => boolean;
+  isTechnicien: () => boolean;
+  isSuperviseur: () => boolean;
 }
 
-const AuthContext = createContext<AuthContextType>({
-  user: null,
-  profile: null,
-  loading: true,
-  error: null,
-  signIn: async () => {},
-  signUp: async () => {},
-  signOut: async () => {},
-  refreshProfile: async () => {},
-});
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<any | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
   const navigate = useNavigate();
 
+  // Initialize the auth state
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, newSession) => {
-        setSession(newSession);
-        setUser(newSession?.user ?? null);
-
-        if (newSession?.user) {
-          setTimeout(() => {
-            fetchUserProfile(newSession.user.id);
-          }, 0);
-        } else {
-          setProfile(null);
+    const initialize = async () => {
+      try {
+        setLoading(true);
+        
+        // Check current session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          throw sessionError;
         }
-      }
-    );
 
-    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-      setSession(currentSession);
-      setUser(currentSession?.user ?? null);
-      
-      if (currentSession?.user) {
-        fetchUserProfile(currentSession.user.id);
+        if (session?.user) {
+          setUser(session.user);
+          await fetchUserProfile(session.user.id);
+        }
+      } catch (error) {
+        console.error('Error during auth initialization:', error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
+    };
+
+    initialize();
+
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        setUser(session.user);
+        await fetchUserProfile(session.user.id);
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+        setProfile(null);
+      }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const fetchUserProfile = async (userId: string) => {
     try {
-      const { data, error } = await supabase
+      // Get user profile
+      const { data: profileData, error: profileError } = await supabase
         .from('utilisateur')
         .select(`
           *,
@@ -78,199 +81,327 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .eq('id_utilisateur', userId)
         .single();
 
-      if (error) {
-        console.error("Error fetching profile:", error);
-        return;
+      if (profileError) {
+        throw profileError;
       }
-      
-      // Convert to UserProfile type
-      const userProfile: UserProfile = {
-        id_utilisateur: data.id_utilisateur,
-        id: data.id_utilisateur,
-        nom: data.nom,
-        prenoms: data.prenoms,
-        email: data.email,
-        photo_profil: data.photo_profil,
-        photo_couverture: data.photo_couverture,
-        telephone: data.telephone || undefined,
-        adresse: data.adresse || undefined,
-        bio: data.bio || undefined,
-        id_role: data.id_role,
-        nom_role: data.role?.nom_role,
-        telephones: data.telephones || []
-      };
-      
-      setProfile(userProfile);
+
+      // Get telephones data separately if there was an error in the join
+      let telephones: UserTelephone[] = [];
+      if (!profileData.telephones || profileData.telephones.error) {
+        const { data: telephonesData } = await supabase
+          .from('telephone')
+          .select('*')
+          .eq('id_utilisateur', userId);
+        
+        if (telephonesData) {
+          telephones = telephonesData;
+        }
+      } else {
+        telephones = profileData.telephones;
+      }
+
+      setProfile({
+        ...profileData,
+        telephones: telephones || []
+      });
     } catch (error) {
-      console.error("Error fetching profile:", error);
+      console.error('Error fetching user profile:', error);
     }
   };
 
-  const signUp = async (identifier: string, password: string, userData: any) => {
+  const login = async (credentials: { email?: string; phone?: string; password: string }) => {
     try {
       setLoading(true);
       
-      const isEmail = isValidEmail(identifier);
-      
-      // Set up the user data
-      const authData = {
-        ...(isEmail ? { email: identifier } : {}),
-        password,
-        options: {
-          data: {
-            nom: userData.nom,
-            prenoms: userData.prenoms,
-            role: userData.role || 'simple',
-            is_investor: userData.is_investor || false,
-            is_farming_owner: userData.is_farming_owner || false
-          }
-        }
-      };
+      if (!credentials.email && !credentials.phone) {
+        throw new Error('Veuillez fournir un email ou un numéro de téléphone');
+      }
 
-      // Create the user in auth
-      const { data, error } = isEmail 
-        ? await supabase.auth.signUp(authData)
-        : await supabase.auth.signUp({
-            phone: identifier,
-            password,
-            options: authData.options
+      // Try email login first if provided
+      if (credentials.email) {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: credentials.email,
+          password: credentials.password,
+        });
+
+        if (error) {
+          // If email login fails and phone is provided, try phone login
+          if (credentials.phone) {
+            console.log('Email login failed, trying phone number...');
+          } else {
+            throw error;
+          }
+        } else if (data.user) {
+          // Email login succeeded
+          setUser(data.user);
+          await fetchUserProfile(data.user.id);
+          toast.success('Connexion réussie');
+          navigate('/feed');
+          return;
+        }
+      }
+
+      // Try phone login if provided
+      if (credentials.phone) {
+        // First, find the user ID by phone number
+        const { data: userData, error: userError } = await supabase
+          .from('telephone')
+          .select('id_utilisateur')
+          .eq('numero', credentials.phone)
+          .single();
+
+        if (userError) {
+          throw new Error('Numéro de téléphone non trouvé');
+        }
+
+        // Then sign in with the user ID
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: userData.id_utilisateur, // Using user ID as email for this special case
+          password: credentials.password,
+        });
+
+        if (error) {
+          throw error;
+        }
+
+        if (data.user) {
+          setUser(data.user);
+          await fetchUserProfile(data.user.id);
+          toast.success('Connexion réussie');
+          navigate('/feed');
+          return;
+        }
+      }
+
+      // If we reach here, both login methods failed
+      throw new Error('Les identifiants sont incorrects');
+    } catch (error: any) {
+      console.error('Login error:', error);
+      toast.error(error.message || 'Erreur de connexion. Veuillez réessayer.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signup = async (credentials: { 
+    nom: string; 
+    prenoms?: string; 
+    email?: string; 
+    phone?: string; 
+    password: string; 
+    is_investor?: boolean; 
+    is_farming_owner?: boolean;
+  }) => {
+    try {
+      setLoading(true);
+      
+      if (!credentials.email && !credentials.phone) {
+        throw new Error('Veuillez fournir un email ou un numéro de téléphone');
+      }
+
+      if (!credentials.nom) {
+        throw new Error('Le nom est requis');
+      }
+
+      // Register with email if provided
+      let userId: string;
+      
+      if (credentials.email) {
+        const { data, error } = await supabase.auth.signUp({
+          email: credentials.email,
+          password: credentials.password,
+          options: {
+            data: {
+              nom: credentials.nom,
+              prenoms: credentials.prenoms,
+              role: 'simple', // Default role for new users
+              is_investor: credentials.is_investor,
+              is_farming_owner: credentials.is_farming_owner
+            }
+          }
+        });
+
+        if (error) throw error;
+        if (!data.user) throw new Error('La création de compte a échoué');
+        
+        userId = data.user.id;
+      } else {
+        // Create auth user with a special format for phone users
+        // Using a random email since Supabase requires email
+        const randomEmail = `phone_${Date.now()}_${Math.random().toString(36).substring(2, 15)}@example.com`;
+        
+        const { data, error } = await supabase.auth.signUp({
+          email: randomEmail,
+          password: credentials.password,
+          options: {
+            data: {
+              nom: credentials.nom,
+              prenoms: credentials.prenoms,
+              phone: credentials.phone,
+              role: 'simple', // Default role for new users
+              is_investor: credentials.is_investor,
+              is_farming_owner: credentials.is_farming_owner
+            }
+          }
+        });
+
+        if (error) throw error;
+        if (!data.user) throw new Error('La création de compte a échoué');
+        
+        userId = data.user.id;
+      }
+
+      // Create the user profile in the utilisateur table
+      const { error: profileError } = await supabase
+        .from('utilisateur')
+        .insert({
+          id_utilisateur: userId,
+          nom: credentials.nom,
+          prenoms: credentials.prenoms || null,
+          email: credentials.email || null,
+          id_role: 1, // Role ID for 'simple' user
+        });
+
+      if (profileError) throw profileError;
+
+      // Add phone number if provided
+      if (credentials.phone) {
+        const { error: phoneError } = await supabase
+          .from('telephone')
+          .insert({
+            id_utilisateur: userId,
+            numero: credentials.phone,
+            type: 'principal',
+            est_whatsapp: false,
+            est_mobile_banking: false
           });
 
-      if (error) throw error;
-      if (!data.user) throw new Error("L'utilisateur n'a pas été créé.");
-      
-      // Insert user data into public.utilisateur table
-      const { error: dbError } = await supabase.from("utilisateur").insert([
-        {
-          id_utilisateur: data.user.id,
-          email: isEmail ? identifier : userData.email,
-          nom: userData.nom,
-          prenoms: userData.prenoms,
-          id_role: userData.role === 'technicien' ? 3 : userData.role === 'superviseur' ? 4 : 2 // 2=simple, 3=technicien, 4=superviseur
-        }
-      ]);
-
-      if (dbError) throw dbError;
-      
-      // Insert phone number if provided
-      if (!isEmail || userData.telephone) {
-        const { error: phoneError } = await supabase.from("telephone").insert([
-          {
-            id_utilisateur: data.user.id,
-            numero: isEmail ? userData.telephone : identifier,
-            type: 'principal'
-          }
-        ]);
-        
-        if (phoneError) console.error("Error saving phone:", phoneError);
+        if (phoneError) throw phoneError;
       }
 
-      toast.success("Inscription réussie ! Vérifiez votre email pour confirmer.");
+      toast.success('Compte créé avec succès. Veuillez vous connecter.');
+      
+      // Automatically log in the user
+      if (credentials.email) {
+        await login({ email: credentials.email, password: credentials.password });
+      } else if (credentials.phone) {
+        await login({ phone: credentials.phone, password: credentials.password });
+      }
     } catch (error: any) {
-      toast.error(error.message || "Erreur lors de l'inscription");
-      console.error("Error signing up:", error);
-      throw error;
+      console.error('Signup error:', error);
+      toast.error(error.message || 'Erreur lors de la création du compte. Veuillez réessayer.');
     } finally {
       setLoading(false);
     }
   };
 
-  const signIn = async (identifier: string, password: string) => {
-    try {
-      setLoading(true);
-      
-      // Check if identifier is an email or phone number
-      const isEmail = isValidEmail(identifier);
-      
-      let authResponse;
-      
-      if (isEmail) {
-        // Try sign in with email
-        authResponse = await supabase.auth.signInWithPassword({
-          email: identifier,
-          password
-        });
-      } else {
-        // Try sign in with phone number
-        authResponse = await supabase.auth.signInWithPassword({
-          phone: identifier,
-          password
-        });
-      }
-      
-      const { data, error } = authResponse;
-      
-      if (error) throw error;
-      
-      toast.success("Connexion réussie !");
-      navigate("/feed");
-    } catch (error: any) {
-      toast.error(error.message || "Erreur lors de la connexion");
-      console.error("Error signing in:", error);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const signOut = async () => {
+  const logout = async () => {
     try {
       setLoading(true);
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       
-      toast.success("Déconnexion réussie");
-      navigate("/auth");
+      setUser(null);
+      setProfile(null);
+      navigate('/');
+      toast.success('Déconnexion réussie');
     } catch (error: any) {
-      toast.error(error.message || "Erreur lors de la déconnexion");
+      console.error('Logout error:', error);
+      toast.error(error.message || 'Erreur lors de la déconnexion. Veuillez réessayer.');
     } finally {
       setLoading(false);
     }
   };
 
-  const refreshProfile = async () => {
-    if (!user) return;
-    
+  const updateProfile = async (data: Partial<UserProfile>) => {
     try {
-      const { data, error } = await supabase
+      if (!user) throw new Error('Utilisateur non connecté');
+      
+      setLoading(true);
+      
+      // Update the utilisateur table
+      const { error } = await supabase
         .from('utilisateur')
-        .select(`
-          *,
-          role:id_role(nom_role),
-          telephones:telephone(*)
-        `)
-        .eq('id_utilisateur', user.id)
-        .single();
+        .update({
+          nom: data.nom,
+          prenoms: data.prenoms,
+          email: data.email,
+          bio: data.bio,
+          adresse: data.adresse,
+          photo_profil: data.photo_profil,
+          photo_couverture: data.photo_couverture
+          // id_role should not be updated by the user
+        })
+        .eq('id_utilisateur', user.id);
       
       if (error) throw error;
+
+      // Handle telephones separately if provided
+      if (data.telephones && data.telephones.length > 0) {
+        // First, delete existing telephones
+        const { error: deleteError } = await supabase
+          .from('telephone')
+          .delete()
+          .eq('id_utilisateur', user.id);
+        
+        if (deleteError) throw deleteError;
+        
+        // Then insert new telephones
+        const telephonesData = data.telephones.map(phone => ({
+          id_utilisateur: user.id,
+          numero: phone.numero,
+          type: phone.type,
+          est_whatsapp: phone.est_whatsapp,
+          est_mobile_banking: phone.est_mobile_banking
+        }));
+        
+        const { error: insertError } = await supabase
+          .from('telephone')
+          .insert(telephonesData);
+        
+        if (insertError) throw insertError;
+      }
       
-      const userProfile: UserProfile = {
-        id_utilisateur: data.id_utilisateur,
-        id: data.id_utilisateur,
-        nom: data.nom,
-        prenoms: data.prenoms,
-        email: data.email,
-        photo_profil: data.photo_profil,
-        photo_couverture: data.photo_couverture,
-        telephone: data.telephone || undefined,
-        adresse: data.adresse || undefined,
-        bio: data.bio || undefined,
-        id_role: data.id_role,
-        nom_role: data.role?.nom_role,
-        telephones: data.telephones || []
-      };
+      // Fetch updated profile
+      await fetchUserProfile(user.id);
       
-      setProfile(userProfile);
-      
-    } catch (error) {
-      console.error('Error refreshing user profile:', error);
+      toast.success('Profil mis à jour avec succès');
+    } catch (error: any) {
+      console.error('Update profile error:', error);
+      toast.error(error.message || 'Erreur lors de la mise à jour du profil. Veuillez réessayer.');
+    } finally {
+      setLoading(false);
     }
   };
 
+  // User role helper functions
+  const isSimpleUser = () => {
+    return profile?.role?.nom_role === 'simple';
+  };
+
+  const isTechnicien = () => {
+    return profile?.role?.nom_role === 'technicien';
+  };
+
+  const isSuperviseur = () => {
+    return profile?.role?.nom_role === 'superviseur';
+  };
+
+  const contextValue: AuthContextType = {
+    user,
+    profile,
+    loading,
+    login,
+    signup,
+    logout,
+    updateProfile,
+    isSimpleUser,
+    isTechnicien,
+    isSuperviseur
+  };
+
   return (
-    <AuthContext.Provider
-      value={{ user, profile, loading, error, signIn, signUp, signOut, refreshProfile }}
-    >
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );
@@ -279,7 +410,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 };

@@ -51,17 +51,17 @@ const MessageDialog: React.FC<MessageDialogProps> = ({
     try {
       setIsSubmitting(true);
 
-      // Créer ou récupérer une conversation
+      // Create or get a conversation
       const conversationId = await createConversationIfNotExists(
         user.id,
         recipient.id,
       );
 
       if (!conversationId) {
-        throw new Error("Impossible de créer une conversation");
+        throw new Error("Unable to create conversation");
       }
 
-      // Envoyer le message
+      // Send the message
       const { error } = await supabase.from("message").insert({
         id_conversation: conversationId,
         id_expediteur: user.id,
@@ -72,9 +72,15 @@ const MessageDialog: React.FC<MessageDialogProps> = ({
 
       if (error) throw error;
 
+      // Update the conversation's last activity timestamp
+      await supabase
+        .from("conversation")
+        .update({ derniere_activite: new Date().toISOString() })
+        .eq("id_conversation", conversationId);
+
       toast({
-        title: "Message envoyé",
-        description: `Votre message a été envoyé à ${recipient.name}`,
+        title: "Message sent",
+        description: `Your message has been sent to ${recipient.name}`,
       });
 
       setMessage("");
@@ -82,8 +88,8 @@ const MessageDialog: React.FC<MessageDialogProps> = ({
     } catch (error) {
       console.error("Error sending message:", error);
       toast({
-        title: "Erreur",
-        description: "Impossible d'envoyer le message",
+        title: "Error",
+        description: "Unable to send the message",
         variant: "destructive",
       });
     } finally {
@@ -96,13 +102,13 @@ const MessageDialog: React.FC<MessageDialogProps> = ({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            Message à {recipient.name}
+            Message to {recipient.name}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="space-y-4 mt-4">
             <Textarea
-              placeholder="Écrivez votre message ici..."
+              placeholder="Write your message here..."
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               className="min-h-[150px]"
@@ -116,16 +122,16 @@ const MessageDialog: React.FC<MessageDialogProps> = ({
               onClick={onClose}
               disabled={isSubmitting}
             >
-              Annuler
+              Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Envoi...
+                  Sending...
                 </>
               ) : (
-                "Envoyer"
+                "Send"
               )}
             </Button>
           </DialogFooter>
