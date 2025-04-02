@@ -23,7 +23,7 @@ export interface DatabaseNotification {
   lu: boolean;
   date_creation: string;
   type: string;
-  entity_id?: string | number;  // Accept both string and number for entity_id
+  entity_id?: string | number;  // Accept both string and number
   entity_type?: string;
   projet_id?: number;
 }
