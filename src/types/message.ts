@@ -1,11 +1,11 @@
 
 export interface Conversation {
   id_conversation: number;
-  id_utilisateur1: string; // UUID
-  id_utilisateur2: string; // UUID
+  id_utilisateur1: string;
+  id_utilisateur2: string;
   derniere_activite: string;
   other_user?: {
-    id_utilisateur: string; // UUID
+    id_utilisateur: string;
     nom: string;
     prenoms: string | null;
     photo_profil: string | null;
@@ -15,8 +15,8 @@ export interface Conversation {
 export interface Message {
   id_message: number;
   id_conversation: number;
-  id_expediteur: string; // UUID
-  id_destinataire: string; // UUID
+  id_expediteur: string;
+  id_destinataire: string;
   contenu: string;
   date_envoi: string;
   lu: boolean;
@@ -24,7 +24,7 @@ export interface Message {
 
 export interface ConversationMessage extends Message {
   sender?: {
-    id_utilisateur: string; // UUID
+    id_utilisateur: string;
     nom: string;
     prenoms: string | null;
     photo_profil: string | null;
@@ -32,18 +32,20 @@ export interface ConversationMessage extends Message {
   // Additional fields for UI
   id?: string;
   user?: {
-    id: string; // UUID
+    id: string;
     name: string;
     photo_profil?: string;
-    status?: "online" | "offline" | "away" | "busy" | "none";
   };
-  lastMessage?: string; // Changed from object to string
+  lastMessage?: {
+    text: string;
+    timestamp: string;
+  };
   timestamp?: string;
-  unread?: number; // Changed from boolean to number
+  unread?: boolean;
 }
 
 export interface Recipient {
-  id: string; // UUID
+  id: string;
   name: string;
   photo_profil?: string;
 }

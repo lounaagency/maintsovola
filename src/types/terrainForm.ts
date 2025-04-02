@@ -2,24 +2,33 @@
 import { TerrainData } from './terrain';
 
 export interface TerrainFormData {
+  id_terrain?: number;
   nom_terrain: string;
   surface_proposee: number;
-  id_region: string;
-  id_district: string;
-  id_commune: string;
+  id_region: string; // Form will use string for select inputs
+  id_district: string; // Form will use string for select inputs
+  id_commune: string; // Form will use string for select inputs
   acces_eau: boolean;
   acces_route: boolean;
+  photos?: string[];
 }
 
+// Convert from form data (strings) to API data (numbers)
 export const convertFormDataToTerrainData = (formData: TerrainFormData): TerrainData => {
   return {
-    id_region: formData.id_region ? parseInt(formData.id_region) : undefined,
-    id_district: formData.id_district ? parseInt(formData.id_district) : undefined,
-    id_commune: formData.id_commune ? parseInt(formData.id_commune) : undefined,
-    nom_terrain: formData.nom_terrain,
-    surface_proposee: formData.surface_proposee,
-    acces_eau: formData.acces_eau,
-    acces_route: formData.acces_route,
-    photos: [] // Initialize with empty array
+    ...formData,
+    id_region: Number(formData.id_region),
+    id_district: Number(formData.id_district),
+    id_commune: Number(formData.id_commune),
+  };
+};
+
+// Convert from API data (numbers) to form data (strings)
+export const convertTerrainDataToFormData = (terrainData: TerrainData): TerrainFormData => {
+  return {
+    ...terrainData,
+    id_region: terrainData.id_region?.toString() || '',
+    id_district: terrainData.id_district?.toString() || '',
+    id_commune: terrainData.id_commune?.toString() || '',
   };
 };

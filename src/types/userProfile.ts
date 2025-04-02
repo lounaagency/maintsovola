@@ -1,6 +1,6 @@
 
 export interface UserProfile {
-  id_utilisateur: string; // UUID
+  id_utilisateur: string;
   id?: string; // For compatibility with existing code
   nom: string;
   prenoms?: string;
@@ -22,7 +22,7 @@ export interface UserProfile {
 
 export interface UserTelephone {
   id_telephone?: number;
-  id_utilisateur: string; // UUID
+  id_utilisateur: string;
   numero: string;
   type: "principal" | "whatsapp" | "mobile_banking" | "autre";
   est_whatsapp: boolean;
