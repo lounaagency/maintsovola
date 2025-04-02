@@ -51,7 +51,7 @@ export const Terrain = () => {
       const { data, error } = await supabase
         .from('utilisateur')
         .select('id_utilisateur, nom, prenoms')
-        .in('id_role', [1, 2]); // 2 ou 1 = simple user role
+        .eq('id_role', 2); // 2 = simple user role
         
       if (error) throw error;
       setAgriculteurs(data || []);
@@ -74,9 +74,9 @@ export const Terrain = () => {
         `);
       
       if (userRole === 'simple') {
-        query = query.eq('id_tantsaha', user.id.toString());
+        query = query.eq('id_tantsaha', user.id);
       } else if (userRole === 'technicien') {
-        query = query.eq('id_technicien', user.id.toString());
+        query = query.eq('id_technicien', user.id);
       }
       
       const { data, error } = await query;
@@ -137,7 +137,7 @@ export const Terrain = () => {
       const { data, error } = await supabase
         .from('utilisateur')
         .select('id_utilisateur, nom, prenoms')
-        .eq('id_role', 4); // 4 = Technicien
+        .eq('id_role', 3); // 3 = technicien role
         
       if (error) throw error;
       setTechniciens(data || []);
@@ -157,11 +157,11 @@ export const Terrain = () => {
       `);
       
       if (userRole === 'simple') {
-        query = query.eq('id_tantsaha', user.id.toString());
+        query = query.eq('id_tantsaha', user.id);
       } else if (userRole === 'technicien') {
-        query = query.eq('id_technicien', user.id.toString());
+        query = query.eq('id_technicien', user.id);
       } else if (userRole === 'superviseur') {
-        query = query.eq('id_superviseur', user.id.toString());
+        query = query.eq('id_superviseur', user.id);
       }
       
       const { data, error } = await query;

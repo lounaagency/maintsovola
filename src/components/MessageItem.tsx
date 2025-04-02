@@ -8,14 +8,15 @@ interface MessageItemProps {
   id: string;
   user: {
     name: string;
-    photo_profil?: string;
+    avatar?: string;
     status?: "online" | "offline" | "away" | "busy" | "none";
   };
-  lastMessage: string; // Changed from object to string
+  lastMessage: string;
   timestamp: string;
-  unread: number; // Changed from boolean to number
+  unread: number;
   onClick?: () => void;
 }
+
 const MessageItem: React.FC<MessageItemProps> = ({
   user,
   lastMessage,
@@ -30,7 +31,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
       onClick={onClick}
     >
       <UserAvatar 
-        src={user.photo_profil} 
+        src={user.avatar} 
         alt={user.name} 
         status={user.status} 
       />
