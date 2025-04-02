@@ -3,6 +3,7 @@ import React from "react";
 import UserAvatar from "./UserAvatar";
 import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
+import { MessageCircle } from "lucide-react";
 
 interface MessageItemProps {
   id: string;
@@ -56,5 +57,8 @@ const MessageItem: React.FC<MessageItemProps> = ({
     </motion.div>
   );
 };
+
+// Static properties for icon usage
+MessageItem.Icon = MessageCircle;
 
 export default MessageItem;

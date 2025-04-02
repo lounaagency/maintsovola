@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2 } from "lucide-react";
+import { Loader2, Send } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/use-toast";
@@ -51,7 +51,7 @@ const MessageDialog: React.FC<MessageDialogProps> = ({
     try {
       setIsSubmitting(true);
 
-      // Créer ou récupérer une conversation
+      // Create or get a conversation
       const conversationId = await createConversationIfNotExists(
         user.id,
         recipient.id,
@@ -61,7 +61,7 @@ const MessageDialog: React.FC<MessageDialogProps> = ({
         throw new Error("Impossible de créer une conversation");
       }
 
-      // Envoyer le message
+      // Send the message
       const { error } = await supabase.from("message").insert({
         id_conversation: conversationId,
         id_expediteur: user.id,
@@ -71,6 +71,12 @@ const MessageDialog: React.FC<MessageDialogProps> = ({
       });
 
       if (error) throw error;
+
+      // Update conversation activity
+      await supabase
+        .from("conversation")
+        .update({ derniere_activite: new Date().toISOString() })
+        .eq("id_conversation", conversationId);
 
       toast({
         title: "Message envoyé",
@@ -118,14 +124,17 @@ const MessageDialog: React.FC<MessageDialogProps> = ({
             >
               Annuler
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" disabled={isSubmitting || !message.trim()}>
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Envoi...
                 </>
               ) : (
-                "Envoyer"
+                <>
+                  <Send className="mr-2 h-4 w-4" />
+                  Envoyer
+                </>
               )}
             </Button>
           </DialogFooter>

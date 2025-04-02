@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Message, Conversation } from "@/types/message";
 import { useAuth } from "@/contexts/AuthContext";
@@ -10,7 +11,7 @@ export const createConversation = async (userId1: string, userId2: string) => {
       .from('conversation')
       .select('*')
       .or(`and(id_utilisateur1.eq.${userId1},id_utilisateur2.eq.${userId2}),and(id_utilisateur1.eq.${userId2},id_utilisateur2.eq.${userId1})`)
-      .single();
+      .maybeSingle();
     
     if (fetchError && fetchError.code !== 'PGRST116') {
       throw fetchError;
@@ -46,6 +47,7 @@ export const sendMessage = async (message: Message) => {
     const { data, error } = await supabase
       .from('message')
       .insert({
+        id_conversation: message.id_conversation,
         id_expediteur: message.id_expediteur,
         id_destinataire: message.id_destinataire,
         contenu: message.contenu,
@@ -58,7 +60,7 @@ export const sendMessage = async (message: Message) => {
     if (error) throw error;
     
     // Mettre à jour la dernière activité de la conversation
-    await updateConversationActivity(message.id_expediteur, message.id_destinataire);
+    await updateConversationActivity(message.id_conversation);
     
     return data;
   } catch (error) {
@@ -125,12 +127,12 @@ export const markMessagesAsRead = async (conversationId: number, userId: string)
   }
 };
 
-export const updateConversationActivity = async (userId1: string, userId2: string) => {
+export const updateConversationActivity = async (conversationId: number) => {
   try {
     const { error } = await supabase
       .from('conversation')
       .update({ derniere_activite: new Date().toISOString() })
-      .or(`and(id_utilisateur1.eq.${userId1},id_utilisateur2.eq.${userId2}),and(id_utilisateur1.eq.${userId2},id_utilisateur2.eq.${userId1})`);
+      .eq('id_conversation', conversationId);
       
     if (error) throw error;
   } catch (error) {
@@ -196,11 +198,10 @@ export const createConversationIfNotExists = async (
     const { data: existingConversation, error: findError } = await supabase
       .from("conversation")
       .select("id_conversation")
-      .or(`id_utilisateur1.eq.${userId1},id_utilisateur1.eq.${userId2}`)
-      .or(`id_utilisateur2.eq.${userId1},id_utilisateur2.eq.${userId2}`)
+      .or(`and(id_utilisateur1.eq.${userId1},id_utilisateur2.eq.${userId2}),and(id_utilisateur1.eq.${userId2},id_utilisateur2.eq.${userId1})`)
       .maybeSingle();
 
-    if (findError) {
+    if (findError && findError.code !== 'PGRST116') {
       console.error("Error checking for existing conversation:", findError);
       return null;
     }
@@ -216,6 +217,7 @@ export const createConversationIfNotExists = async (
       .insert({
         id_utilisateur1: userId1,
         id_utilisateur2: userId2,
+        derniere_activite: new Date().toISOString()
       })
       .select("id_conversation")
       .single();

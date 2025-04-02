@@ -29,19 +29,20 @@ export interface ConversationMessage extends Message {
     prenoms: string | null;
     photo_profil: string | null;
   };
-  // Additional fields for UI
+  // UI display properties
   id?: string;
   user?: {
     id: string;
     name: string;
     photo_profil?: string;
+    status?: "online" | "offline" | "away" | "busy" | "none";
   };
   lastMessage?: {
     text: string;
     timestamp: string;
   };
   timestamp?: string;
-  unread?: boolean;
+  unread?: number;
 }
 
 export interface Recipient {
