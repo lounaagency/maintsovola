@@ -34,7 +34,7 @@ export interface TerrainData {
   id_superviseur?: string;
   techniqueNom?: string;
   techniquePrenoms?: string;
-  photos: string;
+  photos: string | string[];
   archive?: boolean;
   created_by?: string;
   region_name?: string;

@@ -12,8 +12,8 @@ import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 const Messages: React.FC = () => {
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
+  const [conversations, setConversations] = useState<ConversationMessage[]>([]);
+  const [selectedConversation, setSelectedConversation] = useState<ConversationMessage | null>(null);
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const [showPanel, setShowPanel] = useState(true);
@@ -58,12 +58,48 @@ const Messages: React.FC = () => {
       if (error) throw error;
       
       if (data) {
-        const conversationsWithMappedFields = data.map(conv => ({
-          ...conv,
-          user1_id: conv.id_utilisateur1,
-          user2_id: conv.id_utilisateur2
+        // Transform conversations into ConversationMessage format for compatibility with components
+        const conversationsWithMappedFields = await Promise.all(data.map(async (conv) => {
+          // Determine the other user in the conversation
+          const otherUserId = conv.id_utilisateur1 === user.id ? conv.id_utilisateur2 : conv.id_utilisateur1;
+          
+          // Get user details
+          const { data: userData, error: userError } = await supabase
+            .from('utilisateur')
+            .select('id_utilisateur, nom, prenoms, photo_profil')
+            .eq('id_utilisateur', otherUserId)
+            .single();
+            
+          if (userError) {
+            console.error("Error fetching user details:", userError);
+            return null;
+          }
+          
+          return {
+            id_message: 0, // Placeholder
+            id_conversation: conv.id_conversation,
+            id_expediteur: user.id,
+            id_destinataire: otherUserId,
+            contenu: "", // Will be populated when specific messages are loaded
+            date_envoi: conv.derniere_activite,
+            lu: false,
+            created_at: conv.created_at,
+            user: {
+              id: userData.id_utilisateur,
+              name: `${userData.nom} ${userData.prenoms || ''}`.trim(),
+              photo_profil: userData.photo_profil,
+              status: "online"
+            },
+            lastMessage: {
+              text: "Conversation",
+              timestamp: conv.derniere_activite
+            },
+            timestamp: conv.derniere_activite,
+            unread: 0 // Will be calculated if needed
+          } as ConversationMessage;
         }));
-        setConversations(conversationsWithMappedFields as Conversation[]);
+        
+        setConversations(conversationsWithMappedFields.filter(Boolean) as ConversationMessage[]);
       }
     } catch (error) {
       console.error('Error fetching conversations:', error);
@@ -92,7 +128,7 @@ const Messages: React.FC = () => {
     }
   };
 
-  const handleSelectConversation = (conversation: Conversation) => {
+  const handleSelectConversation = (conversation: ConversationMessage) => {
     setSelectedConversation(conversation);
     if (isMobile) {
       setShowPanel(false);
@@ -103,9 +139,10 @@ const Messages: React.FC = () => {
     if (!user || !selectedConversation || !message.trim()) return;
     
     try {
-      const recipientId = selectedConversation.user1_id === user.id 
-        ? selectedConversation.user2_id 
-        : selectedConversation.user1_id;
+      const recipientId = selectedConversation.user?.id;
+      if (!recipientId) {
+        throw new Error("Recipient ID not found");
+      }
 
       const { error } = await supabase.from('message').insert({
         id_conversation: selectedConversation.id_conversation,
@@ -145,6 +182,7 @@ const Messages: React.FC = () => {
         {showPanel && (
           <div className={`${isMobile ? 'w-full' : 'w-1/3 border-r'} h-full`}>
             <ConversationList 
+              userId={user?.id || ""}
               conversations={conversations} 
               selectedConversation={selectedConversation}
               onSelectConversation={handleSelectConversation}
@@ -155,9 +193,9 @@ const Messages: React.FC = () => {
         {(!isMobile || !showPanel) && (
           <div className={`${isMobile ? 'w-full' : 'w-2/3'} h-full`}>
             <ChatArea 
+              userId={user?.id || ""}
               conversation={selectedConversation}
-              messages={messages}
-              onSendMessage={handleSendMessage}
+              onBack={() => setShowPanel(true)}
             />
           </div>
         )}

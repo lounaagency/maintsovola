@@ -22,12 +22,12 @@ export const convertFormDataToTerrainData = (formData: TerrainFormData): Terrain
     id_tantsaha: formData.id_tantsaha,
     nom_terrain: formData.nom_terrain,
     surface_proposee: formData.surface_proposee,
-    id_region: formData.id_region ? Number(formData.id_region) : null,
-    id_district: formData.id_district ? Number(formData.id_district) : null,
-    id_commune: formData.id_commune ? Number(formData.id_commune) : null,
+    id_region: formData.id_region ? Number(formData.id_region) : undefined,
+    id_district: formData.id_district ? Number(formData.id_district) : undefined,
+    id_commune: formData.id_commune ? Number(formData.id_commune) : undefined,
     acces_eau: formData.acces_eau,
     acces_route: formData.acces_route,
-    photos: formData.photos,
+    photos: formData.photos || "",
     geom: formData.geom
   };
 };

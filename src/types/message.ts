@@ -20,6 +20,25 @@ export interface ConversationMessage {
   created_at: string;
   modified_at?: string;
   id_conversation?: number;
+  // Extended fields for UI
+  user?: {
+    id: string;
+    name: string;
+    photo_profil?: string | null;
+    status?: string;
+  };
+  sender?: {
+    id_utilisateur: string;
+    nom: string;
+    prenoms?: string | null;
+    photo_profil?: string | null;
+  };
+  lastMessage?: {
+    text: string;
+    timestamp: string;
+  };
+  timestamp?: string;
+  unread?: number;
 }
 
 export interface UserTelephone {
