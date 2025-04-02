@@ -10,6 +10,7 @@ import Profile from './pages/Profile';
 import Settings from './pages/Settings';
 import NotFound from './pages/NotFound';
 import PrivateRoute from './components/PrivateRoute';
+import Index from './pages/Index';
 
 import './App.css';
 
@@ -20,20 +21,24 @@ function App() {
         <Routes>
           {/* Public routes */}
           <Route path="/auth" element={<Auth />} />
+          <Route path="/index" element={<Index />} />
           
           {/* Protected routes */}
           <Route path="/" element={
             <PrivateRoute>
-              <Layout />
+              <Layout>
+                <Routes>
+                  <Route index element={<Navigate to="/feed" replace />} />
+                  <Route path="feed" element={<Feed />} />
+                  <Route path="terrain" element={<Terrain />} />
+                  <Route path="messages" element={<Messages />} />
+                  <Route path="profile" element={<Profile />} />
+                  <Route path="settings" element={<Settings />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Layout>
             </PrivateRoute>
           }>
-            <Route index element={<Navigate to="/feed" replace />} />
-            <Route path="feed" element={<Feed />} />
-            <Route path="terrain" element={<Terrain />} />
-            <Route path="messages" element={<Messages />} />
-            <Route path="profile" element={<Profile />} />
-            <Route path="settings" element={<Settings />} />
-            <Route path="*" element={<NotFound />} />
           </Route>
         </Routes>
       </AuthProvider>
