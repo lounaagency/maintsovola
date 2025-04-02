@@ -34,6 +34,7 @@ export interface TerrainFormData {
   acces_route: boolean;
   nom_terrain: string;
   photos?: string | string[];
+  geom?: any;
 }
 
 export interface ProjetStatus {

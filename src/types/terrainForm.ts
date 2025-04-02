@@ -12,6 +12,7 @@ export interface TerrainFormData {
   acces_route: boolean;
   photos?: string | string[]; // Allow both string and string[] types
   id_tantsaha?: string;
+  geom?: any;
 }
 
 // Convert from form data (strings) to API data (numbers)

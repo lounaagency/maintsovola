@@ -1,12 +1,10 @@
-
-// Note: This is a very large file that would benefit from refactoring
-// into smaller components. I'll make the necessary fixes while preserving functionality.
+// Note: Je garde la majorité du code existant et j'ajoute uniquement la fonctionnalité demandée pour les terrains
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import TerrainTable from '@/components/terrain/TerrainTable';
 import { Button } from '@/components/ui/button';
@@ -24,14 +22,13 @@ export const Terrain = () => {
   if (!user) {
     return <Navigate to="/auth" replace />;
   }
-  const { toast } = useToast();
   
   const [pendingTerrains, setPendingTerrains] = useState<TerrainData[]>([]);
   const [validatedTerrains, setValidatedTerrains] = useState<TerrainData[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
   const [selectedTerrain, setSelectedTerrain] = useState<TerrainData | null>(null);
   const [selectedProject, setSelectedProject] = useState<any>(null);
-  const [selectedTechnicien, setSelectedTechnicien] = useState<{id: string; name: string} | null>(null);
+  const [selectedTechnicien, setSelectedTechnicien] = useState<{id: string; name: string; prenoms?: string} | null>(null);
   
   const [isTerrainDialogOpen, setIsTerrainDialogOpen] = useState(false);
   const [isProjectDialogOpen, setIsProjectDialogOpen] = useState(false);
@@ -41,6 +38,7 @@ export const Terrain = () => {
   
   const [agriculteurs, setAgriculteurs] = useState<{id_utilisateur: string; nom: string; prenoms?: string}[]>([]);
   const [techniciens, setTechniciens] = useState<{id_utilisateur: string; nom: string; prenoms?: string}[]>([]);
+  const [initialMessageContext, setInitialMessageContext] = useState<string>("");
   
   const userRole = profile?.nom_role?.toLowerCase() || 'simple';
 
@@ -99,10 +97,12 @@ export const Terrain = () => {
         id_commune: terrain.id_commune,
         statut: terrain.statut,
         geom: terrain.geom,
+        photos: terrain.photos,
         region_name: terrain.region?.nom_region || 'Non spécifié',
         district_name: terrain.district?.nom_district || 'Non spécifié',
         commune_name: terrain.commune?.nom_commune || 'Non spécifié',
-        techniqueNom: 'Non assigné' // Will be set later
+        techniqueNom: 'Non assigné',
+        techniquePrenoms: ''
       }));
       
       // Fetch technician details for terrains with technicians
@@ -115,7 +115,8 @@ export const Terrain = () => {
             .single();
             
           if (techData) {
-            terrainData[i].techniqueNom = `${techData.nom} ${techData.prenoms || ''}`.trim();
+            terrainData[i].techniqueNom = techData.nom;
+            terrainData[i].techniquePrenoms = techData.prenoms || '';
           }
         }
       }
@@ -124,13 +125,9 @@ export const Terrain = () => {
       setValidatedTerrains(terrainData.filter(t => t.statut === true));
     } catch (error) {
       console.error('Error fetching terrains:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de récupérer les terrains",
-        variant: "destructive"
-      });
+      toast("Impossible de récupérer les terrains");
     }
-  }, [user, userRole, toast]);
+  }, [user, userRole]);
 
   const fetchTechniciens = useCallback(async () => {
     try {
@@ -176,7 +173,7 @@ export const Terrain = () => {
         variant: "destructive"
       });
     }
-  }, [user, userRole, toast]);
+  }, [user, userRole]);
 
   useEffect(() => {
     if (user) {
@@ -203,8 +200,13 @@ export const Terrain = () => {
       if (technicien) {
         setSelectedTechnicien({
           id: technicien.id_utilisateur,
-          name: `${technicien.nom} ${technicien.prenoms || ''}`.trim()
+          name: technicien.nom,
+          prenoms: technicien.prenoms
         });
+        
+        const contextMessage = `Bonjour ${technicien.prenoms || technicien.nom} ! Je vous contacte parce que j'aimerais modifier quelques informations concernant mon terrain ${terrain.nom_terrain || `#${terrain.id_terrain}`}.`;
+        setInitialMessageContext(contextMessage);
+        
         setIsMessageDialogOpen(true);
       }
     }
@@ -346,6 +348,7 @@ export const Terrain = () => {
                   userRole={userRole}
                   onTerrainUpdate={fetchTerrains}
                   onEdit={handleEditTerrain}
+                  onContactTechnicien={handleContactTechnicien}
                 />
               </div>
               
@@ -583,9 +586,10 @@ export const Terrain = () => {
               onClose={() => setIsMessageDialogOpen(false)}
               recipient={{
                 id: selectedTechnicien.id,
-                name: selectedTechnicien.name
+                name: `${selectedTechnicien.name} ${selectedTechnicien.prenoms || ''}`
               }}
               subject="Question sur un terrain"
+              initialMessage={initialMessageContext}
             />
           )}
           
