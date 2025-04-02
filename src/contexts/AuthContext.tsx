@@ -10,8 +10,13 @@ interface UserProfile {
   prenoms?: string;
   email: string;
   photo_profil?: string;
+  photo_couverture?: string;
+  adresse?: string;
+  bio?: string;
   role?: string;
   id_role?: number;
+  telephone?: string;
+  nom_role?: string;
 }
 
 interface AuthContextType {
@@ -32,6 +37,11 @@ interface AuthContextType {
     data: UserProfile | null;
   }>;
   session: AuthSession | null;
+  // Ajout des méthodes manquantes pour les composants
+  login: (credentials: { email?: string; phone?: string; password: string }) => Promise<void>;
+  signup: (userData: any) => Promise<void>;
+  logout: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -110,6 +120,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Error fetching user profile:', error);
     }
   };
+  
+  const refreshProfile = async () => {
+    if (user) {
+      await fetchProfile(user.id);
+    }
+  };
 
   const signIn = async (email: string, password: string) => {
     try {
@@ -130,6 +146,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Méthode login pour LoginForm
+  const login = async (credentials: { email?: string; phone?: string; password: string }) => {
+    if (credentials.email) {
+      await signIn(credentials.email, credentials.password);
+    } else if (credentials.phone) {
+      // Logique pour connexion par téléphone si nécessaire
+      console.log("Login via phone not implemented yet");
+    }
+  };
+
   const signUp = async (email: string, password: string, userData: Partial<UserProfile>) => {
     try {
       // Create the auth user
@@ -140,14 +166,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (authData?.user) {
+        // Assurer que nom est présent (requis dans la base de données)
+        if (!userData.nom) {
+          userData.nom = email.split('@')[0]; // Valeur par défaut
+        }
+        
         // Create the profile
         const { error: profileError } = await supabase
           .from('utilisateur')
-          .insert([{ 
+          .insert({
             id_utilisateur: authData.user.id,
             email,
-            ...userData
-          }]);
+            nom: userData.nom,
+            prenoms: userData.prenoms,
+            photo_profil: userData.photo_profil,
+            role: userData.role,
+            id_role: userData.id_role
+          });
         
         if (profileError) {
           throw profileError;
@@ -163,6 +198,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Méthode signup pour RegisterForm
+  const signup = async (userData: any) => {
+    await signUp(userData.email, userData.password, {
+      nom: userData.nom,
+      prenoms: userData.prenoms,
+      // Autres champs de profil
+    });
+  };
+
   const signOut = async () => {
     try {
       await supabase.auth.signOut();
@@ -170,6 +214,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('Error during sign out:', error);
     }
+  };
+
+  // Méthode logout pour Navbar
+  const logout = async () => {
+    await signOut();
   };
 
   const updateProfile = async (updates: Partial<UserProfile>) => {
@@ -210,6 +259,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signOut,
       updateProfile,
       session,
+      login,
+      signup,
+      logout,
+      refreshProfile,
     }}>
       {children}
     </AuthContext.Provider>

@@ -21,6 +21,6 @@ export const convertFormDataToTerrainData = (formData: TerrainFormData): Partial
     surface_proposee: formData.surface_proposee,
     acces_eau: formData.acces_eau,
     acces_route: formData.acces_route,
-    photos: formData.photos || '' // Initialize with empty string instead of array
+    photos: Array.isArray(formData.photos) ? formData.photos.join(',') : formData.photos || '' // Convertir array en string
   };
 };
