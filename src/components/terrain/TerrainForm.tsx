@@ -11,17 +11,16 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { TerrainFormData, convertFormDataToTerrainData } from "@/types/terrainForm";
 import { TerrainData, RegionData, DistrictData, CommuneData } from "@/types/terrain";
-import { Loader2, Trash2, Map } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { MapContainer, TileLayer, FeatureGroup, Polygon } from "react-leaflet";
+import { MapContainer, TileLayer, FeatureGroup, useMapEvents } from "react-leaflet";
 import { EditControl } from "react-leaflet-draw";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet-draw/dist/leaflet.draw.css";
 import { sendNotification } from "@/types/notification";
 
-// Import LeafletGeometryUtil for area calculations
-import "@elfalem/leaflet-curve";
+// Import leaflet-geometryutil for area calculations
 import "leaflet-geometryutil";
 
 // Import the type for agriculteurs
@@ -105,21 +104,35 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     }
   }, [initialData]);
 
-  // Center map on terrain when coordinates are available and map is initialized
-  useEffect(() => {
-    if (mapInitialized && mapRef.current && polygonCoordinates.length > 0) {
-      const latLngs = polygonCoordinates.map(coord => [coord[1], coord[0]] as L.LatLngTuple);
-      const bounds = new L.LatLngBounds(latLngs);
-      mapRef.current.fitBounds(bounds, { padding: [20, 20] });
-      
-      // Create the polygon on the map
-      if (featureGroupRef.current) {
-        featureGroupRef.current.clearLayers();
-        const polygon = L.polygon(latLngs);
-        featureGroupRef.current.addLayer(polygon);
+  // Handle map initialization and centering on the terrain
+  const MapInitializer = () => {
+    const map = useMapEvents({
+      load: () => {
+        mapRef.current = map;
+        setMapInitialized(true);
+        
+        // If editing an existing terrain with coordinates, center the map on the terrain
+        if (polygonCoordinates.length > 0) {
+          try {
+            const latLngs = polygonCoordinates.map(coord => [coord[1], coord[0]] as L.LatLngTuple);
+            const bounds = new L.LatLngBounds(latLngs);
+            map.fitBounds(bounds, { padding: [20, 20] });
+            
+            // Create the polygon on the map
+            if (featureGroupRef.current) {
+              featureGroupRef.current.clearLayers();
+              const polygon = L.polygon(latLngs);
+              featureGroupRef.current.addLayer(polygon);
+            }
+          } catch (error) {
+            console.error("Error centering map on terrain:", error);
+          }
+        }
       }
-    }
-  }, [mapInitialized, polygonCoordinates]);
+    });
+    
+    return null;
+  };
 
   // Fetch regions, districts and communes
   useEffect(() => {
@@ -215,7 +228,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
   const onSubmit = async (data: TerrainFormData) => {
     setIsSubmitting(true);
     try {
-      // Ajouter les coordonnées du polygone au formulaire
+      // Add the polygon coordinates to the form data
       data.geom = polygonCoordinates;
       
       // Determine terrain owner
@@ -242,15 +255,13 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
         // Create new terrain - always unvalidated
         terrainData.statut = false;
         
-        const { error } = await supabase
+        const { data: newTerrain, error } = await supabase
           .from('terrain')
-          .insert([terrainData]);
+          .insert([terrainData])
+          .select('id_terrain')
+          .single();
           
-        if (error) {
-          
-          toast.error("data_terrain",terrainData);
-          throw error;
-        }
+        if (error) throw error;
         
         // Fetch supervisors for the region
         const { data: supervisors } = await supabase
@@ -259,16 +270,16 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
           .eq('id_role', 4); // 4 = superviseur
           
         if (supervisors && supervisors.length > 0) {
-          // Notify supervisors          
+          // Notify supervisors
           await sendNotification(
-              supabase,
-              userId,
-              supervisors,
-              "Nouveau terrain",
-              `Un nouveau terrain '${data.nom_terrain}' a été ajouté en attente de validation`,
-              "info",
-              "terrain",
-              terrainData.id_terrain
+            supabase,
+            userId,
+            supervisors,
+            "Nouveau terrain",
+            `Un nouveau terrain '${data.nom_terrain}' a été ajouté en attente de validation`,
+            "info",
+            "terrain",
+            newTerrain.id_terrain
           );
         }
         
@@ -326,13 +337,6 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
 
   const handleDeleted = () => {
     setPolygonCoordinates([]);
-  };
-
-  const clearPolygons = () => {
-    if (featureGroupRef.current) {
-      featureGroupRef.current.clearLayers();
-      setPolygonCoordinates([]);
-    }
   };
 
   return (
@@ -548,12 +552,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
               center={[-18.913684, 47.536131]} // Center of Madagascar
               zoom={6}
               style={{ height: "100%", width: "100%" }}
-              ref={(map) => {
-                if (map) {
-                  mapRef.current = map;
-                  setMapInitialized(true);
-                }
-              }}
+              doubleClickZoom={false} // Prevent double click from zooming
             >
               <TileLayer
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -565,41 +564,26 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
                   draw={{
                     polygon: {
                       allowIntersection: false,
-                      showArea: false,
-                      showLength: false,
+                      drawError: {
+                        color: '#e1e100',
+                        message: 'Le polygone ne peut pas s\'intersecter!'
+                      },
                       shapeOptions: {
-                        color: "#ff0000",
+                        color: '#ff0000',
                       },
                     },
                     rectangle: false,
                     circle: false,
                     marker: false,
-                    polyline: false
-                }}
-                onCreated={(e) => {
-                  if (!e.layer) return;
-                  const layer = e.layer;
-                  if (layer instanceof L.Polygon) {
-                    const latlngs = layer.getLatLngs();
-                    if (Array.isArray(latlngs) && latlngs.length > 0 && Array.isArray(latlngs[0])) {
-                      const coords = (latlngs[0] as L.LatLng[]).map((latlng) => [latlng.lat, latlng.lng]);
-                      if (coords.length >= 3) {
-                        setPolygonCoordinates(coords);
-                      } else {
-                        toast.error("Un polygone doit avoir au moins trois points.");
-                      }
-                    } else {
-                      toast.error("Erreur de récupération des coordonnées du polygone.");
-                    }
-                  }
-                }}
+                    polyline: false,
+                    circlemarker: false,
+                  }}
+                  onCreated={handleCreated}
                   onEdited={handleEdited}
                   onDeleted={handleDeleted}
                 />
               </FeatureGroup>
-                {polygonCoordinates.length > 0 && (
-                  <Polygon positions={polygonCoordinates.map(coord => [coord[1], coord[0]])} />
-                )}
+              <MapInitializer />
             </MapContainer>
           </div>
           <p className="text-sm text-muted-foreground">

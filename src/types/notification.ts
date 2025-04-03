@@ -27,6 +27,7 @@ export interface DatabaseNotification {
   entity_type?: string;
   projet_id?: number;
 }
+
 export async function sendNotification(supabase, userId, recipients, title, message, type = "info", entityType = null, entityId = null) {
   const notifications = recipients.map(recipient => ({
       id_expediteur: userId,

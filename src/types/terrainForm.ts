@@ -11,7 +11,6 @@ export interface TerrainFormData {
   acces_eau: boolean;
   acces_route: boolean;
   id_tantsaha?: string;
- // photos?: string[];
   geom?: number[][]; // Coordonnées du polygone [[lng, lat], [lng, lat], ...]
 }
 

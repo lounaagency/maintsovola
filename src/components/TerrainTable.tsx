@@ -10,11 +10,12 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { Check, Edit, MessageSquare } from "lucide-react";
+import { Check, Edit, MessageSquare, Trash } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { sendNotification } from "@/types/notification";
 
 interface TerrainTableProps {
   terrains: TerrainData[];
@@ -53,15 +54,30 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
         }
       }
 
+      const terrain = terrains.find(t => t.id_terrain === terrainId);
       const { error } = await supabase
         .from('terrain')
         .update({ 
           statut: true,
-          surface_validee: terrains.find(t => t.id_terrain === terrainId)?.surface_proposee
+          surface_validee: terrain?.surface_proposee
         })
         .eq('id_terrain', terrainId);
 
       if (error) throw error;
+      
+      // Notify the land owner
+      if (terrain && terrain.id_tantsaha && user) {
+        await sendNotification(
+          supabase,
+          user.id,
+          [{ id_utilisateur: terrain.id_tantsaha }],
+          "Terrain validé",
+          `Votre terrain ${terrain.nom_terrain || `#${terrain.id_terrain}`} a été validé`,
+          "info",
+          "terrain",
+          terrainId
+        );
+      }
       
       toast.success("Le terrain a été validé avec succès");
       
@@ -69,6 +85,51 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
     } catch (error) {
       console.error('Erreur lors de la validation du terrain:', error);
       toast.error("Impossible de valider le terrain");
+    }
+  };
+
+  const handleDeleteTerrain = async (terrainId: number) => {
+    try {
+      if (!user) return;
+      
+      // Check if user has permission to delete
+      const terrain = terrains.find(t => t.id_terrain === terrainId);
+      if (userRole === 'simple' && terrain?.id_tantsaha !== user.id) {
+        toast.error("Vous pouvez uniquement supprimer vos propres terrains");
+        return;
+      }
+
+      if (userRole !== 'simple' && userRole !== 'superviseur') {
+        toast.error("Vous n'avez pas les permissions nécessaires");
+        return;
+      }
+
+      // Check if this terrain has existing projects
+      const { data: projects, error: projectsError } = await supabase
+        .from('projet')
+        .select('id_projet')
+        .eq('id_terrain', terrainId);
+        
+      if (projectsError) throw projectsError;
+      
+      if (projects && projects.length > 0) {
+        toast.error("Impossible de supprimer ce terrain car il est associé à des projets");
+        return;
+      }
+
+      const { error } = await supabase
+        .from('terrain')
+        .delete()
+        .eq('id_terrain', terrainId);
+
+      if (error) throw error;
+      
+      toast.success("Le terrain a été supprimé avec succès");
+      
+      if (onTerrainUpdate) onTerrainUpdate();
+    } catch (error) {
+      console.error('Erreur lors de la suppression du terrain:', error);
+      toast.error("Impossible de supprimer le terrain");
     }
   };
 
@@ -85,16 +146,20 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
         .eq('id_terrain', terrainId);
 
       if (error) throw error;
-
-      await supabase.from('notification')
-        .insert([{
-          id_destinataire: technicianId,
-          id_expediteur: user?.id,
-          titre: "Nouvelle affectation de terrain",
-          message: `Vous avez été assigné au terrain #${terrainId}`,
-          entity_type: "terrain",
-          entity_id: terrainId
-        }]);
+      
+      // Notify the technician
+      if (user) {
+        await sendNotification(
+          supabase,
+          user.id,
+          [{ id_utilisateur: technicianId }],
+          "Nouvelle affectation de terrain",
+          `Vous avez été assigné au terrain #${terrainId}`,
+          "assignment",
+          "terrain",
+          terrainId
+        );
+      }
       
       toast.success("Technicien assigné avec succès!");
       if (onTerrainUpdate) onTerrainUpdate();
@@ -113,6 +178,18 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
     
     if (userRole === 'technicien' && terrain.id_technicien === user.id) {
       return true;
+    }
+    
+    if (userRole === 'superviseur') return true;
+    
+    return false;
+  };
+
+  const canDelete = (terrain: TerrainData): boolean => {
+    if (!user) return false;
+    
+    if (['agriculteur', 'investisseur', 'simple'].includes(userRole || '') && terrain.id_tantsaha === user.id) {
+      return terrain.statut === false;
     }
     
     if (userRole === 'superviseur') return true;
@@ -248,6 +325,17 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                     Modifier
                   </Button>
                 )}
+                {canDelete(terrain) && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="text-red-500 hover:text-red-700"
+                    onClick={() => handleDeleteTerrain(terrain.id_terrain || 0)}
+                  >
+                    <Trash className="h-4 w-4 mr-1" />
+                    Supprimer
+                  </Button>
+                )}
                 {canContactTechnicien(terrain) && (
                   <Button 
                     variant="outline" 
@@ -347,6 +435,17 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                       >
                         <Edit className="h-4 w-4 mr-1" />
                         Modifier
+                      </Button>
+                    )}
+                    {canDelete(terrain) && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        className="text-red-500 hover:text-red-700"
+                        onClick={() => handleDeleteTerrain(terrain.id_terrain || 0)}
+                      >
+                        <Trash className="h-4 w-4 mr-1" />
+                        Supprimer
                       </Button>
                     )}
                     {canContactTechnicien(terrain) && (
