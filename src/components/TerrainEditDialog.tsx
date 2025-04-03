@@ -33,17 +33,21 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
   useEffect(() => {
     if (isOpen && (userRole === 'technicien' || userRole === 'superviseur')) {
       const fetchAgriculteurs = async () => {
-        const { data, error } = await supabase
-          .from('utilisateurs_par_role')
-          .select('id_utilisateur, nom, prenoms')
-          .eq('id_role', 2); // 2 = simple (agriculteur)
-        
-        if (error) {
-          console.error("Error fetching agriculteurs:", error);
-          return;
+        try {
+          const { data, error } = await supabase
+            .from('utilisateurs_par_role')
+            .select('id_utilisateur, nom, prenoms')
+            .eq('id_role', 2); // 2 = simple (agriculteur)
+          
+          if (error) {
+            console.error("Error fetching agriculteurs:", error);
+            return;
+          }
+          
+          setAgriculteurs(data || []);
+        } catch (error) {
+          console.error("Error in fetchAgriculteurs:", error);
         }
-        
-        setAgriculteurs(data || []);
       };
       
       fetchAgriculteurs();
