@@ -53,12 +53,12 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
   onSubmitSuccess,
   onCancel,
   userId,
-  userRole,
-  agriculteurs
+  userRole
 }) => {
   const [regions, setRegions] = useState<RegionData[]>([]);
   const [districts, setDistricts] = useState<DistrictData[]>([]);
   const [communes, setCommunes] = useState<CommuneData[]>([]);
+  const [agriculteurs, setAgriculteurs] = useState<Agriculteur[]>([]);
   const [filteredDistricts, setFilteredDistricts] = useState<DistrictData[]>([]);
   const [filteredCommunes, setFilteredCommunes] = useState<CommuneData[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -116,7 +116,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
         
         setPhotoUrls(urls.filter(url => url.trim() !== ''));
       }
-    }
+    } 
   }, [initialData]);
 
   // Handle map initialization and centering on the terrain
@@ -178,9 +178,20 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       setCommunes(data || []);
     };
 
+    const fetchAgriculteurs = async () => {
+      const { data, error } = await supabase.from("utilisateur").select("id_utilisateur, nom, prenoms").eq("role", 'simple').order("nom");
+      if (error) {
+        console.error("Erreur de chargement des agriculteurs:", error);
+        return;
+      }
+      if(userRole === 'technicien' || userRole === 'superviseur') {
+        setAgriculteurs(data || []);  
+      }
+    };
     fetchRegions();
     fetchDistricts();
     fetchCommunes();
+    fetchAgriculteurs();
   }, []);
 
   // Filter districts by region
@@ -496,8 +507,8 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
                 <Input 
                   type="number" 
                   placeholder="Surface en hectares" 
-                  min="0.1" 
-                  step="0.1" 
+                  min="0.10" 
+                  step="0.10" 
                   {...field}
                   onChange={(e) => field.onChange(parseFloat(e.target.value))} 
                 />
