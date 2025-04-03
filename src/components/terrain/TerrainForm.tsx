@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -20,7 +19,6 @@ import "leaflet/dist/leaflet.css";
 import "leaflet-draw/dist/leaflet.draw.css";
 import { sendNotification } from "@/types/notification";
 
-// Import the type for agriculteurs
 interface Agriculteur {
   id_utilisateur: string;
   nom: string;
@@ -36,7 +34,6 @@ interface TerrainFormProps {
   agriculteurs?: Agriculteur[];
 }
 
-// Define the validation schema
 const schema = yup.object({
   nom_terrain: yup.string().required("Le nom du terrain est obligatoire"),
   surface_proposee: yup.number().required("La surface est obligatoire").positive("La surface doit être positive"),
@@ -67,7 +64,6 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
   const featureGroupRef = useRef<L.FeatureGroup | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   
-  // Photo upload state
   const [photos, setPhotos] = useState<File[]>([]);
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -100,44 +96,46 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
   const watchRegion = form.watch("id_region");
   const watchDistrict = form.watch("id_district");
 
-  // Extract existing polygon coordinates and photos when initializing
   useEffect(() => {
     if (initialData) {
-      // Set polygon coordinates if available
+      console.log("Initial terrain data:", initialData);
+      
       if (initialData.geom && initialData.geom.type === 'Polygon' && initialData.geom.coordinates && initialData.geom.coordinates[0]) {
+        console.log("Setting polygon coordinates from:", initialData.geom.coordinates[0]);
         setPolygonCoordinates(initialData.geom.coordinates[0]);
       }
       
-      // Set photo URLs if available
       if (initialData.photos) {
+        console.log("Setting photos from:", initialData.photos);
         const urls = typeof initialData.photos === 'string' 
           ? initialData.photos.split(',') 
           : Array.isArray(initialData.photos) ? initialData.photos : [];
         
         setPhotoUrls(urls.filter(url => url.trim() !== ''));
+        console.log("Photo URLs set:", urls.filter(url => url.trim() !== ''));
       }
     } 
   }, [initialData]);
 
-  // Handle map initialization and centering on the terrain
   const MapInitializer = () => {
     const map = useMapEvents({
       load: () => {
+        console.log("Map loaded");
         mapRef.current = map;
         setMapInitialized(true);
         
-        // If editing an existing terrain with coordinates, center the map on the terrain
         if (polygonCoordinates.length > 0) {
           try {
+            console.log("Centering map on polygon:", polygonCoordinates);
             const latLngs = polygonCoordinates.map(coord => [coord[1], coord[0]] as L.LatLngTuple);
             const bounds = new L.LatLngBounds(latLngs);
             map.fitBounds(bounds, { padding: [20, 20] });
             
-            // Create the polygon on the map
             if (featureGroupRef.current) {
               featureGroupRef.current.clearLayers();
               const polygon = L.polygon(latLngs);
               featureGroupRef.current.addLayer(polygon);
+              console.log("Polygon added to map");
             }
           } catch (error) {
             console.error("Error centering map on terrain:", error);
@@ -149,7 +147,6 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     return null;
   };
 
-  // Fetch regions, districts and communes
   useEffect(() => {
     const fetchRegions = async () => {
       const { data, error } = await supabase.from("region").select("*").order("nom_region");
@@ -183,7 +180,6 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     fetchCommunes();
   }, []);
 
-  // Filter districts by region
   useEffect(() => {
     if (watchRegion) {
       const regionId = parseInt(watchRegion);
@@ -199,7 +195,6 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     }
   }, [watchRegion, districts, form, watchDistrict]);
 
-  // Filter communes by district
   useEffect(() => {
     if (watchDistrict) {
       const districtId = parseInt(watchDistrict);
@@ -215,7 +210,6 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     }
   }, [watchDistrict, communes, form]);
 
-  // Photo upload handlers
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     
@@ -238,7 +232,6 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     setPhotoUrls(prevUrls => {
       const newUrls = [...prevUrls];
       
-      // Only revoke URL if it's a blob URL (newly added photo)
       if (newUrls[index].startsWith('blob:')) {
         URL.revokeObjectURL(newUrls[index]);
       }
@@ -287,24 +280,18 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     }
   };
 
-  // Calculate area in hectares
   const calculateAreaInHectares = (coords: number[][]) => {
     if (!coords || coords.length < 3) return 0;
 
-    // Convert coordinates to Leaflet LatLng objects
     const latLngs = coords.map(coord => new L.LatLng(coord[1], coord[0]));
     
-    // Create a Leaflet polygon to calculate area
     const polygon = new L.Polygon(latLngs);
     
-    // Calculate area in square meters
     const areaInSquareMeters = L.GeometryUtil.geodesicArea(polygon.getLatLngs()[0] as L.LatLng[]);
     
-    // Convert to hectares (1 hectare = 10000 m²)
     return areaInSquareMeters / 10000;
   };
 
-  // Update proposed area when polygon changes
   useEffect(() => {
     if (polygonCoordinates && polygonCoordinates.length >= 3) {
       const area = calculateAreaInHectares(polygonCoordinates);
@@ -315,10 +302,8 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
   const onSubmit = async (data: TerrainFormData) => {
     setIsSubmitting(true);
     try {
-      // Add the polygon coordinates to the form data
       data.geom = polygonCoordinates;
       
-      // Determine terrain owner
       const terrainOwnerId = userRole === 'simple' ? userId :
                              userRole === 'technicien' || userRole === 'superviseur' ?
                              (data.id_tantsaha || userId) : userId;
@@ -326,18 +311,14 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       const terrainData = convertFormDataToTerrainData(data);
       terrainData.id_tantsaha = terrainOwnerId;
       
-      // Upload photos and get URLs
       const uploadedPhotoUrls = await uploadPhotos();
       
-      // Combine existing photo URLs with newly uploaded ones
       const existingPhotoUrls = photoUrls.filter(url => !url.startsWith('blob:'));
       const allPhotoUrls = [...existingPhotoUrls, ...uploadedPhotoUrls];
       
-      // Add photos to terrain data
       terrainData.photos = allPhotoUrls.join(',');
       
       if (initialData?.id_terrain) {
-        // Update existing terrain - preserve status
         terrainData.statut = initialData.statut;
         
         const { error } = await supabase
@@ -349,7 +330,6 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
         
         toast.success("Terrain modifié avec succès");
       } else {
-        // Create new terrain - always unvalidated
         terrainData.statut = false;
         
         const { data: newTerrain, error } = await supabase
@@ -360,14 +340,12 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
           
         if (error) throw error;
         
-        // Fetch supervisors for the region
         const { data: supervisors } = await supabase
           .from('utilisateur')
           .select('id_utilisateur')
-          .eq('id_role', 4); // 4 = superviseur
+          .eq('id_role', 4);
           
         if (supervisors && supervisors.length > 0 && userId) {
-          // Notify supervisors
           await sendNotification(
             supabase,
             userId,
@@ -392,12 +370,10 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     }
   };
 
-  // Map event handlers
   const handleCreated = (e: any) => {
     const { layerType, layer } = e;
     
     if (layerType === 'polygon') {
-      // Get polygon coordinates
       const coords: number[][] = [];
       const latLngs = layer.getLatLngs()[0] as L.LatLng[];
       
@@ -405,7 +381,6 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
         coords.push([latLng.lng, latLng.lat]);
       });
       
-      // Add first point at the end to close the polygon
       coords.push([latLngs[0].lng, latLngs[0].lat]);
       
       setPolygonCoordinates(coords);
@@ -416,7 +391,6 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     const layers = e.layers;
     layers.eachLayer((layer: L.Layer) => {
       if (layer instanceof L.Polygon) {
-        // Get updated coordinates
         const coords: number[][] = [];
         const latLngs = layer.getLatLngs()[0] as L.LatLng[];
         
@@ -424,7 +398,6 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
           coords.push([latLng.lng, latLng.lat]);
         });
         
-        // Add first point at the end to close the polygon
         coords.push([latLngs[0].lng, latLngs[0].lat]);
         
         setPolygonCoordinates(coords);
@@ -641,7 +614,6 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
           />
         </div>
         
-        {/* Photo upload section */}
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <FormLabel>Photos du terrain</FormLabel>
@@ -686,15 +658,14 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
           )}
         </div>
         
-        {/* Map placed at the end of the form */}
         <div className="space-y-4">
           <FormLabel>Définir la zone du terrain sur la carte</FormLabel>
           <div className="h-[400px] w-full relative rounded-md overflow-hidden border">
             <MapContainer
-              center={[-18.913684, 47.536131]} // Center of Madagascar
+              center={[-18.913684, 47.536131]}
               zoom={6}
               style={{ height: "100%", width: "100%" }}
-              doubleClickZoom={false} // Prevent double click from zooming
+              doubleClickZoom={false}
             >
               <TileLayer
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
