@@ -1,3 +1,4 @@
+
 import React from "react";
 import { TerrainData } from "@/types/terrain";
 import { Button } from "@/components/ui/button";
@@ -40,22 +41,14 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
   const handleValidate = async (terrainId: number) => {
     try {
       if (!['technicien', 'superviseur'].includes(userRole || '')) {
-        toast({
-          title: "Accès refusé",
-          description: "Vous n'avez pas les permissions nécessaires pour valider ce terrain",
-          variant: "destructive"
-        });
+        toast.error("Vous n'avez pas les permissions nécessaires pour valider ce terrain");
         return;
       }
 
       if (userRole === 'technicien') {
         const terrain = terrains.find(t => t.id_terrain === terrainId);
         if (terrain?.id_technicien !== user?.id) {
-          toast({
-            title: "Accès refusé",
-            description: "Vous pouvez uniquement valider les terrains qui vous sont assignés",
-            variant: "destructive"
-          });
+          toast.error("Vous pouvez uniquement valider les terrains qui vous sont assignés");
           return;
         }
       }
@@ -70,30 +63,19 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
 
       if (error) throw error;
       
-      toast({
-        title: "Succès",
-        description: "Le terrain a été validé avec succès",
-      });
+      toast.success("Le terrain a été validé avec succès");
       
       if (onTerrainUpdate) onTerrainUpdate();
     } catch (error) {
       console.error('Erreur lors de la validation du terrain:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de valider le terrain",
-        variant: "destructive"
-      });
+      toast.error("Impossible de valider le terrain");
     }
   };
 
   const handleAssignTechnician = async (terrainId: number, technicianId: string) => {
     try {
       if (userRole !== 'superviseur') {
-        toast({
-          title: "Accès refusé",
-          description: "Seuls les superviseurs peuvent assigner des techniciens",
-          variant: "destructive"
-        });
+        toast.error("Seuls les superviseurs peuvent assigner des techniciens");
         return;
       }
 
@@ -114,18 +96,18 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
           entity_id: terrainId
         }]);
       
-      toast("Technicien assigné avec succès!");
+      toast.success("Technicien assigné avec succès!");
       if (onTerrainUpdate) onTerrainUpdate();
     } catch (error) {
       console.error("Error assigning technician:", error);
-      toast("Erreur lors de l'assignation du technicien");
+      toast.error("Erreur lors de l'assignation du technicien");
     }
   };
 
   const canEdit = (terrain: TerrainData): boolean => {
     if (!user) return false;
     
-    if (['agriculteur', 'investisseur'].includes(userRole || '') && terrain.id_tantsaha === user.id) {
+    if (['agriculteur', 'investisseur', 'simple'].includes(userRole || '') && terrain.id_tantsaha === user.id) {
       return terrain.statut === false;
     }
     
@@ -141,7 +123,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
   const canContactTechnicien = (terrain: TerrainData): boolean => {
     if (!user) return false;
     
-    if (['agriculteur', 'investisseur'].includes(userRole || '') && terrain.id_tantsaha === user.id) {
+    if (['agriculteur', 'investisseur', 'simple'].includes(userRole || '') && terrain.id_tantsaha === user.id) {
       return terrain.statut === true && !!terrain.id_technicien;
     }
     
@@ -160,9 +142,28 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
     }
   };
 
-  const filteredTerrains = terrains.filter(terrain => 
-    type === 'validated' ? terrain.statut === true : terrain.statut === false
-  );
+  // Filter terrains based on user role
+  const filterTerrainsByRole = () => {
+    let filtered = [...terrains];
+    
+    // Filter by status (pending/validated)
+    filtered = filtered.filter(terrain => 
+      type === 'validated' ? terrain.statut === true : terrain.statut === false
+    );
+    
+    // Additional filters based on user role
+    if (userRole === 'simple') {
+      // Simple user only sees their own terrains
+      filtered = filtered.filter(terrain => terrain.id_tantsaha === user?.id);
+    } else if (userRole === 'technicien') {
+      // Technician only sees terrains assigned to them
+      filtered = filtered.filter(terrain => terrain.id_technicien === user?.id);
+    }
+    
+    return filtered;
+  };
+
+  const filteredTerrains = filterTerrainsByRole();
 
   if (isMobile) {
     return (

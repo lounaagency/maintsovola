@@ -6,8 +6,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import TerrainForm from "@/components/terrain/TerrainForm";
 import { TerrainData } from "@/types/terrain";
-import TerrainForm from "./terrain/TerrainForm";
 
 interface TerrainEditDialogProps {
   isOpen: boolean;

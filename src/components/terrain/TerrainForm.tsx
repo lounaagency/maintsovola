@@ -98,32 +98,26 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
   const watchRegion = form.watch("id_region");
   const watchDistrict = form.watch("id_district");
 
-  // Extraire les coordonnées de polygone existantes lors de l'initialisation
+  // Extract existing polygon coordinates when initializing
   useEffect(() => {
     if (initialData?.geom && initialData.geom.type === 'Polygon' && initialData.geom.coordinates && initialData.geom.coordinates[0]) {
       setPolygonCoordinates(initialData.geom.coordinates[0]);
-      
-      // Centrer et zoomer sur le terrain quand les coordonnées sont disponibles
-      // et que la carte est initialisée
-      if (mapInitialized && mapRef.current && polygonCoordinates.length > 0) {
-        const bounds = new L.LatLngBounds(polygonCoordinates.map(coord => [coord[1], coord[0]]));
-        mapRef.current.fitBounds(bounds, { padding: [20, 20] });
-        
-        // Recréer le polygone sur la carte
-        if (featureGroupRef.current) {
-          featureGroupRef.current.clearLayers();
-          const polygon = L.polygon(polygonCoordinates.map(coord => [coord[1], coord[0]]));
-          featureGroupRef.current.addLayer(polygon);
-        }
-      }
     }
-  }, [initialData, mapInitialized]);
+  }, [initialData]);
 
-  // Effectuer le centrage quand la carte est initialisée
+  // Center map on terrain when coordinates are available and map is initialized
   useEffect(() => {
     if (mapInitialized && mapRef.current && polygonCoordinates.length > 0) {
-      const bounds = new L.LatLngBounds(polygonCoordinates.map(coord => [coord[1], coord[0]]));
+      const latLngs = polygonCoordinates.map(coord => [coord[1], coord[0]] as L.LatLngTuple);
+      const bounds = new L.LatLngBounds(latLngs);
       mapRef.current.fitBounds(bounds, { padding: [20, 20] });
+      
+      // Create the polygon on the map
+      if (featureGroupRef.current) {
+        featureGroupRef.current.clearLayers();
+        const polygon = L.polygon(latLngs);
+        featureGroupRef.current.addLayer(polygon);
+      }
     }
   }, [mapInitialized, polygonCoordinates]);
 
@@ -193,24 +187,24 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     }
   }, [watchDistrict, communes, form]);
 
-  // Calcul de la surface en hectares
+  // Calculate area in hectares
   const calculateAreaInHectares = (coords: number[][]) => {
     if (!coords || coords.length < 3) return 0;
 
-    // Convertir les coordonnées en objets LatLng de Leaflet
+    // Convert coordinates to Leaflet LatLng objects
     const latLngs = coords.map(coord => new L.LatLng(coord[1], coord[0]));
     
-    // Créer un polygone Leaflet pour calculer l'aire
+    // Create a Leaflet polygon to calculate area
     const polygon = new L.Polygon(latLngs);
     
-    // Obtenir l'aire en mètres carrés avec GeometryUtil
+    // Use Leaflet's GeometryUtil to calculate geodesic area
     const areaInSquareMeters = L.GeometryUtil.geodesicArea(polygon.getLatLngs()[0] as L.LatLng[]);
     
-    // Convertir en hectares (1 hectare = 10000 m²)
+    // Convert to hectares (1 hectare = 10000 m²)
     return areaInSquareMeters / 10000;
   };
 
-  // Mettre à jour la surface proposée lorsque le polygone change
+  // Update proposed area when polygon changes
   useEffect(() => {
     if (polygonCoordinates && polygonCoordinates.length >= 3) {
       const area = calculateAreaInHectares(polygonCoordinates);
@@ -224,17 +218,18 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       // Ajouter les coordonnées du polygone au formulaire
       data.geom = polygonCoordinates;
       
-      // Determine the owner of the terrain
+      // Determine terrain owner
       const terrainOwnerId = userRole === 'simple' ? userId :
                              userRole === 'technicien' || userRole === 'superviseur' ?
                              (data.id_tantsaha || userId) : userId;
       
       const terrainData = convertFormDataToTerrainData(data);
       terrainData.id_tantsaha = terrainOwnerId;
-      terrainData.statut = false; // New terrains are always unvalidated
       
       if (initialData?.id_terrain) {
-        // Update existing terrain
+        // Update existing terrain - preserve status
+        terrainData.statut = initialData.statut;
+        
         const { error } = await supabase
           .from('terrain')
           .update(terrainData)
@@ -244,7 +239,9 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
         
         toast.success("Terrain modifié avec succès");
       } else {
-        // Create new terrain
+        // Create new terrain - always unvalidated
+        terrainData.statut = false;
+        
         const { error } = await supabase
           .from('terrain')
           .insert([terrainData]);
@@ -259,8 +256,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
         const { data: supervisors } = await supabase
           .from('utilisateur')
           .select('id_utilisateur')
-          .eq('id_role', 4) // 4 = superviseur
-          .eq('role', 'superviseur');
+          .eq('id_role', 4); // 4 = superviseur
           
         if (supervisors && supervisors.length > 0) {
           // Notify supervisors          
@@ -288,12 +284,12 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     }
   };
 
-  // Gestionnaires d'événements pour la carte
+  // Map event handlers
   const handleCreated = (e: any) => {
     const { layerType, layer } = e;
     
     if (layerType === 'polygon') {
-      // Récupérer les coordonnées du polygone
+      // Get polygon coordinates
       const coords: number[][] = [];
       const latLngs = layer.getLatLngs()[0] as L.LatLng[];
       
@@ -301,7 +297,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
         coords.push([latLng.lng, latLng.lat]);
       });
       
-      // Ajouter le premier point à la fin pour fermer le polygone
+      // Add first point at the end to close the polygon
       coords.push([latLngs[0].lng, latLngs[0].lat]);
       
       setPolygonCoordinates(coords);
@@ -312,7 +308,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     const layers = e.layers;
     layers.eachLayer((layer: L.Layer) => {
       if (layer instanceof L.Polygon) {
-        // Récupérer les coordonnées mises à jour
+        // Get updated coordinates
         const coords: number[][] = [];
         const latLngs = layer.getLatLngs()[0] as L.LatLng[];
         
@@ -320,7 +316,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
           coords.push([latLng.lng, latLng.lat]);
         });
         
-        // Ajouter le premier point à la fin pour fermer le polygone
+        // Add first point at the end to close the polygon
         coords.push([latLngs[0].lng, latLngs[0].lat]);
         
         setPolygonCoordinates(coords);
@@ -544,12 +540,12 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
           />
         </div>
         
-        {/* Carte placée à la fin du formulaire */}
+        {/* Map placed at the end of the form */}
         <div className="space-y-4">
           <FormLabel>Définir la zone du terrain sur la carte</FormLabel>
           <div className="h-[400px] w-full relative rounded-md overflow-hidden border">
             <MapContainer
-              center={[-18.913684, 47.536131]} // Centre de Madagascar
+              center={[-18.913684, 47.536131]} // Center of Madagascar
               zoom={6}
               style={{ height: "100%", width: "100%" }}
               ref={(map) => {
@@ -566,42 +562,44 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
               <FeatureGroup ref={featureGroupRef}>
                 <EditControl
                   position="topright"
-            draw={{
-              polygon: {
-                allowIntersection: false,
-                showArea: false,
-                showLength: false,
-                shapeOptions: {
-                  color: "#ff0000",
-                },
-              },
-              rectangle: false,
-              circle: false,
-              marker: false,
-              polyline: false,
-            }}
-            onCreated={(e) => {
-              if (!e.layer) return;
-              const layer = e.layer;
-              if (layer instanceof L.Polygon) {
-                const latlngs = layer.getLatLngs();
-                if (Array.isArray(latlngs) && latlngs.length > 0 && Array.isArray(latlngs[0])) {
-                  const coords = (latlngs[0] as L.LatLng[]).map((latlng) => [latlng.lat, latlng.lng]);
-                  if (coords.length >= 3) {
-                    setPolygonCoordinates(coords);
-                  } else {
-                    toast.error("Un polygone doit avoir au moins trois points.");
-                  }
-                } else {
-                  toast.error("Erreur de récupération des coordonnées du polygone.");
-                }
-              }
-            }}
+                  draw={{
+                    polygon: {
+                      allowIntersection: false,
+                      showArea: false,
+                      showLength: false,
+                      shapeOptions: {
+                        color: "#ff0000",
+                      },
+                    },
+                    rectangle: false,
+                    circle: false,
+                    marker: false,
+                    polyline: false
+                  }}
+                  onCreated={(e) => {
+                    if (!e.layer) return;
+                    const layer = e.layer;
+                    if (layer instanceof L.Polygon) {
+                      const latlngs = layer.getLatLngs();
+                      if (Array.isArray(latlngs) && latlngs.length > 0 && Array.isArray(latlngs[0])) {
+                        const coords = (latlngs[0] as L.LatLng[]).map((latlng) => [latlng.lat, latlng.lng]);
+                        if (coords.length >= 3) {
+                          setPolygonCoordinates(coords);
+                        } else {
+                          toast.error("Un polygone doit avoir au moins trois points.");
+                        }
+                      } else {
+                        toast.error("Erreur de récupération des coordonnées du polygone.");
+                      }
+                    }
+                  }}
                   onEdited={handleEdited}
                   onDeleted={handleDeleted}
                 />
               </FeatureGroup>
-              {polygonCoordinates.length > 2 && <Polygon positions={polygonCoordinates} color="blue" />}
+                {polygonCoordinates.length > 0 && (
+                  <Polygon positions={polygonCoordinates.map(coord => [coord[1], coord[0]])} />
+                )}
             </MapContainer>
           </div>
           <p className="text-sm text-muted-foreground">
