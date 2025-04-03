@@ -28,32 +28,9 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
   userRole,
 }) => {
   const [agriculteurs, setAgriculteurs] = useState<{ id_utilisateur: string; nom: string; prenoms?: string }[]>([]);
-  const [processedTerrain, setProcessedTerrain] = useState<TerrainData | undefined>(terrain);
   
-  // Process terrain data when it changes
-  useEffect(() => {
-    if (terrain) {
-      const processed = { ...terrain };
-      
-      // Make sure photos is properly formatted
-      if (typeof processed.photos === 'string') {
-        processed.photos = processed.photos.split(',').filter(p => p.trim() !== '');
-      }
-      
-      // Process the geometry for proper display
-      if (processed.geom && typeof processed.geom === 'string') {
-        try {
-          processed.geom = JSON.parse(processed.geom);
-        } catch (e) {
-          console.error('Error parsing geometry:', e);
-        }
-      }
-      
-      setProcessedTerrain(processed);
-    } else {
-      setProcessedTerrain(undefined);
-    }
-  }, [terrain]);
+  // We no longer need processedTerrain as we'll pass terrain directly to the form
+  // and handle any necessary processing in the TerrainForm component itself
 
   // Fetch agriculteurs when the dialog opens and userRole is technicien or superviseur
   useEffect(() => {
@@ -87,11 +64,11 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
       <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {processedTerrain?.id_terrain ? "Modifier le terrain" : "Ajouter un terrain"}
+            {terrain?.id_terrain ? "Modifier le terrain" : "Ajouter un terrain"}
           </DialogTitle>
         </DialogHeader>
         <TerrainForm
-          initialData={processedTerrain}
+          initialData={terrain}
           onSubmitSuccess={onSubmitSuccess}
           onCancel={onClose}
           userId={userId}

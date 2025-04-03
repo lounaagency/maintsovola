@@ -22,6 +22,7 @@ export const convertFormDataToTerrainData = (formData: TerrainFormData): Terrain
     id_region: Number(formData.id_region),
     id_district: Number(formData.id_district),
     id_commune: Number(formData.id_commune),
+    surface_proposee: formData.surface_proposee || 0
   };
   
   // Si des coordonnées de polygone ont été définies, créer un objet geom au format GeoJSON

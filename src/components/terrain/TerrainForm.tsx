@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -43,7 +44,7 @@ const schema = yup.object({
   acces_eau: yup.boolean().default(false),
   acces_route: yup.boolean().default(false),
   id_tantsaha: yup.string().optional(),
-}).required();
+});
 
 const TerrainForm: React.FC<TerrainFormProps> = ({
   initialData,
@@ -70,83 +71,104 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const form = useForm<TerrainFormData>({
-    resolver: yupResolver(schema) as any,
-    defaultValues: initialData ? {
-      id_terrain: initialData.id_terrain,
-      nom_terrain: initialData.nom_terrain || "",
-      surface_proposee: initialData.surface_proposee,
-      id_region: initialData.id_region?.toString() || "",
-      id_district: initialData.id_district?.toString() || "",
-      id_commune: initialData.id_commune?.toString() || "",
-      acces_eau: initialData.acces_eau || false,
-      acces_route: initialData.acces_route || false,
-      id_tantsaha: initialData.id_tantsaha,
-    } : {
-      nom_terrain: "",
-      surface_proposee: 1,
-      id_region: "",
-      id_district: "",
-      id_commune: "",
-      acces_eau: false,
-      acces_route: false,
-      id_tantsaha: userRole === 'simple' ? userId : undefined,
+    resolver: yupResolver(schema),
+    defaultValues: {
+      id_terrain: initialData?.id_terrain,
+      nom_terrain: initialData?.nom_terrain || "",
+      surface_proposee: initialData?.surface_proposee || 1,
+      id_region: initialData?.id_region?.toString() || "",
+      id_district: initialData?.id_district?.toString() || "",
+      id_commune: initialData?.id_commune?.toString() || "",
+      acces_eau: initialData?.acces_eau || false,
+      acces_route: initialData?.acces_route || false,
+      id_tantsaha: userRole === 'simple' ? userId : initialData?.id_tantsaha,
     }
   });
   
   const watchRegion = form.watch("id_region");
   const watchDistrict = form.watch("id_district");
 
+  // Initialize terrain data when component mounts or initialData changes
   useEffect(() => {
     if (initialData) {
-      console.log("Initial terrain data:", initialData);
+      console.log("Initial terrain data received:", initialData);
       
-      if (initialData.geom && initialData.geom.type === 'Polygon' && initialData.geom.coordinates && initialData.geom.coordinates[0]) {
-        console.log("Setting polygon coordinates from:", initialData.geom.coordinates[0]);
-        setPolygonCoordinates(initialData.geom.coordinates[0]);
-      }
-      
-      if (initialData.photos) {
-        console.log("Setting photos from:", initialData.photos);
-        const urls = typeof initialData.photos === 'string' 
-          ? initialData.photos.split(',') 
-          : Array.isArray(initialData.photos) ? initialData.photos : [];
-        
-        setPhotoUrls(urls.filter(url => url.trim() !== ''));
-        console.log("Photo URLs set:", urls.filter(url => url.trim() !== ''));
-      }
-    } 
-  }, [initialData]);
-
-  const MapInitializer = () => {
-    const map = useMapEvents({
-      load: () => {
-        console.log("Map loaded");
-        mapRef.current = map;
-        setMapInitialized(true);
-        
-        if (polygonCoordinates.length > 0) {
-          try {
-            console.log("Centering map on polygon:", polygonCoordinates);
-            const latLngs = polygonCoordinates.map(coord => [coord[1], coord[0]] as L.LatLngTuple);
-            const bounds = new L.LatLngBounds(latLngs);
-            map.fitBounds(bounds, { padding: [20, 20] });
+      // Process geometry data if available
+      if (initialData.geom) {
+        try {
+          // Handle both string and object geom formats
+          const geomData = typeof initialData.geom === 'string' 
+            ? JSON.parse(initialData.geom) 
+            : initialData.geom;
             
-            if (featureGroupRef.current) {
-              featureGroupRef.current.clearLayers();
-              const polygon = L.polygon(latLngs);
-              featureGroupRef.current.addLayer(polygon);
-              console.log("Polygon added to map");
-            }
-          } catch (error) {
-            console.error("Error centering map on terrain:", error);
+          console.log("Processing geometry data:", geomData);
+          
+          if (geomData && geomData.type === 'Polygon' && geomData.coordinates && geomData.coordinates[0]) {
+            console.log("Setting polygon coordinates from:", geomData.coordinates[0]);
+            setPolygonCoordinates(geomData.coordinates[0]);
           }
+        } catch (error) {
+          console.error("Error processing polygon geometry:", error);
         }
       }
-    });
+      
+      // Process photos if available
+      if (initialData.photos) {
+        try {
+          console.log("Processing photos from initialData:", initialData.photos);
+          const photosArray = typeof initialData.photos === 'string' 
+            ? initialData.photos.split(',').filter(url => url.trim() !== '') 
+            : Array.isArray(initialData.photos) ? initialData.photos.filter(url => url && url.trim() !== '') : [];
+          
+          console.log("Setting photo URLs:", photosArray);
+          setPhotoUrls(photosArray);
+        } catch (error) {
+          console.error("Error processing photos:", error);
+        }
+      }
+    }
+  }, [initialData]);
+
+  // Custom map component to handle events and map initialization
+  const MapInitializer = () => {
+    const map = useMap();
+    
+    useEffect(() => {
+      console.log("Map initialized");
+      mapRef.current = map;
+      setMapInitialized(true);
+      
+      // Center map on polygon if it exists
+      if (polygonCoordinates && polygonCoordinates.length >= 3) {
+        try {
+          console.log("Attempting to center map on polygon:", polygonCoordinates);
+          const latLngs = polygonCoordinates.map(coord => [coord[1], coord[0]] as L.LatLngTuple);
+          const bounds = new L.LatLngBounds(latLngs);
+          map.fitBounds(bounds, { padding: [20, 20] });
+          
+          // Add polygon to the map
+          if (featureGroupRef.current) {
+            console.log("Adding polygon to feature group");
+            featureGroupRef.current.clearLayers();
+            const polygon = L.polygon(latLngs, {
+              color: '#ff0000',
+              weight: 3,
+              opacity: 0.7,
+              fillColor: '#ff0000',
+              fillOpacity: 0.3
+            });
+            featureGroupRef.current.addLayer(polygon);
+          }
+        } catch (error) {
+          console.error("Error centering map on terrain:", error);
+        }
+      }
+    }, [map, polygonCoordinates]);
     
     return null;
   };
 
+  // Fetch regions, districts, and communes data
   useEffect(() => {
     const fetchRegions = async () => {
       const { data, error } = await supabase.from("region").select("*").order("nom_region");
@@ -180,6 +202,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     fetchCommunes();
   }, []);
 
+  // Filter districts based on selected region
   useEffect(() => {
     if (watchRegion) {
       const regionId = parseInt(watchRegion);
@@ -195,6 +218,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     }
   }, [watchRegion, districts, form, watchDistrict]);
 
+  // Filter communes based on selected district
   useEffect(() => {
     if (watchDistrict) {
       const districtId = parseInt(watchDistrict);
@@ -210,18 +234,21 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     }
   }, [watchDistrict, communes, form]);
 
+  // Handle file input for photos
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     
     const selectedFiles = Array.from(e.target.files);
     setPhotos(prevPhotos => [...prevPhotos, ...selectedFiles]);
     
+    // Create preview URLs for the photos
     selectedFiles.forEach(file => {
       const previewUrl = URL.createObjectURL(file);
       setPhotoUrls(prevUrls => [...prevUrls, previewUrl]);
     });
   };
 
+  // Remove photo from the list
   const removePhoto = (index: number) => {
     setPhotos(prevPhotos => {
       const newPhotos = [...prevPhotos];
@@ -241,6 +268,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     });
   };
 
+  // Upload photos to Supabase storage
   const uploadPhotos = async (): Promise<string[]> => {
     if (photos.length === 0) return [];
     
@@ -280,18 +308,23 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     }
   };
 
+  // Calculate area in hectares from polygon coordinates
   const calculateAreaInHectares = (coords: number[][]) => {
     if (!coords || coords.length < 3) return 0;
 
+    // Convert to LatLng for Leaflet's area calculation
     const latLngs = coords.map(coord => new L.LatLng(coord[1], coord[0]));
     
     const polygon = new L.Polygon(latLngs);
     
+    // Calculate geodesic area in square meters
     const areaInSquareMeters = L.GeometryUtil.geodesicArea(polygon.getLatLngs()[0] as L.LatLng[]);
     
+    // Convert to hectares (1 hectare = 10000 square meters)
     return areaInSquareMeters / 10000;
   };
 
+  // Update surface area when polygon changes
   useEffect(() => {
     if (polygonCoordinates && polygonCoordinates.length >= 3) {
       const area = calculateAreaInHectares(polygonCoordinates);
@@ -299,25 +332,38 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     }
   }, [polygonCoordinates, form]);
 
+  // Form submission handler
   const onSubmit = async (data: TerrainFormData) => {
     setIsSubmitting(true);
     try {
+      console.log("Form data being submitted:", data);
+      console.log("Current polygon coordinates:", polygonCoordinates);
+      
+      // Assign polygon coordinates to form data
       data.geom = polygonCoordinates;
       
+      // Determine the terrain owner based on user role
       const terrainOwnerId = userRole === 'simple' ? userId :
                              userRole === 'technicien' || userRole === 'superviseur' ?
                              (data.id_tantsaha || userId) : userId;
       
-      const terrainData = convertFormDataToTerrainData(data);
+      // Convert form data to terrain data
+      const terrainData = convertFormDataToTerrainData({...data});
       terrainData.id_tantsaha = terrainOwnerId;
       
+      // Upload new photos and combine with existing ones
       const uploadedPhotoUrls = await uploadPhotos();
       
+      // Filter out blob URLs which are just previews
       const existingPhotoUrls = photoUrls.filter(url => !url.startsWith('blob:'));
       const allPhotoUrls = [...existingPhotoUrls, ...uploadedPhotoUrls];
       
+      // Ensure photos is always a string when sending to API
       terrainData.photos = allPhotoUrls.join(',');
       
+      console.log("Final terrain data to submit:", terrainData);
+      
+      // Update existing terrain or create new one
       if (initialData?.id_terrain) {
         terrainData.statut = initialData.statut;
         
@@ -340,10 +386,11 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
           
         if (error) throw error;
         
+        // Send notification to supervisors
         const { data: supervisors } = await supabase
           .from('utilisateur')
           .select('id_utilisateur')
-          .eq('id_role', 4);
+          .eq('id_role', 4); // 4 = superviseur
           
         if (supervisors && supervisors.length > 0 && userId) {
           await sendNotification(
@@ -370,6 +417,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     }
   };
 
+  // Handle map drawing events
   const handleCreated = (e: any) => {
     const { layerType, layer } = e;
     
@@ -381,9 +429,11 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
         coords.push([latLng.lng, latLng.lat]);
       });
       
+      // Close the polygon by adding the first point at the end
       coords.push([latLngs[0].lng, latLngs[0].lat]);
       
       setPolygonCoordinates(coords);
+      console.log("Created polygon coordinates:", coords);
     }
   };
 
@@ -401,12 +451,14 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
         coords.push([latLngs[0].lng, latLngs[0].lat]);
         
         setPolygonCoordinates(coords);
+        console.log("Edited polygon coordinates:", coords);
       }
     });
   };
 
   const handleDeleted = () => {
     setPolygonCoordinates([]);
+    console.log("Deleted polygon");
   };
 
   return (
