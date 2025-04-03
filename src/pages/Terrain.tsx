@@ -99,6 +99,7 @@ export const Terrain = () => {
         id_commune: terrain.id_commune,
         statut: terrain.statut,
         geom: terrain.geom,
+        photos: terrain.photos|| '',
         region_name: terrain.region?.nom_region || 'Non spécifié',
         district_name: terrain.district?.nom_district || 'Non spécifié',
         commune_name: terrain.commune?.nom_commune || 'Non spécifié',

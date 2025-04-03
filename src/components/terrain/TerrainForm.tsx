@@ -82,9 +82,10 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       acces_eau: initialData?.acces_eau || false,
       acces_route: initialData?.acces_route || false,
       id_tantsaha: userRole === 'simple' ? userId : initialData?.id_tantsaha,
+      photos: initialData?.photos || '',
     }
   });
-  
+  console.log("init value",initialData);
   const watchRegion = form.watch("id_region");
   const watchDistrict = form.watch("id_district");
 
