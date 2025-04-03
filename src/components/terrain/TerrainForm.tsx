@@ -85,14 +85,12 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       photos: initialData?.photos || '',
     }
   });
-  console.log("init value",initialData);
   const watchRegion = form.watch("id_region");
   const watchDistrict = form.watch("id_district");
 
   // Initialize terrain data when component mounts or initialData changes
   useEffect(() => {
     if (initialData) {
-      console.log("Initial terrain data received:", initialData);
       
       // Process geometry data if available
       if (initialData.geom) {
@@ -101,11 +99,8 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
           const geomData = typeof initialData.geom === 'string' 
             ? JSON.parse(initialData.geom) 
             : initialData.geom;
-            
-          console.log("Processing geometry data:", geomData);
-          
+                      
           if (geomData && geomData.type === 'Polygon' && geomData.coordinates && geomData.coordinates[0]) {
-            console.log("Setting polygon coordinates from:", geomData.coordinates[0]);
             setPolygonCoordinates(geomData.coordinates[0]);
           }
         } catch (error) {
@@ -116,12 +111,10 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       // Process photos if available
       if (initialData.photos) {
         try {
-          console.log("Processing photos from initialData:", initialData.photos);
           const photosArray = typeof initialData.photos === 'string' 
             ? initialData.photos.split(',').filter(url => url.trim() !== '') 
             : Array.isArray(initialData.photos) ? initialData.photos.filter(url => url && url.trim() !== '') : [];
           
-          console.log("Setting photo URLs:", photosArray);
           setPhotoUrls(photosArray);
         } catch (error) {
           console.error("Error processing photos:", error);
@@ -135,21 +128,18 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     const map = useMap();
     
     useEffect(() => {
-      console.log("Map initialized");
       mapRef.current = map;
       setMapInitialized(true);
       
       // Center map on polygon if it exists
       if (polygonCoordinates && polygonCoordinates.length >= 3) {
         try {
-          console.log("Attempting to center map on polygon:", polygonCoordinates);
           const latLngs = polygonCoordinates.map(coord => [coord[1], coord[0]] as L.LatLngTuple);
           const bounds = new L.LatLngBounds(latLngs);
           map.fitBounds(bounds, { padding: [20, 20] });
           
           // Add polygon to the map
           if (featureGroupRef.current) {
-            console.log("Adding polygon to feature group");
             featureGroupRef.current.clearLayers();
             const polygon = L.polygon(latLngs, {
               color: '#ff0000',
@@ -378,10 +368,11 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
         toast.success("Terrain modifié avec succès");
       } else {
         terrainData.statut = false;
-        
+        const { id_terrain, ...dataSansId } = terrainData; // Supprime id_terrain
+
         const { data: newTerrain, error } = await supabase
           .from('terrain')
-          .insert([terrainData])
+          .insert([dataSansId])
           .select('id_terrain')
           .single();
           
@@ -522,10 +513,10 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
                 <Input 
                   type="number" 
                   placeholder="Surface en hectares" 
-                  min="0.10" 
-                  step="0.10" 
+                  min="0.01" 
+                  step="0.01" 
                   {...field}
-                  onChange={(e) => field.onChange(parseFloat(e.target.value))} 
+                  onChange={(e) => field.onChange(parseFloat(e.target.value.toFixed(2)))} 
                 />
               </FormControl>
               <FormDescription>
