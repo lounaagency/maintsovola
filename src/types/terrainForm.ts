@@ -12,7 +12,7 @@ export interface TerrainFormData {
   acces_route: boolean;
   id_tantsaha?: string;
   geom?: number[][]; // Coordonnées du polygone [[lng, lat], [lng, lat], ...]
-  photos?: string; // Comma-separated URLs
+  photos?: string | string[]; // Can be string (comma-separated) or array of strings
 }
 
 // Convert from form data (strings) to API data (numbers)
@@ -33,6 +33,11 @@ export const convertFormDataToTerrainData = (formData: TerrainFormData): Terrain
     };
   }
   
+  // Make sure photos is always a string for the API
+  if (Array.isArray(formData.photos)) {
+    terrainData.photos = formData.photos.join(',');
+  }
+  
   return terrainData;
 };
 
@@ -47,8 +52,14 @@ export const convertTerrainDataToFormData = (terrainData: TerrainData): TerrainF
     id_commune: terrainData.id_commune?.toString() || '',
     acces_eau: Boolean(terrainData.acces_eau),
     acces_route: Boolean(terrainData.acces_route),
-    photos: terrainData.photos
   };
+  
+  // Convert photos string to array if needed
+  if (typeof terrainData.photos === 'string') {
+    formData.photos = terrainData.photos.split(',').filter(p => p.trim() !== '');
+  } else if (Array.isArray(terrainData.photos)) {
+    formData.photos = terrainData.photos;
+  }
   
   // Extraire les coordonnées du polygone si elles existent
   if (terrainData.geom && terrainData.geom.type === 'Polygon' && 

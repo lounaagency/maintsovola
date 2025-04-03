@@ -34,6 +34,7 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
     if (isOpen && (userRole === 'technicien' || userRole === 'superviseur')) {
       const fetchAgriculteurs = async () => {
         try {
+          // Using the correct role ID (1 for 'simple' which is agriculteur)
           const { data, error } = await supabase
             .from('utilisateurs_par_role')
             .select('id_utilisateur, nom, prenoms')
