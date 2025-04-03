@@ -8,7 +8,7 @@ export interface Notification {
   lu: boolean;
   date_creation: string;
   type: 'info' | 'validation' | 'alerte' | 'erreur' | 'assignment';
-  entity_id?: string;
+  entity_id?: number;
   entity_type?: 'terrain' | 'projet' | 'jalon' | 'investissement';
   projet_id?: number;
 }
@@ -26,4 +26,20 @@ export interface DatabaseNotification {
   entity_id?: string | number;  // Accept both string and number
   entity_type?: string;
   projet_id?: number;
+}
+export async function sendNotification(supabase, userId, recipients, title, message, type = "info", entityType = null, entityId = null) {
+  const notifications = recipients.map(recipient => ({
+      id_expediteur: userId,
+      id_destinataire: recipient.id_utilisateur,
+      titre: title,
+      message: message,
+      type: type,
+      entity_type: entityType,
+      entity_id: entityId
+  }));
+
+  const { error } = await supabase.from('notification').insert(notifications);
+  if (error) {
+      console.error("Erreur lors de l'envoi de la notification:", error.message);
+  }
 }

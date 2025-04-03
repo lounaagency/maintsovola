@@ -11,8 +11,8 @@ export interface TerrainFormData {
   acces_eau: boolean;
   acces_route: boolean;
   id_tantsaha?: string;
-  photos?: string[];
-  geom_coordinates?: number[][]; // Coordonnées du polygone [[lng, lat], [lng, lat], ...]
+ // photos?: string[];
+  geom?: number[][]; // Coordonnées du polygone [[lng, lat], [lng, lat], ...]
 }
 
 // Convert from form data (strings) to API data (numbers)
@@ -25,11 +25,11 @@ export const convertFormDataToTerrainData = (formData: TerrainFormData): Terrain
   };
   
   // Si des coordonnées de polygone ont été définies, créer un objet geom au format GeoJSON
-  if (formData.geom_coordinates && formData.geom_coordinates.length >= 3) {
+  if (formData.geom && formData.geom.length >= 3) {
     // La propriété geom attend un objet GeoJSON Polygon
     terrainData.geom = {
       type: 'Polygon',
-      coordinates: [formData.geom_coordinates],
+      coordinates: [formData.geom],
     };
   }
   
@@ -52,7 +52,7 @@ export const convertTerrainDataToFormData = (terrainData: TerrainData): TerrainF
   // Extraire les coordonnées du polygone si elles existent
   if (terrainData.geom && terrainData.geom.type === 'Polygon' && 
       terrainData.geom.coordinates && terrainData.geom.coordinates[0]) {
-    formData.geom_coordinates = terrainData.geom.coordinates[0];
+    formData.geom = terrainData.geom.coordinates[0];
   }
   
   return formData;

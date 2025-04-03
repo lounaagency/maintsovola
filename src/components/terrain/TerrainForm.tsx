@@ -18,6 +18,7 @@ import { EditControl } from "react-leaflet-draw";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet-draw/dist/leaflet.draw.css";
+import { sendNotification } from "@/types/notification";
 
 // Import LeafletGeometryUtil for area calculations
 import "@elfalem/leaflet-curve";
@@ -221,7 +222,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     setIsSubmitting(true);
     try {
       // Ajouter les coordonnées du polygone au formulaire
-      data.geom_coordinates = polygonCoordinates;
+      data.geom = polygonCoordinates;
       
       // Determine the owner of the terrain
       const terrainOwnerId = userRole === 'simple' ? userId :
@@ -248,7 +249,11 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
           .from('terrain')
           .insert([terrainData]);
           
-        if (error) throw error;
+        if (error) {
+          
+          toast.error("data_terrain",terrainData);
+          throw error;
+        }
         
         // Fetch supervisors for the region
         const { data: supervisors } = await supabase
@@ -258,17 +263,17 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
           .eq('role', 'superviseur');
           
         if (supervisors && supervisors.length > 0) {
-          // Notify supervisors
-          const notifications = supervisors.map(supervisor => ({
-            id_expediteur: userId,
-            id_destinataire: supervisor.id_utilisateur,
-            titre: "Nouveau terrain",
-            message: `Un nouveau terrain '${data.nom_terrain}' a été ajouté en attente de validation`,
-            type: "info",
-            entity_type: "terrain"
-          }));
-          
-          await supabase.from('notification').insert(notifications);
+          // Notify supervisors          
+          await sendNotification(
+              supabase,
+              userId,
+              supervisors,
+              "Nouveau terrain",
+              `Un nouveau terrain '${data.nom_terrain}' a été ajouté en attente de validation`,
+              "info",
+              "terrain",
+              terrainData.id_terrain
+          );
         }
         
         toast.success("Terrain ajouté avec succès");
@@ -561,35 +566,43 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
               <FeatureGroup ref={featureGroupRef}>
                 <EditControl
                   position="topright"
-                  onCreated={handleCreated}
+            draw={{
+              polygon: {
+                allowIntersection: false,
+                showArea: false,
+                showLength: false,
+                shapeOptions: {
+                  color: "#ff0000",
+                },
+              },
+              rectangle: false,
+              circle: false,
+              marker: false,
+              polyline: false,
+            }}
+            onCreated={(e) => {
+              if (!e.layer) return;
+              const layer = e.layer;
+              if (layer instanceof L.Polygon) {
+                const latlngs = layer.getLatLngs();
+                if (Array.isArray(latlngs) && latlngs.length > 0 && Array.isArray(latlngs[0])) {
+                  const coords = (latlngs[0] as L.LatLng[]).map((latlng) => [latlng.lat, latlng.lng]);
+                  if (coords.length >= 3) {
+                    setPolygonCoordinates(coords);
+                  } else {
+                    toast.error("Un polygone doit avoir au moins trois points.");
+                  }
+                } else {
+                  toast.error("Erreur de récupération des coordonnées du polygone.");
+                }
+              }
+            }}
                   onEdited={handleEdited}
                   onDeleted={handleDeleted}
-                  draw={{
-                    rectangle: false,
-                    polygon: true,
-                    polyline: false,
-                    circle: false,
-                    circlemarker: false,
-                    marker: false,
-                  }}
                 />
-                {polygonCoordinates.length > 0 && (
-                  <Polygon positions={polygonCoordinates.map(coord => [coord[1], coord[0]])} />
-                )}
               </FeatureGroup>
+              {polygonCoordinates.length > 2 && <Polygon positions={polygonCoordinates} color="blue" />}
             </MapContainer>
-            <div className="absolute top-2 right-2 z-[1000]">
-              <Button
-                type="button"
-                variant="destructive"
-                size="sm"
-                onClick={clearPolygons}
-                className="flex items-center gap-1"
-              >
-                <Trash2 className="h-4 w-4" />
-                Effacer
-              </Button>
-            </div>
           </div>
           <p className="text-sm text-muted-foreground">
             Dessinez le contour de votre terrain sur la carte. Utilisez les outils de dessin pour créer un polygone représentant votre terrain.
