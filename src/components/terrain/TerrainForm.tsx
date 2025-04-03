@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { TerrainFormData, convertFormDataToTerrainData } from "@/types/terrainForm";
 import { TerrainData, RegionData, DistrictData, CommuneData } from "@/types/terrain";
-import { Loader2, Trash2 } from "lucide-react";
+import { Loader2, Trash2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { MapContainer, TileLayer, FeatureGroup, useMapEvents } from "react-leaflet";
 import { EditControl } from "react-leaflet-draw";
@@ -19,9 +19,6 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet-draw/dist/leaflet.draw.css";
 import { sendNotification } from "@/types/notification";
-
-// Import leaflet-geometryutil for area calculations
-import "leaflet-geometryutil";
 
 // Import the type for agriculteurs
 interface Agriculteur {
@@ -70,6 +67,12 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
   const featureGroupRef = useRef<L.FeatureGroup | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   
+  // Photo upload state
+  const [photos, setPhotos] = useState<File[]>([]);
+  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
   const form = useForm<TerrainFormData>({
     resolver: yupResolver(schema) as any,
     defaultValues: initialData ? {
@@ -97,10 +100,22 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
   const watchRegion = form.watch("id_region");
   const watchDistrict = form.watch("id_district");
 
-  // Extract existing polygon coordinates when initializing
+  // Extract existing polygon coordinates and photos when initializing
   useEffect(() => {
-    if (initialData?.geom && initialData.geom.type === 'Polygon' && initialData.geom.coordinates && initialData.geom.coordinates[0]) {
-      setPolygonCoordinates(initialData.geom.coordinates[0]);
+    if (initialData) {
+      // Set polygon coordinates if available
+      if (initialData.geom && initialData.geom.type === 'Polygon' && initialData.geom.coordinates && initialData.geom.coordinates[0]) {
+        setPolygonCoordinates(initialData.geom.coordinates[0]);
+      }
+      
+      // Set photo URLs if available
+      if (initialData.photos) {
+        const urls = typeof initialData.photos === 'string' 
+          ? initialData.photos.split(',') 
+          : Array.isArray(initialData.photos) ? initialData.photos : [];
+        
+        setPhotoUrls(urls.filter(url => url.trim() !== ''));
+      }
     }
   }, [initialData]);
 
@@ -200,6 +215,78 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     }
   }, [watchDistrict, communes, form]);
 
+  // Photo upload handlers
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    
+    const selectedFiles = Array.from(e.target.files);
+    setPhotos(prevPhotos => [...prevPhotos, ...selectedFiles]);
+    
+    selectedFiles.forEach(file => {
+      const previewUrl = URL.createObjectURL(file);
+      setPhotoUrls(prevUrls => [...prevUrls, previewUrl]);
+    });
+  };
+
+  const removePhoto = (index: number) => {
+    setPhotos(prevPhotos => {
+      const newPhotos = [...prevPhotos];
+      newPhotos.splice(index, 1);
+      return newPhotos;
+    });
+
+    setPhotoUrls(prevUrls => {
+      const newUrls = [...prevUrls];
+      
+      // Only revoke URL if it's a blob URL (newly added photo)
+      if (newUrls[index].startsWith('blob:')) {
+        URL.revokeObjectURL(newUrls[index]);
+      }
+      
+      newUrls.splice(index, 1);
+      return newUrls;
+    });
+  };
+
+  const uploadPhotos = async (): Promise<string[]> => {
+    if (photos.length === 0) return [];
+    
+    setIsUploading(true);
+    const uploadedUrls: string[] = [];
+    
+    try {
+      for (const photo of photos) {
+        const fileExt = photo.name.split('.').pop();
+        const fileName = `terrain-${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+        const filePath = `terrain-photos/${fileName}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('project-photos')
+          .upload(filePath, photo);
+          
+        if (uploadError) {
+          console.error("Error uploading photo:", uploadError);
+          continue;
+        }
+        
+        const { data: publicUrlData } = supabase.storage
+          .from('project-photos')
+          .getPublicUrl(filePath);
+          
+        if (publicUrlData) {
+          uploadedUrls.push(publicUrlData.publicUrl);
+        }
+      }
+      
+      return uploadedUrls;
+    } catch (error) {
+      console.error("Error in photo upload process:", error);
+      return [];
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   // Calculate area in hectares
   const calculateAreaInHectares = (coords: number[][]) => {
     if (!coords || coords.length < 3) return 0;
@@ -210,7 +297,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     // Create a Leaflet polygon to calculate area
     const polygon = new L.Polygon(latLngs);
     
-    // Use Leaflet's GeometryUtil to calculate geodesic area
+    // Calculate area in square meters
     const areaInSquareMeters = L.GeometryUtil.geodesicArea(polygon.getLatLngs()[0] as L.LatLng[]);
     
     // Convert to hectares (1 hectare = 10000 m²)
@@ -238,6 +325,16 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       
       const terrainData = convertFormDataToTerrainData(data);
       terrainData.id_tantsaha = terrainOwnerId;
+      
+      // Upload photos and get URLs
+      const uploadedPhotoUrls = await uploadPhotos();
+      
+      // Combine existing photo URLs with newly uploaded ones
+      const existingPhotoUrls = photoUrls.filter(url => !url.startsWith('blob:'));
+      const allPhotoUrls = [...existingPhotoUrls, ...uploadedPhotoUrls];
+      
+      // Add photos to terrain data
+      terrainData.photos = allPhotoUrls.join(',');
       
       if (initialData?.id_terrain) {
         // Update existing terrain - preserve status
@@ -269,7 +366,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
           .select('id_utilisateur')
           .eq('id_role', 4); // 4 = superviseur
           
-        if (supervisors && supervisors.length > 0) {
+        if (supervisors && supervisors.length > 0 && userId) {
           // Notify supervisors
           await sendNotification(
             supabase,
@@ -544,6 +641,51 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
           />
         </div>
         
+        {/* Photo upload section */}
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <FormLabel>Photos du terrain</FormLabel>
+            <Button 
+              type="button" 
+              variant="outline" 
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Ajouter des photos
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={handleFileChange}
+            />
+          </div>
+          
+          {photoUrls.length > 0 && (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
+              {photoUrls.map((url, index) => (
+                <div key={index} className="relative group">
+                  <img 
+                    src={url} 
+                    alt={`Terrain photo ${index + 1}`} 
+                    className="w-full h-32 object-cover rounded-md border border-border"
+                  />
+                  <button
+                    type="button"
+                    className="absolute top-1 right-1 bg-black bg-opacity-50 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => removePhoto(index)}
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        
         {/* Map placed at the end of the form */}
         <div className="space-y-4">
           <FormLabel>Définir la zone du terrain sur la carte</FormLabel>
@@ -595,8 +737,8 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
           <Button type="button" variant="outline" onClick={onCancel}>
             Annuler
           </Button>
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          <Button type="submit" disabled={isSubmitting || isUploading}>
+            {(isSubmitting || isUploading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {initialData?.id_terrain ? "Mettre à jour" : "Ajouter le terrain"}
           </Button>
         </div>

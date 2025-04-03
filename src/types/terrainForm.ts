@@ -12,6 +12,7 @@ export interface TerrainFormData {
   acces_route: boolean;
   id_tantsaha?: string;
   geom?: number[][]; // Coordonnées du polygone [[lng, lat], [lng, lat], ...]
+  photos?: string; // Comma-separated URLs
 }
 
 // Convert from form data (strings) to API data (numbers)
@@ -46,6 +47,7 @@ export const convertTerrainDataToFormData = (terrainData: TerrainData): TerrainF
     id_commune: terrainData.id_commune?.toString() || '',
     acces_eau: Boolean(terrainData.acces_eau),
     acces_route: Boolean(terrainData.acces_route),
+    photos: terrainData.photos
   };
   
   // Extraire les coordonnées du polygone si elles existent

@@ -1,4 +1,3 @@
-
 import React from "react";
 import { TerrainData } from "@/types/terrain";
 import { Button } from "@/components/ui/button";
@@ -15,6 +14,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { sendNotification } from "@/types/notification";
 
 interface TerrainTableProps {
   terrains: TerrainData[];
@@ -40,8 +40,6 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
 
   const handleValidate = async (terrainId: number) => {
     try {
-      if (!user) return;
-      
       if (!['technicien', 'superviseur'].includes(userRole || '')) {
         toast.error("Vous n'avez pas les permissions nécessaires pour valider ce terrain");
         return;
@@ -55,36 +53,37 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
         }
       }
 
+      const terrain = terrains.find(t => t.id_terrain === terrainId);
       const { error } = await supabase
         .from('terrain')
         .update({ 
           statut: true,
-          surface_validee: terrains.find(t => t.id_terrain === terrainId)?.surface_proposee
+          surface_validee: terrain?.surface_proposee
         })
         .eq('id_terrain', terrainId);
 
       if (error) throw error;
       
       // Notify the land owner
-      const terrain = terrains.find(t => t.id_terrain === terrainId);
-      if (terrain && terrain.id_tantsaha) {
-        await supabase.from('notification').insert([{
-          id_expediteur: user.id,
-          id_destinataire: terrain.id_tantsaha,
-          titre: "Terrain validé",
-          message: `Votre terrain ${terrain.nom_terrain || `#${terrain.id_terrain}`} a été validé`,
-          type: "info",
-          entity_type: "terrain",
-          entity_id: terrainId
-        }]);
+      if (terrain && terrain.id_tantsaha && user) {
+        await sendNotification(
+          supabase,
+          user.id,
+          [{ id_utilisateur: terrain.id_tantsaha }],
+          "Terrain validé",
+          `Votre terrain ${terrain.nom_terrain || `#${terrain.id_terrain}`} a été validé`,
+          "info",
+          "terrain",
+          terrainId
+        );
       }
       
       toast.success("Le terrain a été validé avec succès");
       
       if (onTerrainUpdate) onTerrainUpdate();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Erreur lors de la validation du terrain:', error);
-      toast.error("Impossible de valider le terrain: " + error.message);
+      toast.error("Impossible de valider le terrain");
     }
   };
 
@@ -92,7 +91,14 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
     try {
       if (!user) return;
       
-      if (userRole !== 'simple' && userRole !== 'technicien' && userRole !== 'superviseur') {
+      // Check if user has permission to delete
+      const terrain = terrains.find(t => t.id_terrain === terrainId);
+      if (userRole === 'simple' && terrain?.id_tantsaha !== user.id) {
+        toast.error("Vous pouvez uniquement supprimer vos propres terrains");
+        return;
+      }
+
+      if (userRole !== 'simple' && userRole !== 'superviseur') {
         toast.error("Vous n'avez pas les permissions nécessaires");
         return;
       }
@@ -120,16 +126,14 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
       toast.success("Le terrain a été supprimé avec succès");
       
       if (onTerrainUpdate) onTerrainUpdate();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Erreur lors de la suppression du terrain:', error);
-      toast.error("Impossible de supprimer le terrain: " + error.message);
+      toast.error("Impossible de supprimer le terrain");
     }
   };
 
   const handleAssignTechnician = async (terrainId: number, technicianId: string) => {
     try {
-      if (!user) return;
-      
       if (userRole !== 'superviseur') {
         toast.error("Seuls les superviseurs peuvent assigner des techniciens");
         return;
@@ -141,37 +145,43 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
         .eq('id_terrain', terrainId);
 
       if (error) throw error;
-
+      
       // Notify the technician
-      await supabase.from('notification').insert([{
-        id_expediteur: user.id,
-        id_destinataire: technicianId,
-        titre: "Nouvelle affectation de terrain",
-        message: `Vous avez été assigné au terrain #${terrainId}`,
-        type: "info",
-        entity_type: "terrain",
-        entity_id: terrainId
-      }]);
+      if (user) {
+        await sendNotification(
+          supabase,
+          user.id,
+          [{ id_utilisateur: technicianId }],
+          "Nouvelle affectation de terrain",
+          `Vous avez été assigné au terrain #${terrainId}`,
+          "assignment",
+          "terrain",
+          terrainId
+        );
+      }
       
       toast.success("Technicien assigné avec succès!");
       if (onTerrainUpdate) onTerrainUpdate();
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error assigning technician:", error);
-      toast.error("Erreur lors de l'assignation du technicien: " + error.message);
+      toast.error("Erreur lors de l'assignation du technicien");
     }
   };
 
   const canEdit = (terrain: TerrainData): boolean => {
     if (!user) return false;
     
-    if (userRole === 'simple' && terrain.id_tantsaha === user.id) {
+    // Simple user can edit their own non-validated terrains
+    if (['agriculteur', 'investisseur', 'simple'].includes(userRole || '') && terrain.id_tantsaha === user.id) {
       return terrain.statut === false;
     }
     
+    // Technician can edit terrains assigned to them
     if (userRole === 'technicien' && terrain.id_technicien === user.id) {
       return true;
     }
     
+    // Supervisor can edit any terrain
     if (userRole === 'superviseur') return true;
     
     return false;
@@ -180,10 +190,12 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
   const canDelete = (terrain: TerrainData): boolean => {
     if (!user) return false;
     
-    if (userRole === 'simple' && terrain.id_tantsaha === user.id) {
+    // Simple user can delete their own non-validated terrains
+    if (['agriculteur', 'investisseur', 'simple'].includes(userRole || '') && terrain.id_tantsaha === user.id) {
       return terrain.statut === false;
     }
     
+    // Supervisor can delete any terrain
     if (userRole === 'superviseur') return true;
     
     return false;
@@ -192,7 +204,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
   const canContactTechnicien = (terrain: TerrainData): boolean => {
     if (!user) return false;
     
-    if (userRole === 'simple' && terrain.id_tantsaha === user.id) {
+    if (['agriculteur', 'investisseur', 'simple'].includes(userRole || '') && terrain.id_tantsaha === user.id) {
       return terrain.statut === true && !!terrain.id_technicien;
     }
     
@@ -211,9 +223,27 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
     }
   };
 
-  const filteredTerrains = terrains.filter(terrain => 
-    type === 'validated' ? terrain.statut === true : terrain.statut === false
-  );
+  const filterTerrainsByRole = () => {
+    let filtered = [...terrains];
+    
+    // Filter by status (pending/validated)
+    filtered = filtered.filter(terrain => 
+      type === 'validated' ? terrain.statut === true : terrain.statut === false
+    );
+    
+    // Additional filters based on user role
+    if (['agriculteur', 'investisseur', 'simple'].includes(userRole || '')) {
+      // Simple user only sees their own terrains
+      filtered = filtered.filter(terrain => terrain.id_tantsaha === user?.id);
+    } else if (userRole === 'technicien') {
+      // Technician only sees terrains assigned to them
+      filtered = filtered.filter(terrain => terrain.id_technicien === user?.id);
+    }
+    
+    return filtered;
+  };
+
+  const filteredTerrains = filterTerrainsByRole();
 
   if (isMobile) {
     return (
