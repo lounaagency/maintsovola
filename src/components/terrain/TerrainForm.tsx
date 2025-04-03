@@ -19,6 +19,10 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet-draw/dist/leaflet.draw.css";
 
+// Import LeafletGeometryUtil for area calculations
+import "@elfalem/leaflet-curve";
+import "leaflet-geometryutil";
+
 // Import the type for agriculteurs
 interface Agriculteur {
   id_utilisateur: string;
@@ -44,6 +48,7 @@ const schema = yup.object({
   id_commune: yup.string().required("La commune est obligatoire"),
   acces_eau: yup.boolean().default(false),
   acces_route: yup.boolean().default(false),
+  id_tantsaha: yup.string().optional(),
 }).required();
 
 const TerrainForm: React.FC<TerrainFormProps> = ({
@@ -63,9 +68,10 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
   const [polygonCoordinates, setPolygonCoordinates] = useState<number[][]>([]);
   const [mapInitialized, setMapInitialized] = useState(false);
   const featureGroupRef = useRef<L.FeatureGroup | null>(null);
+  const mapRef = useRef<L.Map | null>(null);
   
   const form = useForm<TerrainFormData>({
-    resolver: yupResolver(schema),
+    resolver: yupResolver(schema) as any,
     defaultValues: initialData ? {
       id_terrain: initialData.id_terrain,
       nom_terrain: initialData.nom_terrain || "",
@@ -75,6 +81,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       id_commune: initialData.id_commune?.toString() || "",
       acces_eau: initialData.acces_eau || false,
       acces_route: initialData.acces_route || false,
+      id_tantsaha: initialData.id_tantsaha,
     } : {
       nom_terrain: "",
       surface_proposee: 1,
@@ -83,6 +90,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       id_commune: "",
       acces_eau: false,
       acces_route: false,
+      id_tantsaha: userRole === 'simple' ? userId : undefined,
     }
   });
   
@@ -93,8 +101,30 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
   useEffect(() => {
     if (initialData?.geom && initialData.geom.type === 'Polygon' && initialData.geom.coordinates && initialData.geom.coordinates[0]) {
       setPolygonCoordinates(initialData.geom.coordinates[0]);
+      
+      // Centrer et zoomer sur le terrain quand les coordonnées sont disponibles
+      // et que la carte est initialisée
+      if (mapInitialized && mapRef.current && polygonCoordinates.length > 0) {
+        const bounds = new L.LatLngBounds(polygonCoordinates.map(coord => [coord[1], coord[0]]));
+        mapRef.current.fitBounds(bounds, { padding: [20, 20] });
+        
+        // Recréer le polygone sur la carte
+        if (featureGroupRef.current) {
+          featureGroupRef.current.clearLayers();
+          const polygon = L.polygon(polygonCoordinates.map(coord => [coord[1], coord[0]]));
+          featureGroupRef.current.addLayer(polygon);
+        }
+      }
     }
-  }, [initialData]);
+  }, [initialData, mapInitialized]);
+
+  // Effectuer le centrage quand la carte est initialisée
+  useEffect(() => {
+    if (mapInitialized && mapRef.current && polygonCoordinates.length > 0) {
+      const bounds = new L.LatLngBounds(polygonCoordinates.map(coord => [coord[1], coord[0]]));
+      mapRef.current.fitBounds(bounds, { padding: [20, 20] });
+    }
+  }, [mapInitialized, polygonCoordinates]);
 
   // Fetch regions, districts and communes
   useEffect(() => {
@@ -172,8 +202,8 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     // Créer un polygone Leaflet pour calculer l'aire
     const polygon = new L.Polygon(latLngs);
     
-    // Obtenir l'aire en mètres carrés
-    const areaInSquareMeters = L.GeometryUtil.geodesicArea(polygon.getLatLngs()[0]);
+    // Obtenir l'aire en mètres carrés avec GeometryUtil
+    const areaInSquareMeters = L.GeometryUtil.geodesicArea(polygon.getLatLngs()[0] as L.LatLng[]);
     
     // Convertir en hectares (1 hectare = 10000 m²)
     return areaInSquareMeters / 10000;
@@ -257,10 +287,10 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
   const handleCreated = (e: any) => {
     const { layerType, layer } = e;
     
-    if (layerType === 'polygon' || layerType === 'rectangle') {
+    if (layerType === 'polygon') {
       // Récupérer les coordonnées du polygone
       const coords: number[][] = [];
-      const latLngs = layer.getLatLngs()[0];
+      const latLngs = layer.getLatLngs()[0] as L.LatLng[];
       
       latLngs.forEach((latLng: L.LatLng) => {
         coords.push([latLng.lng, latLng.lat]);
@@ -276,10 +306,10 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
   const handleEdited = (e: any) => {
     const layers = e.layers;
     layers.eachLayer((layer: L.Layer) => {
-      if (layer instanceof L.Polygon || layer instanceof L.Rectangle) {
+      if (layer instanceof L.Polygon) {
         // Récupérer les coordonnées mises à jour
         const coords: number[][] = [];
-        const latLngs = layer.getLatLngs()[0];
+        const latLngs = layer.getLatLngs()[0] as L.LatLng[];
         
         latLngs.forEach((latLng: L.LatLng) => {
           coords.push([latLng.lng, latLng.lat]);
@@ -353,57 +383,6 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
             </FormItem>
           )}
         />
-        
-        <div className="space-y-4">
-          <FormLabel>Définir la zone du terrain sur la carte</FormLabel>
-          <div className="h-[400px] w-full relative rounded-md overflow-hidden border">
-            <MapContainer
-              center={[-18.913684, 47.536131]} // Centre de Madagascar
-              zoom={6}
-              style={{ height: "100%", width: "100%" }}
-              whenReady={() => setMapInitialized(true)}
-            >
-              <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              />
-              <FeatureGroup ref={featureGroupRef}>
-                <EditControl
-                  position="topright"
-                  onCreated={handleCreated}
-                  onEdited={handleEdited}
-                  onDeleted={handleDeleted}
-                  draw={{
-                    rectangle: true,
-                    polygon: true,
-                    polyline: false,
-                    circle: false,
-                    circlemarker: false,
-                    marker: false,
-                  }}
-                />
-                {polygonCoordinates.length > 0 && (
-                  <Polygon positions={polygonCoordinates.map(coord => [coord[1], coord[0]])} />
-                )}
-              </FeatureGroup>
-            </MapContainer>
-            <div className="absolute top-2 right-2 z-[1000]">
-              <Button
-                type="button"
-                variant="destructive"
-                size="sm"
-                onClick={clearPolygons}
-                className="flex items-center gap-1"
-              >
-                <Trash2 className="h-4 w-4" />
-                Effacer
-              </Button>
-            </div>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Dessinez le contour de votre terrain sur la carte. Utilisez les outils de dessin pour créer un polygone représentant votre terrain.
-          </p>
-        </div>
         
         <FormField
           control={form.control}
@@ -558,6 +537,63 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
               </FormItem>
             )}
           />
+        </div>
+        
+        {/* Carte placée à la fin du formulaire */}
+        <div className="space-y-4">
+          <FormLabel>Définir la zone du terrain sur la carte</FormLabel>
+          <div className="h-[400px] w-full relative rounded-md overflow-hidden border">
+            <MapContainer
+              center={[-18.913684, 47.536131]} // Centre de Madagascar
+              zoom={6}
+              style={{ height: "100%", width: "100%" }}
+              ref={(map) => {
+                if (map) {
+                  mapRef.current = map;
+                  setMapInitialized(true);
+                }
+              }}
+            >
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+              <FeatureGroup ref={featureGroupRef}>
+                <EditControl
+                  position="topright"
+                  onCreated={handleCreated}
+                  onEdited={handleEdited}
+                  onDeleted={handleDeleted}
+                  draw={{
+                    rectangle: false,
+                    polygon: true,
+                    polyline: false,
+                    circle: false,
+                    circlemarker: false,
+                    marker: false,
+                  }}
+                />
+                {polygonCoordinates.length > 0 && (
+                  <Polygon positions={polygonCoordinates.map(coord => [coord[1], coord[0]])} />
+                )}
+              </FeatureGroup>
+            </MapContainer>
+            <div className="absolute top-2 right-2 z-[1000]">
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                onClick={clearPolygons}
+                className="flex items-center gap-1"
+              >
+                <Trash2 className="h-4 w-4" />
+                Effacer
+              </Button>
+            </div>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Dessinez le contour de votre terrain sur la carte. Utilisez les outils de dessin pour créer un polygone représentant votre terrain.
+          </p>
         </div>
         
         <div className="flex justify-end space-x-4 pt-4">

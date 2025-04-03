@@ -10,6 +10,7 @@ export interface TerrainFormData {
   id_commune: string; // Form will use string for select inputs
   acces_eau: boolean;
   acces_route: boolean;
+  id_tantsaha?: string;
   photos?: string[];
   geom_coordinates?: number[][]; // Coordonnées du polygone [[lng, lat], [lng, lat], ...]
 }
@@ -39,9 +40,13 @@ export const convertFormDataToTerrainData = (formData: TerrainFormData): Terrain
 export const convertTerrainDataToFormData = (terrainData: TerrainData): TerrainFormData => {
   const formData: TerrainFormData = {
     ...terrainData,
+    nom_terrain: terrainData.nom_terrain || '',
+    surface_proposee: terrainData.surface_proposee,
     id_region: terrainData.id_region?.toString() || '',
     id_district: terrainData.id_district?.toString() || '',
     id_commune: terrainData.id_commune?.toString() || '',
+    acces_eau: Boolean(terrainData.acces_eau),
+    acces_route: Boolean(terrainData.acces_route),
   };
   
   // Extraire les coordonnées du polygone si elles existent
