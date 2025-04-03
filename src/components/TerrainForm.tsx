@@ -40,18 +40,25 @@ const formSchema = yup.object().shape({
   id_commune: yup.string().required('La commune est obligatoire'),
   acces_eau: yup.boolean().nullable(),
   acces_route: yup.boolean().nullable(),
+  id_tantsaha: yup.string().nullable(),
 });
 
 interface TerrainFormProps {
-  id?: string;
+  initialData?: TerrainData | null;
   onSubmitSuccess?: () => void;
   onCancel?: () => void;
+  userId: string;
+  userRole?: string;
+  agriculteurs?: { id_utilisateur: string; nom: string; prenoms?: string }[];
 }
 
 const TerrainForm: React.FC<TerrainFormProps> = ({ 
-  id, 
+  initialData, 
   onSubmitSuccess, 
-  onCancel
+  onCancel,
+  userId,
+  userRole,
+  agriculteurs = []
 }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -60,9 +67,9 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
   const [communes, setCommunes] = useState<CommuneData[]>([]);
   const [selectedRegion, setSelectedRegion] = useState<number | null>(null);
   const [selectedDistrict, setSelectedDistrict] = useState<number | null>(null);
-  const [terrain, setTerrain] = useState<TerrainData | null>(null);
+  const [terrain, setTerrain] = useState<TerrainData | null>(initialData || null);
   const [loading, setLoading] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(!!initialData);
   const [mapInitialized, setMapInitialized] = useState(false);
   const [polygonCoordinates, setPolygonCoordinates] = useState<L.LatLngExpression[]>([
     [-18.913684, 47.536131],
@@ -80,26 +87,33 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
   const form = useForm<TerrainFormData>({
     resolver: yupResolver(formSchema),
     defaultValues: {
-      nom_terrain: '',
-      surface_proposee: 0,
-      id_region: '',
-      id_district: '',
-      id_commune: '',
-      acces_eau: false,
-      acces_route: false,
+      nom_terrain: initialData?.nom_terrain || '',
+      surface_proposee: initialData?.surface_proposee || 0,
+      id_region: initialData?.id_region?.toString() || '',
+      id_district: initialData?.id_district?.toString() || '',
+      id_commune: initialData?.id_commune?.toString() || '',
+      acces_eau: initialData?.acces_eau || false,
+      acces_route: initialData?.acces_route || false,
+      id_tantsaha: initialData?.id_tantsaha || userId,
     }
   });
 
-  const { control, handleSubmit, setValue, formState: { errors } } = form;
+  const { control, handleSubmit, setValue, formState: { errors }, watch } = form;
+  const selectedTantsaha = watch('id_tantsaha');
 
   useEffect(() => {
     fetchRegions();
 
-    if (id) {
+    if (initialData) {
       setIsEditMode(true);
-      fetchTerrainData(id);
+      loadTerrainData(initialData);
     }
-  }, [id]);
+
+    // Initialize with default values for new terrain
+    if (!initialData && userRole && (userRole === 'technicien' || userRole === 'superviseur')) {
+      setValue('id_tantsaha', ''); // Clear default value for technicians/supervisors
+    }
+  }, [initialData, userRole]);
 
   useEffect(() => {
     if (selectedRegion) {
@@ -117,40 +131,44 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     }
   }, [selectedDistrict, setValue]);
 
-  const fetchTerrainData = async (terrainId: string) => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('terrain')
-        .select('*')
-        .eq('id_terrain', terrainId)
-        .single();
-
-      if (error) {
-        throw error;
-      }
-
-      if (data) {
-        setTerrain(data);
-        setValue('nom_terrain', data.nom_terrain || '');
-        setValue('surface_proposee', data.surface_proposee);
-        setValue('id_region', data.id_region?.toString() || '');
-        setSelectedRegion(data.id_region);
-        setValue('id_district', data.id_district?.toString() || '');
-        setSelectedDistrict(data.id_district);
-        setValue('id_commune', data.id_commune?.toString() || '');
-        setValue('acces_eau', data.acces_eau || false);
-        setValue('acces_route', data.acces_route || false);
-        
-        if (data.photos) {
-          setPhotoUrls(typeof data.photos === 'string' ? data.photos.split(',') : data.photos);
+  const loadTerrainData = (data: TerrainData) => {
+    setTerrain(data);
+    setValue('nom_terrain', data.nom_terrain || '');
+    setValue('surface_proposee', data.surface_proposee);
+    setValue('id_region', data.id_region?.toString() || '');
+    setSelectedRegion(data.id_region);
+    setValue('id_district', data.id_district?.toString() || '');
+    setSelectedDistrict(data.id_district);
+    setValue('id_commune', data.id_commune?.toString() || '');
+    setValue('acces_eau', data.acces_eau || false);
+    setValue('acces_route', data.acces_route || false);
+    setValue('id_tantsaha', data.id_tantsaha || userId);
+    
+    // Load polygon coordinates if available
+    if (data.geom) {
+      try {
+        const geomData = typeof data.geom === 'string' 
+          ? JSON.parse(data.geom) 
+          : data.geom;
+          
+        if (geomData && geomData.coordinates && geomData.coordinates[0]) {
+          // Convert GeoJSON format to LatLngExpression[]
+          const coords = geomData.coordinates[0].map((coord: number[]) => 
+            [coord[1], coord[0]] as L.LatLngExpression
+          );
+          setPolygonCoordinates(coords);
         }
+      } catch (error) {
+        console.error("Error parsing polygon geometry:", error);
       }
-    } catch (error) {
-      console.error("Error fetching terrain data:", error);
-      toast("Failed to load terrain data.");
-    } finally {
-      setLoading(false);
+    }
+    
+    // Load photos
+    if (data.photos) {
+      const photoArray = typeof data.photos === 'string' 
+        ? data.photos.split(',') 
+        : data.photos;
+      setPhotoUrls(photoArray.filter(Boolean));
     }
   };
 
@@ -237,7 +255,12 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
 
     setPhotoUrls(prevUrls => {
       const newUrls = [...prevUrls];
-      URL.revokeObjectURL(newUrls[index]);
+      
+      // Only revoke if it's a blob URL (newly added photo)
+      if (newUrls[index].startsWith('blob:')) {
+        URL.revokeObjectURL(newUrls[index]);
+      }
+      
       newUrls.splice(index, 1);
       return newUrls;
     });
@@ -285,39 +308,63 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
   const onSubmit = async (formData: TerrainFormData) => {
     setLoading(true);
     try {
-      if (!user || !user.id) {
+      if (!user) {
         throw new Error("User not authenticated.");
       }
 
+      // Make sure we have a valid id_tantsaha
+      const tantsahaId = userRole && (userRole === 'technicien' || userRole === 'superviseur') 
+        ? formData.id_tantsaha 
+        : userId;
+        
+      if (!tantsahaId) {
+        throw new Error("Un agriculteur doit être sélectionné.");
+      }
+
+      // Upload new photos
       const uploadedPhotoUrls = await uploadPhotos();
       
-      const allPhotoUrls = [...photoUrls.filter(url => url.includes('supabase.co')), ...uploadedPhotoUrls];
+      // Combine existing urls (that aren't blob URLs) with newly uploaded ones
+      const existingUrls = photoUrls.filter(url => !url.startsWith('blob:'));
+      const allPhotoUrls = [...existingUrls, ...uploadedPhotoUrls];
+      
+      // Convert polygon coordinates to GeoJSON format
+      const geojson = {
+        type: "Polygon",
+        coordinates: [
+          polygonCoordinates.map(coord => 
+            Array.isArray(coord) ? [coord[1], coord[0]] : [0, 0]
+          )
+        ]
+      };
       
       // Convert form data to the correct types
       const terrainData = convertFormDataToTerrainData(formData);
-      terrainData.id_tantsaha = user.id;
+      terrainData.id_tantsaha = tantsahaId;
       terrainData.photos = allPhotoUrls.join(',');
+      terrainData.geom = geojson;
+
+      console.log("Submitting terrain data:", terrainData);
 
       let response;
-      if (isEditMode && id) {
+      if (isEditMode && initialData?.id_terrain) {
         response = await supabase
           .from('terrain')
           .update(terrainData)
-          .eq('id_terrain', id)
-          .single();
+          .eq('id_terrain', initialData.id_terrain);
       } else {
         const { id_terrain, ...newTerrainData } = terrainData;
         response = await supabase
           .from('terrain')
-          .insert([newTerrainData])
-          .single();
+          .insert([newTerrainData]);
       }
 
       if (response.error) {
+        console.error("Supabase error:", response.error);
         throw response.error;
       }
 
-      toast(`Terrain ${isEditMode ? 'updated' : 'created'} successfully!`);
+      toast(`Terrain ${isEditMode ? 'modifié' : 'créé'} avec succès !`);
       if (onSubmitSuccess) {
         onSubmitSuccess();
       } else {
@@ -325,7 +372,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       }
     } catch (error: any) {
       console.error("Error during form submission:", error);
-      toast(error.message || "An error occurred during submission.");
+      toast.error(error.message || "Une erreur s'est produite lors de l'enregistrement.");
     } finally {
       setLoading(false);
     }
@@ -339,13 +386,44 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     setSelectedDistrict(Number(selectedValue));
   };
 
+  // Custom map component to handle events and polygon editing
   const MapEvents = () => {
     const map = useMap();
 
     useEffect(() => {
-      mapRef.current = map;
-      setMapInitialized(true);
+      if (!mapRef.current) {
+        mapRef.current = map;
+        setMapInitialized(true);
+        
+        // Center map on polygon if it exists
+        if (polygonCoordinates.length > 0) {
+          const bounds = L.latLngBounds(polygonCoordinates as L.LatLngExpression[]);
+          map.fitBounds(bounds, { padding: [30, 30] });
+        }
+      }
     }, [map]);
+
+    // Handle map clicks to create/edit polygon
+    useMapEvents({
+      click: (e) => {
+        const { lat, lng } = e.latlng;
+        setPolygonCoordinates(prev => [...prev, [lat, lng]]);
+      },
+      dblclick: (e) => {
+        // Prevent default double-click zoom
+        e.originalEvent.stopPropagation();
+        
+        // Close the polygon if we have at least 3 points
+        if (polygonCoordinates.length >= 3) {
+          setPolygonCoordinates(prev => {
+            if (prev[0] !== prev[prev.length - 1]) {
+              return [...prev, prev[0]]; // Close the polygon
+            }
+            return prev;
+          });
+        }
+      }
+    });
 
     return null;
   };
@@ -355,6 +433,38 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       <h1 className="text-2xl font-bold mb-4">{isEditMode ? 'Modifier un Terrain' : 'Ajouter un Terrain'}</h1>
       <Form {...form}>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          {/* Show agriculteur select for technicien/superviseur */}
+          {userRole && (userRole === 'technicien' || userRole === 'superviseur') && (
+            <FormField
+              control={control}
+              name="id_tantsaha"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Agriculteur</FormLabel>
+                  <Select 
+                    onValueChange={field.onChange} 
+                    value={field.value?.toString() || ''}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Sélectionner un agriculteur" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {agriculteurs && agriculteurs.map((agriculteur) => (
+                        <SelectItem
+                          key={agriculteur.id_utilisateur}
+                          value={agriculteur.id_utilisateur}
+                        >
+                          {agriculteur.nom} {agriculteur.prenoms || ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage>{errors.id_tantsaha?.message}</FormMessage>
+                </FormItem>
+              )}
+            />
+          )}
+        
           <FormField
             control={control}
             name="nom_terrain"
@@ -545,6 +655,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
               style={{ height: '400px', width: '100%' }}
               className="rounded-md"
               whenReady={() => setMapInitialized(true)}
+              doubleClickZoom={false}
             >
               <TileLayer
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -556,6 +667,9 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
               />
               <MapEvents />
             </MapContainer>
+            <div className="text-sm text-muted-foreground mt-2">
+              Cliquez sur la carte pour ajouter des points au polygone. Double-cliquez pour terminer le polygone.
+            </div>
           </div>
           <div className="flex gap-3 justify-end">
             {onCancel && (

@@ -37,13 +37,14 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
           const { data, error } = await supabase
             .from('utilisateurs_par_role')
             .select('id_utilisateur, nom, prenoms')
-            .eq('id_role', 2); // 2 = simple (agriculteur)
+            .eq('id_role', 1); // 1 = simple (agriculteur)
           
           if (error) {
             console.error("Error fetching agriculteurs:", error);
             return;
           }
           
+          console.log("Fetched agriculteurs:", data);
           setAgriculteurs(data || []);
         } catch (error) {
           console.error("Error in fetchAgriculteurs:", error);
