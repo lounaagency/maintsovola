@@ -575,24 +575,24 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
                     circle: false,
                     marker: false,
                     polyline: false
-                  }}
-                  onCreated={(e) => {
-                    if (!e.layer) return;
-                    const layer = e.layer;
-                    if (layer instanceof L.Polygon) {
-                      const latlngs = layer.getLatLngs();
-                      if (Array.isArray(latlngs) && latlngs.length > 0 && Array.isArray(latlngs[0])) {
-                        const coords = (latlngs[0] as L.LatLng[]).map((latlng) => [latlng.lat, latlng.lng]);
-                        if (coords.length >= 3) {
-                          setPolygonCoordinates(coords);
-                        } else {
-                          toast.error("Un polygone doit avoir au moins trois points.");
-                        }
+                }}
+                onCreated={(e) => {
+                  if (!e.layer) return;
+                  const layer = e.layer;
+                  if (layer instanceof L.Polygon) {
+                    const latlngs = layer.getLatLngs();
+                    if (Array.isArray(latlngs) && latlngs.length > 0 && Array.isArray(latlngs[0])) {
+                      const coords = (latlngs[0] as L.LatLng[]).map((latlng) => [latlng.lat, latlng.lng]);
+                      if (coords.length >= 3) {
+                        setPolygonCoordinates(coords);
                       } else {
-                        toast.error("Erreur de récupération des coordonnées du polygone.");
+                        toast.error("Un polygone doit avoir au moins trois points.");
                       }
+                    } else {
+                      toast.error("Erreur de récupération des coordonnées du polygone.");
                     }
-                  }}
+                  }
+                }}
                   onEdited={handleEdited}
                   onDeleted={handleDeleted}
                 />
