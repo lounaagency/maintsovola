@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import TerrainForm from "@/components/terrain/TerrainForm";
 import { TerrainData } from "@/types/terrain";
+import { supabase } from "@/integrations/supabase/client";
 
 interface TerrainEditDialogProps {
   isOpen: boolean;
@@ -16,7 +17,6 @@ interface TerrainEditDialogProps {
   onSubmitSuccess: () => void;
   userId: string;
   userRole?: string;
-  agriculteurs?: { id_utilisateur: string; nom: string; prenoms?: string }[];
 }
 
 const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
@@ -26,8 +26,30 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
   onSubmitSuccess,
   userId,
   userRole,
-  agriculteurs
 }) => {
+  const [agriculteurs, setAgriculteurs] = useState<{ id_utilisateur: string; nom: string; prenoms?: string }[]>([]);
+  
+  // Fetch agriculteurs when the dialog opens and userRole is technicien or superviseur
+  useEffect(() => {
+    if (isOpen && (userRole === 'technicien' || userRole === 'superviseur')) {
+      const fetchAgriculteurs = async () => {
+        const { data, error } = await supabase
+          .from('utilisateurs_par_role')
+          .select('id_utilisateur, nom, prenoms')
+          .eq('id_role', 2); // 2 = simple (agriculteur)
+        
+        if (error) {
+          console.error("Error fetching agriculteurs:", error);
+          return;
+        }
+        
+        setAgriculteurs(data || []);
+      };
+      
+      fetchAgriculteurs();
+    }
+  }, [isOpen, userRole]);
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
