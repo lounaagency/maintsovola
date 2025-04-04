@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from "react";
 import { TerrainData, TerrainSortOptions, TerrainFilters } from "@/types/terrain";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,7 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { Check, Edit, MessageSquare, Trash, Eye, FileCheck } from "lucide-react";
+import { Check, Edit, MessageSquare, Trash, Eye, FileCheck, Route } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -49,8 +50,18 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
   const [filters, setFilters] = useState<TerrainFilters>({});
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Filtrer et trier les terrains
+  // Filter and sort terrains
   const filteredTerrains = useMemo(() => {
+    console.log('TerrainTable processing data:', { 
+      count: terrains?.length || 0, 
+      type, 
+      userRole
+    });
+    
+    if (!terrains || terrains.length === 0) {
+      return [];
+    }
+    
     let filtered = [...terrains];
     
     // Filter by status (pending/validated)
@@ -66,7 +77,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
       // Technician only sees terrains assigned to them
       filtered = filtered.filter(terrain => terrain.id_technicien === user?.id);
     }
-    // Superviseurs voient tous les terrains, donc pas de filtrage supplémentaire pour eux
+    // Supervisors see all terrains, so no additional filtering for them
     
     // Apply search filter
     if (searchQuery) {
@@ -113,6 +124,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
       return sortOption.direction === 'asc' ? comparison : -comparison;
     });
     
+    console.log('TerrainTable filtered results:', { count: filtered.length });
     return filtered;
   }, [terrains, type, userRole, user, filters, searchQuery, sortOption]);
 

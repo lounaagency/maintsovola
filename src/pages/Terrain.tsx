@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -79,12 +80,20 @@ export const Terrain = () => {
       } else if (userRole === 'technicien') {
         query = query.eq('id_technicien', user.id);
       }
+      // Supervisors see all terrains, so no additional filtering for them
       
       const { data, error } = await query;
 
       if (error) throw error;
       
-      const terrainData = (data || []).map(terrain => ({
+      if (!data) {
+        setPendingTerrains([]);
+        setValidatedTerrains([]);
+        return;
+      }
+      
+      // Map the data first
+      const terrainData = data.map(terrain => ({
         id_terrain: terrain.id_terrain,
         nom_terrain: terrain.nom_terrain || `Terrain #${terrain.id_terrain}`,
         surface_proposee: terrain.surface_proposee,
@@ -112,6 +121,7 @@ export const Terrain = () => {
         tantsahaNom: 'Non spécifié'
       }));
       
+      // Then enhance the data with additional details
       const enhancedTerrainData = await Promise.all(terrainData.map(async (terrain) => {
         if (terrain.id_technicien) {
           const { data: techData } = await supabase
@@ -152,8 +162,11 @@ export const Terrain = () => {
         return terrain;
       }));
       
+      // Split into pending and validated arrays
       const pending = enhancedTerrainData.filter(t => t.statut === false);
       const validated = enhancedTerrainData.filter(t => t.statut === true);
+      
+      console.log('Fetched terrains:', { pending: pending.length, validated: validated.length, userRole });
       
       setPendingTerrains(pending);
       setValidatedTerrains(validated);
