@@ -30,6 +30,8 @@ export interface TerrainData {
   rapport_validation?: string;
   photos_validation?: string | string[];
   validation_decision?: 'valider' | 'rejetter';
+  // Adding this required field for Supabase insert operations
+  created_by?: string;
 }
 
 export interface TerrainFormData {

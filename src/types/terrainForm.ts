@@ -28,7 +28,8 @@ export const convertFormDataToTerrainData = (formData: TerrainFormData): Terrain
     id_region: Number(formData.id_region),
     id_district: Number(formData.id_district),
     id_commune: Number(formData.id_commune),
-    surface_proposee: parseFloat(formData.surface_proposee.toFixed(2)) || 0
+    surface_proposee: parseFloat(formData.surface_proposee.toFixed(2)) || 0,
+    created_by: "system" // Add default value for required field
   };
   
   // Add surface_validee if provided

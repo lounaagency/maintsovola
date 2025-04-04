@@ -10,6 +10,7 @@ import { TerrainData } from "@/types/terrain";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Navigate } from "react-router-dom";
 
+// Change to default export
 export default function Terrain() {
   const { user, profile } = useAuth();
   const [pendingTerrains, setPendingTerrains] = useState<TerrainData[]>([]);
@@ -37,6 +38,7 @@ export default function Terrain() {
     setIsLoading(true);
     
     try {
+      // Fix the query to properly alias the relationship fields
       const { data, error } = await supabase
         .from('terrain')
         .select(`

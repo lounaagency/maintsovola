@@ -18,7 +18,7 @@ export interface UserProfile {
   email: string;
   photo_profil?: string;
   photo_couverture?: string;
-  telephone?: string;
+  telephone?: string; // Added for backward compatibility
   adresse?: string;
   bio?: string;
   id_role?: number;
