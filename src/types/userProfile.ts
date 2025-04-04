@@ -11,17 +11,27 @@ export interface UserTelephone {
 }
 
 export interface UserProfile {
-  id_utilisateur: string;
   id: string;
+  id_utilisateur: string;
   nom: string;
   prenoms?: string;
-  email: string;
+  email?: string;
   photo_profil?: string;
   photo_couverture?: string;
   telephone?: string;
   adresse?: string;
   bio?: string;
-  id_role?: number;
+  id_role: number;
   nom_role?: string;
   telephones: UserTelephone[];
+}
+
+export interface UserProfileUpdateData {
+  nom?: string;
+  prenoms?: string;
+  email?: string;
+  adresse?: string;
+  bio?: string;
+  photo_profil?: string;
+  photo_couverture?: string;
 }

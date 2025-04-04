@@ -48,7 +48,6 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
             console.error("Error fetching techniciens:", error);
             return;
           }
-          
           setTechniciens(data || []);
         } catch (error) {
           console.error("Error in fetchTechniciens:", error);
@@ -79,7 +78,6 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
           userId={userId}
           userRole={userRole}
           agriculteurs={agriculteurs}
-          techniciens={techniciens}
           isValidationMode={isValidationMode}
         />
       </DialogContent>
