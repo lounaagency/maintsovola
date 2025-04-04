@@ -20,16 +20,3 @@ export interface ProjetCulture {
   date_debut_previsionnelle?: string;
   date_debut_reelle?: string;
 }
-
-// Add the missing CultureData type
-export interface CultureData {
-  id_culture: number;
-  nom_culture: string;
-  rendement_ha?: number;
-  cout_exploitation_ha?: number;
-  prix_tonne?: number;
-  fiche_technique?: string;
-  created_at?: string;
-  modified_at?: string;
-  created_by?: string;
-}

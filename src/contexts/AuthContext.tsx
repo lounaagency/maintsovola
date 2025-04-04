@@ -210,24 +210,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setLoading(true);
       
-      // Vérifier s'il s'agit d'un email ou d'un numéro de téléphone
       const isEmail = isValidEmail(identifier);
       
       let authResponse;
       
       if (isEmail) {
-        // Connexion avec email et mot de passe
         authResponse = await supabase.auth.signInWithPassword({
           email: identifier,
           password
         });
       } else {
-        // Formatage du numéro de téléphone (s'assurer qu'il a le bon format avec indicatif pays)
-        const formattedPhone = formatPhoneNumber(identifier);
-        
-        // Connexion avec téléphone et mot de passe
         authResponse = await supabase.auth.signInWithPassword({
-          phone: formattedPhone,
+          phone: identifier,
           password
         });
       }
@@ -239,58 +233,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       toast.success("Connexion réussie !");
       navigate("/feed");
     } catch (error: any) {
+      toast.error(error.message || "Erreur lors de la connexion");
       console.error("Error signing in:", error);
-      
-      // Gestion spécifique de l'erreur de téléphone désactivé
-      if (error.message && error.message.includes("Phone logins are disabled")) {
-        toast.error("La connexion par téléphone n'est pas activée sur ce compte. Veuillez utiliser votre email.");
-        
-        // Essayer de récupérer l'email associé au numéro de téléphone
-        try {
-          const { data, error: lookupError } = await supabase
-            .from('telephone')
-            .select('id_utilisateur')
-            .eq('numero', identifier)
-            .single();
-            
-          if (!lookupError && data?.id_utilisateur) {
-            const { data: userData, error: userError } = await supabase
-              .from('utilisateur')
-              .select('email')
-              .eq('id_utilisateur', data.id_utilisateur)
-              .single();
-              
-            if (!userError && userData?.email) {
-              toast.info(`Essayez de vous connecter avec l'email associé à ce compte: ${userData.email}`);
-            }
-          }
-        } catch (lookupError) {
-          console.error("Error looking up user from phone:", lookupError);
-        }
-      } else {
-        toast.error(error.message || "Erreur lors de la connexion");
-      }
-      
       throw error;
     } finally {
       setLoading(false);
     }
-  };
-
-  // Fonction pour formater le numéro de téléphone
-  const formatPhoneNumber = (phone: string): string => {
-    // Si le numéro commence déjà par +, on le considère comme bien formaté
-    if (phone.startsWith('+')) {
-      return phone;
-    }
-    
-    // Si le numéro commence par un 0, on le remplace par l'indicatif de Madagascar (+261)
-    if (phone.startsWith('0')) {
-      return `+261${phone.substring(1)}`;
-    }
-    
-    // Pour les numéros sans 0 au début, on ajoute simplement l'indicatif
-    return `+261${phone}`;
   };
 
   const signOut = async () => {
