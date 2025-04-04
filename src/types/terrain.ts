@@ -36,6 +36,7 @@ export interface TerrainFormData {
   id_district: string;
   id_commune: string;
   surface_proposee: number;
+  surface_validee?: number;
   acces_eau: boolean;
   acces_route: boolean;
   nom_terrain: string;

@@ -4,27 +4,15 @@ import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { Button } from "@/components/ui/button";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Form } from "@/components/ui/form";
 import { supabase } from "@/integrations/supabase/client";
 import { TerrainFormData, convertFormDataToTerrainData } from "@/types/terrainForm";
-import { TerrainData, RegionData, DistrictData, CommuneData } from "@/types/terrain";
-import { Loader2, Upload, X } from "lucide-react";
+import { TerrainData } from "@/types/terrain";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { MapContainer, TileLayer, FeatureGroup, useMapEvents, useMap } from "react-leaflet";
-import { EditControl } from "react-leaflet-draw";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
-import "leaflet-draw/dist/leaflet.draw.css";
+import ValidationForm from "./ValidationForm";
+import TerrainFormFields from "./TerrainFormFields";
 import { sendNotification } from "@/types/notification";
-
-interface Agriculteur {
-  id_utilisateur: string;
-  nom: string;
-  prenoms?: string;
-}
 
 interface TerrainFormProps {
   initialData?: TerrainData;
@@ -32,10 +20,13 @@ interface TerrainFormProps {
   onCancel: () => void;
   userId: string;
   userRole?: string;
-  agriculteurs?: Agriculteur[];
+  agriculteurs?: { id_utilisateur: string; nom: string; prenoms?: string }[];
+  techniciens?: { id_utilisateur: string; nom: string; prenoms?: string }[];
+  isValidationMode?: boolean;
 }
 
-const schema = yup.object().shape({
+// Create validation schemas for regular mode and validation mode
+const terrainSchema = yup.object().shape({
   nom_terrain: yup.string().required("Le nom du terrain est obligatoire"),
   surface_proposee: yup.number().required("La surface est obligatoire").positive("La surface doit être positive"),
   id_region: yup.string().required("La région est obligatoire"),
@@ -46,30 +37,33 @@ const schema = yup.object().shape({
   id_tantsaha: yup.string().optional(),
 });
 
+const validationSchema = yup.object().shape({
+  surface_validee: yup.number().required("La surface validée est obligatoire").positive("La surface doit être positive"),
+  date_validation: yup.string().required("La date de validation est obligatoire"),
+  rapport_validation: yup.string().required("Le rapport de validation est obligatoire"),
+  validation_decision: yup.string().required("Une décision est requise").oneOf(['valider', 'rejetter'], "Décision invalide"),
+});
+
 const TerrainForm: React.FC<TerrainFormProps> = ({
   initialData,
   onSubmitSuccess,
   onCancel,
   userId,
   userRole,
-  agriculteurs
+  agriculteurs = [],
+  techniciens = [],
+  isValidationMode = false
 }) => {
-  const [regions, setRegions] = useState<RegionData[]>([]);
-  const [districts, setDistricts] = useState<DistrictData[]>([]);
-  const [communes, setCommunes] = useState<CommuneData[]>([]);
-  const [filteredDistricts, setFilteredDistricts] = useState<DistrictData[]>([]);
-  const [filteredCommunes, setFilteredCommunes] = useState<CommuneData[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [polygonCoordinates, setPolygonCoordinates] = useState<number[][]>([]);
-  const [mapInitialized, setMapInitialized] = useState(false);
-  const [shouldUpdateSurface, setShouldUpdateSurface] = useState(false);
-  const featureGroupRef = useRef<L.FeatureGroup | null>(null);
-  const mapRef = useRef<L.Map | null>(null);
-  
+  const [validationPhotos, setValidationPhotos] = useState<File[]>([]);
+  const [photoValidationUrls, setPhotoValidationUrls] = useState<string[]>([]);
   const [photos, setPhotos] = useState<File[]>([]);
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Choose the appropriate validation schema based on the mode
+  const schema = isValidationMode ? validationSchema : terrainSchema;
   
   const form = useForm<TerrainFormData>({
     resolver: yupResolver(schema) as any,
@@ -77,6 +71,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       id_terrain: initialData?.id_terrain,
       nom_terrain: initialData?.nom_terrain || "",
       surface_proposee: initialData?.surface_proposee || 1,
+      surface_validee: initialData?.surface_validee || initialData?.surface_proposee || 1,
       id_region: initialData?.id_region?.toString() || "",
       id_district: initialData?.id_district?.toString() || "",
       id_commune: initialData?.id_commune?.toString() || "",
@@ -84,10 +79,12 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       acces_route: initialData?.acces_route || false,
       id_tantsaha: userRole === 'simple' ? userId : initialData?.id_tantsaha,
       photos: initialData?.photos || '',
+      date_validation: initialData?.date_validation || new Date().toISOString().split('T')[0],
+      rapport_validation: initialData?.rapport_validation || '',
+      photos_validation: initialData?.photos_validation || '',
+      validation_decision: initialData?.validation_decision || 'valider',
     }
   });
-  const watchRegion = form.watch("id_region");
-  const watchDistrict = form.watch("id_district");
 
   // Initialize terrain data when component mounts or initialData changes
   useEffect(() => {
@@ -120,147 +117,24 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
           console.error("Error processing photos:", error);
         }
       }
+
+      // Process validation photos if available
+      if (initialData.photos_validation) {
+        try {
+          const photosArray = typeof initialData.photos_validation === 'string' 
+            ? initialData.photos_validation.split(',').filter(url => url.trim() !== '') 
+            : Array.isArray(initialData.photos_validation) ? initialData.photos_validation.filter(url => url && url.trim() !== '') : [];
+          
+          setPhotoValidationUrls(photosArray);
+        } catch (error) {
+          console.error("Error processing validation photos:", error);
+        }
+      }
     }
   }, [initialData]);
 
-  // Custom map component to handle events and map initialization
-  const MapInitializer = () => {
-    const map = useMap();
-    
-    useEffect(() => {
-      mapRef.current = map;
-      setMapInitialized(true);
-      
-      // Center map on polygon if it exists
-      if (polygonCoordinates && polygonCoordinates.length >= 3) {
-        try {
-          const latLngs = polygonCoordinates.map(coord => [coord[1], coord[0]] as L.LatLngTuple);
-          const bounds = new L.LatLngBounds(latLngs);
-          map.fitBounds(bounds, { padding: [20, 20] });
-          
-          // Add polygon to the map
-          if (featureGroupRef.current) {
-            featureGroupRef.current.clearLayers();
-            const polygon = L.polygon(latLngs, {
-              color: '#ff0000',
-              weight: 3,
-              opacity: 0.7,
-              fillColor: '#ff0000',
-              fillOpacity: 0.3
-            });
-            featureGroupRef.current.addLayer(polygon);
-          }
-        } catch (error) {
-          console.error("Error centering map on terrain:", error);
-        }
-      }
-    }, [map, polygonCoordinates]);
-    
-    return null;
-  };
-
-  // Fetch regions, districts, and communes data
-  useEffect(() => {
-    const fetchRegions = async () => {
-      const { data, error } = await supabase.from("region").select("*").order("nom_region");
-      if (error) {
-        console.error("Error fetching regions:", error);
-        return;
-      }
-      setRegions(data || []);
-    };
-
-    const fetchDistricts = async () => {
-      const { data, error } = await supabase.from("district").select("*").order("nom_district");
-      if (error) {
-        console.error("Error fetching districts:", error);
-        return;
-      }
-      setDistricts(data || []);
-    };
-
-    const fetchCommunes = async () => {
-      const { data, error } = await supabase.from("commune").select("*").order("nom_commune");
-      if (error) {
-        console.error("Error fetching communes:", error);
-        return;
-      }
-      setCommunes(data || []);
-    };
-
-    fetchRegions();
-    fetchDistricts();
-    fetchCommunes();
-  }, []);
-
-  // Filter districts based on selected region
-  useEffect(() => {
-    if (watchRegion) {
-      const regionId = parseInt(watchRegion);
-      const filtered = districts.filter(d => d.id_region === regionId);
-      setFilteredDistricts(filtered);
-      
-      if (filtered.length > 0 && !filtered.find(d => d.id_district === parseInt(watchDistrict))) {
-        form.setValue("id_district", filtered[0].id_district.toString());
-      }
-    } else {
-      setFilteredDistricts([]);
-      form.setValue("id_district", "");
-    }
-  }, [watchRegion, districts, form, watchDistrict]);
-
-  // Filter communes based on selected district
-  useEffect(() => {
-    if (watchDistrict) {
-      const districtId = parseInt(watchDistrict);
-      const filtered = communes.filter(c => c.id_district === districtId);
-      setFilteredCommunes(filtered);
-      
-      if (filtered.length > 0 && !filtered.find(c => c.id_commune === parseInt(form.getValues("id_commune")))) {
-        form.setValue("id_commune", filtered[0].id_commune.toString());
-      }
-    } else {
-      setFilteredCommunes([]);
-      form.setValue("id_commune", "");
-    }
-  }, [watchDistrict, communes, form]);
-
-  // Handle file input for photos
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0) return;
-    
-    const selectedFiles = Array.from(e.target.files);
-    setPhotos(prevPhotos => [...prevPhotos, ...selectedFiles]);
-    
-    // Create preview URLs for the photos
-    selectedFiles.forEach(file => {
-      const previewUrl = URL.createObjectURL(file);
-      setPhotoUrls(prevUrls => [...prevUrls, previewUrl]);
-    });
-  };
-
-  // Remove photo from the list
-  const removePhoto = (index: number) => {
-    setPhotos(prevPhotos => {
-      const newPhotos = [...prevPhotos];
-      newPhotos.splice(index, 1);
-      return newPhotos;
-    });
-
-    setPhotoUrls(prevUrls => {
-      const newUrls = [...prevUrls];
-      
-      if (newUrls[index].startsWith('blob:')) {
-        URL.revokeObjectURL(newUrls[index]);
-      }
-      
-      newUrls.splice(index, 1);
-      return newUrls;
-    });
-  };
-
   // Upload photos to Supabase storage
-  const uploadPhotos = async (): Promise<string[]> => {
+  const uploadPhotos = async (photos: File[], folder: string = 'terrain-photos'): Promise<string[]> => {
     if (photos.length === 0) return [];
     
     setIsUploading(true);
@@ -270,7 +144,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       for (const photo of photos) {
         const fileExt = photo.name.split('.').pop();
         const fileName = `terrain-${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
-        const filePath = `terrain-photos/${fileName}`;
+        const filePath = `${folder}/${fileName}`;
         
         const { error: uploadError } = await supabase.storage
           .from('project-photos')
@@ -299,42 +173,20 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     }
   };
 
-  // Calculate area in hectares from polygon coordinates
-  const calculateAreaInHectares = (coords: number[][]) => {
-    if (!coords || coords.length < 3) return 0;
-
-    // Convert to LatLng for Leaflet's area calculation
-    const latLngs = coords.map(coord => new L.LatLng(coord[1], coord[0]));
-    
-    const polygon = new L.Polygon(latLngs);
-    
-    // Calculate geodesic area in square meters
-    const areaInSquareMeters = L.GeometryUtil.geodesicArea(polygon.getLatLngs()[0] as L.LatLng[]);
-    
-    // Convert to hectares (1 hectare = 10000 square meters) and round to 2 decimal places
-    return parseFloat((areaInSquareMeters / 10000).toFixed(2));
-  };
-
-  // Update surface area when polygon changes, but only if shouldUpdateSurface is true
-  useEffect(() => {
-    if (shouldUpdateSurface && polygonCoordinates && polygonCoordinates.length >= 3) {
-      const area = calculateAreaInHectares(polygonCoordinates);
-      form.setValue("surface_proposee", area);
-      setShouldUpdateSurface(false);
-    }
-  }, [polygonCoordinates, form, shouldUpdateSurface]);
-
   // Form submission handler
   const onSubmit = async (data: TerrainFormData) => {
     setIsSubmitting(true);
     try {
-      console.log("Form data being submitted:", data);
-      
       // Assign polygon coordinates to form data
-      data.geom = polygonCoordinates;
+      if (!isValidationMode) {
+        data.geom = polygonCoordinates;
+      }
       
       // Round surface to 2 decimal places
       data.surface_proposee = parseFloat(data.surface_proposee.toFixed(2));
+      if (data.surface_validee) {
+        data.surface_validee = parseFloat(data.surface_validee.toFixed(2));
+      }
       
       // Determine the terrain owner based on user role
       const terrainOwnerId = userRole === 'simple' ? userId :
@@ -345,65 +197,101 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       const terrainData = convertFormDataToTerrainData({...data});
       terrainData.id_tantsaha = terrainOwnerId;
       
-      // Upload new photos and combine with existing ones
-      const uploadedPhotoUrls = await uploadPhotos();
-      
-      // Filter out blob URLs which are just previews
-      const existingPhotoUrls = photoUrls.filter(url => !url.startsWith('blob:'));
-      const allPhotoUrls = [...existingPhotoUrls, ...uploadedPhotoUrls];
-      
-      // Ensure photos is always a string when sending to API
-      terrainData.photos = allPhotoUrls.join(',');
-      
-      console.log("Final terrain data to submit:", terrainData);
-      
-      // Update existing terrain or create new one
-      if (initialData?.id_terrain) {
-        terrainData.statut = initialData.statut;
+      if (isValidationMode) {
+        // Upload validation photos
+        const uploadedValidationPhotos = await uploadPhotos(validationPhotos, 'terrain-validation-photos');
+        
+        // Filter out blob URLs which are just previews
+        const existingValidationPhotoUrls = photoValidationUrls.filter(url => !url.startsWith('blob:'));
+        const allValidationPhotoUrls = [...existingValidationPhotoUrls, ...uploadedValidationPhotos];
+        
+        // Update terrain with validation data
+        terrainData.photos_validation = allValidationPhotoUrls.join(',');
+        terrainData.statut = data.validation_decision === 'valider';
         
         const { error } = await supabase
           .from('terrain')
           .update(terrainData)
-          .eq('id_terrain', initialData.id_terrain);
+          .eq('id_terrain', initialData?.id_terrain);
           
         if (error) throw error;
         
-        toast.success("Terrain modifié avec succès");
-      } else {
-        terrainData.statut = false;
-        const { id_terrain, ...dataSansId } = terrainData; // Supprime id_terrain
-
-        const { data: newTerrain, error } = await supabase
-          .from('terrain')
-          .insert(dataSansId)
-          .select('id_terrain')
-          .single();
-          
-        if (error) throw error;
-        
-        // Send notification to supervisors
-        const { data: supervisors } = await supabase
-          .from('utilisateur')
-          .select('id_utilisateur')
-          .eq('id_role', 4); // 4 = superviseur
-          
-        if (supervisors && supervisors.length > 0 && userId) {
+        // Send notification to terrain owner
+        if (initialData?.id_tantsaha) {
           await sendNotification(
             supabase,
             userId,
-            supervisors,
-            "Nouveau terrain",
-            `Un nouveau terrain '${data.nom_terrain}' a été ajouté en attente de validation`,
-            "info",
+            [{ id_utilisateur: initialData.id_tantsaha }],
+            data.validation_decision === 'valider' ? "Terrain validé" : "Terrain rejeté",
+            `Votre terrain ${initialData.nom_terrain} a été ${data.validation_decision === 'valider' ? 'validé' : 'rejeté'}`,
+            data.validation_decision === 'valider' ? "success" : "warning",
             "terrain",
-            newTerrain.id_terrain
+            initialData.id_terrain
           );
         }
         
-        toast.success("Terrain ajouté avec succès");
+        toast.success(`Terrain ${data.validation_decision === 'valider' ? 'validé' : 'rejeté'} avec succès`);
+        onSubmitSuccess();
+      } else {
+        // Regular terrain create/update mode
+        // Upload new photos and combine with existing ones
+        const uploadedPhotoUrls = await uploadPhotos(photos);
+        
+        // Filter out blob URLs which are just previews
+        const existingPhotoUrls = photoUrls.filter(url => !url.startsWith('blob:'));
+        const allPhotoUrls = [...existingPhotoUrls, ...uploadedPhotoUrls];
+        
+        // Ensure photos is always a string when sending to API
+        terrainData.photos = allPhotoUrls.join(',');
+        
+        // Update existing terrain or create new one
+        if (initialData?.id_terrain) {
+          terrainData.statut = initialData.statut;
+          
+          const { error } = await supabase
+            .from('terrain')
+            .update(terrainData)
+            .eq('id_terrain', initialData.id_terrain);
+            
+          if (error) throw error;
+          
+          toast.success("Terrain modifié avec succès");
+        } else {
+          terrainData.statut = false;
+          const { id_terrain, ...dataSansId } = terrainData; // Supprime id_terrain
+
+          const { data: newTerrain, error } = await supabase
+            .from('terrain')
+            .insert(dataSansId)
+            .select('id_terrain')
+            .single();
+            
+          if (error) throw error;
+          
+          // Send notification to supervisors
+          const { data: supervisors } = await supabase
+            .from('utilisateur')
+            .select('id_utilisateur')
+            .eq('id_role', 3); // 3 = superviseur
+            
+          if (supervisors && supervisors.length > 0 && userId) {
+            await sendNotification(
+              supabase,
+              userId,
+              supervisors,
+              "Nouveau terrain",
+              `Un nouveau terrain '${data.nom_terrain}' a été ajouté en attente de validation`,
+              "info",
+              "terrain",
+              newTerrain.id_terrain
+            );
+          }
+          
+          toast.success("Terrain ajouté avec succès");
+        }
+        
+        onSubmitSuccess();
       }
-      
-      onSubmitSuccess();
     } catch (error: any) {
       toast.error("Erreur: " + error.message);
       console.error("Error submitting terrain form:", error);
@@ -412,346 +300,35 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     }
   };
 
-  // Handle map drawing events
-  const handleCreated = (e: any) => {
-    const { layerType, layer } = e;
-    
-    if (layerType === 'polygon') {
-      const coords: number[][] = [];
-      const latLngs = layer.getLatLngs()[0] as L.LatLng[];
-      
-      latLngs.forEach((latLng: L.LatLng) => {
-        coords.push([latLng.lng, latLng.lat]);
-      });
-      
-      // Close the polygon by adding the first point at the end
-      coords.push([latLngs[0].lng, latLngs[0].lat]);
-      
-      setPolygonCoordinates(coords);
-      setShouldUpdateSurface(true);
-      console.log("Created polygon coordinates:", coords);
-    }
-  };
-
-  const handleEdited = (e: any) => {
-    const layers = e.layers;
-    layers.eachLayer((layer: L.Layer) => {
-      if (layer instanceof L.Polygon) {
-        const coords: number[][] = [];
-        const latLngs = layer.getLatLngs()[0] as L.LatLng[];
-        
-        latLngs.forEach((latLng: L.LatLng) => {
-          coords.push([latLng.lng, latLng.lat]);
-        });
-        
-        coords.push([latLngs[0].lng, latLngs[0].lat]);
-        
-        setPolygonCoordinates(coords);
-        setShouldUpdateSurface(true);
-        console.log("Edited polygon coordinates:", coords);
-      }
-    });
-  };
-
-  const handleDeleted = () => {
-    setPolygonCoordinates([]);
-    console.log("Deleted polygon");
-  };
-
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        {userRole === 'technicien' || userRole === 'superviseur' ? (
-          <FormField
-            control={form.control}
-            name="id_tantsaha"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Propriétaire du terrain</FormLabel>
-                <Select 
-                  onValueChange={field.onChange} 
-                  defaultValue={field.value}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner un agriculteur" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {agriculteurs?.map((agriculteur) => (
-                      <SelectItem 
-                        key={agriculteur.id_utilisateur} 
-                        value={agriculteur.id_utilisateur}
-                      >
-                        {agriculteur.nom} {agriculteur.prenoms || ''}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
+        {isValidationMode ? (
+          // Validation mode - show summary and validation form
+          <ValidationForm 
+            form={form}
+            photoValidationUrls={photoValidationUrls}
+            setPhotoValidationUrls={setPhotoValidationUrls}
+            validationPhotos={validationPhotos}
+            setValidationPhotos={setValidationPhotos}
+            terrain={initialData!}
           />
-        ) : null}
-      
-        <FormField
-          control={form.control}
-          name="nom_terrain"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Nom du terrain</FormLabel>
-              <FormControl>
-                <Input placeholder="Nom du terrain" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        
-        <FormField
-          control={form.control}
-          name="surface_proposee"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Surface estimée (hectares)</FormLabel>
-              <FormControl>
-                <Input 
-                  type="number" 
-                  placeholder="Surface en hectares" 
-                  min="0.01" 
-                  step="0.01" 
-                  {...field}
-                  onChange={(e) => field.onChange(parseFloat(parseFloat(e.target.value).toFixed(2)))} 
-                />
-              </FormControl>
-              <FormDescription>
-                Vous pouvez saisir la surface manuellement ou dessiner le contour du terrain sur la carte.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <FormField
-            control={form.control}
-            name="id_region"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Région</FormLabel>
-                <Select 
-                  onValueChange={field.onChange} 
-                  defaultValue={field.value}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner une région" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {regions.map((region) => (
-                      <SelectItem 
-                        key={region.id_region} 
-                        value={region.id_region.toString()}
-                      >
-                        {region.nom_region}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
+        ) : (
+          // Regular mode - show full terrain form
+          <TerrainFormFields 
+            form={form}
+            userRole={userRole}
+            userId={userId}
+            agriculteurs={agriculteurs}
+            techniciens={techniciens}
+            photoUrls={photoUrls}
+            setPhotoUrls={setPhotoUrls}
+            photos={photos}
+            setPhotos={setPhotos}
+            polygonCoordinates={polygonCoordinates}
+            setPolygonCoordinates={setPolygonCoordinates}
           />
-          
-          <FormField
-            control={form.control}
-            name="id_district"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>District</FormLabel>
-                <Select 
-                  onValueChange={field.onChange} 
-                  defaultValue={field.value}
-                  disabled={!watchRegion}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner un district" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {filteredDistricts.map((district) => (
-                      <SelectItem 
-                        key={district.id_district} 
-                        value={district.id_district.toString()}
-                      >
-                        {district.nom_district}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          
-          <FormField
-            control={form.control}
-            name="id_commune"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Commune</FormLabel>
-                <Select 
-                  onValueChange={field.onChange} 
-                  defaultValue={field.value}
-                  disabled={!watchDistrict}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner une commune" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {filteredCommunes.map((commune) => (
-                      <SelectItem 
-                        key={commune.id_commune} 
-                        value={commune.id_commune.toString()}
-                      >
-                        {commune.nom_commune}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="acces_eau"
-            render={({ field }) => (
-              <FormItem className="flex flex-row items-center space-x-3 space-y-0">
-                <FormControl>
-                  <Checkbox
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                </FormControl>
-                <FormLabel>Accès à l'eau</FormLabel>
-              </FormItem>
-            )}
-          />
-          
-          <FormField
-            control={form.control}
-            name="acces_route"
-            render={({ field }) => (
-              <FormItem className="flex flex-row items-center space-x-3 space-y-0">
-                <FormControl>
-                  <Checkbox
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                </FormControl>
-                <FormLabel>Accès aux routes</FormLabel>
-              </FormItem>
-            )}
-          />
-        </div>
-        
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <FormLabel>Photos du terrain</FormLabel>
-            <Button 
-              type="button" 
-              variant="outline" 
-              size="sm"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Upload className="h-4 w-4 mr-2" />
-              Ajouter des photos
-            </Button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              multiple
-              className="hidden"
-              onChange={handleFileChange}
-            />
-          </div>
-          
-          {photoUrls.length > 0 && (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
-              {photoUrls.map((url, index) => (
-                <div key={index} className="relative group">
-                  <img 
-                    src={url} 
-                    alt={`Terrain photo ${index + 1}`} 
-                    className="w-full h-32 object-cover rounded-md border border-border"
-                  />
-                  <button
-                    type="button"
-                    className="absolute top-1 right-1 bg-black bg-opacity-50 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={() => removePhoto(index)}
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-        
-        <div className="space-y-4">
-          <FormLabel>Définir la zone du terrain sur la carte</FormLabel>
-          <div className="h-[400px] w-full relative rounded-md overflow-hidden border">
-            <MapContainer
-              center={[-18.913684, 47.536131]}
-              zoom={6}
-              style={{ height: "100%", width: "100%" }}
-              doubleClickZoom={false}
-            >
-              <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              />
-              <FeatureGroup ref={featureGroupRef}>
-                <EditControl
-                  position="topright"
-                  draw={{
-                    polygon: {
-                      allowIntersection: false,
-                      drawError: {
-                        color: '#e1e100',
-                        message: 'Le polygone ne peut pas s\'intersecter!'
-                      },
-                      shapeOptions: {
-                        color: '#ff0000',
-                      },
-                    },
-                    rectangle: false,
-                    circle: false,
-                    marker: false,
-                    polyline: false,
-                    circlemarker: false,
-                  }}
-                  onCreated={handleCreated}
-                  onEdited={handleEdited}
-                  onDeleted={handleDeleted}
-                />
-              </FeatureGroup>
-              <MapInitializer />
-            </MapContainer>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Dessinez le contour de votre terrain sur la carte (facultatif). Utilisez les outils de dessin pour créer un polygone représentant votre terrain.
-          </p>
-        </div>
+        )}
         
         <div className="flex justify-end space-x-4 pt-4">
           <Button type="button" variant="outline" onClick={onCancel}>
@@ -759,7 +336,8 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
           </Button>
           <Button type="submit" disabled={isSubmitting || isUploading}>
             {(isSubmitting || isUploading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {initialData?.id_terrain ? "Mettre à jour" : "Ajouter le terrain"}
+            {isValidationMode ? "Valider le terrain" : 
+              initialData?.id_terrain ? "Mettre à jour" : "Ajouter le terrain"}
           </Button>
         </div>
       </form>

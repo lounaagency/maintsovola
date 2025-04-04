@@ -12,12 +12,14 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Upload, X, Loader2 } from "lucide-react";
+import { Upload, X, Loader2, MapPin, Droplets, Route } from "lucide-react";
 import { format } from "date-fns";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { fr } from "date-fns/locale";
 import { UseFormReturn } from "react-hook-form";
-import { TerrainFormData } from "@/types/terrainForm";
+import { TerrainFormData, TerrainData } from "@/types/terrain";
+import { Card, CardContent } from "@/components/ui/card";
+import { MapContainer, TileLayer, Polygon } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
 
 interface ValidationFormProps {
   form: UseFormReturn<TerrainFormData>;
@@ -25,6 +27,7 @@ interface ValidationFormProps {
   setPhotoValidationUrls: React.Dispatch<React.SetStateAction<string[]>>;
   validationPhotos: File[];
   setValidationPhotos: React.Dispatch<React.SetStateAction<File[]>>;
+  terrain: TerrainData;
 }
 
 const ValidationForm: React.FC<ValidationFormProps> = ({
@@ -32,7 +35,8 @@ const ValidationForm: React.FC<ValidationFormProps> = ({
   photoValidationUrls,
   setPhotoValidationUrls,
   validationPhotos,
-  setValidationPhotos
+  setValidationPhotos,
+  terrain
 }) => {
   const [isUploading, setIsUploading] = useState(false);
   const validationFileInputRef = useRef<HTMLInputElement>(null);
@@ -68,10 +72,152 @@ const ValidationForm: React.FC<ValidationFormProps> = ({
       return newUrls;
     });
   };
+
+  // Convert photos string to array if needed
+  const photoArray = React.useMemo(() => {
+    if (!terrain.photos) return [];
+    return typeof terrain.photos === 'string'
+      ? terrain.photos.split(',').filter(url => url.trim() !== '')
+      : terrain.photos.filter(url => url !== '');
+  }, [terrain.photos]);
+  
+  // Prepare polygon coordinates for the map
+  const polygonCoordinates = React.useMemo(() => {
+    if (!terrain.geom) return [];
+    
+    try {
+      const geomData = typeof terrain.geom === 'string' 
+        ? JSON.parse(terrain.geom) 
+        : terrain.geom;
+        
+      if (geomData && geomData.coordinates && geomData.coordinates[0]) {
+        // Convert GeoJSON format to LatLngExpression[]
+        return geomData.coordinates[0].map((coord: number[]) => [coord[1], coord[0]]);
+      }
+    } catch (error) {
+      console.error("Error parsing polygon geometry:", error);
+    }
+    
+    return [];
+  }, [terrain.geom]);
+
+  // Set surface_validee to surface_proposee initially if not set
+  React.useEffect(() => {
+    if (typeof form.getValues().surface_validee === 'undefined' && terrain.surface_proposee) {
+      form.setValue('surface_validee', terrain.surface_proposee);
+    }
+  }, [form, terrain.surface_proposee]);
   
   return (
-    <div className="space-y-6 border-t pt-6 mt-6">
-      <h3 className="text-lg font-medium">Rapport de validation</h3>
+    <div className="space-y-6">
+      {/* Terrain Summary Card */}
+      <Card className="mb-6">
+        <CardContent className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <h3 className="font-semibold text-lg">{terrain.nom_terrain}</h3>
+              <p className="flex items-center text-sm text-muted-foreground">
+                <MapPin className="w-4 h-4 mr-2" />
+                {terrain.region_name || 'N/A'}, {terrain.district_name || 'N/A'}, {terrain.commune_name || 'N/A'}
+              </p>
+              
+              <div className="flex space-x-4 mt-2">
+                <div className="flex items-center">
+                  <Droplets className={`w-4 h-4 mr-1 ${terrain.acces_eau ? 'text-blue-500' : 'text-gray-400'}`} />
+                  <span className="text-sm">{terrain.acces_eau ? 'Accès à l\'eau' : 'Pas d\'accès à l\'eau'}</span>
+                </div>
+                <div className="flex items-center">
+                  <Route className={`w-4 h-4 mr-1 ${terrain.acces_route ? 'text-blue-500' : 'text-gray-400'}`} />
+                  <span className="text-sm">{terrain.acces_route ? 'Accès routier' : 'Pas d\'accès routier'}</span>
+                </div>
+              </div>
+              
+              <div className="mt-2">
+                <p className="text-sm font-medium">Surface proposée: {terrain.surface_proposee} ha</p>
+                <div className="text-sm mt-1.5">
+                  <span className="font-medium">Propriétaire:</span> {terrain.tantsahaNom || 'Non spécifié'}
+                </div>
+                {terrain.techniqueNom && (
+                  <div className="text-sm mt-1">
+                    <span className="font-medium">Technicien:</span> {terrain.techniqueNom}
+                  </div>
+                )}
+              </div>
+              
+              {photoArray.length > 0 && (
+                <div className="mt-3">
+                  <p className="text-sm font-medium mb-2">Photos existantes:</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {photoArray.slice(0, 6).map((url, index) => (
+                      <a 
+                        key={index} 
+                        href={url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="block"
+                      >
+                        <img 
+                          src={url} 
+                          alt={`Terrain ${index + 1}`} 
+                          className="h-16 w-full object-cover rounded-md border border-border"
+                        />
+                      </a>
+                    ))}
+                    {photoArray.length > 6 && (
+                      <div className="flex items-center justify-center h-16 w-full bg-muted rounded-md">
+                        <span className="text-xs text-muted-foreground">+{photoArray.length - 6} photos</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <div className="h-[200px]">
+              {polygonCoordinates.length > 0 ? (
+                <MapContainer
+                  bounds={polygonCoordinates}
+                  style={{ height: '100%', width: '100%' }}
+                  zoomControl={false}
+                  attributionControl={false}
+                >
+                  <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                  <Polygon 
+                    positions={polygonCoordinates}
+                    pathOptions={{ color: 'red', fillColor: '#f03', weight: 2, opacity: 0.7, fillOpacity: 0.3 }}
+                  />
+                </MapContainer>
+              ) : (
+                <div className="h-full w-full bg-gray-100 rounded-md flex items-center justify-center">
+                  <p className="text-sm text-gray-500">Aucune géométrie définie</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      
+      <h3 className="text-lg font-medium">Formulaire de validation</h3>
+      
+      <FormField
+        control={form.control}
+        name="surface_validee"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Surface validée (hectares)</FormLabel>
+            <FormControl>
+              <Input 
+                type="number" 
+                step="0.01"
+                {...field}
+                value={field.value || terrain.surface_proposee}
+                onChange={(e) => field.onChange(parseFloat(e.target.value) || terrain.surface_proposee)}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
       
       <FormField
         control={form.control}
