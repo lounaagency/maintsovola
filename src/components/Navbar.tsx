@@ -1,7 +1,7 @@
 
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Home, MapPin, LogOut, Settings, Bell, User } from "lucide-react";
+import { Home, MapPin, LogOut, Settings, Bell, User, FileText } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import UserAvatar from "./UserAvatar";
 import Notifications from "./Notifications";
@@ -49,9 +49,17 @@ const Navbar: React.FC = () => {
           <Link 
             to="/terrain" 
             className={`p-2 rounded-md ${isActive("/terrain") ? "text-green-600 bg-gray-100" : "text-gray-700 hover:bg-gray-100"}`}
-            title="Terrains et Projets"
+            title="Terrains"
           >
             <MapPin size={22} />
+          </Link>
+
+          <Link 
+            to="/projects" 
+            className={`p-2 rounded-md ${isActive("/projects") ? "text-green-600 bg-gray-100" : "text-gray-700 hover:bg-gray-100"}`}
+            title="Projets"
+          >
+            <FileText size={22} />
           </Link>
           
           <MessageBadge isActive={isActive("/messages")} />

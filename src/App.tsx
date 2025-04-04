@@ -14,6 +14,7 @@ import NotFound from "./pages/NotFound";
 import { AnimatePresence } from "framer-motion";
 import Auth from "./pages/Auth";
 import Terrain from "./pages/Terrain";
+import Projects from "./pages/Projects";
 import { AuthProvider } from "./contexts/AuthContext";
 
 const queryClient = new QueryClient();
@@ -48,6 +49,11 @@ const App = () => {
                 <Route path="/terrain" element={
                   <Layout>
                     <Terrain />
+                  </Layout>
+                } />
+                <Route path="/projects" element={
+                  <Layout>
+                    <Projects />
                   </Layout>
                 } />
                 <Route path="/settings" element={
