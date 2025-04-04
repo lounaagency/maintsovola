@@ -10,7 +10,7 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { Check, Edit, MessageSquare, Trash, Eye, FileCheck, Route, Loader } from "lucide-react";
+import { Check, Edit, MessageSquare, Trash, Eye, FileCheck, Route } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -25,7 +25,6 @@ interface TerrainTableProps {
   techniciens?: { id_utilisateur: string; nom: string; prenoms?: string }[];
   onEdit?: (terrain: TerrainData) => void;
   onContactTechnicien?: (terrain: TerrainData) => void;
-  loading?: boolean;
 }
 
 const TerrainTable: React.FC<TerrainTableProps> = ({ 
@@ -35,8 +34,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
   onTerrainUpdate,
   techniciens,
   onEdit,
-  onContactTechnicien,
-  loading = false
+  onContactTechnicien
 }) => {
   const { user } = useAuth();
   const isMobile = useIsMobile();
@@ -256,16 +254,6 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
   };
 
   const filteredTerrains = filterTerrainsByRole();
-
-  // Afficher un message de chargement
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-48 border rounded-md">
-        <Loader className="h-8 w-8 animate-spin text-maintso mb-2" />
-        <p className="text-gray-600">Chargement des terrains en cours...</p>
-      </div>
-    );
-  }
 
   if (isMobile) {
     return (

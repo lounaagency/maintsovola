@@ -16,10 +16,11 @@ const Index = () => {
         className="max-w-md w-full text-center space-y-6"
       >
         <img 
-          src="/maintso_vola_logo.png" 
+          src="/placeholder.svg" 
           alt="Maintso Vola Logo" 
-          className="w-32 h-32 mx-auto"
+          className="w-24 h-24 mx-auto"
         />
+        <img src="/maintsovola_logo_pm.png" alt="Maintso Vola Logo" width="150" />
 
         <h1 className="text-3xl font-bold text-maintso">Maintso Vola</h1>
         

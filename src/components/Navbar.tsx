@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 
 const Navbar: React.FC = () => {
   const location = useLocation();
-  const { user, profile } = useAuth();
+  const { user, profile, signOut } = useAuth();
   const isMobile = useIsMobile();
   
   const isActive = (path: string) => {
@@ -33,7 +33,7 @@ const Navbar: React.FC = () => {
       <div className="h-full max-w-6xl mx-auto px-2 md:px-4 flex items-center justify-between">
         {/* Logo */}
         <div className="flex items-center">
-          <Logo size={isMobile ? "sm" : "md"} showText={!isMobile} />
+          <Logo size={isMobile ? "sm" : "md"} />
         </div>
         
         {/* Central Navigation Icons */}

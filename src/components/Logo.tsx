@@ -5,28 +5,18 @@ import { Link } from 'react-router-dom';
 interface LogoProps {
   size?: 'sm' | 'md' | 'lg';
   className?: string;
-  showText?: boolean;
 }
 
-const Logo: React.FC<LogoProps> = ({ size = 'md', className = '', showText = true }) => {
+const Logo: React.FC<LogoProps> = ({ size = 'md', className = '' }) => {
   const sizeClasses = {
-    sm: 'h-6',
-    md: 'h-8',
-    lg: 'h-10'
+    sm: 'text-xl',
+    md: 'text-2xl',
+    lg: 'text-3xl'
   };
 
   return (
-    <Link to="/feed" className={`flex items-center font-bold text-maintso hover:text-maintso-600 ${className}`}>
-      <img 
-        src="/maintso_vola_logo.png" 
-        alt="Maintso Vola" 
-        className={`${sizeClasses[size]}`}
-      />
-      {showText && (
-        <span className={`ml-2 ${size === 'sm' ? 'text-xl' : size === 'md' ? 'text-2xl' : 'text-3xl'}`}>
-          Maintso Vola
-        </span>
-      )}
+    <Link to="/feed" className={`font-bold text-maintso hover:text-maintso-600 ${sizeClasses[size]} ${className}`}>
+      Maintso Vola
     </Link>
   );
 };
