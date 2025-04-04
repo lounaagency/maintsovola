@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -83,7 +82,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
       
-      // Convert to UserProfile type
       const userProfile: UserProfile = {
         id_utilisateur: data.id_utilisateur,
         id: data.id_utilisateur,
@@ -92,7 +90,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email: data.email,
         photo_profil: data.photo_profil,
         photo_couverture: data.photo_couverture,
-        telephone: data.telephone || undefined,
+        telephone: data.telephones && data.telephones[0]?.numero,
         adresse: data.adresse || undefined,
         bio: data.bio || undefined,
         id_role: data.id_role,
@@ -112,7 +110,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       const isEmail = isValidEmail(identifier);
       
-      // Set up the user data
       const authData = {
         ...(isEmail ? { email: identifier } : {}),
         password,
@@ -127,32 +124,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       };
 
-      // Create the user in auth
-      const { data, error } = isEmail 
-        ? await supabase.auth.signUp(authData)
-        : await supabase.auth.signUp({
-            phone: identifier,
-            password,
-            options: authData.options
-          });
+      let { data, error };
+      if (isEmail) {
+        const result = await supabase.auth.signUp(authData);
+        data = result.data;
+        error = result.error;
+      } else {
+        const result = await supabase.auth.signUp({
+          phone: identifier,
+          password,
+          options: authData.options
+        });
+        data = result.data;
+        error = result.error;
+      }
 
       if (error) throw error;
       if (!data.user) throw new Error("L'utilisateur n'a pas été créé.");
       
-      // Insert user data into public.utilisateur table
+      let roleId = 1;
+      if (userData.role === 'technicien') {
+        roleId = 4;
+      } else if (userData.role === 'superviseur') {
+        roleId = 3;
+      }
+      
       const { error: dbError } = await supabase.from("utilisateur").insert([
         {
           id_utilisateur: data.user.id,
           email: isEmail ? identifier : userData.email,
           nom: userData.nom,
           prenoms: userData.prenoms,
-          id_role: userData.role === 'technicien' ? 3 : userData.role === 'superviseur' ? 4 : 2 // 2=simple, 3=technicien, 4=superviseur
+          id_role: roleId
         }
       ]);
 
       if (dbError) throw dbError;
       
-      // Insert phone number if provided
       if (!isEmail || userData.telephone) {
         const { error: phoneError } = await supabase.from("telephone").insert([
           {
@@ -179,19 +187,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setLoading(true);
       
-      // Check if identifier is an email or phone number
       const isEmail = isValidEmail(identifier);
       
       let authResponse;
       
       if (isEmail) {
-        // Try sign in with email
         authResponse = await supabase.auth.signInWithPassword({
           email: identifier,
           password
         });
       } else {
-        // Try sign in with phone number
         authResponse = await supabase.auth.signInWithPassword({
           phone: identifier,
           password
@@ -252,7 +257,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email: data.email,
         photo_profil: data.photo_profil,
         photo_couverture: data.photo_couverture,
-        telephone: data.telephone || undefined,
+        telephone: data.telephones && data.telephones[0]?.numero,
         adresse: data.adresse || undefined,
         bio: data.bio || undefined,
         id_role: data.id_role,

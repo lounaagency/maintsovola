@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from "react";
 import { TerrainData, TerrainSortOptions, TerrainFilters } from "@/types/terrain";
 import { Button } from "@/components/ui/button";

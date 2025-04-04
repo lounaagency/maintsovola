@@ -41,7 +41,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
 
   const handleValidate = async (terrainId: number) => {
     try {
-      // Check if user is either technicien or superviseur
+      // Check if user is either technicien or superviseur (IDs 4, 3)
       if (!['technicien', 'superviseur'].includes(userRole || '')) {
         toast.error("Vous n'avez pas les permissions nécessaires pour valider ce terrain");
         return;
