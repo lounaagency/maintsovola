@@ -18,10 +18,8 @@ export interface TerrainData {
   commune_name?: string;
   created_at?: string;
   techniqueNom?: string;
-  techniquePhoto?: string;
   superviseurNom?: string;
   tantsahaNom?: string;
-  tantsahaPhoto?: string;
   nom_terrain: string;
   photos?: string | string[];
   geom?: any;
