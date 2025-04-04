@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { container, item } from "./motionConstants";
-import { isValidEmail, isValidPhoneNumber } from "@/lib/utils";
+import { isValidEmail } from "@/lib/utils";
 import { toast } from "sonner";
 
 interface LoginFormProps {
@@ -30,6 +30,11 @@ const LoginForm: React.FC<LoginFormProps> = ({ switchToRegister }) => {
     if (!identifier) newErrors.identifier = "L'identifiant est obligatoire";
     if (!password) newErrors.password = "Le mot de passe est obligatoire";
     
+    // Vérifier si l'identifiant est un email
+    if (identifier && !isValidEmail(identifier)) {
+      newErrors.identifier = "Veuillez utiliser une adresse email valide";
+    }
+    
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
@@ -51,16 +56,15 @@ const LoginForm: React.FC<LoginFormProps> = ({ switchToRegister }) => {
       className="space-y-4"
     >
       <motion.div variants={item} className="space-y-2">
-        <Label htmlFor="identifier">Email ou Téléphone</Label>
+        <Label htmlFor="identifier">Email</Label>
         <Input 
           id="identifier" 
-          type="text" 
-          placeholder="votre@email.com ou +261324xxxxxx" 
+          type="email" 
+          placeholder="votre@email.com" 
           value={identifier}
           onChange={(e) => setIdentifier(e.target.value)}
         />
         {errors.identifier && <p className="text-sm text-red-500">{errors.identifier}</p>}
-        <p className="text-xs text-muted-foreground">Pour les numéros de téléphone, utilisez le format international (+261)</p>
       </motion.div>
       
       <motion.div variants={item} className="space-y-2">

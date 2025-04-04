@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -40,7 +39,6 @@ const AuthContext = createContext<AuthContextType>({
   refreshProfile: async () => {},
 });
 
-// Define the component as a function component explicitly
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
@@ -95,7 +93,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
       
-      // Cast telephones to the correct type
       const telephones = data.telephones ? data.telephones.map((tel: any) => ({
         ...tel,
         type: tel.type as "principal" | "whatsapp" | "mobile_banking" | "autre"
@@ -210,39 +207,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setLoading(true);
       
-      const isEmail = isValidEmail(identifier);
-      
-      let authResponse;
-      
-      if (isEmail) {
-        authResponse = await supabase.auth.signInWithPassword({
-          email: identifier,
-          password
-        });
-      } else {
-        // Pour le téléphone, nous devons nous assurer que le format est correct
-        // Généralement les numéros de téléphone commencent par +
-        const phoneNumber = identifier.startsWith('+') ? identifier : `+${identifier}`;
-        
-        authResponse = await supabase.auth.signInWithPassword({
-          phone: phoneNumber,
-          password
-        });
+      if (!isValidEmail(identifier)) {
+        throw new Error("Veuillez utiliser une adresse email pour vous connecter");
       }
       
-      const { data, error } = authResponse;
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: identifier,
+        password
+      });
       
       if (error) throw error;
       
       toast.success("Connexion réussie !");
       navigate("/feed");
     } catch (error: any) {
-      // Affichage d'un message d'erreur plus spécifique pour les connexions par téléphone
-      if (error.message && error.message.includes("phone")) {
-        toast.error("Erreur de connexion par téléphone. Vérifiez le format du numéro (+XXXXXXXXX) ou utilisez votre email.");
-      } else {
-        toast.error(error.message || "Erreur lors de la connexion");
-      }
+      toast.error(error.message || "Erreur lors de la connexion");
       console.error("Error signing in:", error);
       throw error;
     } finally {
@@ -281,7 +260,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (error) throw error;
       
-      // Cast telephones to the correct type
       const telephones = data.telephones ? data.telephones.map((tel: any) => ({
         ...tel,
         type: tel.type as "principal" | "whatsapp" | "mobile_banking" | "autre"
