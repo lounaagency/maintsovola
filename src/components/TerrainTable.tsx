@@ -10,7 +10,7 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { Check, Edit, MessageSquare, Trash } from "lucide-react";
+import { Check, Edit, MessageSquare, Trash, Eye, FileCheck, Route } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -41,11 +41,13 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
 
   const handleValidate = async (terrainId: number) => {
     try {
+      // Check if user is either technicien or superviseur
       if (!['technicien', 'superviseur'].includes(userRole || '')) {
         toast.error("Vous n'avez pas les permissions nécessaires pour valider ce terrain");
         return;
       }
 
+      // If user is technicien, check if they are assigned to this terrain
       if (userRole === 'technicien') {
         const terrain = terrains.find(t => t.id_terrain === terrainId);
         if (terrain?.id_technicien !== user?.id) {
@@ -99,6 +101,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
         return;
       }
 
+      // Only simple users and superviseurs can delete terrains
       if (userRole !== 'simple' && userRole !== 'superviseur') {
         toast.error("Vous n'avez pas les permissions nécessaires");
         return;
@@ -135,6 +138,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
 
   const handleAssignTechnician = async (terrainId: number, technicianId: string) => {
     try {
+      // Check if user is supervisor
       if (userRole !== 'superviseur') {
         toast.error("Seuls les superviseurs peuvent assigner des techniciens");
         return;
@@ -172,14 +176,17 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
   const canEdit = (terrain: TerrainData): boolean => {
     if (!user) return false;
     
+    // Simple users can edit their own non-validated terrains
     if (['agriculteur', 'investisseur', 'simple'].includes(userRole || '') && terrain.id_tantsaha === user.id) {
       return terrain.statut === false;
     }
     
+    // Technician can edit terrains assigned to them
     if (userRole === 'technicien' && terrain.id_technicien === user.id) {
       return true;
     }
     
+    // Supervisor can edit any terrain
     if (userRole === 'superviseur') return true;
     
     return false;
@@ -188,10 +195,12 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
   const canDelete = (terrain: TerrainData): boolean => {
     if (!user) return false;
     
+    // Simple users can delete their own non-validated terrains
     if (['agriculteur', 'investisseur', 'simple'].includes(userRole || '') && terrain.id_tantsaha === user.id) {
       return terrain.statut === false;
     }
     
+    // Supervisor can delete any terrain
     if (userRole === 'superviseur') return true;
     
     return false;
@@ -200,6 +209,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
   const canContactTechnicien = (terrain: TerrainData): boolean => {
     if (!user) return false;
     
+    // Simple users can contact the technician assigned to their validated terrains
     if (['agriculteur', 'investisseur', 'simple'].includes(userRole || '') && terrain.id_tantsaha === user.id) {
       return terrain.statut === true && !!terrain.id_technicien;
     }
@@ -219,8 +229,9 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
     }
   };
 
-  // Filter terrains based on user role
+  // Filter terrains based on user role and terrain status
   const filterTerrainsByRole = () => {
+    console.log('Filtering terrains by role:', { userRole, terrainCount: terrains.length, type });
     let filtered = [...terrains];
     
     // Filter by status (pending/validated)
@@ -229,14 +240,16 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
     );
     
     // Additional filters based on user role
-    if (userRole === 'simple') {
+    if (['agriculteur', 'investisseur', 'simple'].includes(userRole || '')) {
       // Simple user only sees their own terrains
       filtered = filtered.filter(terrain => terrain.id_tantsaha === user?.id);
     } else if (userRole === 'technicien') {
       // Technician only sees terrains assigned to them
       filtered = filtered.filter(terrain => terrain.id_technicien === user?.id);
     }
+    // Supervisor sees all terrains, so no additional filtering for them
     
+    console.log('Filtered terrains:', { count: filtered.length });
     return filtered;
   };
 
