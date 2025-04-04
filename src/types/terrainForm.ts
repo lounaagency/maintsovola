@@ -5,6 +5,7 @@ export interface TerrainFormData {
   id_terrain?: number;
   nom_terrain: string;
   surface_proposee: number;
+  surface_validee?: number;
   id_region: string; // Form will use string for select inputs
   id_district: string; // Form will use string for select inputs
   id_commune: string; // Form will use string for select inputs
@@ -29,6 +30,11 @@ export const convertFormDataToTerrainData = (formData: TerrainFormData): Terrain
     id_commune: Number(formData.id_commune),
     surface_proposee: parseFloat(formData.surface_proposee.toFixed(2)) || 0
   };
+  
+  // Add surface_validee if provided
+  if (formData.surface_validee) {
+    terrainData.surface_validee = parseFloat(formData.surface_validee.toFixed(2));
+  }
   
   // Si des coordonnées de polygone ont été définies, créer un objet geom au format GeoJSON
   if (formData.geom && formData.geom.length >= 3) {
@@ -81,6 +87,11 @@ export const convertTerrainDataToFormData = (terrainData: TerrainData): TerrainF
     acces_eau: Boolean(terrainData.acces_eau),
     acces_route: Boolean(terrainData.acces_route),
   };
+  
+  // Add surface_validee if present
+  if (terrainData.surface_validee) {
+    formData.surface_validee = terrainData.surface_validee;
+  }
   
   // Convert photos string to array if needed
   if (typeof terrainData.photos === 'string') {
