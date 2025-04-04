@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -82,6 +83,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
       
+      // Cast telephones to the correct type
+      const telephones = data.telephones ? data.telephones.map((tel: any) => ({
+        ...tel,
+        type: tel.type as "principal" | "whatsapp" | "mobile_banking" | "autre"
+      })) : [];
+      
       const userProfile: UserProfile = {
         id_utilisateur: data.id_utilisateur,
         id: data.id_utilisateur,
@@ -90,12 +97,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email: data.email,
         photo_profil: data.photo_profil,
         photo_couverture: data.photo_couverture,
-        telephone: data.telephones && data.telephones[0]?.numero,
+        telephone: telephones && telephones[0]?.numero,
         adresse: data.adresse || undefined,
         bio: data.bio || undefined,
         id_role: data.id_role,
         nom_role: data.role?.nom_role,
-        telephones: data.telephones || []
+        telephones: telephones
       };
       
       setProfile(userProfile);
@@ -124,9 +131,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       };
 
-      let { data, error };
+      let data, error;
       if (isEmail) {
-        const result = await supabase.auth.signUp(authData);
+        const result = await supabase.auth.signUp({
+          email: identifier,
+          password,
+          options: authData.options
+        });
         data = result.data;
         error = result.error;
       } else {
@@ -249,6 +260,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (error) throw error;
       
+      // Cast telephones to the correct type
+      const telephones = data.telephones ? data.telephones.map((tel: any) => ({
+        ...tel,
+        type: tel.type as "principal" | "whatsapp" | "mobile_banking" | "autre"
+      })) : [];
+      
       const userProfile: UserProfile = {
         id_utilisateur: data.id_utilisateur,
         id: data.id_utilisateur,
@@ -257,12 +274,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email: data.email,
         photo_profil: data.photo_profil,
         photo_couverture: data.photo_couverture,
-        telephone: data.telephones && data.telephones[0]?.numero,
+        telephone: telephones && telephones[0]?.numero,
         adresse: data.adresse || undefined,
         bio: data.bio || undefined,
         id_role: data.id_role,
         nom_role: data.role?.nom_role,
-        telephones: data.telephones || []
+        telephones: telephones
       };
       
       setProfile(userProfile);

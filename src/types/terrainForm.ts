@@ -61,6 +61,10 @@ export const convertFormDataToTerrainData = (formData: TerrainFormData): Terrain
       ? formData.photos_validation.join(',') 
       : formData.photos_validation;
   }
+
+  if (formData.validation_decision) {
+    terrainData.validation_decision = formData.validation_decision;
+  }
   
   return terrainData;
 };
@@ -104,6 +108,10 @@ export const convertTerrainDataToFormData = (terrainData: TerrainData): TerrainF
     formData.photos_validation = typeof terrainData.photos_validation === 'string' 
       ? terrainData.photos_validation.split(',').filter(p => p.trim() !== '')
       : terrainData.photos_validation;
+  }
+
+  if (terrainData.validation_decision) {
+    formData.validation_decision = terrainData.validation_decision;
   }
   
   return formData;

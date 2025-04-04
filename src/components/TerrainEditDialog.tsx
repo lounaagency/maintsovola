@@ -38,11 +38,11 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
     if (isOpen && userRole === 'superviseur') {
       const fetchTechniciens = async () => {
         try {
-          // Using the correct role ID (3 for 'technicien')
+          // Using the correct role ID (4 for 'technicien')
           const { data, error } = await supabase
             .from('utilisateurs_par_role')
             .select('id_utilisateur, nom, prenoms')
-            .eq('id_role', 3); // 3 = technicien
+            .eq('id_role', 4); // 4 = technicien
           
           if (error) {
             console.error("Error fetching techniciens:", error);
@@ -80,7 +80,6 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
           userId={userId}
           userRole={userRole}
           agriculteurs={agriculteurs}
-          techniciens={techniciens}
           isValidationMode={isValidationMode}
         />
       </DialogContent>

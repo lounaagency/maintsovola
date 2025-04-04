@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import {
   Popover,
@@ -113,12 +114,13 @@ const Notifications: React.FC = () => {
           link = `/projet?id=${notification.projet_id}#investissements`;
         }
         
+        // Convert entity_id to string if it exists
         const entityId = notification.entity_id !== undefined 
           ? String(notification.entity_id) 
           : undefined;
         
         return {
-          id: notification.id_notification.toString(),
+          id: String(notification.id_notification), // Convert to string
           title: notification.titre,
           description: notification.message,
           timestamp: notification.date_creation,
@@ -157,7 +159,7 @@ const Notifications: React.FC = () => {
             const newNotification = payload.new as DatabaseNotification;
             
             setNotifications(prev => {
-              const exists = prev.some(n => n.id === newNotification.id_notification.toString());
+              const exists = prev.some(n => n.id === String(newNotification.id_notification));
               if (exists) return prev;
               
               let type: "info" | "success" | "warning" | "error" = "info";
@@ -177,14 +179,14 @@ const Notifications: React.FC = () => {
               }
               
               const formattedNotification: NotificationItem = {
-                id: newNotification.id_notification.toString(),
+                id: String(newNotification.id_notification),
                 title: newNotification.titre,
                 description: newNotification.message,
                 timestamp: newNotification.date_creation,
                 read: newNotification.lu,
                 type,
                 link,
-                entity_id: newNotification.entity_id,
+                entity_id: newNotification.entity_id ? String(newNotification.entity_id) : undefined,
                 entity_type: newNotification.entity_type as "terrain" | "projet" | "jalon" | "investissement" | undefined
               };
               

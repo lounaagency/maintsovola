@@ -26,6 +26,7 @@ export interface TerrainData {
   date_validation?: Date | string;
   rapport_validation?: string;
   photos_validation?: string | string[];
+  validation_decision?: 'valider' | 'rejetter';
 }
 
 export interface TerrainFormData {
@@ -39,6 +40,12 @@ export interface TerrainFormData {
   acces_route: boolean;
   nom_terrain: string;
   photos?: string | string[];
+  geom?: number[][]; // Coordonnées du polygone [[lng, lat], [lng, lat], ...]
+  // Validation fields
+  date_validation?: Date | string;
+  rapport_validation?: string;
+  photos_validation?: string | string[];
+  validation_decision?: 'valider' | 'rejetter';
 }
 
 export interface ProjetStatus {
