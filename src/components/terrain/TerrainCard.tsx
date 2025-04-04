@@ -1,4 +1,3 @@
-
 import React from "react";
 import {
   Dialog,
@@ -8,7 +7,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Trash2, MapPin, Droplets, Road } from "lucide-react";
+import { Trash2, MapPin, Droplets, Route } from "lucide-react";
 import { TerrainData } from "@/types/terrain";
 import { MapContainer, TileLayer, Polygon } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -158,7 +157,7 @@ const TerrainCard: React.FC<TerrainCardProps> = ({
                   <span className="text-sm">{terrain.acces_eau ? 'Accès à l\'eau' : 'Pas d\'accès à l\'eau'}</span>
                 </div>
                 <div className="flex items-center">
-                  <Road className={`w-4 h-4 mr-1 ${terrain.acces_route ? 'text-blue-500' : 'text-gray-400'}`} />
+                  <Route className={`w-4 h-4 mr-1 ${terrain.acces_route ? 'text-blue-500' : 'text-gray-400'}`} />
                   <span className="text-sm">{terrain.acces_route ? 'Accès routier' : 'Pas d\'accès routier'}</span>
                 </div>
               </div>
