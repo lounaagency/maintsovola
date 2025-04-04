@@ -13,11 +13,10 @@ import { User, Phone, Upload, Plus, Trash2, Check, X } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
 const Settings = () => {
-const { user, profile } = useAuth();
-  // Redirect to auth if not logged in
+  const { user, profile } = useAuth();
   if (!user) {
     return <Navigate to="/auth" replace />;
-}
+  }
   const { toast } = useToast();
 
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -36,6 +35,17 @@ const { user, profile } = useAuth();
     est_whatsapp: false,
     est_mobile_banking: false
   });
+
+  const defaultTelephone: UserTelephone = {
+    id_utilisateur: user?.id || '',
+    numero: '',
+    type: 'principal',
+    est_whatsapp: false,
+    est_mobile_banking: false,
+    id_telephone: undefined,
+    created_at: undefined,
+    modified_at: undefined
+  };
 
   useEffect(() => {
     if (profile) {
@@ -160,7 +170,21 @@ const { user, profile } = useAuth();
         .single();
         
       if (refreshedProfile) {
-        setUserProfile(refreshedProfile);
+        const profileData: UserProfile = {
+          id_utilisateur: refreshedProfile.id_utilisateur,
+          id: refreshedProfile.id_utilisateur,
+          nom: refreshedProfile.nom,
+          prenoms: refreshedProfile.prenoms,
+          email: refreshedProfile.email,
+          photo_profil: refreshedProfile.photo_profil,
+          photo_couverture: refreshedProfile.photo_couverture,
+          adresse: refreshedProfile.adresse,
+          bio: refreshedProfile.bio,
+          id_role: refreshedProfile.id_role,
+          nom_role: refreshedProfile.role?.nom_role,
+          telephones: []
+        };
+        setUserProfile(profileData);
       }
       
       toast({

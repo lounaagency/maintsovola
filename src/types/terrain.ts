@@ -26,10 +26,10 @@ export interface TerrainData {
   nom_terrain: string;
   photos?: string | string[];
   geom?: any;
-  date_validation?: Date | string;
+  date_validation?: string;
   rapport_validation?: string;
   photos_validation?: string | string[];
-  validation_decision?: 'valider' | 'rejetter';
+  validation_decision?: 'valider' | 'rejetter' | string;
   // Adding this required field for Supabase insert operations
   created_by?: string;
 }

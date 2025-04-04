@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -13,6 +12,7 @@ import { toast } from "sonner";
 import ValidationForm from "./ValidationForm";
 import TerrainFormFields from "./TerrainFormFields";
 import { sendNotification } from "@/types/notification";
+import { formatDateToString } from "@/utils/dateFormatUtils";
 
 interface TerrainFormProps {
   initialData?: TerrainData;
@@ -66,7 +66,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
   const schema = isValidationMode ? validationSchema : terrainSchema;
   
   const form = useForm<TerrainFormData>({
-    resolver: yupResolver(schema) as any,
+    resolver: yupResolver(schema as any),
     defaultValues: {
       id_terrain: initialData?.id_terrain,
       nom_terrain: initialData?.nom_terrain || "",
@@ -196,6 +196,11 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       // Convert form data to terrain data
       const terrainData = convertFormDataToTerrainData({...data});
       terrainData.id_tantsaha = terrainOwnerId;
+      
+      // Make sure date_validation is always a string
+      if (terrainData.date_validation) {
+        terrainData.date_validation = formatDateToString(terrainData.date_validation);
+      }
       
       if (isValidationMode) {
         // Upload validation photos

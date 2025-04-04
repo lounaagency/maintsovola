@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -70,14 +71,27 @@ const formSchema = z.object({
   }),
 })
 
-interface ProjectFormProps {
+export interface ProjectFormProps {
   onSubmit: (data: z.infer<typeof formSchema>) => void;
+  onSubmitSuccess?: () => void;
+  onCancel?: () => void;
   disabled?: boolean;
   initialData?: any;
   isEditing?: boolean;
+  userId: string;
+  userRole?: string;
 }
 
-const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialData, isEditing }) => {
+const ProjectForm: React.FC<ProjectFormProps> = ({ 
+  onSubmit, 
+  onSubmitSuccess, 
+  onCancel, 
+  disabled, 
+  initialData, 
+  isEditing,
+  userId,
+  userRole
+}) => {
   const [terrains, setTerrains] = useState<TerrainData[]>([]);
   const [cultures, setCultures] = useState<CultureData[]>([]);
   const [photos, setPhotos] = useState<File[]>([]);
@@ -106,7 +120,8 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
 
   const { handleSubmit, control, setValue, getValues } = form;
 
-  const handleInputChange = (name: string, value: any) => {
+  // Fix the type error in handleInputChange by using a proper type for name parameter
+  const handleInputChange = (name: keyof z.infer<typeof formSchema>, value: any) => {
     setValue(name, value, { shouldValidate: true });
   };
 

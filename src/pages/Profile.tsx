@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate,Navigate } from 'react-router-dom';
+import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -35,14 +35,13 @@ export const Profile = () => {
   const [projectsCount, setProjectsCount] = useState(0);
   const [loading, setLoading] = useState(true);
   
-  // Redirect to auth if not logged in
   if (!user) {
     return <Navigate to="/auth" replace />;
   }
+  
   useEffect(() => {
     if (!id) return;
     
-    // Vérifier si c'est le profil de l'utilisateur actuel
     if (user?.id === id) {
       setIsCurrentUser(true);
       if (currentUserProfile) {
@@ -50,63 +49,90 @@ export const Profile = () => {
       }
     } else {
       setIsCurrentUser(false);
-      fetchUserProfile(id);
+      fetchProfile();
     }
     
     fetchFollowStatus(id);
     fetchUserProjects(id);
     fetchInvestedProjects(id);
-    
   }, [id, user, currentUserProfile]);
 
-  const fetchUserProfile = async (userId: string) => {
+  const fetchProfile = async () => {
+    setIsLoading(true);
     try {
       const { data, error } = await supabase
         .from('utilisateur')
         .select(`
-          *,
+          id_utilisateur, 
+          nom, 
+          prenoms, 
+          email, 
+          photo_profil, 
+          photo_couverture, 
+          adresse, 
+          bio, 
+          id_role, 
           role:id_role(nom_role)
         `)
-        .eq('id_utilisateur', userId)
+        .eq('id_utilisateur', id || user?.id)
         .single();
-      
+
       if (error) throw error;
-      
-      setProfile({
-        id_utilisateur: data.id_utilisateur,
-        id: data.id_utilisateur,
-        nom: data.nom,
-        prenoms: data.prenoms,
-        email: data.email,
-        photo_profil: data.photo_profil,
-        telephone: data.telephone || undefined,
-        adresse: data.adresse || undefined,
-        bio: data.bio || undefined,
-        nom_role: data.role?.nom_role
-      });
+
+      if (data) {
+        const profileData: UserProfile = {
+          id_utilisateur: data.id_utilisateur,
+          id: data.id_utilisateur,
+          nom: data.nom,
+          prenoms: data.prenoms,
+          email: data.email,
+          photo_profil: data.photo_profil,
+          photo_couverture: data.photo_couverture,
+          adresse: data.adresse,
+          bio: data.bio,
+          id_role: data.id_role,
+          nom_role: data.role?.nom_role,
+          telephones: []
+        };
+        
+        setProfile(profileData);
+        
+        const { data: telData } = await supabase
+          .from('telephone')
+          .select('numero')
+          .eq('id_utilisateur', data.id_utilisateur)
+          .eq('type', 'principal')
+          .single();
+        
+        if (telData) {
+          setProfile(prev => ({...prev, telephone: telData.numero}));
+        }
+      }
     } catch (error) {
-      console.error('Error fetching user profile:', error);
-      toast.error("Impossible de charger le profil de l'utilisateur");
+      console.error('Error loading profile data:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
-  
+
   const fetchFollowStatus = async (userId: string) => {
     try {
-      // Nombre de followers
       const { count: followersResult, error: followersError } = await supabase
-        .rpc('count_followers', { user_id: userId });
+        .rpc('count_followers' as any, {
+          target_id: userId
+        });
       
       if (followersError) throw followersError;
       setFollowersCount(followersResult || 0);
       
-      // Nombre d'abonnements
       const { count: followingResult, error: followingError } = await supabase
-        .rpc('count_subscriptions', { user_id: userId });
+        .rpc('count_subscriptions' as any, {
+          user_id: userId
+        });
       
       if (followingError) throw followingError;
       setFollowingCount(followingResult || 0);
       
-      // Vérifier si l'utilisateur actuel suit ce profil
       if (user && userId !== user.id) {
         const { data, error } = await supabase
           .from('abonnement')
@@ -118,17 +144,15 @@ export const Profile = () => {
         if (error) throw error;
         setIsFollowing(!!data);
       }
-      
     } catch (error) {
       console.error('Error fetching follow status:', error);
     }
   };
-  
+
   const fetchUserProjects = async (userId: string) => {
     try {
       setLoading(true);
       
-      // Récupérer les projets créés par l'utilisateur
       const { data, error, count } = await supabase
         .from('projet')
         .select(`
@@ -141,21 +165,17 @@ export const Profile = () => {
       
       if (error) throw error;
       
-      // Transformer les données en format AgriculturalProject
       const formattedProjects: AgriculturalProject[] = (data || []).map(project => {
-        // Calculer le coût total d'exploitation
         const totalCost = project.projet_culture.reduce(
           (sum: number, pc: any) => sum + (pc.cout_exploitation_previsionnel || 0), 
           0
         );
         
-        // Calculer le rendement total
         const totalYield = project.projet_culture.reduce(
           (sum: number, pc: any) => sum + (pc.rendement_previsionnel || 0), 
           0
         );
         
-        // Calculer le revenu attendu
         const expectedRevenue = project.projet_culture.reduce(
           (sum: number, pc: any) => sum + (pc.rendement_previsionnel * (pc.culture?.prix_tonne || 0)), 
           0
@@ -200,10 +220,9 @@ export const Profile = () => {
       setLoading(false);
     }
   };
-  
+
   const fetchInvestedProjects = async (userId: string) => {
     try {
-      // Récupérer les projets dans lesquels l'utilisateur a investi
       const { data, error } = await supabase
         .from('investissement')
         .select(`
@@ -218,7 +237,6 @@ export const Profile = () => {
       
       if (error) throw error;
       
-      // Regrouper les investissements par projet
       const projectsMap = new Map();
       
       data?.forEach(investment => {
@@ -244,13 +262,12 @@ export const Profile = () => {
       console.error('Error fetching invested projects:', error);
     }
   };
-  
+
   const handleFollow = async () => {
     if (!user || !profile) return;
     
     try {
       if (isFollowing) {
-        // Unfollow
         const { error } = await supabase
           .from('abonnement')
           .delete()
@@ -263,11 +280,10 @@ export const Profile = () => {
         setFollowersCount(prev => prev - 1);
         toast.success(`Vous ne suivez plus ${profile.nom}`);
       } else {
-        // Follow
         const { error } = await supabase
-          .rpc('create_subscription', { 
-            abonne_id: user.id, 
-            suivi_id: profile.id_utilisateur
+          .rpc('create_subscription' as any, {
+            follower_id: user.id,
+            followed_id: profile.id_utilisateur
           });
         
         if (error) throw error;
@@ -281,11 +297,11 @@ export const Profile = () => {
       toast.error("Une erreur est survenue");
     }
   };
-  
+
   const handleLikeToggle = async (projectId: string) => {
     // Implementation for toggling like on a project
   };
-  
+
   if (!profile) {
     return (
       <div className="flex justify-center items-center min-h-[50vh]">
@@ -296,7 +312,6 @@ export const Profile = () => {
 
   return (
     <div className="container max-w-4xl py-6 space-y-6">
-      {/* Header Profile */}
       <div className="flex flex-col md:flex-row gap-6 items-start">
         <Avatar className="h-24 w-24 rounded-full border-4 border-background">
           {profile.photo_profil ? (
@@ -403,7 +418,6 @@ export const Profile = () => {
       
       <Separator />
       
-      {/* Content Tabs */}
       <Tabs defaultValue="projects">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="projects" className="flex items-center">

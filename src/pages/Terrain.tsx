@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -10,7 +9,6 @@ import { TerrainData } from "@/types/terrain";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Navigate } from "react-router-dom";
 
-// Change to default export
 export default function Terrain() {
   const { user, profile } = useAuth();
   const [pendingTerrains, setPendingTerrains] = useState<TerrainData[]>([]);
@@ -21,13 +19,11 @@ export default function Terrain() {
   const [agriculteurs, setAgriculteurs] = useState<{ id_utilisateur: string; nom: string; prenoms?: string; photo_profil?: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Redirect to auth if not logged in
   if (!user) {
     return <Navigate to="/auth" replace />;
   }
 
   useEffect(() => {
-    // Fetch data on component mount
     fetchTerrains();
     fetchAgriculteurs();
   }, [user]);
@@ -38,7 +34,6 @@ export default function Terrain() {
     setIsLoading(true);
     
     try {
-      // Fix the query to properly alias the relationship fields
       const { data, error } = await supabase
         .from('terrain')
         .select(`
@@ -57,22 +52,23 @@ export default function Terrain() {
         return;
       }
 
-      // Process terrain data
-      const terrains: TerrainData[] = data.map(terrain => ({
-        ...terrain,
-        id_terrain: terrain.id_terrain,
-        region_name: terrain.region?.nom_region,
-        district_name: terrain.district?.nom_district,
-        commune_name: terrain.commune?.nom_commune,
-        tantsahaNom: terrain.tantsaha ? `${terrain.tantsaha.nom} ${terrain.tantsaha.prenoms || ''}` : null,
-        tantsahaPhotoProfile: terrain.tantsaha?.photo_profil,
-        techniqueNom: terrain.technicien ? `${terrain.technicien.nom} ${terrain.technicien.prenoms || ''}` : null,
-        techniquePhotoProfile: terrain.technicien?.photo_profil,
-        superviseurNom: terrain.superviseur ? `${terrain.superviseur.nom} ${terrain.superviseur.prenoms || ''}` : null,
-        superviseurPhotoProfile: terrain.superviseur?.photo_profil,
-      }));
+      const terrains: TerrainData[] = data.map(terrain => {
+        return {
+          ...terrain,
+          id_terrain: terrain.id_terrain,
+          region_name: terrain.region?.nom_region,
+          district_name: terrain.district?.nom_district,
+          commune_name: terrain.commune?.nom_commune,
+          tantsahaNom: terrain.tantsaha ? `${terrain.tantsaha.nom} ${terrain.tantsaha.prenoms || ''}` : null,
+          tantsahaPhotoProfile: terrain.tantsaha?.photo_profil,
+          techniqueNom: terrain.technicien ? `${terrain.technicien.nom} ${terrain.technicien.prenoms || ''}` : null,
+          techniquePhotoProfile: terrain.technicien?.photo_profil,
+          superviseurNom: terrain.superviseur ? `${terrain.superviseur.nom} ${terrain.superviseur.prenoms || ''}` : null,
+          superviseurPhotoProfile: terrain.superviseur?.photo_profil,
+          validation_decision: terrain.validation_decision as 'valider' | 'rejetter' | undefined
+        };
+      });
 
-      // Split terrains based on validation status
       setPendingTerrains(terrains.filter(terrain => !terrain.statut));
       setValidatedTerrains(terrains.filter(terrain => terrain.statut));
     } catch (error) {
@@ -87,8 +83,8 @@ export default function Terrain() {
       const { data, error } = await supabase
         .from('utilisateur')
         .select('id_utilisateur, nom, prenoms, photo_profil')
-        .eq('id_role', 2); // 2 = agriculteur
-        
+        .eq('id_role', 2);
+      
       if (error) {
         console.error("Error fetching agriculteurs:", error);
         return;
@@ -119,7 +115,6 @@ export default function Terrain() {
   };
 
   const handleContactTechnicien = (terrain: TerrainData) => {
-    // Cette fonction sera implémentée pour envoyer un message au technicien
     console.log("Contact technicien for terrain:", terrain);
   };
 
