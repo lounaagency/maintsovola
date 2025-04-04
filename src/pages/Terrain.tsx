@@ -166,8 +166,6 @@ export const Terrain = () => {
       const pending = enhancedTerrainData.filter(t => t.statut === false);
       const validated = enhancedTerrainData.filter(t => t.statut === true);
       
-      console.log('Fetched terrains:', { pending: pending.length, validated: validated.length, userRole });
-      
       setPendingTerrains(pending);
       setValidatedTerrains(validated);
     } catch (error) {

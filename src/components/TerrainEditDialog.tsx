@@ -48,8 +48,6 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
             console.error("Error fetching techniciens:", error);
             return;
           }
-          
-          console.log("Fetched techniciens:", data);
           setTechniciens(data || []);
         } catch (error) {
           console.error("Error in fetchTechniciens:", error);

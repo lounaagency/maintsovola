@@ -51,11 +51,6 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
 
   // Filter and sort terrains
   const filteredTerrains = useMemo(() => {
-    console.log('TerrainTable processing data:', { 
-      count: terrains?.length || 0, 
-      type, 
-      userRole
-    });
     
     if (!terrains || terrains.length === 0) {
       return [];
@@ -122,8 +117,6 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
         
       return sortOption.direction === 'asc' ? comparison : -comparison;
     });
-    
-    console.log('TerrainTable filtered results:', { count: filtered.length });
     return filtered;
   }, [terrains, type, userRole, user, filters, searchQuery, sortOption]);
 
