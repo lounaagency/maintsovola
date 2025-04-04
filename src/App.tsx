@@ -13,7 +13,7 @@ import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import { AnimatePresence } from "framer-motion";
 import Auth from "./pages/Auth";
-import { Terrain } from "./pages/Terrain";
+import Terrain from "./pages/Terrain";
 import { AuthProvider } from "./contexts/AuthContext";
 
 const queryClient = new QueryClient();
@@ -28,7 +28,7 @@ const App = () => {
           <AnimatePresence mode="wait">
             <TooltipProvider>
               <Routes>
-                <Route path="/" element={<Navigate to="/feed" replace />} />
+                <Route path="/" element={<Index />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/feed" element={
                   <Layout>

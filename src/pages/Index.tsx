@@ -3,6 +3,7 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import Logo from "@/components/Logo";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -15,13 +16,8 @@ const Index = () => {
         transition={{ duration: 0.5 }}
         className="max-w-md w-full text-center space-y-6"
       >
-        <img 
-          src="/placeholder.svg" 
-          alt="Maintso Vola Logo" 
-          className="w-24 h-24 mx-auto"
-        />
-        <img src="/maintsovola_logo_pm.png" alt="Maintso Vola Logo" width="150" />
-
+        <Logo size="lg" showText={false} className="mx-auto" />
+        
         <h1 className="text-3xl font-bold text-maintso">Maintso Vola</h1>
         
         <p className="text-lg text-gray-600">

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -7,7 +6,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import TerrainTable from '@/components/terrain/TerrainTable';
 import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
+import { Plus, Loader } from 'lucide-react';
 import TerrainEditDialog from '@/components/TerrainEditDialog';
 import TerrainCard from '@/components/terrain/TerrainCard';
 import ProjectEditDialog from '@/components/ProjectEditDialog';
@@ -43,6 +42,9 @@ export const Terrain = () => {
   const [agriculteurs, setAgriculteurs] = useState<{id_utilisateur: string; nom: string; prenoms?: string}[]>([]);
   const [techniciens, setTechniciens] = useState<{id_utilisateur: string; nom: string; prenoms?: string}[]>([]);
   
+  const [loadingTerrains, setLoadingTerrains] = useState(true);
+  const [loadingProjects, setLoadingProjects] = useState(true);
+  
   const userRole = profile?.nom_role?.toLowerCase() || 'simple';
 
   const fetchAgriculteurs = useCallback(async () => {
@@ -52,7 +54,7 @@ export const Terrain = () => {
       const { data, error } = await supabase
         .from('utilisateurs_par_role')
         .select('id_utilisateur, nom, prenoms')
-        .eq('id_role', 1); // 1 = simple user role
+        .eq('id_role', 1);
         
       if (error) throw error;
       setAgriculteurs(data || []);
@@ -64,6 +66,7 @@ export const Terrain = () => {
   const fetchTerrains = useCallback(async () => {
     if (!user) return;
 
+    setLoadingTerrains(true);
     try {
       let query = supabase
         .from('terrain')
@@ -80,7 +83,6 @@ export const Terrain = () => {
       } else if (userRole === 'technicien') {
         query = query.eq('id_technicien', user.id);
       }
-      // Supervisors see all terrains, so no additional filtering for them
       
       const { data, error } = await query;
 
@@ -89,10 +91,10 @@ export const Terrain = () => {
       if (!data) {
         setPendingTerrains([]);
         setValidatedTerrains([]);
+        setLoadingTerrains(false);
         return;
       }
       
-      // Map the data first
       const terrainData = data.map(terrain => ({
         id_terrain: terrain.id_terrain,
         nom_terrain: terrain.nom_terrain || `Terrain #${terrain.id_terrain}`,
@@ -121,7 +123,6 @@ export const Terrain = () => {
         tantsahaNom: 'Non spécifié'
       }));
       
-      // Then enhance the data with additional details
       const enhancedTerrainData = await Promise.all(terrainData.map(async (terrain) => {
         if (terrain.id_technicien) {
           const { data: techData } = await supabase
@@ -162,7 +163,6 @@ export const Terrain = () => {
         return terrain;
       }));
       
-      // Split into pending and validated arrays
       const pending = enhancedTerrainData.filter(t => t.statut === false);
       const validated = enhancedTerrainData.filter(t => t.statut === true);
       
@@ -175,6 +175,8 @@ export const Terrain = () => {
         description: "Impossible de récupérer les terrains",
         variant: "destructive"
       });
+    } finally {
+      setLoadingTerrains(false);
     }
   }, [user, userRole, toast]);
 
@@ -183,7 +185,7 @@ export const Terrain = () => {
       const { data, error } = await supabase
         .from('utilisateurs_par_role')
         .select('id_utilisateur, nom, prenoms')
-        .eq('id_role', 4); // 4 = technicien role
+        .eq('id_role', 4);
         
       if (error) throw error;
       setTechniciens(data || []);
@@ -195,6 +197,7 @@ export const Terrain = () => {
   const fetchProjects = useCallback(async () => {
     if (!user) return;
 
+    setLoadingProjects(true);
     try {
       let query = supabase.from('projet').select(`
         *,
@@ -221,6 +224,8 @@ export const Terrain = () => {
         description: "Impossible de récupérer les projets",
         variant: "destructive"
       });
+    } finally {
+      setLoadingProjects(false);
     }
   }, [user, userRole, toast]);
 
@@ -351,95 +356,144 @@ export const Terrain = () => {
               </TabsList>
               
               <TabsContent value="assignment" className="pt-4">
-                <TerrainTable 
-                  terrains={pendingTerrains.filter(t => !t.id_technicien)}
-                  type="pending"
-                  userRole={userRole}
-                  onTerrainUpdate={fetchTerrains}
-                  techniciens={techniciens}
-                  onEdit={handleEditTerrain}
-                  onViewDetails={handleViewTerrainDetails}
-                  onValidate={handleValidateTerrain}
-                  onDelete={handleDeleteTerrain}
-                />
+                {loadingTerrains ? (
+                  <div className="flex flex-col items-center justify-center py-8">
+                    <Loader className="h-8 w-8 animate-spin text-maintso mb-2" />
+                    <p>Chargement des terrains en cours...</p>
+                  </div>
+                ) : (
+                  <TerrainTable 
+                    terrains={pendingTerrains.filter(t => !t.id_technicien)}
+                    type="pending"
+                    userRole={userRole}
+                    onTerrainUpdate={fetchTerrains}
+                    techniciens={techniciens}
+                    onEdit={handleEditTerrain}
+                    onViewDetails={handleViewTerrainDetails}
+                    onValidate={handleValidateTerrain}
+                    onDelete={handleDeleteTerrain}
+                  />
+                )}
               </TabsContent>
               
               <TabsContent value="validation" className="pt-4">
-                <TerrainTable 
-                  terrains={pendingTerrains.filter(t => t.id_technicien)}
-                  type="pending"
-                  userRole={userRole}
-                  onTerrainUpdate={fetchTerrains}
-                  onEdit={handleEditTerrain}
-                  onViewDetails={handleViewTerrainDetails}
-                  onValidate={handleValidateTerrain}
-                  onDelete={handleDeleteTerrain}
-                />
+                {loadingTerrains ? (
+                  <div className="flex flex-col items-center justify-center py-8">
+                    <Loader className="h-8 w-8 animate-spin text-maintso mb-2" />
+                    <p>Chargement des terrains en cours...</p>
+                  </div>
+                ) : (
+                  <TerrainTable 
+                    terrains={pendingTerrains.filter(t => t.id_technicien)}
+                    type="pending"
+                    userRole={userRole}
+                    onTerrainUpdate={fetchTerrains}
+                    onEdit={handleEditTerrain}
+                    onViewDetails={handleViewTerrainDetails}
+                    onValidate={handleValidateTerrain}
+                    onDelete={handleDeleteTerrain}
+                  />
+                )}
               </TabsContent>
               
               <TabsContent value="validated" className="pt-4">
-                <TerrainTable 
-                  terrains={validatedTerrains}
-                  type="validated"
-                  userRole={userRole}
-                  onEdit={handleEditTerrain}
-                  onViewDetails={handleViewTerrainDetails}
-                  onDelete={handleDeleteTerrain}
-                />
+                {loadingTerrains ? (
+                  <div className="flex flex-col items-center justify-center py-8">
+                    <Loader className="h-8 w-8 animate-spin text-maintso mb-2" />
+                    <p>Chargement des terrains en cours...</p>
+                  </div>
+                ) : (
+                  <TerrainTable 
+                    terrains={validatedTerrains}
+                    type="validated"
+                    userRole={userRole}
+                    onEdit={handleEditTerrain}
+                    onViewDetails={handleViewTerrainDetails}
+                    onDelete={handleDeleteTerrain}
+                  />
+                )}
               </TabsContent>
             </Tabs>
           ) : userRole === 'technicien' ? (
             <div className="space-y-6">
               <div>
                 <h3 className="font-medium mb-2">Terrains en attente de validation</h3>
-                <TerrainTable 
-                  terrains={pendingTerrains.filter(t => t.id_technicien === user.id)}
-                  type="pending"
-                  userRole={userRole}
-                  onTerrainUpdate={fetchTerrains}
-                  onEdit={handleEditTerrain}
-                  onViewDetails={handleViewTerrainDetails}
-                  onValidate={handleValidateTerrain}
-                  onDelete={handleDeleteTerrain}
-                />
+                {loadingTerrains ? (
+                  <div className="flex flex-col items-center justify-center py-8 border rounded-lg border-dashed">
+                    <Loader className="h-8 w-8 animate-spin text-maintso mb-2" />
+                    <p>Chargement des terrains en cours...</p>
+                  </div>
+                ) : (
+                  <TerrainTable 
+                    terrains={pendingTerrains.filter(t => t.id_technicien === user.id)}
+                    type="pending"
+                    userRole={userRole}
+                    onTerrainUpdate={fetchTerrains}
+                    onEdit={handleEditTerrain}
+                    onViewDetails={handleViewTerrainDetails}
+                    onValidate={handleValidateTerrain}
+                    onDelete={handleDeleteTerrain}
+                  />
+                )}
               </div>
               
               <div>
                 <h3 className="font-medium mb-2">Terrains validés</h3>
-                <TerrainTable 
-                  terrains={validatedTerrains.filter(t => t.id_technicien === user.id)}
-                  type="validated"
-                  userRole={userRole}
-                  onEdit={handleEditTerrain}
-                  onViewDetails={handleViewTerrainDetails}
-                  onDelete={handleDeleteTerrain}
-                />
+                {loadingTerrains ? (
+                  <div className="flex flex-col items-center justify-center py-8 border rounded-lg border-dashed">
+                    <Loader className="h-8 w-8 animate-spin text-maintso mb-2" />
+                    <p>Chargement des terrains en cours...</p>
+                  </div>
+                ) : (
+                  <TerrainTable 
+                    terrains={validatedTerrains.filter(t => t.id_technicien === user.id)}
+                    type="validated"
+                    userRole={userRole}
+                    onEdit={handleEditTerrain}
+                    onViewDetails={handleViewTerrainDetails}
+                    onDelete={handleDeleteTerrain}
+                  />
+                )}
               </div>
             </div>
           ) : (
             <div className="space-y-6">
               <div>
                 <h3 className="font-medium mb-2">Terrains en attente de validation</h3>
-                <TerrainTable 
-                  terrains={pendingTerrains}
-                  type="pending"
-                  userRole={userRole}
-                  onTerrainUpdate={fetchTerrains}
-                  onEdit={handleEditTerrain}
-                  onViewDetails={handleViewTerrainDetails}
-                  onDelete={handleDeleteTerrain}
-                />
+                {loadingTerrains ? (
+                  <div className="flex flex-col items-center justify-center py-8 border rounded-lg border-dashed">
+                    <Loader className="h-8 w-8 animate-spin text-maintso mb-2" />
+                    <p>Chargement des terrains en cours...</p>
+                  </div>
+                ) : (
+                  <TerrainTable 
+                    terrains={pendingTerrains}
+                    type="pending"
+                    userRole={userRole}
+                    onTerrainUpdate={fetchTerrains}
+                    onEdit={handleEditTerrain}
+                    onViewDetails={handleViewTerrainDetails}
+                    onDelete={handleDeleteTerrain}
+                  />
+                )}
               </div>
               
               <div>
                 <h3 className="font-medium mb-2">Terrains validés</h3>
-                <TerrainTable 
-                  terrains={validatedTerrains}
-                  type="validated"
-                  userRole={userRole}
-                  onViewDetails={handleViewTerrainDetails}
-                  onContactTechnicien={handleContactTechnicien}
-                />
+                {loadingTerrains ? (
+                  <div className="flex flex-col items-center justify-center py-8 border rounded-lg border-dashed">
+                    <Loader className="h-8 w-8 animate-spin text-maintso mb-2" />
+                    <p>Chargement des terrains en cours...</p>
+                  </div>
+                ) : (
+                  <TerrainTable 
+                    terrains={validatedTerrains}
+                    type="validated"
+                    userRole={userRole}
+                    onViewDetails={handleViewTerrainDetails}
+                    onContactTechnicien={handleContactTechnicien}
+                  />
+                )}
               </div>
             </div>
           )}
@@ -520,7 +574,12 @@ export const Terrain = () => {
             <TabsContent value="waiting" className="pt-4 space-y-6">
               <div>
                 <h3 className="font-medium mb-2">Projets en attente de validation</h3>
-                {pendingProjects.length > 0 ? (
+                {loadingProjects ? (
+                  <div className="flex flex-col items-center justify-center py-8 border rounded-lg border-dashed">
+                    <Loader className="h-8 w-8 animate-spin text-maintso mb-2" />
+                    <p>Chargement des projets en cours...</p>
+                  </div>
+                ) : pendingProjects.length > 0 ? (
                   <div className="overflow-x-auto rounded-md border">
                     <table className="w-full text-sm">
                       <thead>
@@ -576,7 +635,12 @@ export const Terrain = () => {
               
               <div>
                 <h3 className="font-medium mb-2">Projets en cours de financement</h3>
-                {fundingProjects.length > 0 ? (
+                {loadingProjects ? (
+                  <div className="flex flex-col items-center justify-center py-8 border rounded-lg border-dashed">
+                    <Loader className="h-8 w-8 animate-spin text-maintso mb-2" />
+                    <p>Chargement des projets en cours...</p>
+                  </div>
+                ) : fundingProjects.length > 0 ? (
                   <div className="overflow-x-auto rounded-md border">
                     <table className="w-full text-sm">
                       <thead>
@@ -636,7 +700,12 @@ export const Terrain = () => {
             <TabsContent value="production" className="pt-4">
               <div>
                 <h3 className="font-medium mb-2">Projets en production</h3>
-                {activeProjects.length > 0 ? (
+                {loadingProjects ? (
+                  <div className="flex flex-col items-center justify-center py-8 border rounded-lg border-dashed">
+                    <Loader className="h-8 w-8 animate-spin text-maintso mb-2" />
+                    <p>Chargement des projets en cours...</p>
+                  </div>
+                ) : activeProjects.length > 0 ? (
                   <div className="overflow-x-auto rounded-md border">
                     <table className="w-full text-sm">
                       <thead>
