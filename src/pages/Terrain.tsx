@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { PlusCircle, X } from 'lucide-react';
+import { PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import TerrainTable from '@/components/TerrainTable';
@@ -35,9 +35,9 @@ const Terrain = () => {
         .from('terrain')
         .select(`
           *,
-          region(nom),
-          district(nom),
-          commune(nom),
+          region:id_region(nom),
+          district:id_district(nom),
+          commune:id_commune(nom),
           tantsaha:id_tantsaha(nom, prenoms, photo_profil),
           technicien:id_technicien(nom, prenoms, photo_profil)
         `)

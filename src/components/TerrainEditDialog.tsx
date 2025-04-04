@@ -11,60 +11,43 @@ import { TerrainData } from "@/types/terrain";
 import { supabase } from "@/integrations/supabase/client";
 
 interface TerrainEditDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  terrain?: TerrainData;
+  initialData?: TerrainData | null;
   onSubmitSuccess: () => void;
+  onCancel: () => void;
   userId: string;
   userRole?: string;
   agriculteurs?: { id_utilisateur: string; nom: string; prenoms?: string }[];
+  techniciens?: { id_utilisateur: string; nom: string; prenoms?: string; photo_profil?: string }[];
   isValidationMode?: boolean;
+  isOpen?: boolean;
+  onClose?: () => void;
+  terrain?: TerrainData;
 }
 
 const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
-  isOpen,
-  onClose,
-  terrain,
+  initialData,
   onSubmitSuccess,
+  onCancel,
   userId,
   userRole,
   agriculteurs = [],
-  isValidationMode = false
+  techniciens = [],
+  isValidationMode = false,
+  isOpen,
+  onClose,
+  terrain
 }) => {
-  const [techniciens, setTechniciens] = useState<{ id_utilisateur: string; nom: string; prenoms?: string }[]>([]);
+  // Handle both the old and new prop patterns
+  const effectiveClose = onClose || onCancel;
+  const effectiveOpen = isOpen !== undefined ? isOpen : true;
+  const effectiveTerrain = terrain || initialData;
   
-  // Fetch techniciens when dialog opens if user is superviseur
-  useEffect(() => {
-    if (isOpen && userRole === 'superviseur') {
-      const fetchTechniciens = async () => {
-        try {
-          // Using the correct role ID (4 for 'technicien')
-          const { data, error } = await supabase
-            .from('utilisateurs_par_role')
-            .select('id_utilisateur, nom, prenoms')
-            .eq('id_role', 4); // 4 = technicien
-          
-          if (error) {
-            console.error("Error fetching techniciens:", error);
-            return;
-          }
-          
-          setTechniciens(data || []);
-        } catch (error) {
-          console.error("Error in fetchTechniciens:", error);
-        }
-      };
-      
-      fetchTechniciens();
-    }
-  }, [isOpen, userRole]);
-
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={effectiveOpen} onOpenChange={effectiveClose}>
       <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {terrain?.id_terrain 
+            {effectiveTerrain?.id_terrain 
               ? isValidationMode 
                 ? "Validation du terrain" 
                 : "Modifier le terrain" 
@@ -73,9 +56,9 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
           </DialogTitle>
         </DialogHeader>
         <TerrainForm
-          initialData={terrain}
+          initialData={effectiveTerrain}
           onSubmitSuccess={onSubmitSuccess}
-          onCancel={onClose}
+          onCancel={effectiveClose}
           userId={userId}
           userRole={userRole}
           agriculteurs={agriculteurs}
