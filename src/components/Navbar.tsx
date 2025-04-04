@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 
 const Navbar: React.FC = () => {
   const location = useLocation();
-  const { user, profile, signOut } = useAuth();
+  const { user, profile } = useAuth();
   const isMobile = useIsMobile();
   
   const isActive = (path: string) => {

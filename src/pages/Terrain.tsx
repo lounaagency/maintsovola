@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -6,6 +7,9 @@ import TerrainDialog from "@/components/TerrainDialog";
 import { TerrainData } from "@/types/terrain";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { sendNotification } from "@/types/notification";
+import { Loader2 } from "lucide-react";
 
 const Terrain: React.FC = () => {
   const { user, profile } = useAuth();
@@ -243,7 +247,12 @@ const Terrain: React.FC = () => {
       </div>
 
       <div className="mb-6">
-        {showPanel === 'pending' ? (
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-maintso mb-4" />
+            <p className="text-gray-600 text-center">Chargement des terrains en cours...</p>
+          </div>
+        ) : showPanel === 'pending' ? (
           <TerrainTable 
             terrains={pendingTerrains} 
             type="pending" 
