@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -85,7 +84,6 @@ export const Terrain = () => {
 
       if (error) throw error;
       
-      // Get technician, supervisor and owner details for each terrain
       const terrainData = (data || []).map(terrain => ({
         id_terrain: terrain.id_terrain,
         nom_terrain: terrain.nom_terrain || `Terrain #${terrain.id_terrain}`,
@@ -109,14 +107,12 @@ export const Terrain = () => {
         region_name: terrain.region?.nom_region || 'Non spécifié',
         district_name: terrain.district?.nom_district || 'Non spécifié',
         commune_name: terrain.commune?.nom_commune || 'Non spécifié',
-        techniqueNom: 'Non assigné', // Will be set later
-        superviseurNom: 'Non assigné', // Will be set later
-        tantsahaNom: 'Non spécifié' // Will be set later
+        techniqueNom: 'Non assigné',
+        superviseurNom: 'Non assigné',
+        tantsahaNom: 'Non spécifié'
       }));
       
-      // Fetch additional details for terrains
       const enhancedTerrainData = await Promise.all(terrainData.map(async (terrain) => {
-        // Get technician details
         if (terrain.id_technicien) {
           const { data: techData } = await supabase
             .from('utilisateurs_par_role')
@@ -129,7 +125,6 @@ export const Terrain = () => {
           }
         }
         
-        // Get supervisor details
         if (terrain.id_superviseur) {
           const { data: supervData } = await supabase
             .from('utilisateurs_par_role')
@@ -142,7 +137,6 @@ export const Terrain = () => {
           }
         }
         
-        // Get owner details
         if (terrain.id_tantsaha) {
           const { data: ownerData } = await supabase
             .from('utilisateurs_par_role')
@@ -158,8 +152,11 @@ export const Terrain = () => {
         return terrain;
       }));
       
-      setPendingTerrains(enhancedTerrainData.filter(t => t.statut === false));
-      setValidatedTerrains(enhancedTerrainData.filter(t => t.statut === true));
+      const pending = enhancedTerrainData.filter(t => t.statut === false);
+      const validated = enhancedTerrainData.filter(t => t.statut === true);
+      
+      setPendingTerrains(pending);
+      setValidatedTerrains(validated);
     } catch (error) {
       console.error('Error fetching terrains:', error);
       toast({
@@ -488,7 +485,6 @@ export const Terrain = () => {
                 name: selectedTechnicien.name
               }}
               subject={`Demande concernant le terrain ${selectedTerrain?.nom_terrain || '#' + selectedTerrain?.id_terrain}`}
-              initialMessage={`Bonjour, j'aimerais vous contacter concernant mon terrain ${selectedTerrain?.nom_terrain || '#' + selectedTerrain?.id_terrain}.\n`}
             />
           )}
         </TabsContent>

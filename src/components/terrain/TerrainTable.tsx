@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from "react";
 import { TerrainData, TerrainSortOptions, TerrainFilters } from "@/types/terrain";
 import { Button } from "@/components/ui/button";
@@ -67,6 +66,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
       // Technician only sees terrains assigned to them
       filtered = filtered.filter(terrain => terrain.id_technicien === user?.id);
     }
+    // Superviseurs voient tous les terrains, donc pas de filtrage supplémentaire pour eux
     
     // Apply search filter
     if (searchQuery) {
