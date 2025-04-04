@@ -185,7 +185,7 @@ export const Terrain = () => {
       const { data, error } = await supabase
         .from('utilisateurs_par_role')
         .select('id_utilisateur, nom, prenoms')
-        .eq('id_role', 3); // 3 = technicien role
+        .eq('id_role', 4); // 4 = technicien role
         
       if (error) throw error;
       setTechniciens(data || []);
