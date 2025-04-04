@@ -35,7 +35,7 @@ interface TerrainFormProps {
   agriculteurs?: Agriculteur[];
 }
 
-const schema = yup.object({
+const schema = yup.object().shape({
   nom_terrain: yup.string().required("Le nom du terrain est obligatoire"),
   surface_proposee: yup.number().required("La surface est obligatoire").positive("La surface doit être positive"),
   id_region: yup.string().required("La région est obligatoire"),
@@ -62,6 +62,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [polygonCoordinates, setPolygonCoordinates] = useState<number[][]>([]);
   const [mapInitialized, setMapInitialized] = useState(false);
+  const [shouldUpdateSurface, setShouldUpdateSurface] = useState(false);
   const featureGroupRef = useRef<L.FeatureGroup | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   
@@ -71,7 +72,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const form = useForm<TerrainFormData>({
-    resolver: yupResolver(schema),
+    resolver: yupResolver(schema) as any,
     defaultValues: {
       id_terrain: initialData?.id_terrain,
       nom_terrain: initialData?.nom_terrain || "",
@@ -91,7 +92,6 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
   // Initialize terrain data when component mounts or initialData changes
   useEffect(() => {
     if (initialData) {
-      
       // Process geometry data if available
       if (initialData.geom) {
         try {
@@ -311,27 +311,30 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     // Calculate geodesic area in square meters
     const areaInSquareMeters = L.GeometryUtil.geodesicArea(polygon.getLatLngs()[0] as L.LatLng[]);
     
-    // Convert to hectares (1 hectare = 10000 square meters)
-    return areaInSquareMeters / 10000;
+    // Convert to hectares (1 hectare = 10000 square meters) and round to 2 decimal places
+    return parseFloat((areaInSquareMeters / 10000).toFixed(2));
   };
 
-  // Update surface area when polygon changes
+  // Update surface area when polygon changes, but only if shouldUpdateSurface is true
   useEffect(() => {
-    if (polygonCoordinates && polygonCoordinates.length >= 3) {
+    if (shouldUpdateSurface && polygonCoordinates && polygonCoordinates.length >= 3) {
       const area = calculateAreaInHectares(polygonCoordinates);
-      form.setValue("surface_proposee", parseFloat(area.toFixed(2)));
+      form.setValue("surface_proposee", area);
+      setShouldUpdateSurface(false);
     }
-  }, [polygonCoordinates, form]);
+  }, [polygonCoordinates, form, shouldUpdateSurface]);
 
   // Form submission handler
   const onSubmit = async (data: TerrainFormData) => {
     setIsSubmitting(true);
     try {
       console.log("Form data being submitted:", data);
-      console.log("Current polygon coordinates:", polygonCoordinates);
       
       // Assign polygon coordinates to form data
       data.geom = polygonCoordinates;
+      
+      // Round surface to 2 decimal places
+      data.surface_proposee = parseFloat(data.surface_proposee.toFixed(2));
       
       // Determine the terrain owner based on user role
       const terrainOwnerId = userRole === 'simple' ? userId :
@@ -372,7 +375,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
 
         const { data: newTerrain, error } = await supabase
           .from('terrain')
-          .insert([dataSansId])
+          .insert(dataSansId)
           .select('id_terrain')
           .single();
           
@@ -425,6 +428,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       coords.push([latLngs[0].lng, latLngs[0].lat]);
       
       setPolygonCoordinates(coords);
+      setShouldUpdateSurface(true);
       console.log("Created polygon coordinates:", coords);
     }
   };
@@ -443,6 +447,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
         coords.push([latLngs[0].lng, latLngs[0].lat]);
         
         setPolygonCoordinates(coords);
+        setShouldUpdateSurface(true);
         console.log("Edited polygon coordinates:", coords);
       }
     });
@@ -516,11 +521,11 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
                   min="0.01" 
                   step="0.01" 
                   {...field}
-                  onChange={(e) => field.onChange(parseFloat(e.target.value.toFixed(2)))} 
+                  onChange={(e) => field.onChange(parseFloat(parseFloat(e.target.value).toFixed(2)))} 
                 />
               </FormControl>
               <FormDescription>
-                Surface en hectares calculée automatiquement à partir du dessin du terrain (1 ha = 10 000 m²)
+                Vous pouvez saisir la surface manuellement ou dessiner le contour du terrain sur la carte.
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -744,7 +749,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
             </MapContainer>
           </div>
           <p className="text-sm text-muted-foreground">
-            Dessinez le contour de votre terrain sur la carte. Utilisez les outils de dessin pour créer un polygone représentant votre terrain.
+            Dessinez le contour de votre terrain sur la carte (facultatif). Utilisez les outils de dessin pour créer un polygone représentant votre terrain.
           </p>
         </div>
         
