@@ -1394,6 +1394,7 @@ export type Database = {
           archive: boolean
           created_at: string | null
           created_by: string | null
+          date_validation: string | null
           geom: unknown | null
           id_commune: number | null
           id_district: number | null
@@ -1405,9 +1406,12 @@ export type Database = {
           modified_at: string | null
           nom_terrain: string | null
           photos: string | null
+          photos_validation: string | null
+          rapport_validation: string | null
           statut: boolean
           surface_proposee: number
           surface_validee: number | null
+          validation_decision: string | null
         }
         Insert: {
           acces_eau?: boolean | null
@@ -1415,6 +1419,7 @@ export type Database = {
           archive?: boolean
           created_at?: string | null
           created_by?: string | null
+          date_validation?: string | null
           geom?: unknown | null
           id_commune?: number | null
           id_district?: number | null
@@ -1426,9 +1431,12 @@ export type Database = {
           modified_at?: string | null
           nom_terrain?: string | null
           photos?: string | null
+          photos_validation?: string | null
+          rapport_validation?: string | null
           statut?: boolean
           surface_proposee: number
           surface_validee?: number | null
+          validation_decision?: string | null
         }
         Update: {
           acces_eau?: boolean | null
@@ -1436,6 +1444,7 @@ export type Database = {
           archive?: boolean
           created_at?: string | null
           created_by?: string | null
+          date_validation?: string | null
           geom?: unknown | null
           id_commune?: number | null
           id_district?: number | null
@@ -1447,9 +1456,12 @@ export type Database = {
           modified_at?: string | null
           nom_terrain?: string | null
           photos?: string | null
+          photos_validation?: string | null
+          rapport_validation?: string | null
           statut?: boolean
           surface_proposee?: number
           surface_validee?: number | null
+          validation_decision?: string | null
         }
         Relationships: [
           {

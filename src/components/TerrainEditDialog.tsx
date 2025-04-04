@@ -9,6 +9,7 @@ import {
 import TerrainForm from "@/components/terrain/TerrainForm";
 import { TerrainData } from "@/types/terrain";
 import { supabase } from "@/integrations/supabase/client";
+import UserAvatar from "@/components/UserAvatar";
 
 interface TerrainEditDialogProps {
   isOpen: boolean;
@@ -17,7 +18,7 @@ interface TerrainEditDialogProps {
   onSubmitSuccess: () => void;
   userId: string;
   userRole?: string;
-  agriculteurs?: { id_utilisateur: string; nom: string; prenoms?: string }[];
+  agriculteurs?: { id_utilisateur: string; nom: string; prenoms?: string; photo_profil?: string }[];
   isValidationMode?: boolean;
 }
 
@@ -31,7 +32,7 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
   agriculteurs = [],
   isValidationMode = false
 }) => {
-  const [techniciens, setTechniciens] = useState<{ id_utilisateur: string; nom: string; prenoms?: string }[]>([]);
+  const [techniciens, setTechniciens] = useState<{ id_utilisateur: string; nom: string; prenoms?: string; photo_profil?: string }[]>([]);
   
   // Fetch techniciens when dialog opens if user is superviseur
   useEffect(() => {
@@ -41,7 +42,7 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
           // Using the correct role ID (4 for 'technicien')
           const { data, error } = await supabase
             .from('utilisateurs_par_role')
-            .select('id_utilisateur, nom, prenoms')
+            .select('id_utilisateur, nom, prenoms, photo_profil')
             .eq('id_role', 4); // 4 = technicien
           
           if (error) {
@@ -59,17 +60,55 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
     }
   }, [isOpen, userRole]);
 
+  // Détermine le titre du dialogue en fonction du mode et de l'existence du terrain
+  const getDialogTitle = () => {
+    if (terrain?.id_terrain) {
+      if (isValidationMode) {
+        return (
+          <div className="flex items-center gap-2">
+            <span>Validation du terrain</span>
+            {terrain.tantsahaNom && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground ml-2">
+                <span>Propriétaire:</span>
+                <UserAvatar 
+                  src={terrain.tantsahaPhotoProfile} 
+                  alt={terrain.tantsahaNom || 'Propriétaire'} 
+                  size="sm" 
+                />
+                <span>{terrain.tantsahaNom}</span>
+              </div>
+            )}
+          </div>
+        );
+      } else {
+        return (
+          <div className="flex items-center gap-2">
+            <span>Modifier le terrain</span>
+            {terrain.tantsahaNom && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground ml-2">
+                <span>Propriétaire:</span>
+                <UserAvatar 
+                  src={terrain.tantsahaPhotoProfile} 
+                  alt={terrain.tantsahaNom || 'Propriétaire'} 
+                  size="sm" 
+                />
+                <span>{terrain.tantsahaNom}</span>
+              </div>
+            )}
+          </div>
+        );
+      }
+    } else {
+      return "Ajouter un terrain";
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {terrain?.id_terrain 
-              ? isValidationMode 
-                ? "Validation du terrain" 
-                : "Modifier le terrain" 
-              : "Ajouter un terrain"
-            }
+            {getDialogTitle()}
           </DialogTitle>
         </DialogHeader>
         <TerrainForm
