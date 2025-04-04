@@ -1,3 +1,4 @@
+
 import * as React from "react"
 
 import { cn } from "@/lib/utils"
@@ -53,12 +54,15 @@ TableFooter.displayName = "TableFooter"
 
 const TableRow = React.forwardRef<
   HTMLTableRowElement,
-  React.HTMLAttributes<HTMLTableRowElement>
->(({ className, ...props }, ref) => (
+  React.HTMLAttributes<HTMLTableRowElement> & { 
+    clickable?: boolean 
+  }
+>(({ className, clickable, ...props }, ref) => (
   <tr
     ref={ref}
     className={cn(
       "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
+      clickable && "cursor-pointer",
       className
     )}
     {...props}
@@ -66,18 +70,35 @@ const TableRow = React.forwardRef<
 ))
 TableRow.displayName = "TableRow"
 
+interface TableHeadProps extends React.ThHTMLAttributes<HTMLTableCellElement> {
+  sortable?: boolean;
+  sorted?: 'asc' | 'desc' | null;
+  onSort?: () => void;
+}
+
 const TableHead = React.forwardRef<
   HTMLTableCellElement,
-  React.ThHTMLAttributes<HTMLTableCellElement>
->(({ className, ...props }, ref) => (
+  TableHeadProps
+>(({ className, sortable, sorted, onSort, children, ...props }, ref) => (
   <th
     ref={ref}
     className={cn(
       "h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0",
+      sortable && "cursor-pointer select-none",
       className
     )}
+    onClick={sortable ? onSort : undefined}
     {...props}
-  />
+  >
+    {children}
+    {sortable && (
+      <span className="ml-1 inline-block w-4">
+        {sorted === 'asc' && '▲'}
+        {sorted === 'desc' && '▼'}
+        {sorted === null && '⇵'}
+      </span>
+    )}
+  </th>
 ))
 TableHead.displayName = "TableHead"
 

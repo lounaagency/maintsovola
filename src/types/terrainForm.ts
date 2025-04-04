@@ -13,6 +13,11 @@ export interface TerrainFormData {
   id_tantsaha?: string;
   geom?: number[][]; // Coordonnées du polygone [[lng, lat], [lng, lat], ...]
   photos?: string | string[]; // Can be string (comma-separated) or array of strings
+  // Champs pour le rapport de validation
+  date_validation?: Date | string;
+  rapport_validation?: string;
+  photos_validation?: string | string[];
+  validation_decision?: 'valider' | 'rejetter';
 }
 
 // Convert from form data (strings) to API data (numbers)
@@ -42,6 +47,21 @@ export const convertFormDataToTerrainData = (formData: TerrainFormData): Terrain
     terrainData.photos = formData.photos.join(',');
   }
   
+  // Ajout des champs de validation si présents
+  if (formData.date_validation) {
+    terrainData.date_validation = formData.date_validation;
+  }
+  
+  if (formData.rapport_validation) {
+    terrainData.rapport_validation = formData.rapport_validation;
+  }
+  
+  if (formData.photos_validation) {
+    terrainData.photos_validation = Array.isArray(formData.photos_validation) 
+      ? formData.photos_validation.join(',') 
+      : formData.photos_validation;
+  }
+  
   return terrainData;
 };
 
@@ -69,6 +89,21 @@ export const convertTerrainDataToFormData = (terrainData: TerrainData): TerrainF
   if (terrainData.geom && terrainData.geom.type === 'Polygon' && 
       terrainData.geom.coordinates && terrainData.geom.coordinates[0]) {
     formData.geom = terrainData.geom.coordinates[0];
+  }
+  
+  // Conversion des champs de validation
+  if (terrainData.date_validation) {
+    formData.date_validation = terrainData.date_validation;
+  }
+  
+  if (terrainData.rapport_validation) {
+    formData.rapport_validation = terrainData.rapport_validation;
+  }
+  
+  if (terrainData.photos_validation) {
+    formData.photos_validation = typeof terrainData.photos_validation === 'string' 
+      ? terrainData.photos_validation.split(',').filter(p => p.trim() !== '')
+      : terrainData.photos_validation;
   }
   
   return formData;

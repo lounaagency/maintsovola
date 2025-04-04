@@ -1,7 +1,4 @@
 
-// Note: This is a very large file that would benefit from refactoring
-// into smaller components. I'll make the necessary fixes while preserving functionality.
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,6 +9,7 @@ import TerrainTable from '@/components/terrain/TerrainTable';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import TerrainEditDialog from '@/components/TerrainEditDialog';
+import TerrainCard from '@/components/terrain/TerrainCard';
 import ProjectEditDialog from '@/components/ProjectEditDialog';
 import MessageDialog from '@/components/MessageDialog';
 import ProjectDetailsDialog from '@/components/ProjectDetailsDialog';
@@ -20,10 +18,10 @@ import { TerrainData } from "@/types/terrain";
 
 export const Terrain = () => {
   const { user, profile } = useAuth();
-  // Redirect to auth if not logged in
   if (!user) {
     return <Navigate to="/auth" replace />;
   }
+  
   const { toast } = useToast();
   
   const [pendingTerrains, setPendingTerrains] = useState<TerrainData[]>([]);
@@ -34,6 +32,9 @@ export const Terrain = () => {
   const [selectedTechnicien, setSelectedTechnicien] = useState<{id: string; name: string} | null>(null);
   
   const [isTerrainDialogOpen, setIsTerrainDialogOpen] = useState(false);
+  const [isTerrainCardOpen, setIsTerrainCardOpen] = useState(false);
+  const [isTerrainDeleteOpen, setIsTerrainDeleteOpen] = useState(false);
+  const [isTerrainValidateOpen, setIsTerrainValidateOpen] = useState(false);
   const [isProjectDialogOpen, setIsProjectDialogOpen] = useState(false);
   const [isProjectDetailsOpen, setIsProjectDetailsOpen] = useState(false);
   const [isMessageDialogOpen, setIsMessageDialogOpen] = useState(false);
@@ -49,9 +50,9 @@ export const Terrain = () => {
     
     try {
       const { data, error } = await supabase
-        .from('utilisateur')
+        .from('utilisateurs_par_role')
         .select('id_utilisateur, nom, prenoms')
-        .eq('id_role', 2); // 2 = simple user role
+        .eq('id_role', 1); // 1 = simple user role
         
       if (error) throw error;
       setAgriculteurs(data || []);
@@ -71,7 +72,8 @@ export const Terrain = () => {
           region:id_region(nom_region),
           district:id_district(nom_district),
           commune:id_commune(nom_commune)
-        `);
+        `)
+        .eq('archive', false);
       
       if (userRole === 'simple') {
         query = query.eq('id_tantsaha', user.id);
@@ -83,7 +85,7 @@ export const Terrain = () => {
 
       if (error) throw error;
       
-      // Get technician details for each terrain
+      // Get technician, supervisor and owner details for each terrain
       const terrainData = (data || []).map(terrain => ({
         id_terrain: terrain.id_terrain,
         nom_terrain: terrain.nom_terrain || `Terrain #${terrain.id_terrain}`,
@@ -98,31 +100,66 @@ export const Terrain = () => {
         id_district: terrain.id_district,
         id_commune: terrain.id_commune,
         statut: terrain.statut,
+        archive: terrain.archive,
         geom: terrain.geom,
-        photos: terrain.photos|| '',
+        photos: terrain.photos || '',
+        photos_validation: terrain.photos_validation || '',
+        rapport_validation: terrain.rapport_validation || '',
+        date_validation: terrain.date_validation,
         region_name: terrain.region?.nom_region || 'Non spécifié',
         district_name: terrain.district?.nom_district || 'Non spécifié',
         commune_name: terrain.commune?.nom_commune || 'Non spécifié',
-        techniqueNom: 'Non assigné' // Will be set later
+        techniqueNom: 'Non assigné', // Will be set later
+        superviseurNom: 'Non assigné', // Will be set later
+        tantsahaNom: 'Non spécifié' // Will be set later
       }));
       
-      // Fetch technician details for terrains with technicians
-      for (let i = 0; i < terrainData.length; i++) {
-        if (terrainData[i].id_technicien) {
+      // Fetch additional details for terrains
+      const enhancedTerrainData = await Promise.all(terrainData.map(async (terrain) => {
+        // Get technician details
+        if (terrain.id_technicien) {
           const { data: techData } = await supabase
-            .from('utilisateur')
+            .from('utilisateurs_par_role')
             .select('nom, prenoms')
-            .eq('id_utilisateur', terrainData[i].id_technicien)
-            .single();
+            .eq('id_utilisateur', terrain.id_technicien)
+            .maybeSingle();
             
           if (techData) {
-            terrainData[i].techniqueNom = `${techData.nom} ${techData.prenoms || ''}`.trim();
+            terrain.techniqueNom = `${techData.nom} ${techData.prenoms || ''}`.trim();
           }
         }
-      }
+        
+        // Get supervisor details
+        if (terrain.id_superviseur) {
+          const { data: supervData } = await supabase
+            .from('utilisateurs_par_role')
+            .select('nom, prenoms')
+            .eq('id_utilisateur', terrain.id_superviseur)
+            .maybeSingle();
+            
+          if (supervData) {
+            terrain.superviseurNom = `${supervData.nom} ${supervData.prenoms || ''}`.trim();
+          }
+        }
+        
+        // Get owner details
+        if (terrain.id_tantsaha) {
+          const { data: ownerData } = await supabase
+            .from('utilisateurs_par_role')
+            .select('nom, prenoms')
+            .eq('id_utilisateur', terrain.id_tantsaha)
+            .maybeSingle();
+            
+          if (ownerData) {
+            terrain.tantsahaNom = `${ownerData.nom} ${ownerData.prenoms || ''}`.trim();
+          }
+        }
+        
+        return terrain;
+      }));
       
-      setPendingTerrains(terrainData.filter(t => t.statut === false));
-      setValidatedTerrains(terrainData.filter(t => t.statut === true));
+      setPendingTerrains(enhancedTerrainData.filter(t => t.statut === false));
+      setValidatedTerrains(enhancedTerrainData.filter(t => t.statut === true));
     } catch (error) {
       console.error('Error fetching terrains:', error);
       toast({
@@ -136,7 +173,7 @@ export const Terrain = () => {
   const fetchTechniciens = useCallback(async () => {
     try {
       const { data, error } = await supabase
-        .from('utilisateur')
+        .from('utilisateurs_par_role')
         .select('id_utilisateur, nom, prenoms')
         .eq('id_role', 3); // 3 = technicien role
         
@@ -198,6 +235,21 @@ export const Terrain = () => {
     setIsTerrainDialogOpen(true);
   };
 
+  const handleViewTerrainDetails = (terrain: TerrainData) => {
+    setSelectedTerrain(terrain);
+    setIsTerrainCardOpen(true);
+  };
+
+  const handleDeleteTerrain = (terrain: TerrainData) => {
+    setSelectedTerrain(terrain);
+    setIsTerrainDeleteOpen(true);
+  };
+  
+  const handleValidateTerrain = (terrain: TerrainData) => {
+    setSelectedTerrain(terrain);
+    setIsTerrainValidateOpen(true);
+  };
+
   const handleContactTechnicien = (terrain: TerrainData) => {
     if (terrain.id_technicien) {
       const technicien = techniciens.find(t => t.id_utilisateur === terrain.id_technicien);
@@ -214,6 +266,12 @@ export const Terrain = () => {
   const handleTerrainSaved = () => {
     fetchTerrains();
     setIsTerrainDialogOpen(false);
+    setIsTerrainValidateOpen(false);
+  };
+
+  const handleTerrainDeleted = () => {
+    fetchTerrains();
+    setIsTerrainDeleteOpen(false);
   };
 
   const handleCreateProject = () => {
@@ -292,6 +350,9 @@ export const Terrain = () => {
                   onTerrainUpdate={fetchTerrains}
                   techniciens={techniciens}
                   onEdit={handleEditTerrain}
+                  onViewDetails={handleViewTerrainDetails}
+                  onValidate={handleValidateTerrain}
+                  onDelete={handleDeleteTerrain}
                 />
               </TabsContent>
               
@@ -302,6 +363,9 @@ export const Terrain = () => {
                   userRole={userRole}
                   onTerrainUpdate={fetchTerrains}
                   onEdit={handleEditTerrain}
+                  onViewDetails={handleViewTerrainDetails}
+                  onValidate={handleValidateTerrain}
+                  onDelete={handleDeleteTerrain}
                 />
               </TabsContent>
               
@@ -311,6 +375,8 @@ export const Terrain = () => {
                   type="validated"
                   userRole={userRole}
                   onEdit={handleEditTerrain}
+                  onViewDetails={handleViewTerrainDetails}
+                  onDelete={handleDeleteTerrain}
                 />
               </TabsContent>
             </Tabs>
@@ -324,6 +390,9 @@ export const Terrain = () => {
                   userRole={userRole}
                   onTerrainUpdate={fetchTerrains}
                   onEdit={handleEditTerrain}
+                  onViewDetails={handleViewTerrainDetails}
+                  onValidate={handleValidateTerrain}
+                  onDelete={handleDeleteTerrain}
                 />
               </div>
               
@@ -334,6 +403,8 @@ export const Terrain = () => {
                   type="validated"
                   userRole={userRole}
                   onEdit={handleEditTerrain}
+                  onViewDetails={handleViewTerrainDetails}
+                  onDelete={handleDeleteTerrain}
                 />
               </div>
             </div>
@@ -347,6 +418,8 @@ export const Terrain = () => {
                   userRole={userRole}
                   onTerrainUpdate={fetchTerrains}
                   onEdit={handleEditTerrain}
+                  onViewDetails={handleViewTerrainDetails}
+                  onDelete={handleDeleteTerrain}
                 />
               </div>
               
@@ -356,7 +429,7 @@ export const Terrain = () => {
                   terrains={validatedTerrains}
                   type="validated"
                   userRole={userRole}
-                  onEdit={handleEditTerrain}
+                  onViewDetails={handleViewTerrainDetails}
                   onContactTechnicien={handleContactTechnicien}
                 />
               </div>
@@ -372,6 +445,50 @@ export const Terrain = () => {
               userId={user.id}
               userRole={userRole}
               agriculteurs={agriculteurs}
+            />
+          )}
+          
+          {isTerrainValidateOpen && selectedTerrain && (
+            <TerrainEditDialog
+              isOpen={isTerrainValidateOpen}
+              onClose={() => setIsTerrainValidateOpen(false)}
+              terrain={selectedTerrain}
+              onSubmitSuccess={handleTerrainSaved}
+              userId={user.id}
+              userRole={userRole}
+              isValidationMode={true}
+            />
+          )}
+          
+          {isTerrainCardOpen && selectedTerrain && (
+            <TerrainCard
+              isOpen={isTerrainCardOpen}
+              onClose={() => setIsTerrainCardOpen(false)}
+              terrain={selectedTerrain}
+              onTerrainUpdate={fetchTerrains}
+            />
+          )}
+          
+          {isTerrainDeleteOpen && selectedTerrain && (
+            <TerrainCard
+              isOpen={isTerrainDeleteOpen}
+              onClose={() => setIsTerrainDeleteOpen(false)}
+              terrain={selectedTerrain}
+              onTerrainUpdate={handleTerrainDeleted}
+              isDeleteMode={true}
+            />
+          )}
+          
+          {isMessageDialogOpen && selectedTechnicien && (
+            <MessageDialog
+              isOpen={isMessageDialogOpen}
+              onClose={() => setIsMessageDialogOpen(false)}
+              recipient={{
+                id: selectedTechnicien.id,
+                name: selectedTechnicien.name
+              }}
+              subject={`Demande concernant le terrain ${selectedTerrain?.nom_terrain || '#' + selectedTerrain?.id_terrain}`}
+              initialMessage={`Bonjour, j'aimerais vous contacter concernant mon terrain ${selectedTerrain?.nom_terrain || '#' + selectedTerrain?.id_terrain}.\n`}
             />
           )}
         </TabsContent>
@@ -575,18 +692,6 @@ export const Terrain = () => {
               onClose={() => setIsProjectDetailsOpen(false)}
               projectId={selectedProject.id_projet}
               userRole={userRole}
-            />
-          )}
-          
-          {isMessageDialogOpen && selectedTechnicien && (
-            <MessageDialog
-              isOpen={isMessageDialogOpen}
-              onClose={() => setIsMessageDialogOpen(false)}
-              recipient={{
-                id: selectedTechnicien.id,
-                name: selectedTechnicien.name
-              }}
-              subject="Question sur un terrain"
             />
           )}
           

@@ -17,6 +17,8 @@ interface TerrainEditDialogProps {
   onSubmitSuccess: () => void;
   userId: string;
   userRole?: string;
+  agriculteurs?: { id_utilisateur: string; nom: string; prenoms?: string }[];
+  isValidationMode?: boolean;
 }
 
 const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
@@ -26,36 +28,35 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
   onSubmitSuccess,
   userId,
   userRole,
+  agriculteurs = [],
+  isValidationMode = false
 }) => {
-  const [agriculteurs, setAgriculteurs] = useState<{ id_utilisateur: string; nom: string; prenoms?: string }[]>([]);
+  const [techniciens, setTechniciens] = useState<{ id_utilisateur: string; nom: string; prenoms?: string }[]>([]);
   
-  // We no longer need processedTerrain as we'll pass terrain directly to the form
-  // and handle any necessary processing in the TerrainForm component itself
-
-  // Fetch agriculteurs when the dialog opens and userRole is technicien or superviseur
+  // Fetch techniciens when dialog opens if user is superviseur
   useEffect(() => {
-    if (isOpen && (userRole === 'technicien' || userRole === 'superviseur')) {
-      const fetchAgriculteurs = async () => {
+    if (isOpen && userRole === 'superviseur') {
+      const fetchTechniciens = async () => {
         try {
-          // Using the correct role ID (1 for 'simple' which is agriculteur)
+          // Using the correct role ID (3 for 'technicien')
           const { data, error } = await supabase
             .from('utilisateurs_par_role')
             .select('id_utilisateur, nom, prenoms')
-            .eq('id_role', 1); // 1 = simple (agriculteur)
+            .eq('id_role', 3); // 3 = technicien
           
           if (error) {
-            console.error("Error fetching agriculteurs:", error);
+            console.error("Error fetching techniciens:", error);
             return;
           }
           
-          console.log("Fetched agriculteurs:", data);
-          setAgriculteurs(data || []);
+          console.log("Fetched techniciens:", data);
+          setTechniciens(data || []);
         } catch (error) {
-          console.error("Error in fetchAgriculteurs:", error);
+          console.error("Error in fetchTechniciens:", error);
         }
       };
       
-      fetchAgriculteurs();
+      fetchTechniciens();
     }
   }, [isOpen, userRole]);
 
@@ -64,7 +65,12 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
       <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {terrain?.id_terrain ? "Modifier le terrain" : "Ajouter un terrain"}
+            {terrain?.id_terrain 
+              ? isValidationMode 
+                ? "Validation du terrain" 
+                : "Modifier le terrain" 
+              : "Ajouter un terrain"
+            }
           </DialogTitle>
         </DialogHeader>
         <TerrainForm
@@ -74,6 +80,8 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
           userId={userId}
           userRole={userRole}
           agriculteurs={agriculteurs}
+          techniciens={techniciens}
+          isValidationMode={isValidationMode}
         />
       </DialogContent>
     </Dialog>

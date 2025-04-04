@@ -10,6 +10,7 @@ export interface TerrainData {
   acces_eau?: boolean | null;
   acces_route?: boolean | null;
   statut?: boolean;
+  archive?: boolean;
   id_technicien?: string | null;
   id_superviseur?: string | null;
   region_name?: string;
@@ -17,10 +18,14 @@ export interface TerrainData {
   commune_name?: string;
   created_at?: string;
   techniqueNom?: string;
-  techniquePrenoms?: string;
-  nom_terrain?: string;
+  superviseurNom?: string;
+  tantsahaNom?: string;
+  nom_terrain: string;
   photos?: string | string[];
   geom?: any;
+  date_validation?: Date | string;
+  rapport_validation?: string;
+  photos_validation?: string | string[];
 }
 
 export interface TerrainFormData {
@@ -57,4 +62,18 @@ export interface CommuneData {
   id_commune: number;
   nom_commune: string;
   id_district: number;
+}
+
+export interface TerrainSortOptions {
+  field: keyof TerrainData;
+  direction: 'asc' | 'desc';
+}
+
+export interface TerrainFilters {
+  region?: number;
+  district?: number;
+  commune?: number;
+  hasWater?: boolean;
+  hasRoad?: boolean;
+  searchQuery?: string;
 }
