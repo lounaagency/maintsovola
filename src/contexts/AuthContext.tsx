@@ -7,6 +7,17 @@ import { toast } from "sonner";
 import { UserProfile } from "@/types/userProfile";
 import { isValidEmail } from "@/lib/utils";
 
+interface UserTelephone {
+  id_telephone: number;
+  id_utilisateur: string;
+  numero: string;
+  type: "principal" | "whatsapp" | "mobile_banking" | "autre";
+  est_whatsapp: boolean;
+  est_mobile_banking: boolean;
+  created_at: string;
+  modified_at: string;
+}
+
 interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
@@ -29,6 +40,7 @@ const AuthContext = createContext<AuthContextType>({
   refreshProfile: async () => {},
 });
 
+// Define the component as a function component explicitly
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
