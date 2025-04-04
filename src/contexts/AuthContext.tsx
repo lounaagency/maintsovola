@@ -4,19 +4,8 @@ import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { UserProfile } from "@/types/userProfile";
+import { UserProfile, UserTelephone } from "@/types/userProfile";
 import { isValidEmail } from "@/lib/utils";
-
-interface UserTelephone {
-  id_telephone: number;
-  id_utilisateur: string;
-  numero: string;
-  type: "principal" | "whatsapp" | "mobile_banking" | "autre";
-  est_whatsapp: boolean;
-  est_mobile_banking: boolean;
-  created_at: string;
-  modified_at: string;
-}
 
 interface AuthContextType {
   user: User | null;
@@ -96,9 +85,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       // Cast telephones to the correct type
-      const telephones = data.telephones ? data.telephones.map((tel: any) => ({
+      const telephones: UserTelephone[] = data.telephones ? data.telephones.map((tel: any) => ({
         ...tel,
-        type: tel.type as "principal" | "whatsapp" | "mobile_banking" | "autre"
+        type: tel.type as "principal" | "whatsapp" | "mobile_banking" | "autre",
+        created_at: tel.created_at || new Date().toISOString(),
+        modified_at: tel.modified_at || new Date().toISOString(),
       })) : [];
       
       const userProfile: UserProfile = {
@@ -129,38 +120,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       const isEmail = isValidEmail(identifier);
       
-      const authData = {
-        ...(isEmail ? { email: identifier } : {}),
-        password,
-        options: {
-          data: {
-            nom: userData.nom,
-            prenoms: userData.prenoms,
-            role: userData.role || 'simple',
-            is_investor: userData.is_investor || false,
-            is_farming_owner: userData.is_farming_owner || false
-          }
-        }
-      };
-
-      let data, error;
+      let signUpData;
+      
       if (isEmail) {
-        const result = await supabase.auth.signUp({
+        signUpData = {
           email: identifier,
           password,
-          options: authData.options
-        });
-        data = result.data;
-        error = result.error;
+          options: {
+            data: {
+              nom: userData.nom,
+              prenoms: userData.prenoms,
+              role: userData.role || 'simple',
+              is_investor: userData.is_investor || false,
+              is_farming_owner: userData.is_farming_owner || false
+            }
+          }
+        };
       } else {
-        const result = await supabase.auth.signUp({
+        signUpData = {
           phone: identifier,
           password,
-          options: authData.options
-        });
-        data = result.data;
-        error = result.error;
+          options: {
+            data: {
+              nom: userData.nom,
+              prenoms: userData.prenoms,
+              role: userData.role || 'simple',
+              is_investor: userData.is_investor || false,
+              is_farming_owner: userData.is_farming_owner || false
+            }
+          }
+        };
       }
+
+      const { data, error } = await supabase.auth.signUp(signUpData);
 
       if (error) throw error;
       if (!data.user) throw new Error("L'utilisateur n'a pas été créé.");
@@ -273,9 +265,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) throw error;
       
       // Cast telephones to the correct type
-      const telephones = data.telephones ? data.telephones.map((tel: any) => ({
+      const telephones: UserTelephone[] = data.telephones ? data.telephones.map((tel: any) => ({
         ...tel,
-        type: tel.type as "principal" | "whatsapp" | "mobile_banking" | "autre"
+        type: tel.type as "principal" | "whatsapp" | "mobile_banking" | "autre",
+        created_at: tel.created_at || new Date().toISOString(),
+        modified_at: tel.modified_at || new Date().toISOString(),
       })) : [];
       
       const userProfile: UserProfile = {

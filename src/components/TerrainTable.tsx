@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { TerrainData } from "@/types/terrain";
 import { Button } from "@/components/ui/button";
 import { 
@@ -10,21 +10,24 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { Check, Edit, MessageSquare, Trash, Eye, FileCheck, Route } from "lucide-react";
+import { Check, Edit, MessageSquare, Trash, Eye, FileCheck, Route, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { sendNotification } from "@/types/notification";
+import UserAvatar from "@/components/UserAvatar";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface TerrainTableProps {
   terrains: TerrainData[];
   type?: 'validated' | 'pending';
   userRole?: string;
   onTerrainUpdate?: () => void;
-  techniciens?: { id_utilisateur: string; nom: string; prenoms?: string }[];
+  techniciens?: { id_utilisateur: string; nom: string; prenoms?: string; photo_profil?: string }[];
   onEdit?: (terrain: TerrainData) => void;
   onContactTechnicien?: (terrain: TerrainData) => void;
+  loading?: boolean;
 }
 
 const TerrainTable: React.FC<TerrainTableProps> = ({ 
@@ -34,7 +37,8 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
   onTerrainUpdate,
   techniciens,
   onEdit,
-  onContactTechnicien
+  onContactTechnicien,
+  loading = false
 }) => {
   const { user } = useAuth();
   const isMobile = useIsMobile();
@@ -247,13 +251,85 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
       // Technician only sees terrains assigned to them
       filtered = filtered.filter(terrain => terrain.id_technicien === user?.id);
     }
-    // Supervisor sees all terrains, so no additional filtering for them
     
-    console.log('Filtered terrains:', { count: filtered.length });
     return filtered;
   };
 
   const filteredTerrains = filterTerrainsByRole();
+
+  // Render loading state
+  if (loading) {
+    if (isMobile) {
+      return (
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="border rounded-md p-3 bg-white">
+              <div className="grid grid-cols-2 gap-2 mb-3">
+                <Skeleton className="h-4 w-8" />
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-4 w-12" />
+                <Skeleton className="h-4 w-14" />
+              </div>
+              <div className="flex justify-end gap-2 mt-2">
+                <Skeleton className="h-8 w-20" />
+                <Skeleton className="h-8 w-20" />
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    return (
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>ID</TableHead>
+              <TableHead>Nom</TableHead>
+              <TableHead>Surface</TableHead>
+              <TableHead>Zone géographique</TableHead>
+              <TableHead>Accès eau</TableHead>
+              <TableHead>Accès route</TableHead>
+              {type === 'pending' && userRole === 'superviseur' && (
+                <TableHead>Technicien</TableHead>
+              )}
+              {type === 'validated' && (
+                <TableHead>Surface validée</TableHead>
+              )}
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {[1, 2, 3].map((i) => (
+              <TableRow key={i}>
+                <TableCell><Skeleton className="h-4 w-8" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-10" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-10" /></TableCell>
+                {type === 'pending' && userRole === 'superviseur' && (
+                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                )}
+                {type === 'validated' && (
+                  <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                )}
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-2">
+                    <Skeleton className="h-8 w-20" />
+                    <Skeleton className="h-8 w-20" />
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    );
+  }
 
   if (isMobile) {
     return (
@@ -292,7 +368,14 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                 <div className="mb-3">
                   <p className="text-xs text-muted-foreground mb-1">Technicien</p>
                   {terrain.id_technicien ? (
-                    <p className="text-sm">{terrain.techniqueNom || 'Non spécifié'}</p>
+                    <div className="flex items-center gap-2">
+                      <UserAvatar 
+                        src={terrain.techniquePhoto || ''} 
+                        alt={terrain.techniqueNom || 'Technicien'} 
+                        size="sm" 
+                      />
+                      <p className="text-sm">{terrain.techniqueNom || 'Non spécifié'}</p>
+                    </div>
                   ) : (
                     <select
                       className="border p-1 rounded-md w-full text-sm"
@@ -364,7 +447,9 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
           ))
         ) : (
           <div className="text-center py-4 border rounded-md">
-            Aucun terrain {type === 'validated' ? 'validé' : 'en attente'} disponible
+            {type === 'validated' 
+              ? "Pas encore de terrains validés disponibles. Ils apparaîtront ici après validation." 
+              : "Pas encore de terrains en attente disponibles. Créez votre premier terrain."}
           </div>
         )}
       </div>
@@ -408,7 +493,14 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                 {type === 'pending' && userRole === 'superviseur' && (
                   <TableCell>
                     {terrain.id_technicien ? (
-                      `${terrain.techniqueNom || 'Non spécifié'}`
+                      <div className="flex items-center gap-2">
+                        <UserAvatar 
+                          src={terrain.techniquePhoto || ''} 
+                          alt={terrain.techniqueNom || 'Technicien'} 
+                          size="sm" 
+                        />
+                        <span>{terrain.techniqueNom || 'Non spécifié'}</span>
+                      </div>
                     ) : (
                       <select
                         className="border p-1 rounded-md w-full"
@@ -478,7 +570,9 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
           ) : (
             <TableRow>
               <TableCell colSpan={type === 'pending' && userRole === 'superviseur' ? 9 : 8} className="text-center py-4">
-                Aucun terrain {type === 'validated' ? 'validé' : 'en attente'} disponible
+                {type === 'validated' 
+                  ? "Pas encore de terrains validés disponibles. Ils apparaîtront ici après validation." 
+                  : "Pas encore de terrains en attente disponibles. Créez votre premier terrain."}
               </TableCell>
             </TableRow>
           )}
