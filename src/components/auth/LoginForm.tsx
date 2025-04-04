@@ -55,11 +55,12 @@ const LoginForm: React.FC<LoginFormProps> = ({ switchToRegister }) => {
         <Input 
           id="identifier" 
           type="text" 
-          placeholder="votre@email.com ou 0324000000" 
+          placeholder="votre@email.com ou +261324xxxxxx" 
           value={identifier}
           onChange={(e) => setIdentifier(e.target.value)}
         />
         {errors.identifier && <p className="text-sm text-red-500">{errors.identifier}</p>}
+        <p className="text-xs text-muted-foreground">Pour les numéros de téléphone, utilisez le format international (+261)</p>
       </motion.div>
       
       <motion.div variants={item} className="space-y-2">

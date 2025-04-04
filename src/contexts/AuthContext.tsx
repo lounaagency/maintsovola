@@ -220,8 +220,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           password
         });
       } else {
+        // Pour le téléphone, nous devons nous assurer que le format est correct
+        // Généralement les numéros de téléphone commencent par +
+        const phoneNumber = identifier.startsWith('+') ? identifier : `+${identifier}`;
+        
         authResponse = await supabase.auth.signInWithPassword({
-          phone: identifier,
+          phone: phoneNumber,
           password
         });
       }
@@ -233,7 +237,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       toast.success("Connexion réussie !");
       navigate("/feed");
     } catch (error: any) {
-      toast.error(error.message || "Erreur lors de la connexion");
+      // Affichage d'un message d'erreur plus spécifique pour les connexions par téléphone
+      if (error.message && error.message.includes("phone")) {
+        toast.error("Erreur de connexion par téléphone. Vérifiez le format du numéro (+XXXXXXXXX) ou utilisez votre email.");
+      } else {
+        toast.error(error.message || "Erreur lors de la connexion");
+      }
       console.error("Error signing in:", error);
       throw error;
     } finally {
