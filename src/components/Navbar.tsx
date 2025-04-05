@@ -30,14 +30,13 @@ const Navbar: React.FC = () => {
 
   return (
     <nav className="fixed top-0 left-0 right-0 bg-white border-b border-border shadow-sm h-14 md:h-16 z-50">
-      <div className="h-full max-w-6xl mx-auto px-2 md:px-4 flex items-center justify-between">
+      <div className="h-full max-w-6xl mx-auto px-6 lg:space-x-6 md:px-4 flex items-center justify-between">
         {/* Logo */}
         <div className="flex items-center">
           <Logo size={isMobile ? "sm" : "md"} showText={!isMobile} />
         </div>
         
         {/* Central Navigation Icons */}
-        <div className="flex items-center justify-center space-x-2 lg:space-x-6 flex-1 mx-4">
           <Link 
             to="/feed" 
             className={`p-2 rounded-md ${isActive("/") || isActive("/feed") ? "text-green-600 bg-gray-100" : "text-gray-700 hover:bg-gray-100"}`}
@@ -50,7 +49,7 @@ const Navbar: React.FC = () => {
             to="/terrain" 
             className={`p-2 rounded-md ${isActive("/terrain") ? "text-green-600 bg-gray-100" : "text-gray-700 hover:bg-gray-100"}`}
             title="Terrains"
-          >
+          > 
             <MapPin size={22} />
           </Link>
 
@@ -65,7 +64,6 @@ const Navbar: React.FC = () => {
           <MessageBadge isActive={isActive("/messages")} />
           
           <Notifications />
-        </div>
         
         {/* User profile dropdown menu */}
         <DropdownMenu>

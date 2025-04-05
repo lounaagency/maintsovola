@@ -316,7 +316,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                 </div>
               )}
               
-              <div className="flex justify-end gap-2 mt-2">
+              <div className="h-full max-w-3xl mx-auto px-3 lg:space-x-3 md:px-3 flex items-center justify-between">
                 {type === 'pending' && (userRole === 'technicien' || userRole === 'superviseur') && (
                   <Button
                     variant="outline"
@@ -335,7 +335,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                     onClick={() => handleEdit(terrain)}
                   >
                     <Edit className="h-4 w-4 mr-1" />
-                    Modifier
+                    
                   </Button>
                 )}
                 {canDelete(terrain) && (
@@ -346,7 +346,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                     onClick={() => handleDeleteTerrain(terrain.id_terrain || 0)}
                   >
                     <Trash className="h-4 w-4 mr-1" />
-                    Supprimer
+                    
                   </Button>
                 )}
                 {canContactTechnicien(terrain) && (
@@ -356,7 +356,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                     onClick={() => handleContactTechnicien(terrain)}
                   >
                     <MessageSquare className="h-4 w-4 mr-1" />
-                    Contacter
+                    
                   </Button>
                 )}
               </div>
@@ -465,6 +465,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                       <Button 
                         variant="outline" 
                         size="sm"
+                        alt = "Contacter le technicien"
                         onClick={() => handleContactTechnicien(terrain)}
                       >
                         <MessageSquare className="h-4 w-4 mr-1" />

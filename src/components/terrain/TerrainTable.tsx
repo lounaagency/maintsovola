@@ -358,7 +358,6 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                   }}
                 >
                   <Eye className="h-4 w-4 mr-1" />
-                  Détails
                 </Button>
                 
                 {canValidate(terrain) && (
@@ -371,7 +370,6 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                     }}
                   >
                     <FileCheck className="h-4 w-4 mr-1" />
-                    Valider
                   </Button>
                 )}
                 
@@ -385,7 +383,6 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                     }}
                   >
                     <Edit className="h-4 w-4 mr-1" />
-                    Modifier
                   </Button>
                 )}
                 
@@ -400,7 +397,6 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                     }}
                   >
                     <Trash className="h-4 w-4 mr-1" />
-                    Supprimer
                   </Button>
                 )}
                 
@@ -414,7 +410,6 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                     }}
                   >
                     <MessageSquare className="h-4 w-4 mr-1" />
-                    Contacter
                   </Button>
                 )}
               </div>
@@ -553,7 +548,6 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                         onClick={() => handleViewDetailsClick(terrain)}
                       >
                         <Eye className="h-4 w-4 mr-1" />
-                        Détails
                       </Button>
                       
                       {canValidate(terrain) && (
@@ -563,7 +557,6 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                           onClick={() => handleValidate(terrain)}
                         >
                           <FileCheck className="h-4 w-4 mr-1" />
-                          Valider
                         </Button>
                       )}
                       
@@ -574,7 +567,6 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                           onClick={() => handleEditClick(terrain)}
                         >
                           <Edit className="h-4 w-4 mr-1" />
-                          Modifier
                         </Button>
                       )}
                       
@@ -586,7 +578,6 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                           onClick={() => handleDeleteClick(terrain)}
                         >
                           <Trash className="h-4 w-4 mr-1" />
-                          Supprimer
                         </Button>
                       )}
                       
@@ -597,7 +588,6 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                           onClick={() => handleContactTechnicien(terrain)}
                         >
                           <MessageSquare className="h-4 w-4 mr-1" />
-                          Contacter
                         </Button>
                       )}
                     </div>
