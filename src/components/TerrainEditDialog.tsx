@@ -59,6 +59,11 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
     }
   }, [isOpen, userRole]);
 
+  // Handle the success callback to pass the updated terrain data
+  const handleFormSuccess = (updatedTerrain: TerrainData) => {
+    onSubmitSuccess(updatedTerrain);
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
@@ -74,7 +79,7 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
         </DialogHeader>
         <TerrainForm
           initialData={terrain}
-          onSubmitSuccess={onSubmitSuccess}
+          onSubmitSuccess={handleFormSuccess}
           onCancel={onClose}
           userId={userId}
           userRole={userRole}

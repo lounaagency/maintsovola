@@ -16,7 +16,7 @@ import { sendNotification } from "@/types/notification";
 
 interface TerrainFormProps {
   initialData?: TerrainData;
-  onSubmitSuccess: () => void;
+  onSubmitSuccess: (updatedTerrain: TerrainData) => void;
   onCancel: () => void;
   userId: string;
   userRole?: string;
@@ -62,11 +62,11 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   
-  // Choose the appropriate validation schema based on the mode
-  const schema = isValidationMode ? validationSchema : terrainSchema;
+  // Choose the appropriate form schema
+  const formSchema = isValidationMode ? validationSchema : terrainSchema;
   
   const form = useForm<TerrainFormData>({
-    resolver: yupResolver(schema) as any,
+    resolver: yupResolver(formSchema as any),
     defaultValues: {
       id_terrain: initialData?.id_terrain,
       nom_terrain: initialData?.nom_terrain || "",
@@ -79,7 +79,11 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       acces_route: initialData?.acces_route || false,
       id_tantsaha: userRole === 'simple' ? userId : initialData?.id_tantsaha,
       photos: initialData?.photos || '',
-      date_validation: initialData?.date_validation || new Date().toISOString().split('T')[0],
+      date_validation: initialData?.date_validation 
+        ? typeof initialData.date_validation === 'string' 
+          ? initialData.date_validation 
+          : initialData.date_validation.toISOString().split('T')[0]
+        : new Date().toISOString().split('T')[0],
       rapport_validation: initialData?.rapport_validation || '',
       photos_validation: initialData?.photos_validation || '',
       validation_decision: initialData?.validation_decision || 'valider',
@@ -209,6 +213,11 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
         terrainData.photos_validation = allValidationPhotoUrls.join(',');
         terrainData.statut = data.validation_decision === 'valider';
         
+        // Ensure date_validation is a string for the API
+        if (terrainData.date_validation && typeof terrainData.date_validation !== 'string') {
+          terrainData.date_validation = terrainData.date_validation.toISOString();
+        }
+        
         const { error } = await supabase
           .from('terrain')
           .update(terrainData)
@@ -231,7 +240,12 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
         }
         
         toast.success(`Terrain ${data.validation_decision === 'valider' ? 'validé' : 'rejeté'} avec succès`);
-        onSubmitSuccess();
+        
+        // Return the updated terrain data for UI update
+        onSubmitSuccess({
+          ...initialData,
+          ...terrainData
+        });
       } else {
         // Regular terrain create/update mode
         // Upload new photos and combine with existing ones
@@ -244,29 +258,44 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
         // Ensure photos is always a string when sending to API
         terrainData.photos = allPhotoUrls.join(',');
         
+        console.log("Saving terrain data:", terrainData);
+        
         // Update existing terrain or create new one
         if (initialData?.id_terrain) {
           terrainData.statut = initialData.statut;
           
-          const { error } = await supabase
+          const { data: updatedTerrain, error } = await supabase
             .from('terrain')
             .update(terrainData)
-            .eq('id_terrain', initialData.id_terrain);
+            .eq('id_terrain', initialData.id_terrain)
+            .select('*')
+            .single();
             
           if (error) throw error;
           
+          console.log("Terrain updated:", updatedTerrain);
           toast.success("Terrain modifié avec succès");
+          
+          // Return the updated terrain data for UI update
+          onSubmitSuccess({
+            ...initialData,
+            ...terrainData,
+            ...updatedTerrain
+          });
         } else {
           terrainData.statut = false;
-          const { id_terrain, ...dataSansId } = terrainData; // Supprime id_terrain
+          // Remove id_terrain if creating a new terrain
+          const { id_terrain, ...dataSansId } = terrainData;
 
           const { data: newTerrain, error } = await supabase
             .from('terrain')
             .insert(dataSansId)
-            .select('id_terrain')
+            .select('*')
             .single();
             
           if (error) throw error;
+          
+          console.log("Terrain saved:", newTerrain);
           
           // Send notification to supervisors
           const { data: supervisors } = await supabase
@@ -288,9 +317,10 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
           }
           
           toast.success("Terrain ajouté avec succès");
+          
+          // Return the new terrain data for UI update
+          onSubmitSuccess(newTerrain);
         }
-        
-        onSubmitSuccess();
       }
     } catch (error: any) {
       toast.error("Erreur: " + error.message);
