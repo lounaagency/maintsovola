@@ -26,7 +26,7 @@ export interface TerrainData {
   date_validation?: string;
   rapport_validation?: string;
   photos_validation?: string | string[];
-  validation_decision?: 'valider' | 'rejetter';
+  validation_decision?: 'valider' | 'rejetter' | string;
   created_by?: string;
 }
 
@@ -47,7 +47,7 @@ export interface TerrainFormData {
   date_validation?: string;
   rapport_validation?: string;
   photos_validation?: string | string[];
-  validation_decision?: 'valider' | 'rejetter';
+  validation_decision?: 'valider' | 'rejetter' | string;
 }
 
 export interface ProjetStatus {
