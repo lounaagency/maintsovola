@@ -21,11 +21,11 @@ export interface TerrainData {
   superviseurNom?: string;
   tantsahaNom?: string;
   nom_terrain: string;
-  photos?: string | string[];
+  photos?: string;
   geom?: any;
   date_validation?: string;
   rapport_validation?: string;
-  photos_validation?: string | string[];
+  photos_validation?: string;
   validation_decision?: 'valider' | 'rejetter' | string;
   created_by?: string;
 }
@@ -41,12 +41,12 @@ export interface TerrainFormData {
   acces_eau: boolean;
   acces_route: boolean;
   nom_terrain: string;
-  photos?: string | string[];
+  photos?: string;
   geom?: number[][]; // Coordonnées du polygone [[lng, lat], [lng, lat], ...]
   // Validation fields
   date_validation?: string;
   rapport_validation?: string;
-  photos_validation?: string | string[];
+  photos_validation?: string;
   validation_decision?: 'valider' | 'rejetter' | string;
 }
 

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -64,7 +63,6 @@ export const Terrain = () => {
     }
   }, [userRole]);
 
-  // Fetch a single terrain by ID and return the enhanced terrain data
   const fetchSingleTerrain = async (terrainId: number): Promise<TerrainData | null> => {
     try {
       const { data, error } = await supabase
@@ -110,7 +108,6 @@ export const Terrain = () => {
         validation_decision: data.validation_decision
       };
       
-      // Get additional user details
       if (data.id_technicien) {
         const { data: techData } = await supabase
           .from('utilisateurs_par_role')
@@ -368,17 +365,20 @@ export const Terrain = () => {
     }
   };
 
-  // Update a terrain in the appropriate array (pending or validated) rather than reloading everything
   const updateTerrainInState = async (terrainId: number | undefined) => {
     if (!terrainId) return;
     
-    // Fetch the updated terrain data
-    const updatedTerrain = await fetchSingleTerrain(terrainId);
-    if (!updatedTerrain) return;
+    console.log("Updating terrain in state:", terrainId);
     
-    // Update the appropriate array based on the terrain's status
+    const updatedTerrain = await fetchSingleTerrain(terrainId);
+    if (!updatedTerrain) {
+      console.error("Failed to fetch updated terrain data for ID:", terrainId);
+      return;
+    }
+    
+    console.log("Got updated terrain data:", updatedTerrain);
+    
     if (updatedTerrain.statut) {
-      // Updated terrain is validated
       setPendingTerrains(prev => prev.filter(t => t.id_terrain !== terrainId));
       setValidatedTerrains(prev => {
         const exists = prev.some(t => t.id_terrain === terrainId);
@@ -389,7 +389,6 @@ export const Terrain = () => {
         }
       });
     } else {
-      // Updated terrain is pending
       setValidatedTerrains(prev => prev.filter(t => t.id_terrain !== terrainId));
       setPendingTerrains(prev => {
         const exists = prev.some(t => t.id_terrain === terrainId);
@@ -402,28 +401,38 @@ export const Terrain = () => {
     }
   };
 
-  // Add a new terrain to the state without reloading everything
   const addTerrainToState = async (terrainId: number) => {
-    const newTerrain = await fetchSingleTerrain(terrainId);
-    if (!newTerrain) return;
+    console.log("Adding new terrain to state:", terrainId);
     
-    // New terrains are always pending
+    const newTerrain = await fetchSingleTerrain(terrainId);
+    if (!newTerrain) {
+      console.error("Failed to fetch new terrain data for ID:", terrainId);
+      return;
+    }
+    
+    console.log("Got new terrain data:", newTerrain);
+    
     setPendingTerrains(prev => [...prev, newTerrain]);
   };
 
-  // Remove a terrain from the state without reloading everything
   const removeTerrainFromState = (terrainId: number | undefined) => {
     if (!terrainId) return;
+    
+    console.log("Removing terrain from state:", terrainId);
     
     setPendingTerrains(prev => prev.filter(t => t.id_terrain !== terrainId));
     setValidatedTerrains(prev => prev.filter(t => t.id_terrain !== terrainId));
   };
 
   const handleTerrainSaved = async (terrainId?: number, isNew: boolean = false) => {
+    console.log("Handling terrain saved:", terrainId, "isNew:", isNew);
+    
     if (isNew && terrainId) {
       await addTerrainToState(terrainId);
     } else if (terrainId) {
       await updateTerrainInState(terrainId);
+    } else {
+      console.warn("handleTerrainSaved called without a valid terrainId");
     }
     
     setIsTerrainDialogOpen(false);
@@ -431,9 +440,14 @@ export const Terrain = () => {
   };
 
   const handleTerrainDeleted = (terrainId?: number) => {
+    console.log("Handling terrain deleted:", terrainId);
+    
     if (terrainId) {
       removeTerrainFromState(terrainId);
+    } else {
+      console.warn("handleTerrainDeleted called without a valid terrainId");
     }
+    
     setIsTerrainDeleteOpen(false);
   };
 

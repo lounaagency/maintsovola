@@ -13,12 +13,12 @@ export interface TerrainFormData {
   acces_route: boolean;
   id_tantsaha?: string;
   geom?: number[][]; // Coordonnées du polygone [[lng, lat], [lng, lat], ...]
-  photos?: string | string[]; // Can be string (comma-separated) or array of strings
+  photos?: string; // Can be string (comma-separated)
   // Champs pour le rapport de validation
-  date_validation?: Date | string;
+  date_validation?: string;
   rapport_validation?: string;
-  photos_validation?: string | string[];
-  validation_decision?: 'valider' | 'rejetter';
+  photos_validation?: string;
+  validation_decision?: 'valider' | 'rejetter' | string;
 }
 
 // Convert from form data (strings) to API data (numbers)
@@ -48,11 +48,6 @@ export const convertFormDataToTerrainData = (formData: TerrainFormData): Terrain
     terrainData.geom = null;
   }
   
-  // Make sure photos is always a string for the API
-  if (Array.isArray(formData.photos)) {
-    terrainData.photos = formData.photos.join(',');
-  }
-  
   // Ajout des champs de validation si présents
   if (formData.date_validation) {
     terrainData.date_validation = formData.date_validation;
@@ -63,9 +58,7 @@ export const convertFormDataToTerrainData = (formData: TerrainFormData): Terrain
   }
   
   if (formData.photos_validation) {
-    terrainData.photos_validation = Array.isArray(formData.photos_validation) 
-      ? formData.photos_validation.join(',') 
-      : formData.photos_validation;
+    terrainData.photos_validation = formData.photos_validation;
   }
 
   if (formData.validation_decision) {
@@ -93,13 +86,6 @@ export const convertTerrainDataToFormData = (terrainData: TerrainData): TerrainF
     formData.surface_validee = terrainData.surface_validee;
   }
   
-  // Convert photos string to array if needed
-  if (typeof terrainData.photos === 'string') {
-    formData.photos = terrainData.photos.split(',').filter(p => p.trim() !== '');
-  } else if (Array.isArray(terrainData.photos)) {
-    formData.photos = terrainData.photos;
-  }
-  
   // Extraire les coordonnées du polygone si elles existent
   if (terrainData.geom && terrainData.geom.type === 'Polygon' && 
       terrainData.geom.coordinates && terrainData.geom.coordinates[0]) {
@@ -116,9 +102,7 @@ export const convertTerrainDataToFormData = (terrainData: TerrainData): TerrainF
   }
   
   if (terrainData.photos_validation) {
-    formData.photos_validation = typeof terrainData.photos_validation === 'string' 
-      ? terrainData.photos_validation.split(',').filter(p => p.trim() !== '')
-      : terrainData.photos_validation;
+    formData.photos_validation = terrainData.photos_validation;
   }
 
   if (terrainData.validation_decision) {
