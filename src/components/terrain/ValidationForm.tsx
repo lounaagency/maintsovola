@@ -229,9 +229,7 @@ const ValidationForm: React.FC<ValidationFormProps> = ({
               <Input 
                 type="date" 
                 {...field}
-                value={typeof field.value === 'string' ? field.value : 
-                      field.value ? format(field.value, 'yyyy-MM-dd') : 
-                      format(new Date(), 'yyyy-MM-dd')}
+                value={field.value instanceof Date ? format(field.value, 'yyyy-MM-dd') : field.value || format(new Date(), 'yyyy-MM-dd')}
               />
             </FormControl>
             <FormMessage />
@@ -294,7 +292,6 @@ const ValidationForm: React.FC<ValidationFormProps> = ({
             size="sm"
             onClick={() => validationFileInputRef.current?.click()}
             disabled={isUploading}
-            title="Ajouter des photos"
           >
             <Upload className="h-4 w-4 mr-2" />
             Ajouter des photos
@@ -322,7 +319,6 @@ const ValidationForm: React.FC<ValidationFormProps> = ({
                   type="button"
                   className="absolute top-1 right-1 bg-black bg-opacity-50 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                   onClick={() => removeValidationPhoto(index)}
-                  title="Supprimer la photo"
                 >
                   <X size={16} />
                 </button>

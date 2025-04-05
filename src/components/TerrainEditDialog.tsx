@@ -5,7 +5,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
 } from "@/components/ui/dialog";
 import TerrainForm from "@/components/terrain/TerrainForm";
 import { TerrainData } from "@/types/terrain";
@@ -15,7 +14,7 @@ interface TerrainEditDialogProps {
   isOpen: boolean;
   onClose: () => void;
   terrain?: TerrainData;
-  onSubmitSuccess: (terrainId?: number, isNew?: boolean) => void;
+  onSubmitSuccess: () => void;
   userId: string;
   userRole?: string;
   agriculteurs?: { id_utilisateur: string; nom: string; prenoms?: string }[];
@@ -60,10 +59,6 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
     }
   }, [isOpen, userRole]);
 
-  const handleSubmitSuccess = (terrainId?: number, isNew?: boolean) => {
-    onSubmitSuccess(terrainId, isNew);
-  };
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
@@ -76,18 +71,10 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
               : "Ajouter un terrain"
             }
           </DialogTitle>
-          <DialogDescription>
-            {isValidationMode 
-              ? "Validez ou rejetez ce terrain après inspection"
-              : terrain?.id_terrain 
-                ? "Modifiez les informations de ce terrain" 
-                : "Ajoutez un nouveau terrain"
-            }
-          </DialogDescription>
         </DialogHeader>
         <TerrainForm
           initialData={terrain}
-          onSubmitSuccess={handleSubmitSuccess}
+          onSubmitSuccess={onSubmitSuccess}
           onCancel={onClose}
           userId={userId}
           userRole={userRole}

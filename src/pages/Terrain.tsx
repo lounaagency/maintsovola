@@ -63,94 +63,6 @@ export const Terrain = () => {
     }
   }, [userRole]);
 
-  const fetchSingleTerrain = async (terrainId: number): Promise<TerrainData | null> => {
-    try {
-      const { data, error } = await supabase
-        .from('terrain')
-        .select(`
-          *,
-          region:id_region(nom_region),
-          district:id_district(nom_district),
-          commune:id_commune(nom_commune)
-        `)
-        .eq('id_terrain', terrainId)
-        .single();
-        
-      if (error) throw error;
-      if (!data) return null;
-      
-      const terrainData: TerrainData = {
-        id_terrain: data.id_terrain,
-        nom_terrain: data.nom_terrain || `Terrain #${data.id_terrain}`,
-        surface_proposee: data.surface_proposee,
-        surface_validee: data.surface_validee,
-        acces_eau: data.acces_eau,
-        acces_route: data.acces_route,
-        id_tantsaha: data.id_tantsaha,
-        id_technicien: data.id_technicien,
-        id_superviseur: data.id_superviseur,
-        id_region: data.id_region,
-        id_district: data.id_district,
-        id_commune: data.id_commune,
-        statut: data.statut,
-        archive: data.archive,
-        geom: data.geom,
-        photos: data.photos || '',
-        photos_validation: data.photos_validation || '',
-        rapport_validation: data.rapport_validation || '',
-        date_validation: data.date_validation,
-        region_name: data.region?.nom_region || 'Non spécifié',
-        district_name: data.district?.nom_district || 'Non spécifié',
-        commune_name: data.commune?.nom_commune || 'Non spécifié',
-        techniqueNom: 'Non assigné',
-        superviseurNom: 'Non assigné',
-        tantsahaNom: 'Non spécifié',
-        validation_decision: data.validation_decision
-      };
-      
-      if (data.id_technicien) {
-        const { data: techData } = await supabase
-          .from('utilisateurs_par_role')
-          .select('nom, prenoms')
-          .eq('id_utilisateur', data.id_technicien)
-          .maybeSingle();
-          
-        if (techData) {
-          terrainData.techniqueNom = `${techData.nom} ${techData.prenoms || ''}`.trim();
-        }
-      }
-      
-      if (data.id_superviseur) {
-        const { data: supervData } = await supabase
-          .from('utilisateurs_par_role')
-          .select('nom, prenoms')
-          .eq('id_utilisateur', data.id_superviseur)
-          .maybeSingle();
-          
-        if (supervData) {
-          terrainData.superviseurNom = `${supervData.nom} ${supervData.prenoms || ''}`.trim();
-        }
-      }
-      
-      if (data.id_tantsaha) {
-        const { data: ownerData } = await supabase
-          .from('utilisateurs_par_role')
-          .select('nom, prenoms')
-          .eq('id_utilisateur', data.id_tantsaha)
-          .maybeSingle();
-          
-        if (ownerData) {
-          terrainData.tantsahaNom = `${ownerData.nom} ${ownerData.prenoms || ''}`.trim();
-        }
-      }
-      
-      return terrainData;
-    } catch (error) {
-      console.error('Error fetching single terrain:', error);
-      return null;
-    }
-  };
-
   const fetchTerrains = useCallback(async () => {
     if (!user) return;
 
@@ -208,8 +120,7 @@ export const Terrain = () => {
         commune_name: terrain.commune?.nom_commune || 'Non spécifié',
         techniqueNom: 'Non assigné',
         superviseurNom: 'Non assigné',
-        tantsahaNom: 'Non spécifié',
-        validation_decision: terrain.validation_decision
+        tantsahaNom: 'Non spécifié'
       }));
       
       const enhancedTerrainData = await Promise.all(terrainData.map(async (terrain) => {
@@ -365,89 +276,14 @@ export const Terrain = () => {
     }
   };
 
-  const updateTerrainInState = async (terrainId: number | undefined) => {
-    if (!terrainId) return;
-    
-    console.log("Updating terrain in state:", terrainId);
-    
-    const updatedTerrain = await fetchSingleTerrain(terrainId);
-    if (!updatedTerrain) {
-      console.error("Failed to fetch updated terrain data for ID:", terrainId);
-      return;
-    }
-    
-    console.log("Got updated terrain data:", updatedTerrain);
-    
-    if (updatedTerrain.statut) {
-      setPendingTerrains(prev => prev.filter(t => t.id_terrain !== terrainId));
-      setValidatedTerrains(prev => {
-        const exists = prev.some(t => t.id_terrain === terrainId);
-        if (exists) {
-          return prev.map(t => t.id_terrain === terrainId ? updatedTerrain : t);
-        } else {
-          return [...prev, updatedTerrain];
-        }
-      });
-    } else {
-      setValidatedTerrains(prev => prev.filter(t => t.id_terrain !== terrainId));
-      setPendingTerrains(prev => {
-        const exists = prev.some(t => t.id_terrain === terrainId);
-        if (exists) {
-          return prev.map(t => t.id_terrain === terrainId ? updatedTerrain : t);
-        } else {
-          return [...prev, updatedTerrain];
-        }
-      });
-    }
-  };
-
-  const addTerrainToState = async (terrainId: number) => {
-    console.log("Adding new terrain to state:", terrainId);
-    
-    const newTerrain = await fetchSingleTerrain(terrainId);
-    if (!newTerrain) {
-      console.error("Failed to fetch new terrain data for ID:", terrainId);
-      return;
-    }
-    
-    console.log("Got new terrain data:", newTerrain);
-    
-    setPendingTerrains(prev => [...prev, newTerrain]);
-  };
-
-  const removeTerrainFromState = (terrainId: number | undefined) => {
-    if (!terrainId) return;
-    
-    console.log("Removing terrain from state:", terrainId);
-    
-    setPendingTerrains(prev => prev.filter(t => t.id_terrain !== terrainId));
-    setValidatedTerrains(prev => prev.filter(t => t.id_terrain !== terrainId));
-  };
-
-  const handleTerrainSaved = async (terrainId?: number, isNew: boolean = false) => {
-    console.log("Handling terrain saved:", terrainId, "isNew:", isNew);
-    
-    if (isNew && terrainId) {
-      await addTerrainToState(terrainId);
-    } else if (terrainId) {
-      await updateTerrainInState(terrainId);
-    } else {
-      console.warn("handleTerrainSaved called without a valid terrainId");
-    }
-    
+  const handleTerrainSaved = () => {
+    fetchTerrains();
     setIsTerrainDialogOpen(false);
     setIsTerrainValidateOpen(false);
   };
 
-  const handleTerrainDeleted = (terrainId?: number) => {
-    console.log("Handling terrain deleted:", terrainId);
-    
-    if (terrainId) {
-      removeTerrainFromState(terrainId);
-    } else {
-      console.warn("handleTerrainDeleted called without a valid terrainId");
-    }
-    
+  const handleTerrainDeleted = () => {
+    fetchTerrains();
     setIsTerrainDeleteOpen(false);
   };
 
@@ -505,10 +341,7 @@ export const Terrain = () => {
         <TabsContent value="terrains" className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-lg font-semibold">Mes terrains</h2>
-            <Button 
-              onClick={handleCreateTerrain}
-              title="Ajouter un nouveau terrain"
-            >
+            <Button onClick={handleCreateTerrain}>
               <Plus className="mr-2 h-4 w-4" />
               Nouveau terrain
             </Button>
@@ -533,7 +366,7 @@ export const Terrain = () => {
                     terrains={pendingTerrains.filter(t => !t.id_technicien)}
                     type="pending"
                     userRole={userRole}
-                    onTerrainUpdate={updateTerrainInState}
+                    onTerrainUpdate={fetchTerrains}
                     techniciens={techniciens}
                     onEdit={handleEditTerrain}
                     onViewDetails={handleViewTerrainDetails}
@@ -554,7 +387,7 @@ export const Terrain = () => {
                     terrains={pendingTerrains.filter(t => t.id_technicien)}
                     type="pending"
                     userRole={userRole}
-                    onTerrainUpdate={updateTerrainInState}
+                    onTerrainUpdate={fetchTerrains}
                     onEdit={handleEditTerrain}
                     onViewDetails={handleViewTerrainDetails}
                     onValidate={handleValidateTerrain}
@@ -574,7 +407,6 @@ export const Terrain = () => {
                     terrains={validatedTerrains}
                     type="validated"
                     userRole={userRole}
-                    onTerrainUpdate={updateTerrainInState}
                     onEdit={handleEditTerrain}
                     onViewDetails={handleViewTerrainDetails}
                     onDelete={handleDeleteTerrain}
@@ -596,7 +428,7 @@ export const Terrain = () => {
                     terrains={pendingTerrains.filter(t => t.id_technicien === user.id)}
                     type="pending"
                     userRole={userRole}
-                    onTerrainUpdate={updateTerrainInState}
+                    onTerrainUpdate={fetchTerrains}
                     onEdit={handleEditTerrain}
                     onViewDetails={handleViewTerrainDetails}
                     onValidate={handleValidateTerrain}
@@ -617,7 +449,6 @@ export const Terrain = () => {
                     terrains={validatedTerrains.filter(t => t.id_technicien === user.id)}
                     type="validated"
                     userRole={userRole}
-                    onTerrainUpdate={updateTerrainInState}
                     onEdit={handleEditTerrain}
                     onViewDetails={handleViewTerrainDetails}
                     onDelete={handleDeleteTerrain}
@@ -639,7 +470,7 @@ export const Terrain = () => {
                     terrains={pendingTerrains}
                     type="pending"
                     userRole={userRole}
-                    onTerrainUpdate={updateTerrainInState}
+                    onTerrainUpdate={fetchTerrains}
                     onEdit={handleEditTerrain}
                     onViewDetails={handleViewTerrainDetails}
                     onDelete={handleDeleteTerrain}
@@ -659,7 +490,6 @@ export const Terrain = () => {
                     terrains={validatedTerrains}
                     type="validated"
                     userRole={userRole}
-                    onTerrainUpdate={updateTerrainInState}
                     onViewDetails={handleViewTerrainDetails}
                     onContactTechnicien={handleContactTechnicien}
                   />
@@ -697,7 +527,7 @@ export const Terrain = () => {
               isOpen={isTerrainCardOpen}
               onClose={() => setIsTerrainCardOpen(false)}
               terrain={selectedTerrain}
-              onTerrainUpdate={updateTerrainInState}
+              onTerrainUpdate={fetchTerrains}
             />
           )}
           

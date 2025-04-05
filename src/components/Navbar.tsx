@@ -68,7 +68,7 @@ const Navbar: React.FC = () => {
         {/* User profile dropdown menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex items-center space-x-2 focus:outline-none" title="Profil">
+            <button className="flex items-center space-x-2 focus:outline-none">
               <UserAvatar
                 src={profile?.photo_profil}
                 alt={profile?.nom || "Profile"}

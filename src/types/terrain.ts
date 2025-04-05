@@ -21,13 +21,12 @@ export interface TerrainData {
   superviseurNom?: string;
   tantsahaNom?: string;
   nom_terrain: string;
-  photos?: string;
+  photos?: string | string[];
   geom?: any;
-  date_validation?: string;
+  date_validation?: Date | string;
   rapport_validation?: string;
-  photos_validation?: string;
-  validation_decision?: 'valider' | 'rejetter' | string;
-  created_by?: string;
+  photos_validation?: string | string[];
+  validation_decision?: 'valider' | 'rejetter';
 }
 
 export interface TerrainFormData {
@@ -41,13 +40,13 @@ export interface TerrainFormData {
   acces_eau: boolean;
   acces_route: boolean;
   nom_terrain: string;
-  photos?: string;
+  photos?: string | string[];
   geom?: number[][]; // Coordonnées du polygone [[lng, lat], [lng, lat], ...]
   // Validation fields
-  date_validation?: string;
+  date_validation?: Date | string;
   rapport_validation?: string;
-  photos_validation?: string;
-  validation_decision?: 'valider' | 'rejetter' | string;
+  photos_validation?: string | string[];
+  validation_decision?: 'valider' | 'rejetter';
 }
 
 export interface ProjetStatus {
