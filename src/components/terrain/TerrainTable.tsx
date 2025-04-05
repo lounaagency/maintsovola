@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { TerrainData, TerrainSortOptions, TerrainFilters } from "@/types/terrain";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,32 +48,29 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
   const [sortOption, setSortOption] = useState<TerrainSortOptions>({ field: 'id_terrain', direction: 'desc' });
   const [filters, setFilters] = useState<TerrainFilters>({});
   const [searchQuery, setSearchQuery] = useState('');
+  const [localTerrains, setLocalTerrains] = useState<TerrainData[]>(terrains);
 
-  // Filter and sort terrains
+  useEffect(() => {
+    setLocalTerrains(terrains);
+  }, [terrains]);
+
   const filteredTerrains = useMemo(() => {
-    
-    if (!terrains || terrains.length === 0) {
+    if (!localTerrains || localTerrains.length === 0) {
       return [];
     }
     
-    let filtered = [...terrains];
+    let filtered = [...localTerrains];
     
-    // Filter by status (pending/validated)
     filtered = filtered.filter(terrain => 
       type === 'validated' ? terrain.statut === true : terrain.statut === false
     );
     
-    // Additional filters based on user role
     if (['agriculteur', 'investisseur', 'simple'].includes(userRole || '')) {
-      // Simple user only sees their own terrains
       filtered = filtered.filter(terrain => terrain.id_tantsaha === user?.id);
     } else if (userRole === 'technicien') {
-      // Technician only sees terrains assigned to them
       filtered = filtered.filter(terrain => terrain.id_technicien === user?.id);
     }
-    // Supervisors see all terrains, so no additional filtering for them
     
-    // Apply search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(terrain => 
@@ -85,7 +82,6 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
       );
     }
     
-    // Apply other filters
     if (filters.region) {
       filtered = filtered.filter(terrain => terrain.id_region === filters.region);
     }
@@ -102,7 +98,6 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
       filtered = filtered.filter(terrain => terrain.acces_route === filters.hasRoad);
     }
     
-    // Apply sorting
     filtered.sort((a, b) => {
       const aValue = a[sortOption.field] as any;
       const bValue = b[sortOption.field] as any;
@@ -118,7 +113,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
       return sortOption.direction === 'asc' ? comparison : -comparison;
     });
     return filtered;
-  }, [terrains, type, userRole, user, filters, searchQuery, sortOption]);
+  }, [localTerrains, type, userRole, user, filters, searchQuery, sortOption]);
 
   const handleAssignTechnician = async (terrainId: number, technicianId: string) => {
     try {
@@ -127,17 +122,35 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
         return;
       }
 
-      const { error } = await supabase
+      const { error, data } = await supabase
         .from('terrain')
         .update({ 
           id_technicien: technicianId,
           id_superviseur: user?.id
         })
-        .eq('id_terrain', terrainId);
+        .eq('id_terrain', terrainId)
+        .select();
 
       if (error) throw error;
       
-      // Notify the technician
+      if (data && data.length > 0) {
+        const technician = techniciens?.find(t => t.id_utilisateur === technicianId);
+        const techName = technician ? `${technician.nom} ${technician.prenoms || ''}` : '';
+        
+        setLocalTerrains(prevTerrains => 
+          prevTerrains.map(t => {
+            if (t.id_terrain === terrainId) {
+              return { 
+                ...t, 
+                ...data[0],
+                techniqueNom: techName
+              };
+            }
+            return t;
+          })
+        );
+      }
+      
       if (user) {
         await sendNotification(
           supabase,
@@ -150,7 +163,6 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
           terrainId
         );
         
-        // Notify the terrain owner
         const terrain = terrains.find(t => t.id_terrain === terrainId);
         if (terrain && terrain.id_tantsaha) {
           await sendNotification(
@@ -183,18 +195,17 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
   const canEdit = (terrain: TerrainData): boolean => {
     if (!user) return false;
     
-    // Simple user can edit their own non-validated terrains
     if (['agriculteur', 'investisseur', 'simple'].includes(userRole || '') && terrain.id_tantsaha === user.id) {
       return terrain.statut === false;
     }
     
-    // Technician can edit terrains assigned to them
     if (userRole === 'technicien' && terrain.id_technicien === user.id) {
       return true;
     }
     
-    // Supervisor can edit any terrain
-    if (userRole === 'superviseur') return true;
+    if (userRole === 'superviseur') {
+      return true;
+    }
     
     return false;
   };
@@ -202,13 +213,13 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
   const canDelete = (terrain: TerrainData): boolean => {
     if (!user) return false;
     
-    // Simple user can delete their own non-validated terrains
     if (['agriculteur', 'investisseur', 'simple'].includes(userRole || '') && terrain.id_tantsaha === user.id) {
       return terrain.statut === false;
     }
     
-    // Supervisor can delete any terrain
-    if (userRole === 'superviseur') return true;
+    if (userRole === 'superviseur') {
+      return true;
+    }
     
     return false;
   };
@@ -356,6 +367,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                     e.stopPropagation();
                     handleViewDetailsClick(terrain);
                   }}
+                  title="Voir les détails"
                 >
                   <Eye className="h-4 w-4 mr-1" />
                 </Button>
@@ -368,6 +380,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                       e.stopPropagation();
                       handleValidate(terrain);
                     }}
+                    title="Valider ce terrain"
                   >
                     <FileCheck className="h-4 w-4 mr-1" />
                   </Button>
@@ -381,6 +394,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                       e.stopPropagation();
                       handleEditClick(terrain);
                     }}
+                    title="Modifier ce terrain"
                   >
                     <Edit className="h-4 w-4 mr-1" />
                   </Button>
@@ -395,6 +409,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                       e.stopPropagation();
                       handleDeleteClick(terrain);
                     }}
+                    title="Supprimer ce terrain"
                   >
                     <Trash className="h-4 w-4 mr-1" />
                   </Button>
@@ -408,6 +423,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                       e.stopPropagation();
                       handleContactTechnicien(terrain);
                     }}
+                    title="Contacter le technicien"
                   >
                     <MessageSquare className="h-4 w-4 mr-1" />
                   </Button>
@@ -546,8 +562,9 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                         variant="outline" 
                         size="sm"
                         onClick={() => handleViewDetailsClick(terrain)}
+                        title="Voir les détails"
                       >
-                        <Eye className="h-4 w-4 mr-1" />
+                        <Eye className="h-4 w-4" />
                       </Button>
                       
                       {canValidate(terrain) && (
@@ -555,8 +572,9 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                           variant="outline"
                           size="sm"
                           onClick={() => handleValidate(terrain)}
+                          title="Valider ce terrain"
                         >
-                          <FileCheck className="h-4 w-4 mr-1" />
+                          <FileCheck className="h-4 w-4" />
                         </Button>
                       )}
                       
@@ -565,8 +583,9 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                           variant="outline" 
                           size="sm"
                           onClick={() => handleEditClick(terrain)}
+                          title="Modifier ce terrain"
                         >
-                          <Edit className="h-4 w-4 mr-1" />
+                          <Edit className="h-4 w-4" />
                         </Button>
                       )}
                       
@@ -576,8 +595,9 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                           size="sm"
                           className="text-red-500 hover:text-red-700"
                           onClick={() => handleDeleteClick(terrain)}
+                          title="Supprimer ce terrain"
                         >
-                          <Trash className="h-4 w-4 mr-1" />
+                          <Trash className="h-4 w-4" />
                         </Button>
                       )}
                       
@@ -586,8 +606,9 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                           variant="outline" 
                           size="sm"
                           onClick={() => handleContactTechnicien(terrain)}
+                          title="Contacter le technicien"
                         >
-                          <MessageSquare className="h-4 w-4 mr-1" />
+                          <MessageSquare className="h-4 w-4" />
                         </Button>
                       )}
                     </div>

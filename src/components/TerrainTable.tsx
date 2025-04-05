@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { TerrainData } from "@/types/terrain";
 import { Button } from "@/components/ui/button";
 import { 
@@ -38,6 +38,12 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
 }) => {
   const { user } = useAuth();
   const isMobile = useIsMobile();
+  const [localTerrains, setLocalTerrains] = useState<TerrainData[]>(terrains);
+
+  // Update local terrains when the terrains prop changes
+  useEffect(() => {
+    setLocalTerrains(terrains);
+  }, [terrains]);
 
   const handleValidate = async (terrainId: number) => {
     try {
@@ -49,21 +55,22 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
 
       // If user is technicien, check if they are assigned to this terrain
       if (userRole === 'technicien') {
-        const terrain = terrains.find(t => t.id_terrain === terrainId);
+        const terrain = localTerrains.find(t => t.id_terrain === terrainId);
         if (terrain?.id_technicien !== user?.id) {
           toast.error("Vous pouvez uniquement valider les terrains qui vous sont assignés");
           return;
         }
       }
 
-      const terrain = terrains.find(t => t.id_terrain === terrainId);
-      const { error } = await supabase
+      const terrain = localTerrains.find(t => t.id_terrain === terrainId);
+      const { error, data } = await supabase
         .from('terrain')
         .update({ 
           statut: true,
           surface_validee: terrain?.surface_proposee
         })
-        .eq('id_terrain', terrainId);
+        .eq('id_terrain', terrainId)
+        .select();
 
       if (error) throw error;
       
@@ -81,8 +88,16 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
         );
       }
       
+      // Update the local state instead of triggering a full reload
+      if (data && data.length > 0) {
+        setLocalTerrains(prevTerrains => 
+          prevTerrains.map(t => t.id_terrain === terrainId ? { ...t, ...data[0] } : t)
+        );
+      }
+      
       toast.success("Le terrain a été validé avec succès");
       
+      // Still call onTerrainUpdate for parent components that need to be notified
       if (onTerrainUpdate) onTerrainUpdate();
     } catch (error) {
       console.error('Erreur lors de la validation du terrain:', error);
@@ -95,7 +110,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
       if (!user) return;
       
       // Check if user has permission to delete
-      const terrain = terrains.find(t => t.id_terrain === terrainId);
+      const terrain = localTerrains.find(t => t.id_terrain === terrainId);
       if (userRole === 'simple' && terrain?.id_tantsaha !== user.id) {
         toast.error("Vous pouvez uniquement supprimer vos propres terrains");
         return;
@@ -127,8 +142,14 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
 
       if (error) throw error;
       
+      // Update the local state to remove the deleted terrain
+      setLocalTerrains(prevTerrains => 
+        prevTerrains.filter(t => t.id_terrain !== terrainId)
+      );
+      
       toast.success("Le terrain a été supprimé avec succès");
       
+      // Still call onTerrainUpdate for parent components that need to be notified
       if (onTerrainUpdate) onTerrainUpdate();
     } catch (error) {
       console.error('Erreur lors de la suppression du terrain:', error);
@@ -144,12 +165,33 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
         return;
       }
 
-      const { error } = await supabase
+      const { error, data } = await supabase
         .from('terrain')
         .update({ id_technicien: technicianId })
-        .eq('id_terrain', terrainId);
+        .eq('id_terrain', terrainId)
+        .select();
 
       if (error) throw error;
+      
+      // Update the local state instead of triggering a full reload
+      if (data && data.length > 0) {
+        // Find the technician name for display
+        const technician = techniciens?.find(t => t.id_utilisateur === technicianId);
+        const techName = technician ? `${technician.nom} ${technician.prenoms || ''}` : '';
+        
+        setLocalTerrains(prevTerrains => 
+          prevTerrains.map(t => {
+            if (t.id_terrain === terrainId) {
+              return { 
+                ...t, 
+                ...data[0],
+                techniqueNom: techName // Add the technician name for display purposes
+              };
+            }
+            return t;
+          })
+        );
+      }
       
       // Notify the technician
       if (user) {
@@ -166,6 +208,8 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
       }
       
       toast.success("Technicien assigné avec succès!");
+      
+      // Still call onTerrainUpdate for parent components that need to be notified
       if (onTerrainUpdate) onTerrainUpdate();
     } catch (error) {
       console.error("Error assigning technician:", error);
@@ -231,8 +275,8 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
 
   // Filter terrains based on user role and terrain status
   const filterTerrainsByRole = () => {
-    console.log('Filtering terrains by role:', { userRole, terrainCount: terrains.length, type });
-    let filtered = [...terrains];
+    console.log('Filtering terrains by role:', { userRole, terrainCount: localTerrains.length, type });
+    let filtered = [...localTerrains];
     
     // Filter by status (pending/validated)
     filtered = filtered.filter(terrain => 
@@ -254,6 +298,50 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
   };
 
   const filteredTerrains = filterTerrainsByRole();
+
+  const canEdit = (terrain: TerrainData): boolean => {
+    if (!user) return false;
+    
+    // Simple users can edit their own non-validated terrains
+    if (['agriculteur', 'investisseur', 'simple'].includes(userRole || '') && terrain.id_tantsaha === user.id) {
+      return terrain.statut === false;
+    }
+    
+    // Technician can edit terrains assigned to them
+    if (userRole === 'technicien' && terrain.id_technicien === user.id) {
+      return true;
+    }
+    
+    // Supervisor can edit any terrain
+    if (userRole === 'superviseur') return true;
+    
+    return false;
+  };
+
+  const canDelete = (terrain: TerrainData): boolean => {
+    if (!user) return false;
+    
+    // Simple users can delete their own non-validated terrains
+    if (['agriculteur', 'investisseur', 'simple'].includes(userRole || '') && terrain.id_tantsaha === user.id) {
+      return terrain.statut === false;
+    }
+    
+    // Supervisor can delete any terrain
+    if (userRole === 'superviseur') return true;
+    
+    return false;
+  };
+
+  const canContactTechnicien = (terrain: TerrainData): boolean => {
+    if (!user) return false;
+    
+    // Simple users can contact the technician assigned to their validated terrains
+    if (['agriculteur', 'investisseur', 'simple'].includes(userRole || '') && terrain.id_tantsaha === user.id) {
+      return terrain.statut === true && !!terrain.id_technicien;
+    }
+    
+    return false;
+  };
 
   if (isMobile) {
     return (
@@ -297,6 +385,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                     <select
                       className="border p-1 rounded-md w-full text-sm"
                       onChange={(e) => handleAssignTechnician(terrain.id_terrain || 0, e.target.value)}
+                      title="Assigner un technicien"
                     >
                       <option value="">Sélectionner un technicien</option>
                       {techniciens?.map((tech) => (
@@ -323,9 +412,9 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                     size="sm"
                     onClick={() => handleValidate(terrain.id_terrain || 0)}
                     disabled={userRole === 'technicien' && terrain.id_technicien !== user?.id}
+                    title="Valider ce terrain"
                   >
-                    <Check className="h-4 w-4 mr-1" />
-                    Valider
+                    <Check className="h-4 w-4" />
                   </Button>
                 )}
                 {canEdit(terrain) && (
@@ -333,9 +422,9 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                     variant="outline" 
                     size="sm"
                     onClick={() => handleEdit(terrain)}
+                    title="Modifier ce terrain"
                   >
-                    <Edit className="h-4 w-4 mr-1" />
-                    
+                    <Edit className="h-4 w-4" />
                   </Button>
                 )}
                 {canDelete(terrain) && (
@@ -344,9 +433,9 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                     size="sm"
                     className="text-red-500 hover:text-red-700"
                     onClick={() => handleDeleteTerrain(terrain.id_terrain || 0)}
+                    title="Supprimer ce terrain"
                   >
-                    <Trash className="h-4 w-4 mr-1" />
-                    
+                    <Trash className="h-4 w-4" />
                   </Button>
                 )}
                 {canContactTechnicien(terrain) && (
@@ -354,9 +443,9 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                     variant="outline" 
                     size="sm"
                     onClick={() => handleContactTechnicien(terrain)}
+                    title="Contacter le technicien"
                   >
-                    <MessageSquare className="h-4 w-4 mr-1" />
-                    
+                    <MessageSquare className="h-4 w-4" />
                   </Button>
                 )}
               </div>
@@ -413,6 +502,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                       <select
                         className="border p-1 rounded-md w-full"
                         onChange={(e) => handleAssignTechnician(terrain.id_terrain || 0, e.target.value)}
+                        title="Assigner un technicien"
                       >
                         <option value="">Sélectionner un technicien</option>
                         {techniciens?.map((tech) => (
@@ -435,9 +525,9 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                         size="sm"
                         onClick={() => handleValidate(terrain.id_terrain || 0)}
                         disabled={userRole === 'technicien' && terrain.id_technicien !== user?.id}
+                        title="Valider ce terrain"
                       >
-                        <Check className="h-4 w-4 mr-1" />
-                        Valider
+                        <Check className="h-4 w-4" />
                       </Button>
                     )}
                     {canEdit(terrain) && (
@@ -445,9 +535,9 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                         variant="outline" 
                         size="sm"
                         onClick={() => handleEdit(terrain)}
+                        title="Modifier ce terrain"
                       >
-                        <Edit className="h-4 w-4 mr-1" />
-                        Modifier
+                        <Edit className="h-4 w-4" />
                       </Button>
                     )}
                     {canDelete(terrain) && (
@@ -456,20 +546,19 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                         size="sm"
                         className="text-red-500 hover:text-red-700"
                         onClick={() => handleDeleteTerrain(terrain.id_terrain || 0)}
+                        title="Supprimer ce terrain"
                       >
-                        <Trash className="h-4 w-4 mr-1" />
-                        Supprimer
+                        <Trash className="h-4 w-4" />
                       </Button>
                     )}
                     {canContactTechnicien(terrain) && (
                       <Button 
                         variant="outline" 
                         size="sm"
-                        alt = "Contacter le technicien"
                         onClick={() => handleContactTechnicien(terrain)}
+                        title="Contacter le technicien"
                       >
-                        <MessageSquare className="h-4 w-4 mr-1" />
-                        Contacter
+                        <MessageSquare className="h-4 w-4" />
                       </Button>
                     )}
                   </div>
