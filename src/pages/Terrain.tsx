@@ -238,6 +238,45 @@ export const Terrain = () => {
     }
   }, [user, fetchTerrains, fetchProjects, fetchTechniciens, fetchAgriculteurs]);
 
+  const handleTerrainUpdate = (updatedTerrain?: TerrainData, action?: 'add' | 'update' | 'delete') => {
+    if (!updatedTerrain) return;
+    
+    console.log("Handling terrain update:", { action, terrain: updatedTerrain });
+    
+    if (action === 'delete') {
+      setPendingTerrains(prev => prev.filter(t => t.id_terrain !== updatedTerrain.id_terrain));
+      setValidatedTerrains(prev => prev.filter(t => t.id_terrain !== updatedTerrain.id_terrain));
+    } else if (action === 'add') {
+      if (updatedTerrain.statut) {
+        setValidatedTerrains(prev => [updatedTerrain, ...prev]);
+      } else {
+        setPendingTerrains(prev => [updatedTerrain, ...prev]);
+      }
+    } else if (action === 'update') {
+      if (updatedTerrain.statut) {
+        setPendingTerrains(prev => prev.filter(t => t.id_terrain !== updatedTerrain.id_terrain));
+        setValidatedTerrains(prev => {
+          const exists = prev.some(t => t.id_terrain === updatedTerrain.id_terrain);
+          if (exists) {
+            return prev.map(t => t.id_terrain === updatedTerrain.id_terrain ? updatedTerrain : t);
+          } else {
+            return [updatedTerrain, ...prev];
+          }
+        });
+      } else {
+        setValidatedTerrains(prev => prev.filter(t => t.id_terrain !== updatedTerrain.id_terrain));
+        setPendingTerrains(prev => {
+          const exists = prev.some(t => t.id_terrain === updatedTerrain.id_terrain);
+          if (exists) {
+            return prev.map(t => t.id_terrain === updatedTerrain.id_terrain ? updatedTerrain : t);
+          } else {
+            return [updatedTerrain, ...prev];
+          }
+        });
+      }
+    }
+  };
+
   const handleCreateTerrain = () => {
     setSelectedTerrain(null);
     setIsTerrainDialogOpen(true);
@@ -276,14 +315,26 @@ export const Terrain = () => {
     }
   };
 
-  const handleTerrainSaved = () => {
-    fetchTerrains();
+  const handleTerrainSaved = (updatedTerrain: TerrainData) => {
+    console.log("Terrain saved:", updatedTerrain);
+    
+    const isNewTerrain = !pendingTerrains.some(t => t.id_terrain === updatedTerrain.id_terrain) && 
+                         !validatedTerrains.some(t => t.id_terrain === updatedTerrain.id_terrain);
+                         
+    if (isNewTerrain) {
+      handleTerrainUpdate(updatedTerrain, 'add');
+    } else {
+      handleTerrainUpdate(updatedTerrain, 'update');
+    }
+    
     setIsTerrainDialogOpen(false);
     setIsTerrainValidateOpen(false);
   };
 
-  const handleTerrainDeleted = () => {
-    fetchTerrains();
+  const handleTerrainDeleted = (deletedTerrain?: TerrainData) => {
+    if (deletedTerrain) {
+      handleTerrainUpdate(deletedTerrain, 'delete');
+    }
     setIsTerrainDeleteOpen(false);
   };
 
@@ -366,7 +417,7 @@ export const Terrain = () => {
                     terrains={pendingTerrains.filter(t => !t.id_technicien)}
                     type="pending"
                     userRole={userRole}
-                    onTerrainUpdate={fetchTerrains}
+                    onTerrainUpdate={handleTerrainUpdate}
                     techniciens={techniciens}
                     onEdit={handleEditTerrain}
                     onViewDetails={handleViewTerrainDetails}
@@ -387,7 +438,7 @@ export const Terrain = () => {
                     terrains={pendingTerrains.filter(t => t.id_technicien)}
                     type="pending"
                     userRole={userRole}
-                    onTerrainUpdate={fetchTerrains}
+                    onTerrainUpdate={handleTerrainUpdate}
                     onEdit={handleEditTerrain}
                     onViewDetails={handleViewTerrainDetails}
                     onValidate={handleValidateTerrain}
@@ -407,6 +458,7 @@ export const Terrain = () => {
                     terrains={validatedTerrains}
                     type="validated"
                     userRole={userRole}
+                    onTerrainUpdate={handleTerrainUpdate}
                     onEdit={handleEditTerrain}
                     onViewDetails={handleViewTerrainDetails}
                     onDelete={handleDeleteTerrain}
@@ -428,7 +480,7 @@ export const Terrain = () => {
                     terrains={pendingTerrains.filter(t => t.id_technicien === user.id)}
                     type="pending"
                     userRole={userRole}
-                    onTerrainUpdate={fetchTerrains}
+                    onTerrainUpdate={handleTerrainUpdate}
                     onEdit={handleEditTerrain}
                     onViewDetails={handleViewTerrainDetails}
                     onValidate={handleValidateTerrain}
@@ -449,6 +501,7 @@ export const Terrain = () => {
                     terrains={validatedTerrains.filter(t => t.id_technicien === user.id)}
                     type="validated"
                     userRole={userRole}
+                    onTerrainUpdate={handleTerrainUpdate}
                     onEdit={handleEditTerrain}
                     onViewDetails={handleViewTerrainDetails}
                     onDelete={handleDeleteTerrain}
@@ -470,7 +523,7 @@ export const Terrain = () => {
                     terrains={pendingTerrains}
                     type="pending"
                     userRole={userRole}
-                    onTerrainUpdate={fetchTerrains}
+                    onTerrainUpdate={handleTerrainUpdate}
                     onEdit={handleEditTerrain}
                     onViewDetails={handleViewTerrainDetails}
                     onDelete={handleDeleteTerrain}
@@ -490,6 +543,7 @@ export const Terrain = () => {
                     terrains={validatedTerrains}
                     type="validated"
                     userRole={userRole}
+                    onTerrainUpdate={handleTerrainUpdate}
                     onViewDetails={handleViewTerrainDetails}
                     onContactTechnicien={handleContactTechnicien}
                   />
@@ -527,7 +581,7 @@ export const Terrain = () => {
               isOpen={isTerrainCardOpen}
               onClose={() => setIsTerrainCardOpen(false)}
               terrain={selectedTerrain}
-              onTerrainUpdate={fetchTerrains}
+              onTerrainUpdate={handleTerrainUpdate}
             />
           )}
           

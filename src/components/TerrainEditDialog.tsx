@@ -14,7 +14,7 @@ interface TerrainEditDialogProps {
   isOpen: boolean;
   onClose: () => void;
   terrain?: TerrainData;
-  onSubmitSuccess: () => void;
+  onSubmitSuccess: (updatedTerrain: TerrainData) => void; // Updated to return the terrain data
   userId: string;
   userRole?: string;
   agriculteurs?: { id_utilisateur: string; nom: string; prenoms?: string }[];

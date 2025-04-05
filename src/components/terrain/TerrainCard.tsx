@@ -1,3 +1,4 @@
+
 import React from "react";
 import {
   Dialog,
@@ -17,12 +18,18 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { sendNotification } from "@/types/notification";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface TerrainCardProps {
   isOpen: boolean;
   onClose: () => void;
   terrain: TerrainData;
-  onTerrainUpdate?: () => void;
+  onTerrainUpdate?: (deletedTerrain?: TerrainData, action?: 'delete') => void;
   isDeleteMode?: boolean;
 }
 
@@ -124,7 +131,7 @@ const TerrainCard: React.FC<TerrainCardProps> = ({
       
       toast.success("Le terrain a été supprimé avec succès");
       onClose();
-      if (onTerrainUpdate) onTerrainUpdate();
+      if (onTerrainUpdate) onTerrainUpdate(terrain, 'delete');
     } catch (error) {
       console.error("Erreur lors de la suppression du terrain:", error);
       toast.error("Impossible de supprimer le terrain");
@@ -293,14 +300,23 @@ const TerrainCard: React.FC<TerrainCardProps> = ({
             >
               Annuler
             </Button>
-            <Button 
-              variant="destructive" 
-              onClick={handleDeleteTerrain}
-              disabled={isSubmitting}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Supprimer le terrain
-            </Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="destructive" 
+                    onClick={handleDeleteTerrain}
+                    disabled={isSubmitting}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Supprimer le terrain
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Confirmer la suppression du terrain</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </DialogFooter>
         ) : (
           <DialogFooter>

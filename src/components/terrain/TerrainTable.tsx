@@ -17,12 +17,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { sendNotification } from "@/types/notification";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface TerrainTableProps {
   terrains: TerrainData[];
   type?: 'validated' | 'pending';
   userRole?: string;
-  onTerrainUpdate?: () => void;
+  onTerrainUpdate?: (updatedTerrain?: TerrainData, action?: 'add' | 'update' | 'delete') => void;
   techniciens?: { id_utilisateur: string; nom: string; prenoms?: string }[];
   onEdit?: (terrain: TerrainData) => void;
   onValidate?: (terrain: TerrainData) => void;
@@ -49,31 +55,23 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
   const [filters, setFilters] = useState<TerrainFilters>({});
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Filter and sort terrains
   const filteredTerrains = useMemo(() => {
-    
     if (!terrains || terrains.length === 0) {
       return [];
     }
     
     let filtered = [...terrains];
     
-    // Filter by status (pending/validated)
     filtered = filtered.filter(terrain => 
       type === 'validated' ? terrain.statut === true : terrain.statut === false
     );
     
-    // Additional filters based on user role
     if (['agriculteur', 'investisseur', 'simple'].includes(userRole || '')) {
-      // Simple user only sees their own terrains
       filtered = filtered.filter(terrain => terrain.id_tantsaha === user?.id);
     } else if (userRole === 'technicien') {
-      // Technician only sees terrains assigned to them
       filtered = filtered.filter(terrain => terrain.id_technicien === user?.id);
     }
-    // Supervisors see all terrains, so no additional filtering for them
     
-    // Apply search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(terrain => 
@@ -85,7 +83,6 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
       );
     }
     
-    // Apply other filters
     if (filters.region) {
       filtered = filtered.filter(terrain => terrain.id_region === filters.region);
     }
@@ -102,7 +99,6 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
       filtered = filtered.filter(terrain => terrain.acces_route === filters.hasRoad);
     }
     
-    // Apply sorting
     filtered.sort((a, b) => {
       const aValue = a[sortOption.field] as any;
       const bValue = b[sortOption.field] as any;
@@ -127,17 +123,17 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
         return;
       }
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('terrain')
         .update({ 
           id_technicien: technicianId,
           id_superviseur: user?.id
         })
-        .eq('id_terrain', terrainId);
+        .eq('id_terrain', terrainId)
+        .select();
 
       if (error) throw error;
       
-      // Notify the technician
       if (user) {
         await sendNotification(
           supabase,
@@ -150,7 +146,6 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
           terrainId
         );
         
-        // Notify the terrain owner
         const terrain = terrains.find(t => t.id_terrain === terrainId);
         if (terrain && terrain.id_tantsaha) {
           await sendNotification(
@@ -166,35 +161,122 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
         }
       }
       
+      if (data && data.length > 0 && onTerrainUpdate) {
+        const updatedTerrain = await enrichTerrainData(data[0]);
+        onTerrainUpdate(updatedTerrain, 'update');
+      }
+      
       toast.success("Technicien assigné avec succès!");
-      if (onTerrainUpdate) onTerrainUpdate();
     } catch (error) {
       console.error("Error assigning technician:", error);
       toast.error("Erreur lors de l'assignation du technicien");
     }
   };
 
-  const handleValidate = async (terrain: TerrainData) => {
-    if (onValidate) {
-      onValidate(terrain);
+  const enrichTerrainData = async (terrain: any): Promise<TerrainData> => {
+    const enriched: TerrainData = {
+      ...terrain,
+      region_name: '',
+      district_name: '',
+      commune_name: '',
+      techniqueNom: 'Non assigné',
+      superviseurNom: 'Non assigné',
+      tantsahaNom: 'Non spécifié'
+    };
+    
+    try {
+      if (terrain.id_region) {
+        const { data: regionData } = await supabase
+          .from('region')
+          .select('nom_region')
+          .eq('id_region', terrain.id_region)
+          .maybeSingle();
+          
+        if (regionData) {
+          enriched.region_name = regionData.nom_region;
+        }
+      }
+      
+      if (terrain.id_district) {
+        const { data: districtData } = await supabase
+          .from('district')
+          .select('nom_district')
+          .eq('id_district', terrain.id_district)
+          .maybeSingle();
+          
+        if (districtData) {
+          enriched.district_name = districtData.nom_district;
+        }
+      }
+      
+      if (terrain.id_commune) {
+        const { data: communeData } = await supabase
+          .from('commune')
+          .select('nom_commune')
+          .eq('id_commune', terrain.id_commune)
+          .maybeSingle();
+          
+        if (communeData) {
+          enriched.commune_name = communeData.nom_commune;
+        }
+      }
+      
+      if (terrain.id_technicien) {
+        const { data: technicienData } = await supabase
+          .from('utilisateurs_par_role')
+          .select('nom, prenoms')
+          .eq('id_utilisateur', terrain.id_technicien)
+          .maybeSingle();
+          
+        if (technicienData) {
+          enriched.techniqueNom = `${technicienData.nom} ${technicienData.prenoms || ''}`.trim();
+        }
+      }
+      
+      if (terrain.id_superviseur) {
+        const { data: superviseurData } = await supabase
+          .from('utilisateurs_par_role')
+          .select('nom, prenoms')
+          .eq('id_utilisateur', terrain.id_superviseur)
+          .maybeSingle();
+          
+        if (superviseurData) {
+          enriched.superviseurNom = `${superviseurData.nom} ${superviseurData.prenoms || ''}`.trim();
+        }
+      }
+      
+      if (terrain.id_tantsaha) {
+        const { data: tantsahaData } = await supabase
+          .from('utilisateurs_par_role')
+          .select('nom, prenoms')
+          .eq('id_utilisateur', terrain.id_tantsaha)
+          .maybeSingle();
+          
+        if (tantsahaData) {
+          enriched.tantsahaNom = `${tantsahaData.nom} ${tantsahaData.prenoms || ''}`.trim();
+        }
+      }
+    } catch (error) {
+      console.error("Error enriching terrain data:", error);
     }
+    
+    return enriched;
   };
 
   const canEdit = (terrain: TerrainData): boolean => {
     if (!user) return false;
     
-    // Simple user can edit their own non-validated terrains
     if (['agriculteur', 'investisseur', 'simple'].includes(userRole || '') && terrain.id_tantsaha === user.id) {
       return terrain.statut === false;
     }
     
-    // Technician can edit terrains assigned to them
     if (userRole === 'technicien' && terrain.id_technicien === user.id) {
       return true;
     }
     
-    // Supervisor can edit any terrain
-    if (userRole === 'superviseur') return true;
+    if (userRole === 'superviseur') {
+      return true;
+    }
     
     return false;
   };
@@ -202,13 +284,13 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
   const canDelete = (terrain: TerrainData): boolean => {
     if (!user) return false;
     
-    // Simple user can delete their own non-validated terrains
     if (['agriculteur', 'investisseur', 'simple'].includes(userRole || '') && terrain.id_tantsaha === user.id) {
       return terrain.statut === false;
     }
     
-    // Supervisor can delete any terrain
-    if (userRole === 'superviseur') return true;
+    if (userRole === 'superviseur') {
+      return true;
+    }
     
     return false;
   };
@@ -349,68 +431,113 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
               )}
               
               <div className="flex justify-end gap-2 mt-2">
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleViewDetailsClick(terrain);
-                  }}
-                >
-                  <Eye className="h-4 w-4 mr-1" />
-                </Button>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleViewDetailsClick(terrain);
+                        }}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Voir les détails</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
                 
                 {canValidate(terrain) && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleValidate(terrain);
-                    }}
-                  >
-                    <FileCheck className="h-4 w-4 mr-1" />
-                  </Button>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleValidate(terrain);
+                          }}
+                        >
+                          <FileCheck className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Valider le terrain</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 )}
                 
                 {canEdit(terrain) && (
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleEditClick(terrain);
-                    }}
-                  >
-                    <Edit className="h-4 w-4 mr-1" />
-                  </Button>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditClick(terrain);
+                          }}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Modifier</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 )}
                 
                 {canDelete(terrain) && (
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    className="text-red-500 hover:text-red-700"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteClick(terrain);
-                    }}
-                  >
-                    <Trash className="h-4 w-4 mr-1" />
-                  </Button>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          className="text-red-500 hover:text-red-700"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteClick(terrain);
+                          }}
+                        >
+                          <Trash className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Supprimer</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 )}
                 
                 {canContactTechnicien(terrain) && (
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleContactTechnicien(terrain);
-                    }}
-                  >
-                    <MessageSquare className="h-4 w-4 mr-1" />
-                  </Button>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleContactTechnicien(terrain);
+                          }}
+                        >
+                          <MessageSquare className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Contacter le technicien</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 )}
               </div>
             </div>
@@ -542,53 +669,98 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                   )}
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => handleViewDetailsClick(terrain)}
-                      >
-                        <Eye className="h-4 w-4 mr-1" />
-                      </Button>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleViewDetailsClick(terrain)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Voir les détails</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                       
                       {canValidate(terrain) && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleValidate(terrain)}
-                        >
-                          <FileCheck className="h-4 w-4 mr-1" />
-                        </Button>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleValidate(terrain)}
+                              >
+                                <FileCheck className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Valider le terrain</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       )}
                       
                       {canEdit(terrain) && (
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleEditClick(terrain)}
-                        >
-                          <Edit className="h-4 w-4 mr-1" />
-                        </Button>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => handleEditClick(terrain)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Modifier</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       )}
                       
                       {canDelete(terrain) && (
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          className="text-red-500 hover:text-red-700"
-                          onClick={() => handleDeleteClick(terrain)}
-                        >
-                          <Trash className="h-4 w-4 mr-1" />
-                        </Button>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                className="text-red-500 hover:text-red-700"
+                                onClick={() => handleDeleteClick(terrain)}
+                              >
+                                <Trash className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Supprimer</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       )}
                       
                       {canContactTechnicien(terrain) && (
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleContactTechnicien(terrain)}
-                        >
-                          <MessageSquare className="h-4 w-4 mr-1" />
-                        </Button>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => handleContactTechnicien(terrain)}
+                              >
+                                <MessageSquare className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Contacter le technicien</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       )}
                     </div>
                   </TableCell>
