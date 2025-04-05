@@ -38,7 +38,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
 }) => {
   const { user } = useAuth();
   const isMobile = useIsMobile();
-  const [localTerrains, setLocalTerrains] = useState<TerrainData[]>(terrains);
+  const [localTerrains, setLocalTerrains] = useState<TerrainData[]>([]);
 
   // Update local terrains when the terrains prop changes
   useEffect(() => {
@@ -88,10 +88,14 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
         );
       }
       
-      // Update the local state instead of triggering a full reload
+      // Update only the specific terrain in the local state
       if (data && data.length > 0) {
+        const updatedTerrain = data[0] as TerrainData;
         setLocalTerrains(prevTerrains => 
-          prevTerrains.map(t => t.id_terrain === terrainId ? { ...t, ...data[0] } : t)
+          prevTerrains.map(t => t.id_terrain === terrainId ? {
+            ...t,
+            ...updatedTerrain
+          } : t)
         );
       }
       
@@ -142,7 +146,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
 
       if (error) throw error;
       
-      // Update the local state to remove the deleted terrain
+      // Remove the deleted terrain from local state
       setLocalTerrains(prevTerrains => 
         prevTerrains.filter(t => t.id_terrain !== terrainId)
       );
@@ -173,7 +177,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
 
       if (error) throw error;
       
-      // Update the local state instead of triggering a full reload
+      // Update only the specific terrain in local state
       if (data && data.length > 0) {
         // Find the technician name for display
         const technician = techniciens?.find(t => t.id_utilisateur === technicianId);
@@ -184,7 +188,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
             if (t.id_terrain === terrainId) {
               return { 
                 ...t, 
-                ...data[0],
+                ...data[0] as TerrainData,
                 techniqueNom: techName // Add the technician name for display purposes
               };
             }
@@ -275,7 +279,6 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
 
   // Filter terrains based on user role and terrain status
   const filterTerrainsByRole = () => {
-    console.log('Filtering terrains by role:', { userRole, terrainCount: localTerrains.length, type });
     let filtered = [...localTerrains];
     
     // Filter by status (pending/validated)
@@ -293,55 +296,10 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
     }
     // Supervisor sees all terrains, so no additional filtering for them
     
-    console.log('Filtered terrains:', { count: filtered.length });
     return filtered;
   };
 
   const filteredTerrains = filterTerrainsByRole();
-
-  const canEdit = (terrain: TerrainData): boolean => {
-    if (!user) return false;
-    
-    // Simple users can edit their own non-validated terrains
-    if (['agriculteur', 'investisseur', 'simple'].includes(userRole || '') && terrain.id_tantsaha === user.id) {
-      return terrain.statut === false;
-    }
-    
-    // Technician can edit terrains assigned to them
-    if (userRole === 'technicien' && terrain.id_technicien === user.id) {
-      return true;
-    }
-    
-    // Supervisor can edit any terrain
-    if (userRole === 'superviseur') return true;
-    
-    return false;
-  };
-
-  const canDelete = (terrain: TerrainData): boolean => {
-    if (!user) return false;
-    
-    // Simple users can delete their own non-validated terrains
-    if (['agriculteur', 'investisseur', 'simple'].includes(userRole || '') && terrain.id_tantsaha === user.id) {
-      return terrain.statut === false;
-    }
-    
-    // Supervisor can delete any terrain
-    if (userRole === 'superviseur') return true;
-    
-    return false;
-  };
-
-  const canContactTechnicien = (terrain: TerrainData): boolean => {
-    if (!user) return false;
-    
-    // Simple users can contact the technician assigned to their validated terrains
-    if (['agriculteur', 'investisseur', 'simple'].includes(userRole || '') && terrain.id_tantsaha === user.id) {
-      return terrain.statut === true && !!terrain.id_technicien;
-    }
-    
-    return false;
-  };
 
   if (isMobile) {
     return (
