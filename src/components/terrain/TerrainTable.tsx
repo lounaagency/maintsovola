@@ -319,6 +319,11 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
     return false;
   };
 
+  const handleValidate = async (terrain: TerrainData) => {
+    if (onValidate) {
+      onValidate(terrain);
+    }
+  };
   const handleEditClick = (terrain: TerrainData) => {
     if (onEdit) {
       onEdit(terrain);
@@ -600,14 +605,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                 sorted={sortOption.field === 'acces_eau' ? sortOption.direction : null}
                 onSort={() => handleSort('acces_eau')}
               >
-                Accès eau
-              </TableHead>
-              <TableHead 
-                sortable 
-                sorted={sortOption.field === 'acces_route' ? sortOption.direction : null}
-                onSort={() => handleSort('acces_route')}
-              >
-                Accès route
+                Accèssibilité
               </TableHead>
               {type === 'pending' && userRole === 'superviseur' && (
                 <TableHead>Technicien</TableHead>
@@ -636,12 +634,28 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                   <TableCell>{terrain.nom_terrain}</TableCell>
                   <TableCell>{terrain.surface_proposee} ha</TableCell>
                   <TableCell>
-                    {terrain.region_name || 'N/A'}, 
-                    {terrain.district_name || 'N/A'}, 
-                    {terrain.commune_name || 'N/A'}
+                    {(terrain.region_name || 'N/A')}<br />
+                    {(terrain.district_name || 'N/A')}<br />
+                    {(terrain.commune_name || 'N/A')}
                   </TableCell>
-                  <TableCell>{terrain.acces_eau ? "Oui" : "Non"}</TableCell>
-                  <TableCell>{terrain.acces_route ? "Oui" : "Non"}</TableCell>
+                  <TableCell className="space-y-1">
+                    <div>
+                      Eau :
+                      {terrain.acces_eau ? (
+                        <span className="text-green-600 ml-1">✅</span>
+                      ) : (
+                        <span className="text-red-600 ml-1 line-through">❌</span>
+                      )}
+                    </div>
+                    <div>
+                      Route :
+                      {terrain.acces_route ? (
+                        <span className="text-green-600 ml-1">✅</span>
+                      ) : (
+                        <span className="text-red-600 ml-1 line-through">❌</span>
+                      )}
+                    </div>
+                  </TableCell>
                   {type === 'pending' && userRole === 'superviseur' && (
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       {terrain.id_technicien ? (
