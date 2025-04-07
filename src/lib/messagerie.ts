@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Message, Conversation } from "@/types/message";
 import { useAuth } from "@/contexts/AuthContext";
@@ -51,7 +52,8 @@ export const sendMessage = async (message: Message) => {
         id_destinataire: message.id_destinataire,
         contenu: message.contenu,
         date_envoi: new Date().toISOString(),
-        lu: false
+        lu: false,
+        pieces_jointes: message.pieces_jointes || null
       })
       .select()
       .single();
