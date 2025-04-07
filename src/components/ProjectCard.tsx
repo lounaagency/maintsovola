@@ -1,10 +1,10 @@
 
 import React from "react";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Eye, FileEdit, CheckCircle, Trash2 } from "lucide-react";
 import { ProjectData } from "./ProjectTable";
+import { renderStatusBadge } from "@/utils/projectUtils";
 
 interface ProjectCardProps {
   project: ProjectData;
@@ -27,33 +27,6 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
   canValidate,
   canDelete,
 }) => {
-  const renderStatusBadge = (status: string) => {
-    let variant: "outline" | "secondary" | "destructive" | "default" = "outline";
-    
-    switch (status) {
-      case 'en attente':
-        variant = "outline";
-        break;
-      case 'validé':
-      case 'en financement':
-        variant = "secondary";
-        break;
-      case 'en cours':
-        variant = "default";
-        break;
-      case 'terminé':
-        variant = "secondary";
-        break;
-      case 'rejeté':
-        variant = "destructive";
-        break;
-      default:
-        variant = "outline";
-    }
-    
-    return <Badge variant={variant}>{status}</Badge>;
-  };
-
   return (
     <Card className="overflow-hidden">
       <CardContent className="p-4">
