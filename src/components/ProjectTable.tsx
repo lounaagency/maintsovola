@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Loader2, FileEdit, Eye } from "lucide-react";
+import { Loader2, FileEdit, Eye, CheckCircle } from "lucide-react";
 import ProjectDetailsDialog from "./ProjectDetailsDialog";
 import ProjectEditDialog from "./ProjectEditDialog";
+import ProjectValidationDialog from "./ProjectValidationDialog";
 import { toast } from "sonner";
 
 interface ProjectTableProps {
@@ -62,9 +63,14 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
   const [loading, setLoading] = useState(true);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [validationOpen, setValidationOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<ProjectData | null>(null);
   const { user, profile } = useAuth();
   const [userRole, setUserRole] = useState<string | null>(null);
+  
+  // State for sorting
+  const [sortColumn, setSortColumn] = useState<string>("created_at");
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   useEffect(() => {
     const fetchUserRole = async () => {
@@ -92,7 +98,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
 
   useEffect(() => {
     fetchProjects();
-  }, [statutFilter,filter, user, userRole]);
+  }, [statutFilter, filter, user, userRole, sortColumn, sortDirection]);
 
   const fetchProjects = async () => {
     if (!user) return;
@@ -129,12 +135,15 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
         query = query.or(`description.ilike.%${filter}%,titre.ilike.%${filter}%`);
       }
       
-      
       // Apply statutFilter if provided
       if (statutFilter) {
-        query = query.eq(`statut`,statutFilter);
+        query = query.eq(`statut`, statutFilter);
       }
-      const { data, error } = await query.order('created_at', { ascending: false });
+      
+      // Apply sorting
+      query = query.order(sortColumn, { ascending: sortDirection === 'asc' });
+      
+      const { data, error } = await query;
       if (error) throw error;
       // Cast the data to the correct type
       setProjects(data as unknown as ProjectData[]);
@@ -155,10 +164,27 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
     setSelectedProject(project);
     setEditOpen(true);
   };
+  
+  const handleOpenValidation = (project: ProjectData) => {
+    setSelectedProject(project);
+    setValidationOpen(true);
+  };
 
   const handleProjectUpdated = () => {
     fetchProjects();
     setEditOpen(false);
+    setValidationOpen(false);
+  };
+  
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      // Toggle sort direction if clicking the same column
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Default to descending for a new column
+      setSortColumn(column);
+      setSortDirection('desc');
+    }
   };
 
   const renderStatusBadge = (status: string) => {
@@ -185,6 +211,11 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
     return <Badge variant={variant}>{status}</Badge>;
   };
 
+  // Check if user can validate projects (technicien or superviseur)
+  const canValidate = userRole === 'technicien' || userRole === 'superviseur';
+  // Only show validate button for projects in "en attente" status
+  const showValidateButton = canValidate && statutFilter === "en attente";
+
   return (
     <Card className="w-full shadow-sm">
       {loading ? (
@@ -202,12 +233,52 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[80px]">ID</TableHead>
-                  <TableHead>Titre</TableHead>
+                  <TableHead 
+                    className="w-[80px] cursor-pointer"
+                    onClick={() => handleSort('id_projet')}
+                    sortable
+                    sorted={sortColumn === 'id_projet' ? sortDirection : null}
+                    onSort={() => handleSort('id_projet')}
+                  >
+                    ID
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer"
+                    onClick={() => handleSort('titre')}
+                    sortable
+                    sorted={sortColumn === 'titre' ? sortDirection : null}
+                    onSort={() => handleSort('titre')}
+                  >
+                    Titre
+                  </TableHead>
                   <TableHead>Culture</TableHead>
-                  <TableHead>Terrain</TableHead>
-                  <TableHead>Surface (ha)</TableHead>
-                  <TableHead>Statut</TableHead>
+                  <TableHead 
+                    className="cursor-pointer"
+                    onClick={() => handleSort('id_terrain')}
+                    sortable
+                    sorted={sortColumn === 'id_terrain' ? sortDirection : null}
+                    onSort={() => handleSort('id_terrain')}
+                  >
+                    Terrain
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer"
+                    onClick={() => handleSort('surface_ha')}
+                    sortable
+                    sorted={sortColumn === 'surface_ha' ? sortDirection : null}
+                    onSort={() => handleSort('surface_ha')}
+                  >
+                    Surface (ha)
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer"
+                    onClick={() => handleSort('statut')}
+                    sortable
+                    sorted={sortColumn === 'statut' ? sortDirection : null}
+                    onSort={() => handleSort('statut')}
+                  >
+                    Statut
+                  </TableHead>
                   {userRole !== 'simple' && (
                     <TableHead>Agriculteur</TableHead>
                   )}
@@ -230,7 +301,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
                     <TableCell>{project.terrain?.nom_terrain || `Terrain #${project.id_terrain}`}</TableCell>
                     <TableCell>{project.surface_ha}</TableCell>
                     <TableCell>{renderStatusBadge(project.statut)}</TableCell>
-                    {userRole !== 'tantsaha' && (
+                    {userRole !== 'simple' && (
                       <TableCell>
                         {project.tantsaha ? `${project.tantsaha.nom} ${project.tantsaha.prenoms || ''}` : 'N/A'}
                       </TableCell>
@@ -264,6 +335,19 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
                             <FileEdit className="h-4 w-4" />
                           </Button>
                         )}
+                        {showValidateButton && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Valider ce projet"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenValidation(project);
+                            }}
+                          >
+                            <CheckCircle className="h-4 w-4 text-green-500" />
+                          </Button>
+                        )}
                       </TableCell>
                     )}
                   </TableRow>
@@ -285,6 +369,14 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
           <ProjectEditDialog
             isOpen={editOpen}
             onClose={() => setEditOpen(false)}
+            project={selectedProject}
+            onSubmitSuccess={handleProjectUpdated}
+            userId={user?.id}
+            userRole={userRole}
+          />
+          <ProjectValidationDialog
+            isOpen={validationOpen}
+            onClose={() => setValidationOpen(false)}
             project={selectedProject}
             onSubmitSuccess={handleProjectUpdated}
             userId={user?.id}
