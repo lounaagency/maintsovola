@@ -87,7 +87,7 @@ const MessageDialog: React.FC<MessageDialogProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !message.trim() && attachments.length === 0) return;
+    if (!user || (!message.trim() && attachments.length === 0)) return;
 
     try {
       setIsSubmitting(true);
@@ -118,7 +118,7 @@ const MessageDialog: React.FC<MessageDialogProps> = ({
         id_destinataire: recipient.id,
         contenu: message.trim(),
         date_envoi: new Date().toISOString(),
-        pieces_jointes: attachmentPaths.length > 0 ? attachmentPaths : null
+        pieces_jointes: attachmentPaths.length > 0 ? attachmentPaths : undefined
       });
 
       if (error) throw error;

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { ConversationMessage } from "@/types/message";
@@ -127,11 +128,11 @@ const ChatArea: React.FC<ChatAreaProps> = ({ userId, conversation, onBack }) => 
       const messageToSend = {
         id_conversation: conversation.id_conversation,
         id_expediteur: userId,
-        id_destinataire: conversation.user?.id || "",
+        id_destinataire: conversation.id_destinataire || "",
         contenu: newMessage.trim(),
         date_envoi: new Date().toISOString(),
         lu: false,
-        pieces_jointes: attachmentPaths.length > 0 ? attachmentPaths : null
+        pieces_jointes: attachmentPaths.length > 0 ? attachmentPaths : undefined
       };
       
       const optimisticMessage: ConversationMessage = {
@@ -153,10 +154,9 @@ const ChatArea: React.FC<ChatAreaProps> = ({ userId, conversation, onBack }) => 
       
       setTimeout(scrollToBottom, 50);
       
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('message')
-        .insert(messageToSend)
-        .select();
+        .insert(messageToSend);
         
       if (error) throw error;
       
@@ -266,13 +266,12 @@ const ChatArea: React.FC<ChatAreaProps> = ({ userId, conversation, onBack }) => 
           <ArrowLeftCircle className="h-5 w-5" />
         </Button>
         <UserAvatar
-          src={conversation.user?.photo_profil}
-          alt={conversation.user?.name || ""}
+          src={conversation.other_user?.photo_profil}
+          alt={conversation.other_user?.nom || ""}
           size="sm"
-          status={conversation.user?.status || "none"}
         />
         <div className="ml-3">
-          <h3 className="font-semibold">{conversation.user?.name}</h3>
+          <h3 className="font-semibold">{conversation.other_user?.nom}</h3>
         </div>
       </div>
       
@@ -287,7 +286,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ userId, conversation, onBack }) => 
                 {message.id_expediteur !== userId && (
                   <div className="mr-2 mt-1">
                     <UserAvatar
-                      src={message.sender?.photo_profil || undefined}
+                      src={message.sender?.photo_profil}
                       alt={message.sender?.nom || ""}
                       size="sm"
                     />
