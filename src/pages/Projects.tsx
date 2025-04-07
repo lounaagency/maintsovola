@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -9,12 +9,19 @@ import ProjectTable from "@/components/ProjectTable";
 import NewProject from "@/components/NewProject";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { motion } from "framer-motion";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 const Projects = () => {
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("tous");
   const [showNewProjectDialog, setShowNewProjectDialog] = useState(false);
-  const { user } = useAuth();
+  const [showNoTerrainAlert, setShowNoTerrainAlert] = useState(false);
+  const [hasValidTerrains, setHasValidTerrains] = useState(true);
+  const { user, profile } = useAuth();
+  const navigate = useNavigate();
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,6 +29,67 @@ const Projects = () => {
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
+  };
+
+  useEffect(() => {
+    if (user && profile?.nom_role === 'simple') {
+      checkForValidTerrains();
+    }
+  }, [user, profile]);
+
+  const checkForValidTerrains = async () => {
+    if (!user) return;
+    
+    try {
+      // First, get projects that are not finished to exclude their terrains
+      const { data: activeProjects, error: projectsError } = await supabase
+        .from('projet')
+        .select('id_terrain')
+        .neq('statut', 'terminé');
+        
+      if (projectsError) {
+        console.error("Error fetching active projects:", projectsError);
+        return;
+      }
+      
+      // Get the list of terrain IDs that are already in use
+      const excludedTerrainIds = activeProjects?.map(p => p.id_terrain) || [];
+            
+      // Fetch terrains that belong to the user, are validated, and not in active projects
+      let query = supabase
+        .from('terrain')
+        .select('id_terrain')
+        .eq('id_tantsaha', user.id)
+        .eq('statut', true) // Only validated terrains
+        .eq('archive', false);
+        
+      if (excludedTerrainIds.length > 0) {
+        query = query.not('id_terrain', 'in', `(${excludedTerrainIds.join(',')})`);
+      }
+      
+      const { data: terrains, error: terrainsError } = await query;
+      
+      if (terrainsError) {
+        console.error("Error checking for valid terrains:", terrainsError);
+        return;
+      }
+      
+      setHasValidTerrains(terrains && terrains.length > 0);
+    } catch (error) {
+      console.error("Unexpected error checking terrains:", error);
+    }
+  };
+
+  const handleNewProjectClick = () => {
+    if (profile?.nom_role === 'simple' && !hasValidTerrains) {
+      setShowNoTerrainAlert(true);
+    } else {
+      setShowNewProjectDialog(true);
+    }
+  };
+
+  const handleRedirectToTerrains = () => {
+    navigate('/terrain');
   };
 
   return (
@@ -54,7 +122,7 @@ const Projects = () => {
           </form>
           
           <Button
-            onClick={() => setShowNewProjectDialog(true)}
+            onClick={handleNewProjectClick}
             className="gap-1"
           >
             <Plus className="h-4 w-4" />
@@ -100,6 +168,23 @@ const Projects = () => {
           />
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={showNoTerrainAlert} onOpenChange={setShowNoTerrainAlert}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Aucun terrain disponible</AlertDialogTitle>
+            <AlertDialogDescription>
+              Vous devez d'abord ajouter un terrain et attendre sa validation avant de pouvoir créer un projet agricole.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={handleRedirectToTerrains}>
+              Ajouter un terrain
+            </AlertDialogAction>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </motion.div>
   );
 };

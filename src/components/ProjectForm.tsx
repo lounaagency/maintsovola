@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -114,7 +113,6 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
   useEffect(() => {
     if (watchedFarmer && profile?.nom_role !== 'simple') {
       setSelectedFarmerId(watchedFarmer);
-      // Reset terrain selection when farmer changes
       setValue("terrain", "");
       fetchTerrains(watchedFarmer);
     }
@@ -157,12 +155,10 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
 
       const uploadedPhotoUrls = await uploadPhotos();
       
-      // Combine existing photos (if editing) with newly uploaded ones
       const allPhotoUrls = isEditing
         ? [...(initialData?.photos?.split(",").filter((p: string) => p) || []), ...uploadedPhotoUrls]
         : uploadedPhotoUrls;
       
-      // Prepare project data
       const projectData = {
         description: data.description,
         id_terrain: parseInt(data.terrain),
@@ -273,18 +269,15 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
     if (!user) return;
     
     try {
-      // Determine the user ID to filter by based on role and selected farmer
       const ownerUserId = profile?.nom_role === 'simple' 
         ? user.id 
         : farmerId || (isEditing ? initialData?.id_tantsaha : null);
       
       if (!ownerUserId && profile?.nom_role !== 'simple') {
-        // For non-simple users who haven't selected a farmer yet
         setTerrains([]);
         return;
       }
 
-      // First, get projects that are not finished to exclude their terrains
       const { data: activeProjects, error: projectsError } = await supabase
         .from('projet')
         .select('id_terrain')
@@ -294,26 +287,23 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
         console.error("Error fetching active projects:", projectsError);
       }
       
-      // Get the list of terrain IDs that are already in use (exclude the current project's terrain if editing)
       const excludedTerrainIds = activeProjects
         ? activeProjects
             .filter(p => !isEditing || p.id_terrain !== initialData?.id_terrain)
             .map(p => p.id_terrain)
         : [];
             
-      // Fetch terrains that belong to the user and are not in active projects
       let query = supabase
         .from('terrain')
         .select('*')
         .eq('id_tantsaha', ownerUserId)
-        .eq('statut', true) // Only validated terrains
+        .eq('statut', true)
         .eq('archive', false);
         
       if (excludedTerrainIds.length > 0) {
         query = query.not('id_terrain', 'in', `(${excludedTerrainIds.join(',')})`);
       }
       
-      // If editing, always include the current project's terrain
       if (isEditing && initialData?.id_terrain) {
         const { data: currentTerrain, error: currentTerrainError } = await supabase
           .from('terrain')
@@ -332,7 +322,6 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
           return;
         }
         
-        // Include the current terrain in the list if it exists
         if (currentTerrain) {
           const filteredTerrains = [...(terrainData || [])];
           if (!filteredTerrains.some(t => t.id_terrain === currentTerrain.id_terrain)) {
@@ -351,9 +340,12 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
         }
         
         setTerrains(terrainData as TerrainData[] || []);
+        
+        if (profile?.nom_role !== 'simple' && farmerId && (!terrainData || terrainData.length === 0)) {
+          toast.warning("Ce propriétaire n'a pas de terrains disponibles pour un nouveau projet");
+        }
       }
       
-      // If editing, preselect the terrain
       if (isEditing && initialData?.id_terrain) {
         setValue("terrain", initialData.id_terrain.toString());
       } else if (terrains.length > 0 && !getValues("terrain")) {
@@ -379,7 +371,6 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
 
       setCultures(culturesData || []);
       
-      // If editing, preselect the cultures
       if (isEditing && initialData?.projet_culture && initialData.projet_culture.length > 0) {
         const culturesToSelect = initialData.projet_culture.map((pc: ProjetCulture) => 
           pc.id_culture.toString()
@@ -399,14 +390,12 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
   }, [fetchFarmers, fetchCultures]);
 
   useEffect(() => {
-    // For editing mode or simple users, fetch terrains directly
     if (isEditing || profile?.nom_role === 'simple') {
       fetchTerrains();
     }
   }, [fetchTerrains, isEditing, profile?.nom_role]);
 
   useEffect(() => {
-    // Initialize photos if editing
     if (isEditing && initialData?.photos) {
       const photos = initialData.photos.split(',').filter((p: string) => p);
       setPhotoUrls(photos);

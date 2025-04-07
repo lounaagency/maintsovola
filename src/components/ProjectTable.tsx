@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -280,6 +279,8 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
             onClose={() => setEditOpen(false)}
             project={selectedProject}
             onSubmitSuccess={handleProjectUpdated}
+            userId={user?.id}
+            userRole={userRole}
           />
         </>
       )}
