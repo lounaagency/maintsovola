@@ -84,6 +84,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
   const [selectedFarmerId, setSelectedFarmerId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { user, profile } = useAuth();
+  const isSimpleUser = profile?.nom_role === 'simple';
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -115,13 +116,16 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
     }
   }, [watchedTerrain, terrains]);
 
+  // Fix the infinite loop by adding a dependency check
   useEffect(() => {
-    if (watchedFarmer && profile?.nom_role !== 'simple') {
-      setSelectedFarmerId(watchedFarmer);
-      setValue("terrain", "");
-      fetchTerrains(watchedFarmer);
+    if (watchedFarmer && !isSimpleUser) {
+      if (selectedFarmerId !== watchedFarmer) {
+        setSelectedFarmerId(watchedFarmer);
+        setValue("terrain", "");
+        fetchTerrains(watchedFarmer);
+      }
     }
-  }, [watchedFarmer, profile?.nom_role]);
+  }, [watchedFarmer, isSimpleUser]);
 
   const updateFinancialSummary = (selectedCultureIds: string[], terrain: TerrainData | null) => {
     if (!selectedCultureIds || !terrain) return;
@@ -252,7 +256,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
   };
 
   const fetchFarmers = useCallback(async () => {
-    if (!user || profile?.nom_role === 'simple') return;
+    if (!user || isSimpleUser) return;
     
     try {
       const { data, error } = await supabase
@@ -269,17 +273,18 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
     } catch (error) {
       console.error("Error in fetchFarmers:", error);
     }
-  }, [user, profile?.nom_role]);
+  }, [user, isSimpleUser]);
 
   const fetchTerrains = useCallback(async (farmerId?: string) => {
     if (!user) return;
     
     try {
-      const ownerUserId = profile?.nom_role === 'simple' 
+      // For simple users, we only fetch their own terrains
+      const ownerUserId = isSimpleUser 
         ? user.id 
         : farmerId || (isEditing ? initialData?.id_tantsaha : null);
       
-      if (!ownerUserId && profile?.nom_role !== 'simple') {
+      if (!ownerUserId && !isSimpleUser) {
         setTerrains([]);
         return;
       }
@@ -347,7 +352,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
         
         setTerrains(terrainData as TerrainData[] || []);
         
-        if (profile?.nom_role !== 'simple' && farmerId && (!terrainData || terrainData.length === 0)) {
+        if (!isSimpleUser && farmerId && (!terrainData || terrainData.length === 0)) {
           toast.warning("Ce propriétaire n'a pas de terrains disponibles pour un nouveau projet");
         }
       }
@@ -361,7 +366,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
       console.error("Unexpected error fetching terrains:", error);
       toast.error("Erreur inattendue lors du chargement des terrains");
     }
-  }, [user, getValues, setValue, isEditing, initialData, profile?.nom_role, terrains]);
+  }, [user, getValues, setValue, isEditing, initialData, isSimpleUser]);
 
   const fetchCultures = useCallback(async () => {
     try {
@@ -396,16 +401,14 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
   }, [fetchFarmers, fetchCultures]);
 
   useEffect(() => {
-    if (isEditing || profile?.nom_role === 'simple') {
-      fetchTerrains();
-    }
+    fetchTerrains(isSimpleUser ? user?.id : selectedFarmerId || undefined);
     
-    // Set the initial farmer for edit mode
-    if (isEditing && initialData?.id_tantsaha && profile?.nom_role !== 'simple') {
+    // Set the initial farmer for edit mode (for non-simple users)
+    if (isEditing && initialData?.id_tantsaha && !isSimpleUser) {
       setValue("selectedFarmer", initialData.id_tantsaha);
       setSelectedFarmerId(initialData.id_tantsaha);
     }
-  }, [fetchTerrains, isEditing, profile?.nom_role, initialData, setValue]);
+  }, [isEditing, initialData, setValue, isSimpleUser, user?.id]);
 
   useEffect(() => {
     if (isEditing && initialData?.photos) {
@@ -417,7 +420,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
   return (
     <Form {...form}>
       <form onSubmit={handleSubmit(onSubmitHandler)} className="space-y-6">
-        {profile?.nom_role !== 'simple' && (
+        {!isSimpleUser && (
           <FormField
             control={control}
             name="selectedFarmer"
@@ -478,7 +481,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
               <Select
                 value={field.value}
                 onValueChange={field.onChange}
-                disabled={disabled || (profile?.nom_role !== 'simple' && !watchedFarmer && !isEditing)}
+                disabled={disabled || (!isSimpleUser && !watchedFarmer && !isEditing)}
               >
                 <FormControl>
                   <SelectTrigger>
@@ -494,7 +497,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
                     ))
                   ) : (
                     <SelectItem value="no-terrains" disabled>
-                      {profile?.nom_role !== 'simple' && !watchedFarmer 
+                      {!isSimpleUser && !watchedFarmer && !isEditing
                         ? "Veuillez d'abord sélectionner un agriculteur" 
                         : "Aucun terrain disponible"}
                     </SelectItem>

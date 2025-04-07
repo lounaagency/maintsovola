@@ -57,12 +57,11 @@ const ProjectEditDialog: React.FC<ProjectEditDialogProps> = ({
       
       // Insert new project cultures
       const projetCultures = data.cultures.map((cultureId: number) => {
-        const culture = project.cultures?.find((c: any) => c.id_culture === cultureId) || {};
         return {
           id_projet: project.id_projet,
           id_culture: cultureId,
-          cout_exploitation_previsionnel: culture.cout_exploitation_ha || 0,
-          rendement_previsionnel: culture.rendement_ha || 0,
+          cout_exploitation_previsionnel: data.financialSummary?.totalCost / data.cultures.length || 0,
+          rendement_previsionnel: 0,
           date_debut_previsionnelle: new Date().toISOString().split('T')[0]
         };
       });
