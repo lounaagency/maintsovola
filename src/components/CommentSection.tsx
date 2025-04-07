@@ -74,7 +74,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
       // Traitement des données pour créer les objets Comment
       const transformedComments = commentsData.map(comment => {
         // Nombre de likes pour ce commentaire
-        const likes = likesData.filter(like => like.id_commentaire === comment.id_commentaire).length;
+        const commentLikes = likesData.filter(like => like.id_commentaire === comment.id_commentaire).length;
         
         // Vérifier si l'utilisateur connecté a aimé ce commentaire
         const isLiked = user ? 
@@ -90,7 +90,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
             avatar: comment.utilisateur.photo_profil,
           },
           createdAt: comment.date_creation,
-          likes,
+          likes: commentLikes,
           isLiked,
           parentId: comment.id_parent_commentaire ? comment.id_parent_commentaire.toString() : null,
         };
@@ -113,11 +113,6 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
     
     if (!newComment.trim()) {
       toast.error("Le commentaire ne peut pas être vide");
-      return;
-    }
-    
-    if (!postId) {
-      toast.error("ID du projet non défini");
       return;
     }
     
