@@ -13,6 +13,7 @@ export const renderStatusBadge = (status: string) => {
       variant = "outline";
       break;
     case 'validé':
+      break;
     case 'en financement':
       variant = "secondary";
       break;
