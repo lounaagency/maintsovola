@@ -33,6 +33,7 @@ const ProjectEditDialog: React.FC<ProjectEditDialogProps> = ({
       const { error: projectError } = await supabase
         .from('projet')
         .update({
+          titre: data.titre,
           description: data.description,
           photos: data.photos,
           statut: data.statut,

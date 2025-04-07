@@ -34,6 +34,7 @@ const NewProject: React.FC<NewProjectProps> = ({ onProjectCreated }) => {
       const { data: projetData, error: projetError } = await supabase
         .from('projet')
         .insert({
+          titre: data.titre,
           id_terrain: data.id_terrain,
           id_tantsaha: terrainData.id_tantsaha || user.id,
           surface_ha: data.surface_ha,
@@ -75,7 +76,7 @@ const NewProject: React.FC<NewProjectProps> = ({ onProjectCreated }) => {
       // Create project object for callback
       const newProject: AgriculturalProject = {
         id: projetData.id_projet.toString(),
-        title: `Projet agricole sur ${terrainData.nom_terrain || 'terrain ' + terrainData.id_terrain}`,
+        title: data.titre || `Projet agricole sur ${terrainData.nom_terrain || 'terrain ' + terrainData.id_terrain}`,
         farmer: {
           id: terrainData.id_tantsaha || user.id,
           name: profile ? `${profile.nom} ${profile.prenoms || ''}`.trim() : 'Utilisateur',

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -42,6 +43,9 @@ import { TerrainData } from '@/types/terrain';
 import { ProjetCulture, Culture } from '@/types/culture';
 
 const formSchema = z.object({
+  titre: z.string().min(3, {
+    message: "Le titre doit contenir au moins 3 caractères.",
+  }),
   description: z.string().min(10, {
     message: "La description doit contenir au moins 10 caractères.",
   }),
@@ -84,6 +88,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      titre: initialData?.titre || "",
       description: initialData?.description || "",
       terrain: initialData?.id_terrain?.toString() || "",
       statut: initialData?.statut || "en attente",
@@ -160,6 +165,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
         : uploadedPhotoUrls;
       
       const projectData = {
+        titre: data.titre,
         description: data.description,
         id_terrain: parseInt(data.terrain),
         statut: data.statut,
@@ -393,7 +399,13 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
     if (isEditing || profile?.nom_role === 'simple') {
       fetchTerrains();
     }
-  }, [fetchTerrains, isEditing, profile?.nom_role]);
+    
+    // Set the initial farmer for edit mode
+    if (isEditing && initialData?.id_tantsaha && profile?.nom_role !== 'simple') {
+      setValue("selectedFarmer", initialData.id_tantsaha);
+      setSelectedFarmerId(initialData.id_tantsaha);
+    }
+  }, [fetchTerrains, isEditing, profile?.nom_role, initialData, setValue]);
 
   useEffect(() => {
     if (isEditing && initialData?.photos) {
@@ -438,6 +450,24 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
             )}
           />
         )}
+
+        <FormField
+          control={control}
+          name="titre"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Titre du projet</FormLabel>
+              <FormControl>
+                <Input 
+                  placeholder="Titre du projet" 
+                  {...field} 
+                  disabled={disabled}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <FormField
           control={control}

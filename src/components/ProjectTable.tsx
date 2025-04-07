@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -131,7 +132,8 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
       
       if (error) throw error;
       
-      setProjects(data as ProjectData[] || []);
+      // Cast the data to the correct type
+      setProjects(data as unknown as ProjectData[]);
     } catch (error) {
       console.error("Erreur lors de la récupération des projets:", error);
       toast.error("Impossible de charger les projets");
@@ -197,6 +199,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[80px]">ID</TableHead>
+                  <TableHead>Titre</TableHead>
                   <TableHead>Culture</TableHead>
                   <TableHead>Terrain</TableHead>
                   <TableHead>Surface (ha)</TableHead>
@@ -212,10 +215,11 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
                 {projects.map((project) => (
                   <TableRow 
                     key={project.id_projet}
-                    clickable={true}
+                    className="cursor-pointer"
                     onClick={() => handleOpenDetails(project)}
                   >
                     <TableCell className="font-medium">{project.id_projet}</TableCell>
+                    <TableCell>{project.titre || `Projet #${project.id_projet}`}</TableCell>
                     <TableCell>
                       {project.projet_culture?.map(pc => pc.culture?.nom_culture).join(', ')}
                     </TableCell>
