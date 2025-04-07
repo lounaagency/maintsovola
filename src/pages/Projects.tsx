@@ -12,16 +12,18 @@ import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 const Projects = () => {
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState("tous");
+  const [activeTab, setActiveTab] = useState("en_attente");
   const [showNewProjectDialog, setShowNewProjectDialog] = useState(false);
   const [showNoTerrainAlert, setShowNoTerrainAlert] = useState(false);
   const [hasValidTerrains, setHasValidTerrains] = useState(true);
   const { user, profile } = useAuth();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -131,12 +133,14 @@ const Projects = () => {
         </div>
       </div>
 
-      <Tabs defaultValue="tous" value={activeTab} onValueChange={handleTabChange}>
-        <TabsList className="grid grid-cols-3 w-full sm:w-auto">
-          <TabsTrigger value="en_attente">En attente</TabsTrigger>
-          <TabsTrigger value="en_cours">En cours</TabsTrigger>
-          <TabsTrigger value="terminé">Terminés</TabsTrigger>
-        </TabsList>
+      <Tabs defaultValue="en_attente" value={activeTab} onValueChange={handleTabChange} className={isMobile ? "space-y-4" : ""}>
+        <div className={isMobile ? "sticky top-0 z-10 bg-background pt-2 pb-4" : ""}>
+          <TabsList className={isMobile ? "w-full grid grid-cols-3" : "grid grid-cols-3 w-full sm:w-auto"}>
+            <TabsTrigger value="en_attente">En attente</TabsTrigger>
+            <TabsTrigger value="en_cours">En cours</TabsTrigger>
+            <TabsTrigger value="terminé">Terminés</TabsTrigger>
+          </TabsList>
+        </div>
                
         <TabsContent value="en_attente" className="mt-6">
           <ProjectTable filter={search} statutFilter="en attente" />
@@ -147,7 +151,7 @@ const Projects = () => {
         </TabsContent>
         
         <TabsContent value="terminé" className="mt-6">
-          <ProjectTable filter={search} statutFilter ="terminé" />
+          <ProjectTable filter={search} statutFilter="terminé" />
         </TabsContent>
       </Tabs>
 

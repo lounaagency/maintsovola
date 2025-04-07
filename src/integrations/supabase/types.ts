@@ -978,6 +978,7 @@ export type Database = {
         Row: {
           created_at: string | null
           created_by: string | null
+          date_validation: string | null
           description: string | null
           geom: unknown | null
           id_commune: number | null
@@ -988,8 +989,11 @@ export type Database = {
           id_tantsaha: string | null
           id_technicien: string | null
           id_terrain: number | null
+          id_validateur: string | null
           modified_at: string | null
           photos: string | null
+          photos_validation: string | null
+          rapport_validation: string | null
           statut: string | null
           surface_ha: number
           titre: string | null
@@ -997,6 +1001,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           created_by?: string | null
+          date_validation?: string | null
           description?: string | null
           geom?: unknown | null
           id_commune?: number | null
@@ -1007,8 +1012,11 @@ export type Database = {
           id_tantsaha?: string | null
           id_technicien?: string | null
           id_terrain?: number | null
+          id_validateur?: string | null
           modified_at?: string | null
           photos?: string | null
+          photos_validation?: string | null
+          rapport_validation?: string | null
           statut?: string | null
           surface_ha: number
           titre?: string | null
@@ -1016,6 +1024,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           created_by?: string | null
+          date_validation?: string | null
           description?: string | null
           geom?: unknown | null
           id_commune?: number | null
@@ -1026,8 +1035,11 @@ export type Database = {
           id_tantsaha?: string | null
           id_technicien?: string | null
           id_terrain?: number | null
+          id_validateur?: string | null
           modified_at?: string | null
           photos?: string | null
+          photos_validation?: string | null
+          rapport_validation?: string | null
           statut?: string | null
           surface_ha?: number
           titre?: string | null
