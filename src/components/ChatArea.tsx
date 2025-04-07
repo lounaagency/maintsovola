@@ -309,12 +309,13 @@ const ChatArea: React.FC<ChatAreaProps> = ({ userId, conversation, onBack }) => 
             >
               <div className="flex max-w-[80%]">
                 {message.id_expediteur !== userId && (
-                  <UserAvatar
-                    src={message.sender?.photo_profil || undefined}
-                    alt={message.sender?.nom || ""}
-                    size="sm"
-                    className="mr-2 mt-1"
-                  />
+                  <div className="mr-2 mt-1">
+                    <UserAvatar
+                      src={message.sender?.photo_profil || undefined}
+                      alt={message.sender?.nom || ""}
+                      size="sm"
+                    />
+                  </div>
                 )}
                 <div>
                   {/* Message content */}

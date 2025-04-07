@@ -1,72 +1,55 @@
 
-import React, { useState } from "react";
+import React from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
 
-interface UserAvatarProps {
+export interface UserAvatarProps {
   src?: string;
   alt: string;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl";
   status?: "online" | "offline" | "away" | "busy" | "none";
+  className?: string;
 }
 
-const UserAvatar: React.FC<UserAvatarProps> = ({ 
-  src, 
-  alt, 
-  size = "md",
-  status = "none"
-}) => {
-  const [isLoaded, setIsLoaded] = useState(false);
-  
-  const getSize = () => {
-    switch (size) {
-      case "sm": return "h-8 w-8";
-      case "md": return "h-10 w-10";
-      case "lg": return "h-14 w-14";
-      default: return "h-10 w-10";
-    }
-  };
-  
-  const getStatusColor = () => {
-    switch (status) {
-      case "online": return "bg-green-500";
-      case "offline": return "bg-gray-400";
-      case "away": return "bg-yellow-500";
-      case "busy": return "bg-red-500";
-      default: return "hidden";
-    }
-  };
+const UserAvatar: React.FC<UserAvatarProps> = ({ src, alt, size = "md", status = "none", className }) => {
+  // Size mapping
+  const sizeClass = {
+    sm: "h-8 w-8",
+    md: "h-10 w-10",
+    lg: "h-12 w-12",
+    xl: "h-16 w-16",
+  }[size];
 
-  const initialsFromName = (name: string) => { 
-    if (!name || typeof name !== "string" || name.trim() === "") {
-      return "?";
-    }
+  // Status mapping
+  const statusColor = {
+    online: "bg-green-500",
+    offline: "bg-gray-400",
+    away: "bg-yellow-500",
+    busy: "bg-red-500",
+    none: "hidden",
+  }[status];
 
-    const parts = name.trim().split(" ");
-    return parts.length > 1 
-      ? `${parts[0][0]}${parts[1][0]}`.toUpperCase()
-      : parts[0][0].toUpperCase();
+  // Get initials from alt text
+  const getInitials = () => {
+    const names = alt.split(" ");
+    if (names.length >= 2) {
+      return `${names[0].charAt(0)}${names[1].charAt(0)}`.toUpperCase();
+    }
+    return alt.charAt(0).toUpperCase();
   };
 
   return (
-    <div className="relative">
-      <Avatar className={`${getSize()} border-2 border-white shadow-sm overflow-hidden transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}>
-        {src && (
-          <AvatarImage 
-            src={src} 
-            alt={alt} 
-            onLoad={() => setIsLoaded(true)}
-            className="object-cover"
-          />
-        )}
-        <AvatarFallback 
-          className={`bg-primary/10 text-primary font-medium ${!src ? 'opacity-100' : 'opacity-0'}`}
-          delayMs={500}
-        >
-          {initialsFromName(alt)}
+    <div className={cn("relative", className)}>
+      <Avatar className={cn(sizeClass, "border border-border")}>
+        <AvatarImage src={src} alt={alt} />
+        <AvatarFallback className="bg-primary/10 text-primary font-medium">
+          {getInitials()}
         </AvatarFallback>
       </Avatar>
       {status !== "none" && (
-        <span className={`absolute bottom-0 right-0 h-3 w-3 ${getStatusColor()} rounded-full ring-2 ring-white`}></span>
+        <span
+          className={`absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full ring-2 ring-white ${statusColor}`}
+        />
       )}
     </div>
   );
