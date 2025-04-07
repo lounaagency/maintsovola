@@ -35,7 +35,7 @@ const NewProject: React.FC<NewProjectProps> = ({ onProjectCreated }) => {
         .from('projet')
         .insert({
           id_terrain: data.id_terrain,
-          id_tantsaha: user.id,
+          id_tantsaha: terrainData.id_tantsaha || user.id,
           surface_ha: data.surface_ha,
           statut: 'en attente',
           id_region: data.id_region,
@@ -77,7 +77,7 @@ const NewProject: React.FC<NewProjectProps> = ({ onProjectCreated }) => {
         id: projetData.id_projet.toString(),
         title: `Projet agricole sur ${terrainData.nom_terrain || 'terrain ' + terrainData.id_terrain}`,
         farmer: {
-          id: user.id,
+          id: terrainData.id_tantsaha || user.id,
           name: profile ? `${profile.nom} ${profile.prenoms || ''}`.trim() : 'Utilisateur',
           username: profile ? profile.nom.toLowerCase().replace(/\s+/g, '') : 'utilisateur',
           avatar: profile?.photo_profil,

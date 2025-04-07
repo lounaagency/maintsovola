@@ -53,6 +53,7 @@ const formSchema = z.object({
   cultures: z.array(z.string()).min(1, {
     message: "Veuillez sélectionner au moins une culture.",
   }),
+  selectedFarmer: z.string().optional(),
 })
 
 interface ProjectFormProps {
@@ -76,8 +77,10 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
     totalRevenue: 0,
     profit: 0
   });
+  const [farmers, setFarmers] = useState<{ id_utilisateur: string; nom: string; prenoms?: string }[]>([]);
+  const [selectedFarmerId, setSelectedFarmerId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -86,6 +89,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
       terrain: initialData?.id_terrain?.toString() || "",
       statut: initialData?.statut || "en attente",
       cultures: initialData?.projet_culture?.map((pc: ProjetCulture) => pc.id_culture.toString()) || [],
+      selectedFarmer: "",
     },
     mode: "onChange",
   });
@@ -93,6 +97,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
   const { handleSubmit, control, setValue, watch, getValues } = form;
   const watchedCultures = watch("cultures");
   const watchedTerrain = watch("terrain");
+  const watchedFarmer = watch("selectedFarmer");
 
   useEffect(() => {
     setSelectedCultures(watchedCultures || []);
@@ -105,6 +110,15 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
       setSelectedTerrain(terrain || null);
     }
   }, [watchedTerrain, terrains]);
+
+  useEffect(() => {
+    if (watchedFarmer && profile?.nom_role !== 'simple') {
+      setSelectedFarmerId(watchedFarmer);
+      // Reset terrain selection when farmer changes
+      setValue("terrain", "");
+      fetchTerrains(watchedFarmer);
+    }
+  }, [watchedFarmer, profile?.nom_role]);
 
   const updateFinancialSummary = (selectedCultureIds: string[], terrain: TerrainData | null) => {
     if (!selectedCultureIds || !terrain) return;
@@ -235,35 +249,121 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
     }
   };
 
-  const fetchTerrains = useCallback(async () => {
-    if (!user) return;
+  const fetchFarmers = useCallback(async () => {
+    if (!user || profile?.nom_role === 'simple') return;
+    
     try {
-      const { data: terrainsData, error } = await supabase
-        .from('terrain')
-        .select('*')
-        .eq('id_tantsaha', user.id)
-        .eq('statut', true) // Only validated terrains
-        .eq('archive', false);
-
+      const { data, error } = await supabase
+        .from('utilisateur')
+        .select('id_utilisateur, nom, prenoms')
+        .eq('id_role', 1); // ID role for 'simple' users
+        
       if (error) {
-        console.error("Error fetching terrains:", error);
-        toast.error("Erreur lors du chargement des terrains");
+        console.error("Error fetching farmers:", error);
+        return;
+      }
+      
+      setFarmers(data || []);
+    } catch (error) {
+      console.error("Error in fetchFarmers:", error);
+    }
+  }, [user, profile?.nom_role]);
+
+  const fetchTerrains = useCallback(async (farmerId?: string) => {
+    if (!user) return;
+    
+    try {
+      // Determine the user ID to filter by based on role and selected farmer
+      const ownerUserId = profile?.nom_role === 'simple' 
+        ? user.id 
+        : farmerId || (isEditing ? initialData?.id_tantsaha : null);
+      
+      if (!ownerUserId && profile?.nom_role !== 'simple') {
+        // For non-simple users who haven't selected a farmer yet
+        setTerrains([]);
         return;
       }
 
-      setTerrains(terrainsData || []);
+      // First, get projects that are not finished to exclude their terrains
+      const { data: activeProjects, error: projectsError } = await supabase
+        .from('projet')
+        .select('id_terrain')
+        .neq('statut', 'terminé');
+        
+      if (projectsError) {
+        console.error("Error fetching active projects:", projectsError);
+      }
+      
+      // Get the list of terrain IDs that are already in use (exclude the current project's terrain if editing)
+      const excludedTerrainIds = activeProjects
+        ? activeProjects
+            .filter(p => !isEditing || p.id_terrain !== initialData?.id_terrain)
+            .map(p => p.id_terrain)
+        : [];
+            
+      // Fetch terrains that belong to the user and are not in active projects
+      let query = supabase
+        .from('terrain')
+        .select('*')
+        .eq('id_tantsaha', ownerUserId)
+        .eq('statut', true) // Only validated terrains
+        .eq('archive', false);
+        
+      if (excludedTerrainIds.length > 0) {
+        query = query.not('id_terrain', 'in', `(${excludedTerrainIds.join(',')})`);
+      }
+      
+      // If editing, always include the current project's terrain
+      if (isEditing && initialData?.id_terrain) {
+        const { data: currentTerrain, error: currentTerrainError } = await supabase
+          .from('terrain')
+          .select('*')
+          .eq('id_terrain', initialData.id_terrain)
+          .single();
+          
+        if (currentTerrainError) {
+          console.error("Error fetching current terrain:", currentTerrainError);
+        }
+        
+        const { data: terrainData, error: terrainError } = await query;
+        
+        if (terrainError) {
+          console.error("Error fetching terrains:", terrainError);
+          return;
+        }
+        
+        // Include the current terrain in the list if it exists
+        if (currentTerrain) {
+          const filteredTerrains = [...(terrainData || [])];
+          if (!filteredTerrains.some(t => t.id_terrain === currentTerrain.id_terrain)) {
+            filteredTerrains.push(currentTerrain);
+          }
+          setTerrains(filteredTerrains as TerrainData[]);
+        } else {
+          setTerrains(terrainData as TerrainData[] || []);
+        }
+      } else {
+        const { data: terrainData, error: terrainError } = await query;
+        
+        if (terrainError) {
+          console.error("Error fetching terrains:", terrainError);
+          return;
+        }
+        
+        setTerrains(terrainData as TerrainData[] || []);
+      }
       
       // If editing, preselect the terrain
       if (isEditing && initialData?.id_terrain) {
         setValue("terrain", initialData.id_terrain.toString());
-      } else if (terrainsData && terrainsData.length > 0 && !getValues("terrain")) {
-        setValue("terrain", terrainsData[0].id_terrain?.toString() || "");
+      } else if (terrains.length > 0 && !getValues("terrain")) {
+        setValue("terrain", terrains[0].id_terrain?.toString() || "");
       }
     } catch (error) {
       console.error("Unexpected error fetching terrains:", error);
       toast.error("Erreur inattendue lors du chargement des terrains");
     }
-  }, [user, getValues, setValue, isEditing, initialData]);
+  }, [user, getValues, setValue, isEditing, initialData, profile?.nom_role, terrains]);
 
   const fetchCultures = useCallback(async () => {
     try {
@@ -294,9 +394,16 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
   }, [setCultures, isEditing, initialData, setValue]);
 
   useEffect(() => {
-    fetchTerrains();
+    fetchFarmers();
     fetchCultures();
-  }, [fetchTerrains, fetchCultures]);
+  }, [fetchFarmers, fetchCultures]);
+
+  useEffect(() => {
+    // For editing mode or simple users, fetch terrains directly
+    if (isEditing || profile?.nom_role === 'simple') {
+      fetchTerrains();
+    }
+  }, [fetchTerrains, isEditing, profile?.nom_role]);
 
   useEffect(() => {
     // Initialize photos if editing
@@ -309,6 +416,40 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
   return (
     <Form {...form}>
       <form onSubmit={handleSubmit(onSubmitHandler)} className="space-y-6">
+        {profile?.nom_role !== 'simple' && (
+          <FormField
+            control={control}
+            name="selectedFarmer"
+            render={({ field }) => (
+              <FormItem className="w-full">
+                <FormLabel>Agriculteur</FormLabel>
+                <Select
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  disabled={disabled || isEditing}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner un agriculteur" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {farmers.map((farmer) => (
+                      <SelectItem key={farmer.id_utilisateur} value={farmer.id_utilisateur}>
+                        {farmer.nom} {farmer.prenoms || ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormDescription>
+                  Sélectionnez l'agriculteur propriétaire du projet
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
+
         <FormField
           control={control}
           name="terrain"
@@ -318,7 +459,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
               <Select
                 value={field.value}
                 onValueChange={field.onChange}
-                disabled={disabled}
+                disabled={disabled || (profile?.nom_role !== 'simple' && !watchedFarmer && !isEditing)}
               >
                 <FormControl>
                   <SelectTrigger>
@@ -326,11 +467,19 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {terrains.map((terrain) => (
-                    <SelectItem key={terrain.id_terrain} value={terrain.id_terrain?.toString() || ""}>
-                      {terrain.nom_terrain || `Terrain #${terrain.id_terrain}`} ({terrain.surface_validee || terrain.surface_proposee} ha)
+                  {terrains.length > 0 ? (
+                    terrains.map((terrain) => (
+                      <SelectItem key={terrain.id_terrain} value={terrain.id_terrain?.toString() || ""}>
+                        {terrain.nom_terrain || `Terrain #${terrain.id_terrain}`} ({terrain.surface_validee || terrain.surface_proposee} ha)
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="no-terrains" disabled>
+                      {profile?.nom_role !== 'simple' && !watchedFarmer 
+                        ? "Veuillez d'abord sélectionner un agriculteur" 
+                        : "Aucun terrain disponible"}
                     </SelectItem>
-                  ))}
+                  )}
                 </SelectContent>
               </Select>
               <FormDescription>
@@ -400,7 +549,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
           )}
         />
 
-        {selectedCultures.length > 0 && selectedTerrain && (
+        {!isEditing && selectedCultures.length > 0 && selectedTerrain && (
           <div className="space-y-2">
             <h3 className="text-lg font-medium">Informations financières</h3>
             <div className="border rounded overflow-hidden">
