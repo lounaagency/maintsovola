@@ -136,8 +136,9 @@ const Projects = () => {
       <Tabs defaultValue="en_attente" value={activeTab} onValueChange={handleTabChange} className={isMobile ? "space-y-4" : ""}>
         <div className={isMobile ? "sticky top-0 z-10 bg-background pt-2 pb-4" : ""}>
           <TabsList className={isMobile ? "w-full grid grid-cols-3" : "grid grid-cols-3 w-full sm:w-auto"}>
-            <TabsTrigger value="en_attente">En attente</TabsTrigger>
-            <TabsTrigger value="en_cours">En cours</TabsTrigger>
+            <TabsTrigger value="en_attente">En cours de validation</TabsTrigger>
+            <TabsTrigger value="en_cours_financement">En cours de financement</TabsTrigger>
+            <TabsTrigger value="en_cours">En cours de production</TabsTrigger>
             <TabsTrigger value="terminé">Terminés</TabsTrigger>
           </TabsList>
         </div>
@@ -146,10 +147,14 @@ const Projects = () => {
           <ProjectTable filter={search} statutFilter="en attente" />
         </TabsContent>
         
+        <TabsContent value="en_cours_financement" className="mt-6">
+          <ProjectTable filter={search} statutFilter="validé" />
+        </TabsContent>
+        
         <TabsContent value="en_cours" className="mt-6">
           <ProjectTable filter={search} statutFilter="en cours" />
         </TabsContent>
-        
+
         <TabsContent value="terminé" className="mt-6">
           <ProjectTable filter={search} statutFilter="terminé" />
         </TabsContent>

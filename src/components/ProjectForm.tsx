@@ -178,7 +178,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
         cultures: data.cultures.map(id => parseInt(id)),
         id_region: selectedTerrain.id_region,
         id_district: selectedTerrain.id_district,
-        id_commune: selectedTerrain.id_commune,
+        id_commune: selectedTerrain.id_commune,  
+        id_technicien: selectedTerrain.id_commune,  
+        id_superviseur: selectedTerrain.id_commune,
         financialSummary
       };
       

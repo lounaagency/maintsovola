@@ -37,6 +37,8 @@ const NewProject: React.FC<NewProjectProps> = ({ onProjectCreated }) => {
           titre: data.titre,
           id_terrain: data.id_terrain,
           id_tantsaha: terrainData.id_tantsaha || user.id,
+          id_technicien: terrainData.id_technicien,
+          id_superviseur: terrainData.id_superviseur,
           surface_ha: data.surface_ha,
           statut: 'en attente',
           id_region: data.id_region,
