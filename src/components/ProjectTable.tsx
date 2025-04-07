@@ -1,10 +1,10 @@
-
 import React, { useState, useEffect } from "react";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Loader2 } from "lucide-react";
+import { Loader2, Eye, FileEdit, CheckCircle, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import ProjectDetailsDialog from "./ProjectDetailsDialog";
 import ProjectEditDialog from "./ProjectEditDialog";
 import ProjectValidationDialog from "./ProjectValidationDialog";
@@ -72,7 +72,6 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
   const [userRole, setUserRole] = useState<string | null>(null);
   const isMobile = useIsMobile();
   
-  // State for sorting
   const [sortColumn, setSortColumn] = useState<string>("created_at");
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
@@ -125,7 +124,6 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
           )
         `);
       
-      // Apply filters based on user role
       if (userRole === 'simple') {
         query = query.eq('id_tantsaha', user.id);
       } else if (userRole === 'technicien') {
@@ -134,23 +132,19 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
         // Supervisors see all projects
       }
       
-      // Apply search filter if provided
       if (filter) {
         query = query.or(`description.ilike.%${filter}%,titre.ilike.%${filter}%`);
       }
       
-      // Apply statutFilter if provided
       if (statutFilter) {
         query = query.eq(`statut`, statutFilter);
       }
       
-      // Apply sorting
       query = query.order(sortColumn, { ascending: sortDirection === 'asc' });
       
       const { data, error } = await query;
       if (error) throw error;
       
-      // Cast the data to the correct type
       setProjects(data as unknown as ProjectData[]);
     } catch (error) {
       console.error("Erreur lors de la récupération des projets:", error);
@@ -184,7 +178,6 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
     if (!selectedProject || !user) return;
     
     try {
-      // Delete project cultures first
       const { error: cultureError } = await supabase
         .from('projet_culture')
         .delete()
@@ -192,7 +185,6 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
         
       if (cultureError) throw cultureError;
       
-      // Delete project
       const { error: projectError } = await supabase
         .from('projet')
         .delete()
@@ -202,7 +194,9 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
       
       toast.success("Projet supprimé avec succès");
       setDeleteConfirmOpen(false);
-      fetchProjects();
+      setProjects(prevProjects => 
+        prevProjects.filter(project => project.id_projet !== selectedProject.id_projet)
+      );
     } catch (error) {
       console.error("Erreur lors de la suppression du projet:", error);
       toast.error("Impossible de supprimer le projet");
@@ -217,18 +211,14 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
   
   const handleSort = (column: string) => {
     if (sortColumn === column) {
-      // Toggle sort direction if clicking the same column
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
     } else {
-      // Default to descending for a new column
       setSortColumn(column);
       setSortDirection('desc');
     }
   };
 
-  // Check if user can validate projects (technicien or superviseur)
   const isValidationUser = canValidateProject(userRole);
-  // Only show validate button for projects in "en attente" status
   const showValidateButton = isValidationUser && statutFilter === "en attente";
 
   if (loading) {

@@ -114,11 +114,16 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
         }
       }
       
-      // Update project status - Modified here to set status to "en financement" if validated
+      // Determine the new status based on validation decision
+      const newStatus = validationDecision === "valider" ? "en financement" : "rejeté";
+      
+      console.log("Updating project status to:", newStatus);
+      
+      // Update project status
       const { error: updateError } = await supabase
         .from('projet')
         .update({
-          statut: validationDecision === "valider" ? "en financement" : "rejeté",
+          statut: newStatus,
           date_validation: validationDate,
           rapport_validation: validationReport || null,
           photos_validation: uploadedPhotoUrls.length > 0 ? uploadedPhotoUrls.join(',') : null,
@@ -126,7 +131,10 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
         })
         .eq('id_projet', project.id_projet);
         
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error("Error updating project:", updateError);
+        throw updateError;
+      }
       
       // Create notification for project owner
       const notificationTitle = validationDecision === "valider" 
