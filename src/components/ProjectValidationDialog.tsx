@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { X, Upload, Loader2, CalendarIcon, MapPin } from "lucide-react";
+import { X, Upload, Loader2, MapPin } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -142,10 +142,10 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
       if (project.id_tantsaha) {
         await supabase.from('notification').insert({
           titre: notificationTitle,
-          contenu: notificationBody,
-          id_utilisateur: project.id_tantsaha,
+          message: notificationBody,
+          id_destinataire: project.id_tantsaha,
           type: "projet",
-          id_reference: project.id_projet,
+          entity_id: project.id_projet,
           lu: false
         });
       }
@@ -154,10 +154,10 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
       if (userRole === 'technicien' && project.id_superviseur && project.id_superviseur !== userId) {
         await supabase.from('notification').insert({
           titre: `${notificationTitle} par un technicien`,
-          contenu: `Le technicien a ${validationDecision === "valider" ? "validé" : "rejeté"} le projet "${project.titre || `Projet #${project.id_projet}`}"`,
-          id_utilisateur: project.id_superviseur,
+          message: `Le technicien a ${validationDecision === "valider" ? "validé" : "rejeté"} le projet "${project.titre || `Projet #${project.id_projet}`}"`,
+          id_destinataire: project.id_superviseur,
           type: "projet",
-          id_reference: project.id_projet,
+          entity_id: project.id_projet,
           lu: false
         });
       }

@@ -10,6 +10,8 @@ import { Loader2, FileEdit, Eye, CheckCircle } from "lucide-react";
 import ProjectDetailsDialog from "./ProjectDetailsDialog";
 import ProjectEditDialog from "./ProjectEditDialog";
 import ProjectValidationDialog from "./ProjectValidationDialog";
+import ProjectCard from "./ProjectCard";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 
 interface ProjectTableProps {
@@ -67,6 +69,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
   const [selectedProject, setSelectedProject] = useState<ProjectData | null>(null);
   const { user, profile } = useAuth();
   const [userRole, setUserRole] = useState<string | null>(null);
+  const isMobile = useIsMobile();
   
   // State for sorting
   const [sortColumn, setSortColumn] = useState<string>("created_at");
@@ -216,146 +219,175 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
   const canValidate = userRole === 'technicien' || userRole === 'superviseur';
   // Only show validate button for projects in "en attente" status
   const showValidateButton = canValidate && statutFilter === "en attente";
+  
+  // Check if user can edit projects
+  const canUserEditProject = (project: ProjectData) => {
+    return userRole === 'superviseur' || 
+           userRole === 'technicien' || 
+           (userRole === 'simple' && project.id_tantsaha === user?.id);
+  };
 
-  return (
-    <Card className="w-full shadow-sm">
-      {loading ? (
+  if (loading) {
+    return (
+      <Card className="w-full shadow-sm">
         <div className="flex justify-center items-center p-8">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <p className="ml-2 text-lg text-muted-foreground">Chargement des projets...</p>
         </div>
+      </Card>
+    );
+  }
+
+  if (projects.length === 0) {
+    return (
+      <Card className="w-full shadow-sm">
+        <div className="flex justify-center items-center p-8">
+          <p className="text-muted-foreground">Aucun projet trouvé.</p>
+        </div>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="w-full shadow-sm">
+      {isMobile ? (
+        <div className="grid grid-cols-1 gap-4 p-4">
+          {projects.map((project) => (
+            <ProjectCard
+              key={project.id_projet}
+              project={project}
+              onViewDetails={handleOpenDetails}
+              onEdit={handleOpenEdit}
+              onValidate={handleOpenValidation}
+              canEdit={canUserEditProject(project)}
+              canValidate={showValidateButton}
+            />
+          ))}
+        </div>
       ) : (
         <div className="overflow-x-auto">
-          {projects.length === 0 ? (
-            <div className="flex justify-center items-center p-8">
-              <p className="text-muted-foreground">Aucun projet trouvé.</p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead 
-                    className="w-[80px] cursor-pointer"
-                    onClick={() => handleSort('id_projet')}
-                    sortable
-                    sorted={sortColumn === 'id_projet' ? sortDirection : null}
-                    onSort={() => handleSort('id_projet')}
-                  >
-                    ID
-                  </TableHead>
-                  <TableHead 
-                    className="cursor-pointer"
-                    onClick={() => handleSort('titre')}
-                    sortable
-                    sorted={sortColumn === 'titre' ? sortDirection : null}
-                    onSort={() => handleSort('titre')}
-                  >
-                    Titre
-                  </TableHead>
-                  <TableHead>Culture</TableHead>
-                  <TableHead 
-                    className="cursor-pointer"
-                    onClick={() => handleSort('id_terrain')}
-                    sortable
-                    sorted={sortColumn === 'id_terrain' ? sortDirection : null}
-                    onSort={() => handleSort('id_terrain')}
-                  >
-                    Terrain
-                  </TableHead>
-                  <TableHead 
-                    className="cursor-pointer"
-                    onClick={() => handleSort('surface_ha')}
-                    sortable
-                    sorted={sortColumn === 'surface_ha' ? sortDirection : null}
-                    onSort={() => handleSort('surface_ha')}
-                  >
-                    Surface (ha)
-                  </TableHead>
-                  <TableHead 
-                    className="cursor-pointer"
-                    onClick={() => handleSort('statut')}
-                    sortable
-                    sorted={sortColumn === 'statut' ? sortDirection : null}
-                    onSort={() => handleSort('statut')}
-                  >
-                    Statut
-                  </TableHead>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead 
+                  className="w-[80px] cursor-pointer"
+                  onClick={() => handleSort('id_projet')}
+                  sortable
+                  sorted={sortColumn === 'id_projet' ? sortDirection : null}
+                  onSort={() => handleSort('id_projet')}
+                >
+                  ID
+                </TableHead>
+                <TableHead 
+                  className="cursor-pointer"
+                  onClick={() => handleSort('titre')}
+                  sortable
+                  sorted={sortColumn === 'titre' ? sortDirection : null}
+                  onSort={() => handleSort('titre')}
+                >
+                  Titre
+                </TableHead>
+                <TableHead>Culture</TableHead>
+                <TableHead 
+                  className="cursor-pointer"
+                  onClick={() => handleSort('id_terrain')}
+                  sortable
+                  sorted={sortColumn === 'id_terrain' ? sortDirection : null}
+                  onSort={() => handleSort('id_terrain')}
+                >
+                  Terrain
+                </TableHead>
+                <TableHead 
+                  className="cursor-pointer"
+                  onClick={() => handleSort('surface_ha')}
+                  sortable
+                  sorted={sortColumn === 'surface_ha' ? sortDirection : null}
+                  onSort={() => handleSort('surface_ha')}
+                >
+                  Surface (ha)
+                </TableHead>
+                <TableHead 
+                  className="cursor-pointer"
+                  onClick={() => handleSort('statut')}
+                  sortable
+                  sorted={sortColumn === 'statut' ? sortDirection : null}
+                  onSort={() => handleSort('statut')}
+                >
+                  Statut
+                </TableHead>
+                {userRole !== 'simple' && (
+                  <TableHead>Agriculteur</TableHead>
+                )}
+                <TableHead>Localisation</TableHead>
+                {showActions && <TableHead className="text-right">Actions</TableHead>}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {projects.map((project) => (
+                <TableRow 
+                  key={project.id_projet}
+                  className="cursor-pointer"
+                  onClick={() => handleOpenDetails(project)}
+                >
+                  <TableCell className="font-medium">{project.id_projet}</TableCell>
+                  <TableCell>{project.titre || `Projet #${project.id_projet}`}</TableCell>
+                  <TableCell>
+                    {project.projet_culture?.map(pc => pc.culture?.nom_culture).join(', ')}
+                  </TableCell>
+                  <TableCell>{project.terrain?.nom_terrain || `Terrain #${project.id_terrain}`}</TableCell>
+                  <TableCell>{project.surface_ha}</TableCell>
+                  <TableCell>{renderStatusBadge(project.statut)}</TableCell>
                   {userRole !== 'simple' && (
-                    <TableHead>Agriculteur</TableHead>
+                    <TableCell>
+                      {project.tantsaha ? `${project.tantsaha.nom} ${project.tantsaha.prenoms || ''}` : 'N/A'}
+                    </TableCell>
                   )}
-                  <TableHead>Localisation</TableHead>
-                  {showActions && <TableHead className="text-right">Actions</TableHead>}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {projects.map((project) => (
-                  <TableRow 
-                    key={project.id_projet}
-                    className="cursor-pointer"
-                    onClick={() => handleOpenDetails(project)}
-                  >
-                    <TableCell className="font-medium">{project.id_projet}</TableCell>
-                    <TableCell>{project.titre || `Projet #${project.id_projet}`}</TableCell>
-                    <TableCell>
-                      {project.projet_culture?.map(pc => pc.culture?.nom_culture).join(', ')}
-                    </TableCell>
-                    <TableCell>{project.terrain?.nom_terrain || `Terrain #${project.id_terrain}`}</TableCell>
-                    <TableCell>{project.surface_ha}</TableCell>
-                    <TableCell>{renderStatusBadge(project.statut)}</TableCell>
-                    {userRole !== 'simple' && (
-                      <TableCell>
-                        {project.tantsaha ? `${project.tantsaha.nom} ${project.tantsaha.prenoms || ''}` : 'N/A'}
-                      </TableCell>
-                    )}
-                    <TableCell>
-                      {project.region?.nom_region}, {project.district?.nom_district}
-                    </TableCell>
-                    {showActions && (
-                      <TableCell className="text-right">
+                  <TableCell>
+                    {project.region?.nom_region}, {project.district?.nom_district}
+                  </TableCell>
+                  {showActions && (
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenDetails(project);
+                        }}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      {canUserEditProject(project) && (
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleOpenDetails(project);
+                            handleOpenEdit(project);
                           }}
                         >
-                          <Eye className="h-4 w-4" />
+                          <FileEdit className="h-4 w-4" />
                         </Button>
-                        {(userRole === 'superviseur' || 
-                           userRole === 'technicien' || 
-                          (userRole === 'simple' && project.id_tantsaha === user?.id)) && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenEdit(project);
-                            }}
-                          >
-                            <FileEdit className="h-4 w-4" />
-                          </Button>
-                        )}
-                        {showValidateButton && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            title="Valider ce projet"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenValidation(project);
-                            }}
-                          >
-                            <CheckCircle className="h-4 w-4 text-green-500" />
-                          </Button>
-                        )}
-                      </TableCell>
-                    )}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
+                      )}
+                      {showValidateButton && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Valider ce projet"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenValidation(project);
+                          }}
+                        >
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                        </Button>
+                      )}
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       )}
 
