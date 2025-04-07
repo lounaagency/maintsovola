@@ -837,6 +837,7 @@ export type Database = {
           id_message: number
           lu: boolean | null
           modified_at: string | null
+          pieces_jointes: string[] | null
         }
         Insert: {
           contenu: string
@@ -849,6 +850,7 @@ export type Database = {
           id_message?: number
           lu?: boolean | null
           modified_at?: string | null
+          pieces_jointes?: string[] | null
         }
         Update: {
           contenu?: string
@@ -861,6 +863,7 @@ export type Database = {
           id_message?: number
           lu?: boolean | null
           modified_at?: string | null
+          pieces_jointes?: string[] | null
         }
         Relationships: [
           {
