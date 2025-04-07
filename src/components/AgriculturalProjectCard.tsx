@@ -14,6 +14,8 @@ import { toast } from 'sonner';
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import ProjectActions from './ProjectActions';
+import CommentSection from './CommentSection';
 
 interface AgriculturalProjectCardProps {
   project: AgriculturalProject;
@@ -23,6 +25,7 @@ interface AgriculturalProjectCardProps {
 const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ project, onLikeToggle }) => {
   const [liked, setLiked] = useState<boolean>(project.isLiked || false);
   const [showInvestModal, setShowInvestModal] = useState<boolean>(false);
+  const [showComments, setShowComments] = useState<boolean>(false);
   const [investAmount, setInvestAmount] = useState<number>(0);
   const { user, profile } = useAuth();
   const userRole = profile?.nom_role?.toLowerCase() || '';
@@ -86,6 +89,10 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
   const handleLike = () => {
     setLiked(!liked);
     onLikeToggle(liked);
+  };
+
+  const handleToggleComments = () => {
+    setShowComments(!showComments);
   };
   
   return (
@@ -154,24 +161,18 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
           
           {/* Boutons d'actions */}
           <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-            <div className="flex space-x-2">
-              <button 
-                className="flex items-center space-x-1 text-xs text-gray-500 hover:text-red-500 transition-colors"
-                onClick={handleLike}
-              >
-                <Heart className={`h-4 w-4 ${liked ? 'fill-red-500 text-red-500' : ''}`} />
-                <span>{project.likes}</span>
-              </button>
-              
-              <button className="flex items-center space-x-1 text-xs text-gray-500 hover:text-primary transition-colors">
-                <MessageCircle className="h-4 w-4" />
-                <span>{project.comments}</span>
-              </button>
-              
-              <button className="flex items-center space-x-1 text-xs text-gray-500 hover:text-primary transition-colors">
-                <Share className="h-4 w-4" />
-              </button>
-            </div>
+            <ProjectActions 
+              projectId={project.id}
+              likes={project.likes}
+              comments={project.comments}
+              shares={project.shares}
+              isLiked={liked}
+              onLikeToggle={handleLike}
+              onOpenComments={handleToggleComments}
+              onShare={() => {
+                toast.info("Fonctionnalité de partage à venir");
+              }}
+            />
             
             {canInvest && (
               <Button 
@@ -185,6 +186,11 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
             )}
           </div>
         </div>
+        
+        {/* Comment section */}
+        {showComments && (
+          <CommentSection postId={project.id} />
+        )}
       </Card>
       
       {/* Modal d'investissement */}

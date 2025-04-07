@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Navigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -25,6 +26,7 @@ const Feed: React.FC = () => {
   if (!user) {
     return <Navigate to="/auth" replace />;
   }
+  
   useEffect(() => {
     fetchProjects();
   }, [activeFilters]);
@@ -269,6 +271,7 @@ const Feed: React.FC = () => {
     setActiveFilters({});
   };
   
+  // Animation variants
   const container = {
     hidden: { opacity: 0 },
     show: {
