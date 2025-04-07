@@ -6,13 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Loader2, FileEdit, Eye, CheckCircle } from "lucide-react";
+import { Loader2, FileEdit, Eye, CheckCircle, Trash2 } from "lucide-react";
 import ProjectDetailsDialog from "./ProjectDetailsDialog";
 import ProjectEditDialog from "./ProjectEditDialog";
 import ProjectValidationDialog from "./ProjectValidationDialog";
 import ProjectCard from "./ProjectCard";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 interface ProjectTableProps {
   filter?: string;
@@ -66,6 +67,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [validationOpen, setValidationOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<ProjectData | null>(null);
   const { user, profile } = useAuth();
   const [userRole, setUserRole] = useState<string | null>(null);
@@ -148,7 +150,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
       
       const { data, error } = await query;
       if (error) throw error;
-      console.log("Projects fetched:", data, query,userRole);
+      
       // Cast the data to the correct type
       setProjects(data as unknown as ProjectData[]);
     } catch (error) {
@@ -172,6 +174,40 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
   const handleOpenValidation = (project: ProjectData) => {
     setSelectedProject(project);
     setValidationOpen(true);
+  };
+
+  const handleOpenDeleteConfirm = (project: ProjectData) => {
+    setSelectedProject(project);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleDeleteProject = async () => {
+    if (!selectedProject || !user) return;
+    
+    try {
+      // Delete project cultures first
+      const { error: cultureError } = await supabase
+        .from('projet_culture')
+        .delete()
+        .eq('id_projet', selectedProject.id_projet);
+        
+      if (cultureError) throw cultureError;
+      
+      // Delete project
+      const { error: projectError } = await supabase
+        .from('projet')
+        .delete()
+        .eq('id_projet', selectedProject.id_projet);
+        
+      if (projectError) throw projectError;
+      
+      toast.success("Projet supprimé avec succès");
+      setDeleteConfirmOpen(false);
+      fetchProjects();
+    } catch (error) {
+      console.error("Erreur lors de la suppression du projet:", error);
+      toast.error("Impossible de supprimer le projet");
+    }
   };
 
   const handleProjectUpdated = () => {
@@ -220,6 +256,13 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
   // Only show validate button for projects in "en attente" status
   const showValidateButton = canValidate && statutFilter === "en attente";
   
+  // Check if project can be deleted (only in "en attente" status)
+  const canDeleteProject = (project: ProjectData) => {
+    return project.statut === 'en attente' && 
+           (userRole === 'superviseur' || 
+            (userRole === 'simple' && project.id_tantsaha === user?.id));
+  };
+  
   // Check if user can edit projects
   const canUserEditProject = (project: ProjectData) => {
     return userRole === 'superviseur' || 
@@ -259,8 +302,10 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
               onViewDetails={handleOpenDetails}
               onEdit={handleOpenEdit}
               onValidate={handleOpenValidation}
+              onDelete={handleOpenDeleteConfirm}
               canEdit={canUserEditProject(project)}
               canValidate={showValidateButton}
+              canDelete={canDeleteProject(project)}
             />
           ))}
         </div>
@@ -382,6 +427,20 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
                           <CheckCircle className="h-4 w-4 text-green-500" />
                         </Button>
                       )}
+                      {canDeleteProject(project) && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Supprimer ce projet"
+                          className="text-destructive hover:text-destructive/90"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenDeleteConfirm(project);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
                     </TableCell>
                   )}
                 </TableRow>
@@ -417,6 +476,28 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
           />
         </>
       )}
+
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir supprimer ce projet ? Cette action ne peut pas être annulée.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteConfirmOpen(false)}>
+              Annuler
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteProject} 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 };

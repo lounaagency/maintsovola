@@ -116,11 +116,11 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
         }
       }
       
-      // Update project status
+      // Update project status - Modified here to set status to "en financement" if validated
       const { error: updateError } = await supabase
         .from('projet')
         .update({
-          statut: validationDecision === "valider" ? "validé" : "rejeté",
+          statut: validationDecision === "valider" ? "en financement" : "rejeté",
           date_validation: validationDate,
           rapport_validation: validationReport || null,
           photos_validation: uploadedPhotoUrls.length > 0 ? uploadedPhotoUrls.join(',') : null,
@@ -136,7 +136,7 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
         : "Projet rejeté";
         
       const notificationBody = validationDecision === "valider"
-        ? `Votre projet "${project.titre || `Projet #${project.id_projet}`}" a été validé.`
+        ? `Votre projet "${project.titre || `Projet #${project.id_projet}`}" a été validé et est maintenant en phase de financement.`
         : `Votre projet "${project.titre || `Projet #${project.id_projet}`}" a été rejeté. ${validationReport ? `Raison: ${validationReport}` : ''}`;
       
       if (project.id_tantsaha) {
@@ -163,7 +163,7 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
       }
       
       toast.success(validationDecision === "valider" 
-        ? "Projet validé avec succès" 
+        ? "Projet validé avec succès et en attente de financement" 
         : "Projet rejeté avec succès");
         
       onSubmitSuccess();
