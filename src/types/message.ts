@@ -38,6 +38,12 @@ export interface ConversationMessage extends Message {
     photo_profil?: string;
     status?: "online" | "offline" | "away" | "busy" | "none";
   };
+  other_user?: {
+    id_utilisateur: string;
+    nom: string;
+    prenoms: string | null;
+    photo_profil: string | null;
+  };
   lastMessage?: {
     text: string;
     timestamp: string;
