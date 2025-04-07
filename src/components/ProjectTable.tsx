@@ -18,38 +18,42 @@ interface ProjectTableProps {
 
 export interface ProjectData {
   id_projet: number;
-  titre: string;
+  titre?: string;
   statut: string;
   surface_ha: number;
-  description: string;
-  created_at: string;
-  id_tantsaha: string;
+  description?: string;
+  created_at?: string;
+  id_tantsaha?: string;
   id_technicien?: string;
   id_superviseur?: string;
   id_terrain: number;
   tantsaha?: {
     nom: string;
     prenoms: string;
-  };
+  } | null;
   terrain?: {
-    nom_terrain: string;
+    nom_terrain?: string;
   };
   region?: {
-    nom_region: string;
+    nom_region?: string;
   };
   district?: {
-    nom_district: string;
+    nom_district?: string;
   };
   commune?: {
-    nom_commune: string;
+    nom_commune?: string;
   };
   projet_culture?: Array<{
     id_projet_culture: number;
     id_culture: number;
-    culture: {
-      nom_culture: string;
+    culture?: {
+      nom_culture?: string;
     };
   }>;
+  photos?: string;
+  id_region?: number;
+  id_district?: number;
+  id_commune?: number;
 }
 
 const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = true }) => {
@@ -128,7 +132,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
       
       if (error) throw error;
       
-      setProjects(data || []);
+      setProjects(data as ProjectData[] || []);
     } catch (error) {
       console.error("Erreur lors de la récupération des projets:", error);
       toast.error("Impossible de charger les projets");
@@ -276,8 +280,6 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
             onClose={() => setEditOpen(false)}
             project={selectedProject}
             onSubmitSuccess={handleProjectUpdated}
-            userId={user?.id || ''}
-            userRole={userRole || undefined}
           />
         </>
       )}

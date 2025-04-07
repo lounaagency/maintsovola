@@ -15,13 +15,17 @@ interface ProjectEditDialogProps {
   onClose: () => void;
   project: any;
   onSubmitSuccess: () => void;
+  userId?: string;
+  userRole?: string;
 }
 
 const ProjectEditDialog: React.FC<ProjectEditDialogProps> = ({
   isOpen,
   onClose,
   project,
-  onSubmitSuccess
+  onSubmitSuccess,
+  userId,
+  userRole
 }) => {
   const handleSubmit = async (data: any) => {
     try {

@@ -549,7 +549,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
           )}
         />
 
-        {!isEditing && selectedCultures.length > 0 && selectedTerrain && (
+        {selectedCultures.length > 0 && selectedTerrain && (
           <div className="space-y-2">
             <h3 className="text-lg font-medium">Informations financières</h3>
             <div className="border rounded overflow-hidden">
