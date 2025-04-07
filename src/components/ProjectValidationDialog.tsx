@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ProjectData } from "./ProjectTable";
@@ -89,7 +88,6 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
     setIsSubmitting(true);
     
     try {
-      // Upload photos if any
       const uploadedPhotoUrls: string[] = [];
       
       if (validationPhotos.length > 0) {
@@ -114,12 +112,10 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
         }
       }
       
-      // Determine the new status based on validation decision
       const newStatus = validationDecision === "valider" ? "en financement" : "rejeté";
       
       console.log("Updating project status to:", newStatus);
       
-      // Update project status
       const { error: updateError } = await supabase
         .from('projet')
         .update({
@@ -136,7 +132,6 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
         throw updateError;
       }
       
-      // Create notification for project owner
       const notificationTitle = validationDecision === "valider" 
         ? "Projet validé" 
         : "Projet rejeté";
@@ -156,7 +151,6 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
         });
       }
       
-      // Notify supervisor if current user is not the supervisor
       if (userRole === 'technicien' && project.id_superviseur && project.id_superviseur !== userId) {
         await supabase.from('notification').insert({
           titre: `${notificationTitle} par un technicien`,
