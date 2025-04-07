@@ -1,4 +1,5 @@
 
+import React from "react";
 import { Badge } from "@/components/ui/badge";
 import { ProjectData } from "@/components/ProjectTable";
 
@@ -13,7 +14,6 @@ export const renderStatusBadge = (status: string) => {
       variant = "outline";
       break;
     case 'validé':
-      variant = "default";
       break;
     case 'en financement':
       variant = "secondary";
