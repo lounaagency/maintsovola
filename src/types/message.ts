@@ -20,7 +20,7 @@ export interface Message {
   contenu: string;
   date_envoi: string;
   lu: boolean;
-  pieces_jointes?: string[]; // Ajout du champ pour les pièces jointes
+  pieces_jointes?: string[]; // Array of file paths
 }
 
 export interface ConversationMessage extends Message {

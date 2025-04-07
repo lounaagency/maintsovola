@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { ConversationMessage } from "@/types/message";
@@ -79,7 +78,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({ userId, conversation, onBack }) => 
       const newFiles = Array.from(e.target.files);
       setAttachments(prev => [...prev, ...newFiles]);
     }
-    // Reset input value so the same file can be selected again if needed
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -119,16 +117,13 @@ const ChatArea: React.FC<ChatAreaProps> = ({ userId, conversation, onBack }) => 
     setIsSendingMessage(true);
     
     try {
-      // Upload attachments if there are any
       let attachmentPaths: string[] = [];
       if (attachments.length > 0) {
-        // Upload each attachment
         const uploadPromises = attachments.map(file => uploadAttachment(file));
         const results = await Promise.all(uploadPromises);
         attachmentPaths = results.filter((path): path is string => path !== null);
       }
       
-      // Create message object
       const messageToSend = {
         id_conversation: conversation.id_conversation,
         id_expediteur: userId,
@@ -139,30 +134,25 @@ const ChatArea: React.FC<ChatAreaProps> = ({ userId, conversation, onBack }) => 
         pieces_jointes: attachmentPaths.length > 0 ? attachmentPaths : null
       };
       
-      // Add optimistic update
       const optimisticMessage: ConversationMessage = {
         ...messageToSend,
-        id_message: Date.now(), // Temporary ID
+        id_message: Date.now(),
         sender: {
           id_utilisateur: userId,
-          nom: "", // These fields will be updated when we receive the actual message
+          nom: "",
           prenoms: null,
           photo_profil: null
         },
         pieces_jointes: attachmentPaths
       };
       
-      // Update UI immediately
       setCurrentMessages(prev => [...prev, optimisticMessage]);
       
-      // Clear input immediately for better UX
       setNewMessage("");
       setAttachments([]);
       
-      // Scroll to bottom immediately
       setTimeout(scrollToBottom, 50);
       
-      // Actually send the message
       const { data, error } = await supabase
         .from('message')
         .insert(messageToSend)
@@ -170,7 +160,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({ userId, conversation, onBack }) => 
         
       if (error) throw error;
       
-      // Update conversation activity
       await supabase
         .from('conversation')
         .update({ derniere_activite: new Date().toISOString() })
@@ -178,7 +167,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({ userId, conversation, onBack }) => 
       
     } catch (error) {
       console.error("Error sending message:", error);
-      // If error, we could revert the optimistic update here
     } finally {
       setIsSendingMessage(false);
     }
@@ -199,7 +187,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({ userId, conversation, onBack }) => 
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // Function to get file URL from storage
   const getFileUrl = (filePath: string) => {
     const { data } = supabase.storage
       .from('message-attachments')
@@ -208,30 +195,24 @@ const ChatArea: React.FC<ChatAreaProps> = ({ userId, conversation, onBack }) => 
     return data.publicUrl;
   };
 
-  // Function to determine if a file is an image
   const isImageFile = (filePath: string) => {
     const extensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg'];
     return extensions.some(ext => filePath.toLowerCase().endsWith(ext));
   };
 
-  // Extract filename from storage path
   const getFileName = (path: string) => {
     return path.split('/').pop() || 'fichier';
   };
 
   useEffect(() => {
-    // Scroll to bottom when messages change
     scrollToBottom();
   }, [currentMessages]);
 
   useEffect(() => {
-    // Fetch messages when a conversation is selected
     if (conversation) {
       fetchMessages(conversation.id_conversation);
-      // Mark messages as read immediately when opening the conversation
       markMessagesAsRead(conversation.id_conversation);
       
-      // Set up real-time subscription for this conversation
       const channel = supabase
         .channel(`messages-${conversation.id_conversation}`)
         .on('postgres_changes', {
@@ -240,13 +221,10 @@ const ChatArea: React.FC<ChatAreaProps> = ({ userId, conversation, onBack }) => 
           table: 'message',
           filter: `id_conversation=eq.${conversation.id_conversation}`
         }, (payload) => {
-          // If the message is from the current user, we already have an optimistic update
-          // If not, add it to the chat
           if (payload.new && payload.new.id_expediteur !== userId) {
             fetchMessages(conversation.id_conversation);
           }
           
-          // Mark as read if user is the recipient
           if (payload.new && payload.new.id_destinataire === userId) {
             markMessagesAsRead(conversation.id_conversation);
           }
@@ -278,7 +256,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({ userId, conversation, onBack }) => 
   
   return (
     <>
-      {/* Chat Header */}
       <div className="flex items-center p-4 border-b border-border sticky top-0 bg-white z-10">
         <Button 
           variant="ghost" 
@@ -299,7 +276,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({ userId, conversation, onBack }) => 
         </div>
       </div>
       
-      {/* Chat Messages */}
       <ScrollArea className="flex-1 p-4 h-full">
         <div className="space-y-4">
           {currentMessages.map((message, index) => (
@@ -318,7 +294,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({ userId, conversation, onBack }) => 
                   </div>
                 )}
                 <div>
-                  {/* Message content */}
                   {message.contenu && (
                     <div 
                       className={`rounded-2xl px-4 py-2 inline-block ${
@@ -331,7 +306,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({ userId, conversation, onBack }) => 
                     </div>
                   )}
                   
-                  {/* Attachments */}
                   {message.pieces_jointes && message.pieces_jointes.length > 0 && (
                     <div className="mt-2 space-y-2">
                       {message.pieces_jointes.map((attachment, i) => (
@@ -393,7 +367,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({ userId, conversation, onBack }) => 
         </div>
       </ScrollArea>
       
-      {/* Attachment preview */}
       {attachments.length > 0 && (
         <div className="p-2 border-t border-border bg-muted/30">
           <div className="flex flex-wrap gap-2">
@@ -423,7 +396,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({ userId, conversation, onBack }) => 
         </div>
       )}
       
-      {/* File input (hidden) */}
       <input
         type="file"
         ref={fileInputRef}
@@ -433,7 +405,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({ userId, conversation, onBack }) => 
         accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
       />
       
-      {/* Message Input */}
       <form onSubmit={handleSendMessage} className="p-4 border-t border-border sticky bottom-0 bg-white">
         <div className="flex space-x-2">
           <TooltipProvider>
