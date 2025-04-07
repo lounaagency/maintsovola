@@ -15,7 +15,7 @@ export interface TerrainFormData {
   geom?: number[][]; // Coordonnées du polygone [[lng, lat], [lng, lat], ...]
   photos?: string | string[]; // Can be string (comma-separated) or array of strings
   // Champs pour le rapport de validation
-  date_validation?: Date | string;
+  date_validation?: string;
   rapport_validation?: string;
   photos_validation?: string | string[];
   validation_decision?: 'valider' | 'rejetter';
