@@ -132,27 +132,22 @@ const Projects = () => {
       </div>
 
       <Tabs defaultValue="tous" value={activeTab} onValueChange={handleTabChange}>
-        <TabsList className="grid grid-cols-4 w-full sm:w-auto">
-          <TabsTrigger value="tous">Tous</TabsTrigger>
+        <TabsList className="grid grid-cols-3 w-full sm:w-auto">
           <TabsTrigger value="en_attente">En attente</TabsTrigger>
           <TabsTrigger value="en_cours">En cours</TabsTrigger>
           <TabsTrigger value="terminé">Terminés</TabsTrigger>
         </TabsList>
-        
-        <TabsContent value="tous" className="mt-6">
-          <ProjectTable filter={search} />
-        </TabsContent>
-        
+               
         <TabsContent value="en_attente" className="mt-6">
-          <ProjectTable filter={`${search} ${search ? ',' : ''}statut.eq.en attente`} />
+          <ProjectTable filter={search} statutFilter="en attente" />
         </TabsContent>
         
         <TabsContent value="en_cours" className="mt-6">
-          <ProjectTable filter={`${search} ${search ? ',' : ''}statut.eq.en cours`} />
+          <ProjectTable filter={search} statutFilter="en cours" />
         </TabsContent>
         
         <TabsContent value="terminé" className="mt-6">
-          <ProjectTable filter={`${search} ${search ? ',' : ''}statut.eq.terminé`} />
+          <ProjectTable filter={search} statutFilter ="terminé" />
         </TabsContent>
       </Tabs>
 

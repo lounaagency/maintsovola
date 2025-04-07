@@ -14,6 +14,7 @@ import { toast } from "sonner";
 interface ProjectTableProps {
   filter?: string;
   showActions?: boolean;
+  statutFilter?: string;
 }
 
 export interface ProjectData {
@@ -56,7 +57,7 @@ export interface ProjectData {
   id_commune?: number;
 }
 
-const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = true }) => {
+const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = true, statutFilter="" }) => {
   const [projects, setProjects] = useState<ProjectData[]>([]);
   const [loading, setLoading] = useState(true);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -91,7 +92,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
 
   useEffect(() => {
     fetchProjects();
-  }, [filter, user, userRole]);
+  }, [statutFilter,filter, user, userRole]);
 
   const fetchProjects = async () => {
     if (!user) return;
@@ -115,7 +116,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
         `);
       
       // Apply filters based on user role
-      if (userRole === 'tantsaha') {
+      if (userRole === 'simple') {
         query = query.eq('id_tantsaha', user.id);
       } else if (userRole === 'technicien') {
         query = query.eq('id_technicien', user.id);
@@ -128,10 +129,13 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
         query = query.or(`description.ilike.%${filter}%,titre.ilike.%${filter}%`);
       }
       
+      
+      // Apply statutFilter if provided
+      if (statutFilter) {
+        query = query.eq(`statut`,statutFilter);
+      }
       const { data, error } = await query.order('created_at', { ascending: false });
-      
       if (error) throw error;
-      
       // Cast the data to the correct type
       setProjects(data as unknown as ProjectData[]);
     } catch (error) {
@@ -204,7 +208,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
                   <TableHead>Terrain</TableHead>
                   <TableHead>Surface (ha)</TableHead>
                   <TableHead>Statut</TableHead>
-                  {userRole !== 'tantsaha' && (
+                  {userRole !== 'simple' && (
                     <TableHead>Agriculteur</TableHead>
                   )}
                   <TableHead>Localisation</TableHead>
@@ -248,7 +252,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
                         </Button>
                         {(userRole === 'superviseur' || 
                            userRole === 'technicien' || 
-                          (userRole === 'tantsaha' && project.id_tantsaha === user?.id)) && (
+                          (userRole === 'simple' && project.id_tantsaha === user?.id)) && (
                           <Button
                             variant="ghost"
                             size="icon"
