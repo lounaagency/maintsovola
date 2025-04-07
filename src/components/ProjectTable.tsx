@@ -136,6 +136,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
       }
       const { data, error } = await query.order('created_at', { ascending: false });
       if (error) throw error;
+      console.log("Projects fetched:", data, query,userRole);
       // Cast the data to the correct type
       setProjects(data as unknown as ProjectData[]);
     } catch (error) {
