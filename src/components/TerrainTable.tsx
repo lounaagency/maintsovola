@@ -1,4 +1,3 @@
-
 import React from "react";
 import { TerrainData } from "@/types/terrain";
 import { Button } from "@/components/ui/button";
@@ -354,6 +353,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                     variant="outline" 
                     size="sm"
                     onClick={() => handleContactTechnicien(terrain)}
+                    aria-label="Contacter le technicien"
                   >
                     <MessageSquare className="h-4 w-4 mr-1" />
                     
@@ -465,7 +465,6 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                       <Button 
                         variant="outline" 
                         size="sm"
-                        alt = "Contacter le technicien"
                         onClick={() => handleContactTechnicien(terrain)}
                       >
                         <MessageSquare className="h-4 w-4 mr-1" />
