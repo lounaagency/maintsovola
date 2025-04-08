@@ -1,4 +1,3 @@
-
 export interface TerrainData {
   id_terrain?: number;
   id_tantsaha?: string;

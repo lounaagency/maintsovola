@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -43,6 +44,9 @@ const validationSchema = yup.object({
   validation_decision: yup.string().required("Une décision est requise").oneOf(['valider', 'rejetter'], "Décision invalide"),
 }).required();
 
+type TerrainFormValues = yup.InferType<typeof terrainSchema>;
+type ValidationFormValues = yup.InferType<typeof validationSchema>;
+
 const TerrainForm: React.FC<TerrainFormProps> = ({
   initialData,
   onSubmitSuccess,
@@ -61,12 +65,10 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   
-  // Choose the appropriate form schema
+  // Choose the appropriate form schema based on validation mode
   const formSchema = isValidationMode ? validationSchema : terrainSchema;
-
-  type FormValues = yup.InferType<typeof formSchema>;
   
-  const form = useForm<FormValues>({
+  const form = useForm({
     resolver: yupResolver(formSchema),
     defaultValues: {
       id_terrain: initialData?.id_terrain,
@@ -218,13 +220,12 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
         const { error } = await supabase
           .from('terrain')
           .update({
-            ...terrainData,
+            surface_validee: terrainData.surface_validee,
             photos_validation: terrainData.photos_validation,
             statut: terrainData.statut,
             date_validation: terrainData.date_validation,
             rapport_validation: terrainData.rapport_validation,
-            validation_decision: terrainData.validation_decision,
-            surface_validee: terrainData.surface_validee
+            validation_decision: terrainData.validation_decision
           })
           .eq('id_terrain', initialData?.id_terrain);
           
@@ -310,7 +311,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
 
           const { data: newTerrain, error } = await supabase
             .from('terrain')
-            .insert({
+            .insert([{
               id_region: dataSansId.id_region,
               id_district: dataSansId.id_district,
               id_commune: dataSansId.id_commune,
@@ -322,7 +323,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
               photos: dataSansId.photos,
               geom: dataSansId.geom,
               statut: dataSansId.statut
-            })
+            }])
             .select('*')
             .single();
             
