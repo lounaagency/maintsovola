@@ -28,7 +28,8 @@ export const convertFormDataToTerrainData = (formData: TerrainFormData): Terrain
     id_region: Number(formData.id_region),
     id_district: Number(formData.id_district),
     id_commune: Number(formData.id_commune),
-    surface_proposee: parseFloat(formData.surface_proposee.toFixed(2)) || 0
+    surface_proposee: parseFloat(formData.surface_proposee.toFixed(2)) || 0,
+    nom_terrain: formData.nom_terrain
   };
   
   // Add surface_validee if provided

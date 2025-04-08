@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -26,7 +25,7 @@ interface TerrainFormProps {
 }
 
 // Create validation schemas for regular mode and validation mode
-const terrainSchema = yup.object().shape({
+const terrainSchema = yup.object({
   nom_terrain: yup.string().required("Le nom du terrain est obligatoire"),
   surface_proposee: yup.number().required("La surface est obligatoire").positive("La surface doit être positive"),
   id_region: yup.string().required("La région est obligatoire"),
@@ -35,14 +34,14 @@ const terrainSchema = yup.object().shape({
   acces_eau: yup.boolean().default(false),
   acces_route: yup.boolean().default(false),
   id_tantsaha: yup.string().optional(),
-});
+}).required();
 
-const validationSchema = yup.object().shape({
+const validationSchema = yup.object({
   surface_validee: yup.number().required("La surface validée est obligatoire").positive("La surface doit être positive"),
   date_validation: yup.string().required("La date de validation est obligatoire"),
   rapport_validation: yup.string().required("Le rapport de validation est obligatoire"),
   validation_decision: yup.string().required("Une décision est requise").oneOf(['valider', 'rejetter'], "Décision invalide"),
-});
+}).required();
 
 const TerrainForm: React.FC<TerrainFormProps> = ({
   initialData,
@@ -64,9 +63,11 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
   
   // Choose the appropriate form schema
   const formSchema = isValidationMode ? validationSchema : terrainSchema;
+
+  type FormValues = yup.InferType<typeof formSchema>;
   
-  const form = useForm<TerrainFormData>({
-    resolver: yupResolver(formSchema as any),
+  const form = useForm<FormValues>({
+    resolver: yupResolver(formSchema),
     defaultValues: {
       id_terrain: initialData?.id_terrain,
       nom_terrain: initialData?.nom_terrain || "",
@@ -79,15 +80,11 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       acces_route: initialData?.acces_route || false,
       id_tantsaha: userRole === 'simple' ? userId : initialData?.id_tantsaha,
       photos: initialData?.photos || '',
-      date_validation: initialData?.date_validation 
-        ? typeof initialData.date_validation === 'string' 
-          ? initialData.date_validation 
-          : initialData.date_validation.toISOString().split('T')[0]
-        : new Date().toISOString().split('T')[0],
+      date_validation: initialData?.date_validation || new Date().toISOString().split('T')[0],
       rapport_validation: initialData?.rapport_validation || '',
       photos_validation: initialData?.photos_validation || '',
       validation_decision: initialData?.validation_decision || 'valider',
-    }
+    } as any
   });
 
   // Initialize terrain data when component mounts or initialData changes
@@ -178,7 +175,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
   };
 
   // Form submission handler
-  const onSubmit = async (data: TerrainFormData) => {
+  const onSubmit = async (data: any) => {
     setIsSubmitting(true);
     try {
       // Assign polygon coordinates to form data
@@ -198,7 +195,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
                              (data.id_tantsaha || userId) : userId;
       
       // Convert form data to terrain data
-      const terrainData = convertFormDataToTerrainData({...data});
+      const terrainData = convertFormDataToTerrainData({...data} as TerrainFormData);
       terrainData.id_tantsaha = terrainOwnerId;
       
       if (isValidationMode) {
@@ -215,12 +212,20 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
         
         // Ensure date_validation is a string for the API
         if (terrainData.date_validation && typeof terrainData.date_validation !== 'string') {
-          terrainData.date_validation = terrainData.date_validation.toISOString();
+          terrainData.date_validation = terrainData.date_validation.toString();
         }
         
         const { error } = await supabase
           .from('terrain')
-          .update(terrainData)
+          .update({
+            ...terrainData,
+            photos_validation: terrainData.photos_validation,
+            statut: terrainData.statut,
+            date_validation: terrainData.date_validation,
+            rapport_validation: terrainData.rapport_validation,
+            validation_decision: terrainData.validation_decision,
+            surface_validee: terrainData.surface_validee
+          })
           .eq('id_terrain', initialData?.id_terrain);
           
         if (error) throw error;
@@ -243,8 +248,13 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
         
         // Return the updated terrain data for UI update
         onSubmitSuccess({
-          ...initialData,
-          ...terrainData
+          ...initialData!,
+          photos_validation: terrainData.photos_validation,
+          statut: terrainData.statut,
+          date_validation: terrainData.date_validation,
+          rapport_validation: terrainData.rapport_validation,
+          validation_decision: terrainData.validation_decision as 'valider' | 'rejetter',
+          surface_validee: terrainData.surface_validee
         });
       } else {
         // Regular terrain create/update mode
@@ -266,7 +276,19 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
           
           const { data: updatedTerrain, error } = await supabase
             .from('terrain')
-            .update(terrainData)
+            .update({
+              id_region: terrainData.id_region,
+              id_district: terrainData.id_district,
+              id_commune: terrainData.id_commune,
+              nom_terrain: terrainData.nom_terrain,
+              surface_proposee: terrainData.surface_proposee,
+              acces_eau: terrainData.acces_eau,
+              acces_route: terrainData.acces_route,
+              id_tantsaha: terrainData.id_tantsaha,
+              photos: terrainData.photos,
+              geom: terrainData.geom,
+              statut: terrainData.statut
+            })
             .eq('id_terrain', initialData.id_terrain)
             .select('*')
             .single();
@@ -279,7 +301,6 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
           // Return the updated terrain data for UI update
           onSubmitSuccess({
             ...initialData,
-            ...terrainData,
             ...updatedTerrain
           });
         } else {
@@ -289,7 +310,19 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
 
           const { data: newTerrain, error } = await supabase
             .from('terrain')
-            .insert(dataSansId)
+            .insert({
+              id_region: dataSansId.id_region,
+              id_district: dataSansId.id_district,
+              id_commune: dataSansId.id_commune,
+              nom_terrain: dataSansId.nom_terrain,
+              surface_proposee: dataSansId.surface_proposee,
+              acces_eau: dataSansId.acces_eau,
+              acces_route: dataSansId.acces_route,
+              id_tantsaha: dataSansId.id_tantsaha,
+              photos: dataSansId.photos,
+              geom: dataSansId.geom,
+              statut: dataSansId.statut
+            })
             .select('*')
             .single();
             

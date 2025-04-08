@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { UseFormReturn } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -66,32 +65,26 @@ const ValidationForm: React.FC<ValidationFormProps> = ({
     if (!e.target.files || e.target.files.length === 0) return;
     
     const selectedFiles = Array.from(e.target.files);
-    setValidationPhotos(prevPhotos => [...prevPhotos, ...selectedFiles]);
+    setValidationPhotos([...validationPhotos, ...selectedFiles]);
     
     selectedFiles.forEach(file => {
       const previewUrl = URL.createObjectURL(file);
-      setPhotoValidationUrls(prevUrls => [...prevUrls, previewUrl]);
+      setPhotoValidationUrls([...photoValidationUrls, previewUrl]);
     });
   };
   
   const removePhoto = (index: number) => {
-    setValidationPhotos(prevPhotos => {
-      const newPhotos = [...prevPhotos];
-      newPhotos.splice(index, 1);
-      return newPhotos;
-    });
+    const newPhotos = [...validationPhotos];
+    newPhotos.splice(index, 1);
+    setValidationPhotos(newPhotos);
 
-    setPhotoValidationUrls(prevUrls => {
-      const newUrls = [...prevUrls];
-      
-      // Only revoke if it's a blob URL (newly added photo)
-      if (newUrls[index].startsWith('blob:')) {
-        URL.revokeObjectURL(newUrls[index]);
-      }
-      
-      newUrls.splice(index, 1);
-      return newUrls;
-    });
+    const newUrls = [...photoValidationUrls];
+    // Only revoke if it's a blob URL (newly added photo)
+    if (newUrls[index].startsWith('blob:')) {
+      URL.revokeObjectURL(newUrls[index]);
+    }
+    newUrls.splice(index, 1);
+    setPhotoValidationUrls(newUrls);
   };
   
   // Parse photos for display
