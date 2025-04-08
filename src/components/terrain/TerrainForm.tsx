@@ -44,9 +44,6 @@ const validationSchema = yup.object({
   validation_decision: yup.string().required("Une décision est requise").oneOf(['valider', 'rejetter'], "Décision invalide"),
 }).required();
 
-type TerrainFormValues = yup.InferType<typeof terrainSchema>;
-type ValidationFormValues = yup.InferType<typeof validationSchema>;
-
 const TerrainForm: React.FC<TerrainFormProps> = ({
   initialData,
   onSubmitSuccess,
@@ -68,8 +65,9 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
   // Choose the appropriate form schema based on validation mode
   const formSchema = isValidationMode ? validationSchema : terrainSchema;
   
+  // Use explicit type assertion for schema to avoid TypeScript errors
   const form = useForm({
-    resolver: yupResolver(formSchema),
+    resolver: yupResolver(formSchema as any),
     defaultValues: {
       id_terrain: initialData?.id_terrain,
       nom_terrain: initialData?.nom_terrain || "",
@@ -86,7 +84,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       rapport_validation: initialData?.rapport_validation || '',
       photos_validation: initialData?.photos_validation || '',
       validation_decision: initialData?.validation_decision || 'valider',
-    } as any
+    }
   });
 
   // Initialize terrain data when component mounts or initialData changes
@@ -254,7 +252,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
           statut: terrainData.statut,
           date_validation: terrainData.date_validation,
           rapport_validation: terrainData.rapport_validation,
-          validation_decision: terrainData.validation_decision as 'valider' | 'rejetter',
+          validation_decision: terrainData.validation_decision,
           surface_validee: terrainData.surface_validee
         });
       } else {
@@ -309,6 +307,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
           // Remove id_terrain if creating a new terrain
           const { id_terrain, ...dataSansId } = terrainData;
 
+          // Create a record with explicit values instead of passing the whole object
           const { data: newTerrain, error } = await supabase
             .from('terrain')
             .insert([{
@@ -320,7 +319,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
               acces_eau: dataSansId.acces_eau,
               acces_route: dataSansId.acces_route,
               id_tantsaha: dataSansId.id_tantsaha,
-              photos: dataSansId.photos,
+              photos: typeof dataSansId.photos === 'string' ? dataSansId.photos : '',
               geom: dataSansId.geom,
               statut: dataSansId.statut
             }])

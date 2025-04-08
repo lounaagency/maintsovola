@@ -18,7 +18,7 @@ export interface TerrainFormData {
   date_validation?: string;
   rapport_validation?: string;
   photos_validation?: string | string[];
-  validation_decision?: 'valider' | 'rejetter';
+  validation_decision?: 'valider' | 'rejetter' | string;
 }
 
 // Convert from form data (strings) to API data (numbers)
