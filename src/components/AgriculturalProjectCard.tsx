@@ -36,6 +36,8 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
   const [terrainPhotos, setTerrainPhotos] = useState<string[]>([]);
   const [displayedPhotos, setDisplayedPhotos] = useState<string[]>([]);
   const [polygonCoordinates, setPolygonCoordinates] = useState<[number, number][]>([]);
+  const [projectTitle, setProjectTitle] = useState<string>(project.title as string);
+  const [projectDescription, setProjectDescription] = useState<string>(project.description);
   const { user, profile } = useAuth();
   const userRole = profile?.nom_role?.toLowerCase() || '';
   
@@ -55,11 +57,20 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
       // Fetch project details including photos
       const { data: projectData, error: projectError } = await supabase
         .from('projet')
-        .select('photos, id_terrain, geom')
+        .select('photos, id_terrain, geom, titre, description')
         .eq('id_projet', parseInt(project.id))
         .single();
       
       if (projectError) throw projectError;
+      
+      // Set project title and description if available
+      if (projectData.titre) {
+        setProjectTitle(projectData.titre);
+      }
+      
+      if (projectData.description) {
+        setProjectDescription(projectData.description);
+      }
       
       // Process project photos if available
       if (projectData.photos) {
@@ -237,8 +248,8 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
           </div>
           
           <div className="mb-3">
-            <h3 className="font-semibold text-base mb-1">{project.title}</h3>
-            <p className="text-sm text-gray-700">{project.description}</p>
+            <h3 className="font-semibold text-base mb-1">{projectTitle}</h3>
+            <p className="text-sm text-gray-700">{projectDescription}</p>
           </div>
           
           {/* Technicien contact section */}
@@ -385,8 +396,8 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
           
           <div className="py-4">
             <div className="mb-4">
-              <h4 className="font-medium mb-1">{project.title}</h4>
-              <p className="text-sm text-gray-600">{project.description}</p>
+              <h4 className="font-medium mb-1">{projectTitle}</h4>
+              <p className="text-sm text-gray-600">{projectDescription}</p>
             </div>
             
             <div className="mb-6">
