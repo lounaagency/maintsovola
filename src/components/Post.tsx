@@ -5,6 +5,7 @@ import UserAvatar from "./UserAvatar";
 import { AnimatePresence, motion } from "framer-motion";
 import CommentSection from "./CommentSection";
 import { Button } from "@/components/ui/button";
+import ProjectActions from "./ProjectActions";
 
 export interface PostProps {
   id: string;
@@ -90,29 +91,17 @@ const Post: React.FC<PostProps> = ({
         )}
         
         <div className="flex items-center justify-between pt-3 border-t border-border">
-          <button 
-            className={`like-button flex items-center text-sm font-medium p-1 rounded-full transition-colors ${liked ? 'liked text-red-500' : 'text-gray-600 hover:text-red-500'}`}
-            onClick={handleLike}
-          >
-            <Heart 
-              size={18} 
-              className={`mr-1 ${liked ? 'fill-red-500 animate-heart-beat' : ''}`} 
-            />
-            <span>{likeCount}</span>
-          </button>
-          
-          <button 
-            className="flex items-center text-sm font-medium text-gray-600 p-1 rounded-full hover:text-primary transition-colors"
-            onClick={toggleComments}
-          >
-            <MessageCircle size={18} className="mr-1" />
-            <span>{comments}</span>
-          </button>
-          
-          <button className="flex items-center text-sm font-medium text-gray-600 p-1 rounded-full hover:text-green-500 transition-colors">
-            <Share size={18} className="mr-1" />
-            <span>{shares}</span>
-          </button>
+          <ProjectActions 
+            projectId={id}
+            likes={likeCount}
+            comments={comments}
+            shares={shares}
+            isLiked={liked}
+            onLikeToggle={handleLike}
+            onOpenComments={toggleComments}
+            onShare={() => {}}
+            className=""
+          />
         </div>
       </div>
       

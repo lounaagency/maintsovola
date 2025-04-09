@@ -1,4 +1,3 @@
-
 export interface TerrainData {
   id_terrain?: number;
   id_tantsaha?: string;
@@ -23,10 +22,12 @@ export interface TerrainData {
   nom_terrain: string;
   photos?: string | string[];
   geom?: any;
-  date_validation?: Date | string;
+  date_validation?: string;
   rapport_validation?: string;
   photos_validation?: string | string[];
-  validation_decision?: 'valider' | 'rejetter';
+  validation_decision?: 'valider' | 'rejetter' | string;
+  created_by?: string;
+  modified_at?: string;
 }
 
 export interface TerrainFormData {
@@ -43,10 +44,10 @@ export interface TerrainFormData {
   photos?: string | string[];
   geom?: number[][]; // Coordonnées du polygone [[lng, lat], [lng, lat], ...]
   // Validation fields
-  date_validation?: Date | string;
+  date_validation?: string;
   rapport_validation?: string;
   photos_validation?: string | string[];
-  validation_decision?: 'valider' | 'rejetter';
+  validation_decision?: 'valider' | 'rejetter' | string;
 }
 
 export interface ProjetStatus {

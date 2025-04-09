@@ -1,18 +1,20 @@
 
 import React from "react";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Eye, FileEdit, CheckCircle } from "lucide-react";
+import { Eye, FileEdit, CheckCircle, Trash2 } from "lucide-react";
 import { ProjectData } from "./ProjectTable";
+import { renderStatusBadge } from "@/utils/projectUtils";
 
 interface ProjectCardProps {
   project: ProjectData;
   onViewDetails: (project: ProjectData) => void;
   onEdit?: (project: ProjectData) => void;
   onValidate?: (project: ProjectData) => void;
+  onDelete?: (project: ProjectData) => void;
   canEdit: boolean;
   canValidate: boolean;
+  canDelete: boolean;
 }
 
 const ProjectCard: React.FC<ProjectCardProps> = ({
@@ -20,36 +22,11 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
   onViewDetails,
   onEdit,
   onValidate,
+  onDelete,
   canEdit,
   canValidate,
+  canDelete,
 }) => {
-  const renderStatusBadge = (status: string) => {
-    let variant: "outline" | "secondary" | "destructive" | "default" = "outline";
-    
-    switch (status) {
-      case 'en attente':
-        variant = "outline";
-        break;
-      case 'validé':
-      case 'en financement':
-        variant = "secondary";
-        break;
-      case 'en cours':
-        variant = "default";
-        break;
-      case 'terminé':
-        variant = "secondary";
-        break;
-      case 'rejeté':
-        variant = "destructive";
-        break;
-      default:
-        variant = "outline";
-    }
-    
-    return <Badge variant={variant}>{status}</Badge>;
-  };
-
   return (
     <Card className="overflow-hidden">
       <CardContent className="p-4">
@@ -114,6 +91,18 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
             onClick={() => onValidate && onValidate(project)}
           >
             <CheckCircle className="h-4 w-4 text-green-500" />
+          </Button>
+        )}
+
+        {canDelete && (
+          <Button
+            variant="ghost"
+            size="sm"
+            title="Supprimer ce projet"
+            onClick={() => onDelete && onDelete(project)}
+            className="text-destructive hover:text-destructive/90"
+          >
+            <Trash2 className="h-4 w-4" />
           </Button>
         )}
       </CardFooter>

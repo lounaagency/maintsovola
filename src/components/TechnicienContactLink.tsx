@@ -1,7 +1,7 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "./ui/button";
-import { MessageCircle } from "lucide-react";
+import { MessageSquare } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import UserAvatar from "./UserAvatar";
@@ -12,13 +12,15 @@ interface TechnicienContactLinkProps {
   className?: string;
   size?: "sm" | "md" | "lg";
   showName?: boolean;
+  variant?: "icon" | "button" | "avatar";
 }
 
 const TechnicienContactLink: React.FC<TechnicienContactLinkProps> = ({
   technicienId,
   className = "",
   size = "sm",
-  showName = false
+  showName = false,
+  variant = "icon"
 }) => {
   const { user } = useAuth();
   const [isMessageDialogOpen, setIsMessageDialogOpen] = useState(false);
@@ -29,7 +31,14 @@ const TechnicienContactLink: React.FC<TechnicienContactLinkProps> = ({
   } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Fetch technicien details when needed
+  // Fetch technicien details when component mounts or when technicienId changes
+  useEffect(() => {
+    if (technicienId && !technicien) {
+      fetchTechnicienDetails();
+    }
+  }, [technicienId]);
+
+  // Fetch technicien details from Supabase
   const fetchTechnicienDetails = async () => {
     if (!technicienId || technicien) return;
     
@@ -57,11 +66,11 @@ const TechnicienContactLink: React.FC<TechnicienContactLinkProps> = ({
     }
   };
 
-  const handleClick = async () => {
-    await fetchTechnicienDetails();
+  const handleClick = () => {
     setIsMessageDialogOpen(true);
   };
 
+  // Don't render anything if the user is not logged in or if the user is the technician
   if (!user || user.id === technicienId) {
     return null;
   }
@@ -72,6 +81,40 @@ const TechnicienContactLink: React.FC<TechnicienContactLinkProps> = ({
     lg: "h-10 px-4"
   }[size];
 
+  // Render avatar variant
+  if (variant === "avatar") {
+    return (
+      <>
+        <div 
+          className={`flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-2 rounded-md ${className}`}
+          onClick={handleClick}
+        >
+          <UserAvatar 
+            src={technicien?.photo} 
+            alt={technicien?.name || "Technicien"} 
+            size="sm"
+          />
+          <div className="flex items-center gap-1">
+            <span className="text-sm font-medium">{technicien?.name || "Technicien"}</span>
+            <MessageSquare className="h-4 w-4 text-primary" />
+          </div>
+        </div>
+
+        {isMessageDialogOpen && technicien && (
+          <MessageDialog
+            isOpen={isMessageDialogOpen}
+            onClose={() => setIsMessageDialogOpen(false)}
+            recipient={{
+              id: technicien.id,
+              name: technicien.name
+            }}
+          />
+        )}
+      </>
+    );
+  }
+
+  // Render default button variant
   return (
     <>
       <Button 
@@ -80,7 +123,7 @@ const TechnicienContactLink: React.FC<TechnicienContactLinkProps> = ({
         className={`${buttonSize} flex items-center gap-1 hover:bg-muted/50 ${className}`}
         onClick={handleClick}
       >
-        <MessageCircle className="h-4 w-4" />
+        <MessageSquare className="h-4 w-4" />
         {showName && <span>Contacter</span>}
       </Button>
 

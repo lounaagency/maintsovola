@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Navigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import NewProject from "@/components/NewProject";
 import { motion } from "framer-motion";
 import { AgriculturalProject } from "@/types/agriculturalProject";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,6 +24,7 @@ const Feed: React.FC = () => {
   if (!user) {
     return <Navigate to="/auth" replace />;
   }
+  
   useEffect(() => {
     fetchProjects();
   }, [activeFilters]);
@@ -43,9 +43,12 @@ const Feed: React.FC = () => {
           id_tantsaha,
           id_commune,
           id_technicien,
+          titre,
+          description,
           utilisateur!id_tantsaha(id_utilisateur, nom, prenoms, photo_profil),
           commune(nom_commune, district(nom_district, region(nom_region)))
         `)
+        .eq('statut', 'en financement')
         .order('created_at', { ascending: false });
       
       if (activeFilters.region) {
@@ -175,7 +178,8 @@ const Feed: React.FC = () => {
         
         return {
           id: projet.id_projet.toString(),
-          title: `Projet de culture de ${cultivationType}`,
+          title: projet.titre || `Projet de culture de ${cultivationType}`,
+          description: projet.description || `Projet de culture de ${cultivationType} sur un terrain de ${projet.surface_ha} hectares.`,
           farmer,
           location: {
             region: projet.commune?.district?.region?.nom_region || "Non spécifié",
@@ -189,14 +193,13 @@ const Feed: React.FC = () => {
           expectedRevenue,
           creationDate: new Date(projet.created_at).toISOString().split('T')[0],
           images: [],
-          description: `Projet de culture de ${cultivationType} sur un terrain de ${projet.surface_ha} hectares.`,
           fundingGoal: farmingCost * projet.surface_ha,
           currentFunding,
           likes,
           comments: commentCount,
           shares: 0,
           isLiked,
-          technicienId: projet.id_technicien,
+          technicianId: projet.id_technicien,
         };
       });
       
@@ -207,11 +210,6 @@ const Feed: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
-  
-  const handleNewProject = (newProject: AgriculturalProject) => {
-    setProjects(prevProjects => [newProject, ...prevProjects]);
-    toast.success("Projet créé avec succès!");
   };
   
   const handleToggleLike = async (projectId: string, isCurrentlyLiked: boolean) => {
@@ -321,7 +319,7 @@ const Feed: React.FC = () => {
   return (
     <div className="max-w-md mx-auto px-4 py-4">
       <header className="mb-4">
-        <h1 className="text-2xl font-bold text-gray-900">Projets agricoles</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Projets en financement</h1>
       </header>
       
       <Tabs defaultValue="for-you" className="mb-6">
@@ -331,8 +329,6 @@ const Feed: React.FC = () => {
         </TabsList>
         
         <TabsContent value="for-you" className="mt-4">
-          <NewProject onProjectCreated={handleNewProject} />
-          
           {renderActiveFilters()}
           
           {loading ? (
@@ -403,7 +399,7 @@ const Feed: React.FC = () => {
                 <div className="flex items-center justify-center h-40 border rounded-lg border-dashed text-gray-500">
                   {Object.keys(activeFilters).length > 0 
                     ? "Aucun projet ne correspond à ces filtres" 
-                    : "Aucun projet disponible pour le moment"}
+                    : "Aucun projet en financement disponible pour le moment"}
                 </div>
               )}
             </motion.div>

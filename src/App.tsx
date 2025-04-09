@@ -17,17 +17,16 @@ import Terrain from "./pages/Terrain";
 import Projects from "./pages/Projects";
 import { AuthProvider } from "./contexts/AuthContext";
 
+// Create a client
 const queryClient = new QueryClient();
 
-// Fix: Make sure App is a proper React component function
 const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Fix: Move TooltipProvider inside the component rendering */}
       <BrowserRouter>
         <AuthProvider>
-          <AnimatePresence mode="wait">
-            <TooltipProvider>
+          <TooltipProvider>
+            <AnimatePresence mode="wait">
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/auth" element={<Auth />} />
@@ -68,10 +67,10 @@ const App = () => {
                 } />
                 <Route path="*" element={<Navigate to="/feed" replace />} />
               </Routes>
-              <Toaster />
-              <Sonner />
-            </TooltipProvider>
-          </AnimatePresence>
+            </AnimatePresence>
+            <Toaster />
+            <Sonner />
+          </TooltipProvider>
         </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>

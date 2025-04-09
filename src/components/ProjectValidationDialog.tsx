@@ -11,9 +11,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { X, Upload, Loader2, MapPin } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Loader2 } from "lucide-react";
+import ProjectSummary from "./ProjectSummary";
+import PhotoUploader from "./PhotoUploader";
 
 interface ProjectValidationDialogProps {
   isOpen: boolean;
@@ -40,7 +40,13 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [showRejectConfirmation, setShowRejectConfirmation] = useState(false);
   
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const resetForm = () => {
+    setValidationDate(format(new Date(), 'yyyy-MM-dd'));
+    setValidationReport("");
+    setValidationDecision("valider");
+    setValidationPhotos([]);
+    setPhotoUrls([]);
+  };
   
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
@@ -69,14 +75,6 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
     });
   };
   
-  const resetForm = () => {
-    setValidationDate(format(new Date(), 'yyyy-MM-dd'));
-    setValidationReport("");
-    setValidationDecision("valider");
-    setValidationPhotos([]);
-    setPhotoUrls([]);
-  };
-  
   const handleSubmit = async () => {
     if (!userId) {
       toast.error("Utilisateur non authentifié");
@@ -91,7 +89,6 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
     setIsSubmitting(true);
     
     try {
-      // Upload photos if any
       const uploadedPhotoUrls: string[] = [];
       
       if (validationPhotos.length > 0) {
@@ -116,7 +113,8 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
         }
       }
       
-      // Update project status
+      const newStatus = validationDecision === "valider" ? "en financement" : "rejeté";
+      
       const { error: updateError } = await supabase
         .from('projet')
         .update({
@@ -128,15 +126,17 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
         })
         .eq('id_projet', project.id_projet);
         
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error("Error updating project:", updateError);
+        throw updateError;
+      }
       
-      // Create notification for project owner
       const notificationTitle = validationDecision === "valider" 
         ? "Projet validé" 
         : "Projet rejeté";
         
       const notificationBody = validationDecision === "valider"
-        ? `Votre projet "${project.titre || `Projet #${project.id_projet}`}" a été validé.`
+        ? `Votre projet "${project.titre || `Projet #${project.id_projet}`}" a été validé et est maintenant en phase de financement.`
         : `Votre projet "${project.titre || `Projet #${project.id_projet}`}" a été rejeté. ${validationReport ? `Raison: ${validationReport}` : ''}`;
       
       if (project.id_tantsaha) {
@@ -150,7 +150,6 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
         });
       }
       
-      // Notify supervisor if current user is not the supervisor
       if (userRole === 'technicien' && project.id_superviseur && project.id_superviseur !== userId) {
         await supabase.from('notification').insert({
           titre: `${notificationTitle} par un technicien`,
@@ -163,7 +162,7 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
       }
       
       toast.success(validationDecision === "valider" 
-        ? "Projet validé avec succès" 
+        ? "Projet validé avec succès et en attente de financement" 
         : "Projet rejeté avec succès");
         
       onSubmitSuccess();
@@ -191,44 +190,7 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
             <DialogTitle>Validation du projet</DialogTitle>
           </DialogHeader>
           
-          {/* Project Summary */}
-          <Card className="mb-4">
-            <CardContent className="p-4">
-              <h3 className="text-lg font-medium mb-2">{project.titre || `Projet #${project.id_projet}`}</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <p className="flex items-center text-sm mb-1">
-                    <MapPin className="w-4 h-4 mr-1" />
-                    {project.region?.nom_region}, {project.district?.nom_district}, {project.commune?.nom_commune}
-                  </p>
-                  <p className="text-sm mb-1"><span className="font-medium">Surface:</span> {project.surface_ha} ha</p>
-                  <p className="text-sm mb-1">
-                    <span className="font-medium">Statut actuel:</span> {renderStatusBadge(project.statut)}
-                  </p>
-                  <p className="text-sm mb-1">
-                    <span className="font-medium">Culture(s):</span> {project.projet_culture?.map(pc => pc.culture?.nom_culture).join(', ')}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm mb-1">
-                    <span className="font-medium">Propriétaire:</span> {project.tantsaha ? `${project.tantsaha.nom} ${project.tantsaha.prenoms || ''}` : 'N/A'}
-                  </p>
-                  <p className="text-sm mb-1">
-                    <span className="font-medium">Terrain:</span> {project.terrain?.nom_terrain || `Terrain #${project.id_terrain}`}
-                  </p>
-                  <p className="text-sm mb-1">
-                    <span className="font-medium">Date de création:</span> {project.created_at ? format(new Date(project.created_at), 'dd/MM/yyyy') : 'N/A'}
-                  </p>
-                </div>
-              </div>
-              {project.description && (
-                <div className="mt-2">
-                  <p className="text-sm font-medium">Description:</p>
-                  <p className="text-sm text-muted-foreground mt-1">{project.description}</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <ProjectSummary project={project} />
           
           <div className="space-y-4">
             <div className="grid grid-cols-1 gap-4">
@@ -271,48 +233,13 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
                 </RadioGroup>
               </div>
               
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <Label>Photos de validation (optionnel)</Label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    <Upload className="w-4 h-4 mr-2" /> Ajouter des photos
-                  </Button>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    accept="image/*"
-                    multiple
-                    className="hidden"
-                    onChange={handleFileChange}
-                  />
-                </div>
-                
-                {photoUrls.length > 0 && (
-                  <div className="grid grid-cols-3 gap-3 mt-3">
-                    {photoUrls.map((url, index) => (
-                      <div key={index} className="relative group">
-                        <img 
-                          src={url} 
-                          alt={`Validation photo ${index + 1}`}
-                          className="w-full h-24 object-cover rounded-md border border-border"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removePhoto(index)}
-                          className="absolute top-1 right-1 bg-black bg-opacity-50 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <X size={16} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <PhotoUploader
+                photoUrls={photoUrls}
+                onAddPhotos={handleFileChange}
+                onRemovePhoto={removePhoto}
+                label="Photos de validation (optionnel)"
+                disabled={isSubmitting}
+              />
             </div>
           </div>
           
@@ -368,34 +295,6 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
       </AlertDialog>
     </>
   );
-};
-
-// Helper function to render status badge
-const renderStatusBadge = (status: string) => {
-  let variant: "outline" | "secondary" | "destructive" | "default" = "outline";
-  
-  switch (status) {
-    case 'en attente':
-      variant = "outline";
-      break;
-    case 'validé':
-    case 'en financement':
-      variant = "secondary";
-      break;
-    case 'en cours':
-      variant = "default";
-      break;
-    case 'terminé':
-      variant = "secondary";
-      break;
-    case 'rejeté':
-      variant = "destructive";
-      break;
-    default:
-      variant = "outline";
-  }
-  
-  return <Badge variant={variant}>{status}</Badge>;
 };
 
 export default ProjectValidationDialog;
