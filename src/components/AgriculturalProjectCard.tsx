@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -28,6 +28,8 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
   const [showInvestModal, setShowInvestModal] = useState<boolean>(false);
   const [showComments, setShowComments] = useState<boolean>(false);
   const [investAmount, setInvestAmount] = useState<number>(0);
+  const [currentFunding, setCurrentFunding] = useState<number>(project.currentFunding);
+  const [fundingGap, setFundingGap] = useState<number>(Math.max(0, project.fundingGoal - project.currentFunding));
   const { user, profile } = useAuth();
   const userRole = profile?.nom_role?.toLowerCase() || '';
   
@@ -37,10 +39,28 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
   // Allow users of type 'simple' to invest
   const canInvest = isInvestor || isFarmer || isSimpleUser;
   
-  const fundingGap = Math.max(0, project.fundingGoal - project.currentFunding);
+  // Fetch current funding data when opening the investment modal
+  const fetchCurrentFundingData = async () => {
+    try {
+      const { data: investmentsData, error } = await supabase
+        .from('investissement')
+        .select('montant')
+        .eq('id_projet', parseInt(project.id));
+        
+      if (error) throw error;
+      
+      const totalFunding = investmentsData.reduce((sum, inv) => sum + (inv.montant || 0), 0);
+      setCurrentFunding(totalFunding);
+      setFundingGap(Math.max(0, project.fundingGoal - totalFunding));
+    } catch (error) {
+      console.error("Error fetching current funding data:", error);
+      toast.error("Impossible de récupérer les données de financement actuelles");
+    }
+  };
   
   // Initialize investment amount to the remaining gap when opening the modal
-  const handleOpenInvestModal = () => {
+  const handleOpenInvestModal = async () => {
+    await fetchCurrentFundingData();
     setInvestAmount(fundingGap);
     setShowInvestModal(true);
   };
@@ -82,7 +102,8 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
       toast.success("Votre investissement a été enregistré avec succès");
       setShowInvestModal(false);
       
-      // Refresh project data (ideally via a callback)
+      // Update funding data after successful investment
+      await fetchCurrentFundingData();
     } catch (error) {
       console.error("Erreur lors de l'investissement:", error);
       toast.error("Une erreur est survenue lors de l'enregistrement de votre investissement");
@@ -189,12 +210,12 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
           <div className="mb-4">
             <div className="flex justify-between text-xs mb-1">
               <span>Financement</span>
-              <span className="font-medium">{formatCurrency(project.currentFunding)} / {formatCurrency(project.fundingGoal)}</span>
+              <span className="font-medium">{formatCurrency(currentFunding)} / {formatCurrency(project.fundingGoal)}</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2.5">
               <div 
                 className="bg-primary h-2.5 rounded-full" 
-                style={{ width: `${Math.min(100, (project.currentFunding / project.fundingGoal) * 100)}%` }}
+                style={{ width: `${Math.min(100, (currentFunding / project.fundingGoal) * 100)}%` }}
               ></div>
             </div>
           </div>
@@ -253,7 +274,7 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
               </div>
               <div className="flex justify-between text-sm mb-1">
                 <span>Déjà financé:</span>
-                <span>{formatCurrency(project.currentFunding)}</span>
+                <span>{formatCurrency(currentFunding)}</span>
               </div>
               <div className="flex justify-between text-sm font-medium">
                 <span>Reste à financer:</span>
