@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import ProjectActions from './ProjectActions';
 import CommentSection from './CommentSection';
+import TechnicienContactLink from './TechnicienContactLink';
 
 interface AgriculturalProjectCardProps {
   project: AgriculturalProject;
@@ -116,9 +117,18 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
               </div>
             </div>
             
-            <Button variant={project.technicianId ? "default" : "destructive"} size="sm" className="ml-2 text-xs">
-              {project.technicianId ? "Validé" : "En attente"}
-            </Button>
+            <div className="flex items-center">
+              {project.technicianId && (
+                <TechnicienContactLink 
+                  technicienId={project.technicianId} 
+                  size="sm" 
+                  className="mr-2" 
+                />
+              )}
+              <Button variant={project.technicianId ? "default" : "destructive"} size="sm" className="text-xs">
+                {project.technicianId ? "Validé" : "En attente"}
+              </Button>
+            </div>
           </div>
           
           <div className="mb-3">
@@ -142,6 +152,26 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
             <div className="text-xs">
               <span className="text-gray-500 block">Région</span>
               <span className="font-medium">{project.location.region}</span>
+            </div>
+          </div>
+          
+          {/* Synthèse financière du projet */}
+          <div className="grid grid-cols-2 gap-3 mb-4 bg-muted/30 p-2 rounded-md">
+            <div className="text-xs">
+              <span className="text-gray-500 block">Coût d'exploitation</span>
+              <span className="font-medium">{formatCurrency(project.farmingCost)} / ha</span>
+            </div>
+            <div className="text-xs">
+              <span className="text-gray-500 block">Rendement prévu</span>
+              <span className="font-medium">{project.expectedYield} t / ha</span>
+            </div>
+            <div className="text-xs">
+              <span className="text-gray-500 block">Revenu estimé</span>
+              <span className="font-medium">{formatCurrency(project.expectedRevenue)}</span>
+            </div>
+            <div className="text-xs">
+              <span className="text-gray-500 block">Objectif financement</span>
+              <span className="font-medium">{formatCurrency(project.fundingGoal)}</span>
             </div>
           </div>
           

@@ -198,7 +198,7 @@ const Feed: React.FC = () => {
           comments: commentCount,
           shares: 0,
           isLiked,
-          technicienId: projet.id_technicien,
+          technicianId: projet.id_technicien,
         };
       });
       
