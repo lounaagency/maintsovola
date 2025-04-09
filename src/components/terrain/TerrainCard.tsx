@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TerrainData } from "@/types/terrain";
-import { MapPin, Water, Road, Calendar, CheckCircle, AlertTriangle, Trash } from "lucide-react";
+import { MapPin, Droplet, RectangleHorizontal, Calendar, CheckCircle, AlertTriangle, Trash } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
@@ -97,7 +97,14 @@ const TerrainCard: React.FC<TerrainCardProps> = ({
       : [];
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog 
+      open={isOpen} 
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
+      }}
+    >
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         {isDeleteMode ? (
           <>
@@ -186,11 +193,11 @@ const TerrainCard: React.FC<TerrainCardProps> = ({
                     <h3 className="text-sm font-medium text-muted-foreground mb-1">Accès</h3>
                     <div className="space-y-2">
                       <div className="flex items-center">
-                        <Water className={`h-4 w-4 mr-2 ${terrain.acces_eau ? 'text-blue-500' : 'text-muted-foreground'}`} />
+                        <Droplet className={`h-4 w-4 mr-2 ${terrain.acces_eau ? 'text-blue-500' : 'text-muted-foreground'}`} />
                         <span>{terrain.acces_eau ? 'Accès à l\'eau' : 'Pas d\'accès à l\'eau'}</span>
                       </div>
                       <div className="flex items-center">
-                        <Road className={`h-4 w-4 mr-2 ${terrain.acces_route ? 'text-amber-500' : 'text-muted-foreground'}`} />
+                        <RectangleHorizontal className={`h-4 w-4 mr-2 ${terrain.acces_route ? 'text-amber-500' : 'text-muted-foreground'}`} />
                         <span>{terrain.acces_route ? 'Accès à la route' : 'Pas d\'accès à la route'}</span>
                       </div>
                     </div>

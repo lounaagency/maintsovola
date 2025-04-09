@@ -46,12 +46,14 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
     setLoading(true);
     try {
       // Handle image URLs (convert arrays to strings)
-      if (Array.isArray(data.photos)) {
-        data.photos = data.photos.join(',');
+      const dataToSave = {...data};
+      
+      if (Array.isArray(dataToSave.photos)) {
+        dataToSave.photos = dataToSave.photos.join(',');
       }
       
-      if (Array.isArray(data.photos_validation)) {
-        data.photos_validation = data.photos_validation.join(',');
+      if (Array.isArray(dataToSave.photos_validation)) {
+        dataToSave.photos_validation = dataToSave.photos_validation.join(',');
       }
       
       let result;
@@ -59,7 +61,7 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
       if (isNew) {
         // Create new terrain
         const newTerrain = {
-          ...data,
+          ...dataToSave,
           id_tantsaha: userRole === 'simple' ? userId : data.id_tantsaha,
           statut: false,
           archive: false,
@@ -79,7 +81,7 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
       } else if (isValidationMode && terrain) {
         // Update terrain and set as validated
         const updatedTerrain = {
-          ...data,
+          ...dataToSave,
           statut: true,
           surface_validee: data.surface_validee || terrain.surface_proposee,
           id_superviseur: userId,
@@ -104,10 +106,10 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
               id_destinataire: terrain.id_tantsaha,
               id_expediteur: userId,
               titre: "Terrain validé",
-              contenu: `Votre terrain ${terrain.nom_terrain} a été validé`,
+              message: `Votre terrain ${terrain.nom_terrain} a été validé`,
               type: "success",
-              contexte: "terrain",
-              id_contexte: terrain.id_terrain
+              entity_type: "terrain",
+              entity_id: terrain.id_terrain
             });
         }
         
@@ -119,10 +121,10 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
               id_destinataire: terrain.id_technicien,
               id_expediteur: userId,
               titre: "Terrain validé",
-              contenu: `Le terrain ${terrain.nom_terrain} a été validé`,
+              message: `Le terrain ${terrain.nom_terrain} a été validé`,
               type: "success",
-              contexte: "terrain",
-              id_contexte: terrain.id_terrain
+              entity_type: "terrain",
+              entity_id: terrain.id_terrain
             });
         }
         
@@ -131,7 +133,7 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
         // Update existing terrain
         const { data: updatedData, error } = await supabase
           .from('terrain')
-          .update(data)
+          .update(dataToSave)
           .eq('id_terrain', terrain.id_terrain)
           .select('*')
           .single();
@@ -269,7 +271,7 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
           </div>
         ) : (
           <TerrainForm
-            terrain={terrain}
+            initialData={terrain}
             onSubmit={handleSubmit}
             isValidationMode={isValidationMode}
             userRole={userRole}
