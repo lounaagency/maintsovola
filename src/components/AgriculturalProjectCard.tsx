@@ -119,19 +119,7 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
               </div>
             </div>
             
-            <div className="flex items-center">
-              {/* Make technician contact more prominent */}
-              {project.technicianId && (
-                <div className="flex items-center bg-muted/50 rounded-lg p-1 mr-2">
-                  <Shield className="h-3 w-3 text-primary mr-1" />
-                  <span className="text-xs mr-1">Validé par technicien</span>
-                  <TechnicienContactLink 
-                    technicienId={project.technicianId} 
-                    size="sm"
-                    showName={true}
-                  />
-                </div>
-              )}
+            <div>
               <Button variant={project.technicianId ? "default" : "destructive"} size="sm" className="text-xs">
                 {project.technicianId ? "Validé" : "En attente"}
               </Button>
@@ -161,6 +149,21 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
               <span className="font-medium">{project.location.region}</span>
             </div>
           </div>
+          
+          {/* Technicien contact section - moved here */}
+          {project.technicianId && (
+            <div className="mb-4 bg-muted/30 p-2 rounded-md">
+              <div className="flex items-center">
+                <Shield className="h-4 w-4 text-primary mr-2" />
+                <span className="text-xs font-medium">Validé par:</span>
+              </div>
+              <TechnicienContactLink 
+                technicienId={project.technicianId} 
+                variant="avatar"
+                className="mt-1"
+              />
+            </div>
+          )}
           
           {/* Synthèse financière du projet */}
           <div className="grid grid-cols-2 gap-3 mb-4 bg-muted/30 p-2 rounded-md">

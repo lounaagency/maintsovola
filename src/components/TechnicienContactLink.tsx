@@ -1,7 +1,7 @@
 
 import React, { useState } from "react";
 import { Button } from "./ui/button";
-import { MessageCircle } from "lucide-react";
+import { MessageSquare } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import UserAvatar from "./UserAvatar";
@@ -12,13 +12,15 @@ interface TechnicienContactLinkProps {
   className?: string;
   size?: "sm" | "md" | "lg";
   showName?: boolean;
+  variant?: "icon" | "button" | "avatar";
 }
 
 const TechnicienContactLink: React.FC<TechnicienContactLinkProps> = ({
   technicienId,
   className = "",
   size = "sm",
-  showName = false
+  showName = false,
+  variant = "icon"
 }) => {
   const { user } = useAuth();
   const [isMessageDialogOpen, setIsMessageDialogOpen] = useState(false);
@@ -72,6 +74,42 @@ const TechnicienContactLink: React.FC<TechnicienContactLinkProps> = ({
     lg: "h-10 px-4"
   }[size];
 
+  if (variant === "avatar" && !technicien) {
+    fetchTechnicienDetails();
+  }
+
+  if (variant === "avatar") {
+    return (
+      <>
+        <div 
+          className={`flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-2 rounded-md ${className}`}
+          onClick={handleClick}
+        >
+          <UserAvatar 
+            src={technicien?.photo} 
+            alt={technicien?.name || "Technicien"} 
+            size="sm"
+          />
+          <div className="flex items-center gap-1">
+            <span className="text-sm font-medium">{technicien?.name || "Technicien"}</span>
+            <MessageSquare className="h-4 w-4 text-primary" />
+          </div>
+        </div>
+
+        {isMessageDialogOpen && technicien && (
+          <MessageDialog
+            isOpen={isMessageDialogOpen}
+            onClose={() => setIsMessageDialogOpen(false)}
+            recipient={{
+              id: technicien.id,
+              name: technicien.name
+            }}
+          />
+        )}
+      </>
+    );
+  }
+
   return (
     <>
       <Button 
@@ -80,7 +118,7 @@ const TechnicienContactLink: React.FC<TechnicienContactLinkProps> = ({
         className={`${buttonSize} flex items-center gap-1 hover:bg-muted/50 ${className}`}
         onClick={handleClick}
       >
-        <MessageCircle className="h-4 w-4" />
+        <MessageSquare className="h-4 w-4" />
         {showName && <span>Contacter</span>}
       </Button>
 
