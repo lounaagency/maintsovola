@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Heart, MessageCircle, Share, Edit, Info, Shield, Image } from 'lucide-react';
+import { Heart, MessageCircle, Share, Edit, Info, Shield, Image, Map } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import UserAvatar from './UserAvatar';
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +35,7 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
   const [projectPhotos, setProjectPhotos] = useState<string[]>([]);
   const [terrainPhotos, setTerrainPhotos] = useState<string[]>([]);
   const [displayedPhotos, setDisplayedPhotos] = useState<string[]>([]);
+  const [polygonCoordinates, setPolygonCoordinates] = useState<[number, number][]>([]);
   const { user, profile } = useAuth();
   const userRole = profile?.nom_role?.toLowerCase() || '';
   
@@ -54,7 +55,7 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
       // Fetch project details including photos
       const { data: projectData, error: projectError } = await supabase
         .from('projet')
-        .select('photos, id_terrain')
+        .select('photos, id_terrain, geom')
         .eq('id_projet', parseInt(project.id))
         .single();
       
@@ -74,7 +75,7 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
         // If project has no photos, fetch terrain photos
         const { data: terrainData, error: terrainError } = await supabase
           .from('terrain')
-          .select('photos')
+          .select('photos, geom')
           .eq('id_terrain', projectData.id_terrain)
           .single();
         
@@ -90,9 +91,37 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
           setTerrainPhotos(photos);
           setDisplayedPhotos(photos);
         }
+
+        // Check for polygon data from terrain
+        if (terrainData.geom) {
+          extractPolygonCoordinates(terrainData.geom);
+        }
+      }
+      
+      // Check for polygon data from project
+      if (projectData.geom) {
+        extractPolygonCoordinates(projectData.geom);
       }
     } catch (error) {
       console.error("Error fetching photos:", error);
+    }
+  };
+  
+  const extractPolygonCoordinates = (geom: any) => {
+    try {
+      const geomData = typeof geom === 'string' 
+        ? JSON.parse(geom) 
+        : geom;
+        
+      if (geomData && geomData.coordinates && geomData.coordinates[0]) {
+        // Convert GeoJSON format to coordinates array [lat, lng]
+        const coords = geomData.coordinates[0].map((coord: number[]) => 
+          [coord[1], coord[0]] as [number, number]
+        );
+        setPolygonCoordinates(coords);
+      }
+    } catch (error) {
+      console.error("Error parsing polygon geometry:", error);
     }
   };
   
@@ -177,6 +206,7 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
   };
   
   const hasPhotos = displayedPhotos.length > 0;
+  const hasMap = polygonCoordinates.length > 2;
   
   return (
     <>
@@ -226,18 +256,36 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
             </div>
           )}
           
-          {/* Photos preview button (if photos are available) */}
-          {hasPhotos && (
-            <div className="mb-4">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="w-full flex items-center justify-center gap-2"
-                onClick={() => setShowPhotos(true)}
-              >
-                <Image className="h-4 w-4" />
-                <span>Voir les photos {projectPhotos.length > 0 ? 'du projet' : 'du terrain'}</span>
-              </Button>
+          {/* Buttons for photos and map (if available) */}
+          {(hasPhotos || hasMap) && (
+            <div className="mb-4 flex space-x-2">
+              {hasPhotos && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="flex-1 flex items-center justify-center gap-2"
+                  onClick={() => {
+                    setShowPhotos(true);
+                  }}
+                >
+                  <Image className="h-4 w-4" />
+                  <span>Voir les photos {projectPhotos.length > 0 ? 'du projet' : 'du terrain'}</span>
+                </Button>
+              )}
+              
+              {hasMap && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="flex-1 flex items-center justify-center gap-2"
+                  onClick={() => {
+                    setShowPhotos(true);
+                  }}
+                >
+                  <Map className="h-4 w-4" />
+                  <span>Voir sur la carte</span>
+                </Button>
+              )}
             </div>
           )}
           
@@ -405,6 +453,7 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
         onClose={() => setShowPhotos(false)}
         photos={displayedPhotos}
         title={projectPhotos.length > 0 ? 'Photos du projet' : 'Photos du terrain'}
+        polygonCoordinates={polygonCoordinates}
       />
     </>
   );
