@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -44,17 +43,14 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
   const isInvestor = userRole === 'investisseur';
   const isFarmer = userRole === 'agriculteur';
   const isSimpleUser = userRole === 'simple';
-  // Allow users of type 'simple' to invest
   const canInvest = isInvestor || isFarmer || isSimpleUser;
   
   useEffect(() => {
-    // Fetch photos for project or terrain when component mounts
     fetchPhotos();
   }, [project.id]);
   
   const fetchPhotos = async () => {
     try {
-      // Fetch project details including photos
       const { data: projectData, error: projectError } = await supabase
         .from('projet')
         .select('photos, id_terrain, geom, titre, description')
@@ -63,7 +59,6 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
       
       if (projectError) throw projectError;
       
-      // Set project title and description if available
       if (projectData.titre) {
         setProjectTitle(projectData.titre);
       }
@@ -72,7 +67,6 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
         setProjectDescription(projectData.description);
       }
       
-      // Process project photos if available
       if (projectData.photos) {
         const photos = Array.isArray(projectData.photos) 
           ? projectData.photos 
@@ -83,7 +77,6 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
         setProjectPhotos(photos);
         setDisplayedPhotos(photos);
       } else if (projectData.id_terrain) {
-        // If project has no photos, fetch terrain photos
         const { data: terrainData, error: terrainError } = await supabase
           .from('terrain')
           .select('photos, geom')
@@ -103,13 +96,11 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
           setDisplayedPhotos(photos);
         }
 
-        // Check for polygon data from terrain
         if (terrainData.geom) {
           extractPolygonCoordinates(terrainData.geom);
         }
       }
       
-      // Check for polygon data from project
       if (projectData.geom) {
         extractPolygonCoordinates(projectData.geom);
       }
@@ -125,7 +116,6 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
         : geom;
         
       if (geomData && geomData.coordinates && geomData.coordinates[0]) {
-        // Convert GeoJSON format to coordinates array [lat, lng]
         const coords = geomData.coordinates[0].map((coord: number[]) => 
           [coord[1], coord[0]] as [number, number]
         );
@@ -136,7 +126,6 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
     }
   };
   
-  // Fetch current funding data when opening the investment modal
   const fetchCurrentFundingData = async () => {
     try {
       const { data: investmentsData, error } = await supabase
@@ -155,7 +144,6 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
     }
   };
   
-  // Initialize investment amount to the remaining gap when opening the modal
   const handleOpenInvestModal = async () => {
     await fetchCurrentFundingData();
     setInvestAmount(fundingGap);
@@ -199,7 +187,6 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
       toast.success("Votre investissement a été enregistré avec succès");
       setShowInvestModal(false);
       
-      // Update funding data after successful investment
       await fetchCurrentFundingData();
     } catch (error) {
       console.error("Erreur lors de l'investissement:", error);
@@ -218,6 +205,10 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
   
   const hasPhotos = displayedPhotos.length > 0;
   const hasMap = polygonCoordinates.length > 2;
+  
+  const openPhotoGallery = (initialTab: 'photos' | 'map' = 'photos') => {
+    setShowPhotos(true);
+  };
   
   return (
     <>
@@ -252,7 +243,6 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
             <p className="text-sm text-gray-700">{projectDescription}</p>
           </div>
           
-          {/* Technicien contact section */}
           {project.technicianId && (
             <div className="mb-4 bg-muted/30 p-2 rounded-md">
               <div className="flex items-center">
@@ -267,38 +257,31 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
             </div>
           )}
           
-          {/* Buttons for photos and map (if available) */}
-          {(hasPhotos || hasMap) && (
-            <div className="mb-4 flex space-x-2">
-              {hasPhotos && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="flex-1 flex items-center justify-center gap-2"
-                  onClick={() => {
-                    setShowPhotos(true);
-                  }}
-                >
-                  <Image className="h-4 w-4" />
-                  <span>Voir les photos {projectPhotos.length > 0 ? 'du projet' : 'du terrain'}</span>
-                </Button>
-              )}
-              
-              {hasMap && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="flex-1 flex items-center justify-center gap-2"
-                  onClick={() => {
-                    setShowPhotos(true);
-                  }}
-                >
-                  <Map className="h-4 w-4" />
-                  <span>Voir sur la carte</span>
-                </Button>
-              )}
-            </div>
-          )}
+          <div className="mb-4 flex space-x-2">
+            {hasPhotos && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex-1 flex items-center justify-center gap-2"
+                onClick={() => openPhotoGallery('photos')}
+              >
+                <Image className="h-4 w-4" />
+                <span>Voir les photos {projectPhotos.length > 0 ? 'du projet' : 'du terrain'}</span>
+              </Button>
+            )}
+            
+            {hasMap && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex-1 flex items-center justify-center gap-2"
+                onClick={() => openPhotoGallery('map')}
+              >
+                <Map className="h-4 w-4" />
+                <span>Voir sur la carte</span>
+              </Button>
+            )}
+          </div>
           
           <div className="grid grid-cols-2 gap-3 mb-4">
             <div className="text-xs">
@@ -319,7 +302,6 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
             </div>
           </div>
           
-          {/* Financial project summary */}
           <div className="grid grid-cols-2 gap-3 mb-4 bg-muted/30 p-2 rounded-md">
             <div className="text-xs">
               <span className="text-gray-500 block">Coût d'exploitation</span>
@@ -339,7 +321,6 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
             </div>
           </div>
           
-          {/* Funding display */}
           <div className="mb-4">
             <div className="flex justify-between text-xs mb-1">
               <span>Financement</span>
@@ -353,7 +334,6 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
             </div>
           </div>
           
-          {/* Action buttons */}
           <div className="flex items-center justify-between pt-3 border-t border-gray-100">
             <ProjectActions 
               projectId={project.id}
@@ -381,13 +361,11 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
           </div>
         </div>
         
-        {/* Comment section */}
         {showComments && (
           <CommentSection postId={project.id} />
         )}
       </Card>
       
-      {/* Investment modal */}
       <Dialog open={showInvestModal} onOpenChange={setShowInvestModal}>
         <DialogContent>
           <DialogHeader>
@@ -458,7 +436,6 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
         </DialogContent>
       </Dialog>
       
-      {/* Photos gallery dialog */}
       <ProjectPhotosGallery 
         isOpen={showPhotos}
         onClose={() => setShowPhotos(false)}
