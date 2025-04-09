@@ -263,7 +263,9 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
                 variant="outline" 
                 size="sm" 
                 className="flex-1 flex items-center justify-center gap-2"
-                onClick={() => openPhotoGallery('photos')}
+                onClick={() => {
+                  setShowPhotos(true);
+                }}
               >
                 <Image className="h-4 w-4" />
                 <span>Voir les photos {projectPhotos.length > 0 ? 'du projet' : 'du terrain'}</span>
@@ -275,7 +277,9 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
                 variant="outline" 
                 size="sm" 
                 className="flex-1 flex items-center justify-center gap-2"
-                onClick={() => openPhotoGallery('map')}
+                onClick={() => {
+                  setShowPhotos(true);
+                }}
               >
                 <Map className="h-4 w-4" />
                 <span>Voir sur la carte</span>

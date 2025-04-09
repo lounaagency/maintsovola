@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, X, Map, Image } from 'lucide-react';
@@ -14,6 +14,7 @@ interface ProjectPhotosGalleryProps {
   photos: string[];
   title?: string;
   polygonCoordinates?: [number, number][];
+  initialTab?: 'photos' | 'map';
 }
 
 const ProjectPhotosGallery: React.FC<ProjectPhotosGalleryProps> = ({
@@ -21,10 +22,25 @@ const ProjectPhotosGallery: React.FC<ProjectPhotosGalleryProps> = ({
   onClose,
   photos,
   title = "Photos",
-  polygonCoordinates
+  polygonCoordinates,
+  initialTab
 }) => {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
-  const [activeTab, setActiveTab] = useState<string>(photos.length > 0 ? "photos" : "map");
+  const hasPolygon = polygonCoordinates && polygonCoordinates.length > 2;
+  const hasPhotos = photos && photos.length > 0;
+  
+  // Determine the default active tab
+  const defaultTab = initialTab || 
+                    (hasPhotos ? 'photos' : hasPolygon ? 'map' : 'photos');
+                    
+  const [activeTab, setActiveTab] = useState<string>(defaultTab);
+  
+  // Reset to the appropriate tab when dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      setActiveTab(initialTab || (hasPhotos ? 'photos' : hasPolygon ? 'map' : 'photos'));
+    }
+  }, [isOpen, initialTab, hasPhotos, hasPolygon]);
   
   const handlePrevious = () => {
     setCurrentPhotoIndex((prev) => (prev === 0 ? photos.length - 1 : prev - 1));
@@ -38,9 +54,6 @@ const ProjectPhotosGallery: React.FC<ProjectPhotosGalleryProps> = ({
     setCurrentPhotoIndex(index);
   };
   
-  const hasPolygon = polygonCoordinates && polygonCoordinates.length > 2;
-  const hasPhotos = photos && photos.length > 0;
-  
   if (!hasPhotos && !hasPolygon) {
     return null;
   }
@@ -52,7 +65,7 @@ const ProjectPhotosGallery: React.FC<ProjectPhotosGalleryProps> = ({
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
         
-        <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="w-full">
+        <Tabs defaultValue={activeTab} value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid grid-cols-2 mb-4">
             <TabsTrigger 
               value="photos" 
