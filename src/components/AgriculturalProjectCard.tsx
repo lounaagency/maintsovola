@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Heart, MessageCircle, Share, Edit, Info, Shield } from 'lucide-react';
+import { Heart, MessageCircle, Share, Edit, Info, Shield, Image } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import UserAvatar from './UserAvatar';
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import ProjectActions from './ProjectActions';
 import CommentSection from './CommentSection';
 import TechnicienContactLink from './TechnicienContactLink';
+import ProjectPhotosGallery from './ProjectPhotosGallery';
 
 interface AgriculturalProjectCardProps {
   project: AgriculturalProject;
@@ -27,9 +28,13 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
   const [liked, setLiked] = useState<boolean>(project.isLiked || false);
   const [showInvestModal, setShowInvestModal] = useState<boolean>(false);
   const [showComments, setShowComments] = useState<boolean>(false);
+  const [showPhotos, setShowPhotos] = useState<boolean>(false);
   const [investAmount, setInvestAmount] = useState<number>(0);
   const [currentFunding, setCurrentFunding] = useState<number>(project.currentFunding);
   const [fundingGap, setFundingGap] = useState<number>(Math.max(0, project.fundingGoal - project.currentFunding));
+  const [projectPhotos, setProjectPhotos] = useState<string[]>([]);
+  const [terrainPhotos, setTerrainPhotos] = useState<string[]>([]);
+  const [displayedPhotos, setDisplayedPhotos] = useState<string[]>([]);
   const { user, profile } = useAuth();
   const userRole = profile?.nom_role?.toLowerCase() || '';
   
@@ -38,6 +43,58 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
   const isSimpleUser = userRole === 'simple';
   // Allow users of type 'simple' to invest
   const canInvest = isInvestor || isFarmer || isSimpleUser;
+  
+  useEffect(() => {
+    // Fetch photos for project or terrain when component mounts
+    fetchPhotos();
+  }, [project.id]);
+  
+  const fetchPhotos = async () => {
+    try {
+      // Fetch project details including photos
+      const { data: projectData, error: projectError } = await supabase
+        .from('projet')
+        .select('photos, id_terrain')
+        .eq('id_projet', parseInt(project.id))
+        .single();
+      
+      if (projectError) throw projectError;
+      
+      // Process project photos if available
+      if (projectData.photos) {
+        const photos = Array.isArray(projectData.photos) 
+          ? projectData.photos 
+          : typeof projectData.photos === 'string' 
+            ? projectData.photos.split(',') 
+            : [];
+        
+        setProjectPhotos(photos);
+        setDisplayedPhotos(photos);
+      } else if (projectData.id_terrain) {
+        // If project has no photos, fetch terrain photos
+        const { data: terrainData, error: terrainError } = await supabase
+          .from('terrain')
+          .select('photos')
+          .eq('id_terrain', projectData.id_terrain)
+          .single();
+        
+        if (terrainError) throw terrainError;
+        
+        if (terrainData.photos) {
+          const photos = Array.isArray(terrainData.photos) 
+            ? terrainData.photos 
+            : typeof terrainData.photos === 'string' 
+              ? terrainData.photos.split(',') 
+              : [];
+          
+          setTerrainPhotos(photos);
+          setDisplayedPhotos(photos);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching photos:", error);
+    }
+  };
   
   // Fetch current funding data when opening the investment modal
   const fetchCurrentFundingData = async () => {
@@ -119,6 +176,8 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
     setShowComments(!showComments);
   };
   
+  const hasPhotos = displayedPhotos.length > 0;
+  
   return (
     <>
       <Card className="overflow-hidden mb-4">
@@ -152,6 +211,36 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
             <p className="text-sm text-gray-700">{project.description}</p>
           </div>
           
+          {/* Technicien contact section */}
+          {project.technicianId && (
+            <div className="mb-4 bg-muted/30 p-2 rounded-md">
+              <div className="flex items-center">
+                <Shield className="h-4 w-4 text-primary mr-2" />
+                <span className="text-xs font-medium">Validé par:</span>
+              </div>
+              <TechnicienContactLink 
+                technicienId={project.technicianId} 
+                variant="avatar"
+                className="mt-1"
+              />
+            </div>
+          )}
+          
+          {/* Photos preview button (if photos are available) */}
+          {hasPhotos && (
+            <div className="mb-4">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="w-full flex items-center justify-center gap-2"
+                onClick={() => setShowPhotos(true)}
+              >
+                <Image className="h-4 w-4" />
+                <span>Voir les photos {projectPhotos.length > 0 ? 'du projet' : 'du terrain'}</span>
+              </Button>
+            </div>
+          )}
+          
           <div className="grid grid-cols-2 gap-3 mb-4">
             <div className="text-xs">
               <span className="text-gray-500 block">Culture</span>
@@ -170,21 +259,6 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
               <span className="font-medium">{project.location.region}</span>
             </div>
           </div>
-          
-          {/* Technicien contact section */}
-          {project.technicianId && (
-            <div className="mb-4 bg-muted/30 p-2 rounded-md">
-              <div className="flex items-center">
-                <Shield className="h-4 w-4 text-primary mr-2" />
-                <span className="text-xs font-medium">Validé par:</span>
-              </div>
-              <TechnicienContactLink 
-                technicienId={project.technicianId} 
-                variant="avatar"
-                className="mt-1"
-              />
-            </div>
-          )}
           
           {/* Financial project summary */}
           <div className="grid grid-cols-2 gap-3 mb-4 bg-muted/30 p-2 rounded-md">
@@ -324,6 +398,14 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      {/* Photos gallery dialog */}
+      <ProjectPhotosGallery 
+        isOpen={showPhotos}
+        onClose={() => setShowPhotos(false)}
+        photos={displayedPhotos}
+        title={projectPhotos.length > 0 ? 'Photos du projet' : 'Photos du terrain'}
+      />
     </>
   );
 };
