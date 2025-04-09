@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Navigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -44,6 +43,8 @@ const Feed: React.FC = () => {
           id_tantsaha,
           id_commune,
           id_technicien,
+          titre,
+          description,
           utilisateur!id_tantsaha(id_utilisateur, nom, prenoms, photo_profil),
           commune(nom_commune, district(nom_district, region(nom_region)))
         `)
@@ -177,7 +178,8 @@ const Feed: React.FC = () => {
         
         return {
           id: projet.id_projet.toString(),
-          title: `Projet de culture de ${cultivationType}`,
+          title: projet.titre || `Projet de culture de ${cultivationType}`,
+          description: projet.description || `Projet de culture de ${cultivationType} sur un terrain de ${projet.surface_ha} hectares.`,
           farmer,
           location: {
             region: projet.commune?.district?.region?.nom_region || "Non spécifié",
@@ -191,7 +193,6 @@ const Feed: React.FC = () => {
           expectedRevenue,
           creationDate: new Date(projet.created_at).toISOString().split('T')[0],
           images: [],
-          description: `Projet de culture de ${cultivationType} sur un terrain de ${projet.surface_ha} hectares.`,
           fundingGoal: farmingCost * projet.surface_ha,
           currentFunding,
           likes,
@@ -266,7 +267,6 @@ const Feed: React.FC = () => {
     setActiveFilters({});
   };
   
-  // Animation variants
   const container = {
     hidden: { opacity: 0 },
     show: {

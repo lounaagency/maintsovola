@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Heart, MessageCircle, Share, Edit, Info, Shield, Image } from 'lucide-react';
+import { Heart, MessageCircle, Share, Edit, Info, Shield, Image, Map } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import UserAvatar from './UserAvatar';
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +34,12 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
   const [projectPhotos, setProjectPhotos] = useState<string[]>([]);
   const [terrainPhotos, setTerrainPhotos] = useState<string[]>([]);
   const [displayedPhotos, setDisplayedPhotos] = useState<string[]>([]);
+  const [terrainCoordinates, setTerrainCoordinates] = useState<number[][]>([]);
+  const [projectDetails, setProjectDetails] = useState<{
+    title: string | null;
+    description: string | null;
+  }>({ title: null, description: null });
+  const [galleryTab, setGalleryTab] = useState<'photos' | 'map'>('photos');
   const { user, profile } = useAuth();
   const userRole = profile?.nom_role?.toLowerCase() || '';
   
@@ -45,20 +50,26 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
   const canInvest = isInvestor || isFarmer || isSimpleUser;
   
   useEffect(() => {
-    // Fetch photos for project or terrain when component mounts
-    fetchPhotos();
+    // Fetch photos and terrain details when component mounts
+    fetchProjectDetails();
   }, [project.id]);
   
-  const fetchPhotos = async () => {
+  const fetchProjectDetails = async () => {
     try {
-      // Fetch project details including photos
+      // Fetch project details including photos and title/description
       const { data: projectData, error: projectError } = await supabase
         .from('projet')
-        .select('photos, id_terrain')
+        .select('photos, id_terrain, titre, description')
         .eq('id_projet', parseInt(project.id))
         .single();
       
       if (projectError) throw projectError;
+      
+      // Store actual title and description if available
+      setProjectDetails({
+        title: projectData.titre,
+        description: projectData.description
+      });
       
       // Process project photos if available
       if (projectData.photos) {
@@ -70,16 +81,19 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
         
         setProjectPhotos(photos);
         setDisplayedPhotos(photos);
-      } else if (projectData.id_terrain) {
-        // If project has no photos, fetch terrain photos
+      }
+      
+      // If project has a terrain, fetch terrain photos and geometry
+      if (projectData.id_terrain) {
         const { data: terrainData, error: terrainError } = await supabase
           .from('terrain')
-          .select('photos')
+          .select('photos, geom')
           .eq('id_terrain', projectData.id_terrain)
           .single();
         
         if (terrainError) throw terrainError;
         
+        // Process terrain photos
         if (terrainData.photos) {
           const photos = Array.isArray(terrainData.photos) 
             ? terrainData.photos 
@@ -88,11 +102,28 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
               : [];
           
           setTerrainPhotos(photos);
-          setDisplayedPhotos(photos);
+          if (photos.length > 0 && projectPhotos.length === 0) {
+            setDisplayedPhotos(photos);
+          }
+        }
+        
+        // Process terrain geometry for map
+        if (terrainData.geom) {
+          try {
+            const geomData = typeof terrainData.geom === 'string' 
+              ? JSON.parse(terrainData.geom) 
+              : terrainData.geom;
+              
+            if (geomData && geomData.coordinates && geomData.coordinates[0]) {
+              setTerrainCoordinates(geomData.coordinates[0]);
+            }
+          } catch (error) {
+            console.error("Error parsing terrain geometry:", error);
+          }
         }
       }
     } catch (error) {
-      console.error("Error fetching photos:", error);
+      console.error("Error fetching project details:", error);
     }
   };
   
@@ -176,7 +207,18 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
     setShowComments(!showComments);
   };
   
+  const handleOpenGallery = (initialTab: 'photos' | 'map' = 'photos') => {
+    setGalleryTab(initialTab);
+    setShowPhotos(true);
+  };
+  
   const hasPhotos = displayedPhotos.length > 0;
+  const hasMap = terrainCoordinates.length >= 3;
+  
+  // Use actual title/description from database if available, otherwise use defaults
+  const displayTitle = projectDetails.title || `Projet de culture de ${project.cultivationType}`;
+  const displayDescription = projectDetails.description || 
+    `Projet de culture de ${typeof project.cultivationType === 'string' ? project.cultivationType : 'cultures'} sur un terrain de ${project.cultivationArea} hectares.`;
   
   return (
     <>
@@ -207,8 +249,8 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
           </div>
           
           <div className="mb-3">
-            <h3 className="font-semibold text-base mb-1">{project.title}</h3>
-            <p className="text-sm text-gray-700">{project.description}</p>
+            <h3 className="font-semibold text-base mb-1">{displayTitle}</h3>
+            <p className="text-sm text-gray-700">{displayDescription}</p>
           </div>
           
           {/* Technicien contact section */}
@@ -226,20 +268,32 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
             </div>
           )}
           
-          {/* Photos preview button (if photos are available) */}
-          {hasPhotos && (
-            <div className="mb-4">
+          {/* Photos and Map buttons */}
+          <div className="mb-4 flex gap-2">
+            {hasPhotos && (
               <Button 
                 variant="outline" 
                 size="sm" 
-                className="w-full flex items-center justify-center gap-2"
-                onClick={() => setShowPhotos(true)}
+                className="flex-1 flex items-center justify-center gap-2"
+                onClick={() => handleOpenGallery('photos')}
               >
                 <Image className="h-4 w-4" />
                 <span>Voir les photos {projectPhotos.length > 0 ? 'du projet' : 'du terrain'}</span>
               </Button>
-            </div>
-          )}
+            )}
+            
+            {hasMap && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex-1 flex items-center justify-center gap-2"
+                onClick={() => handleOpenGallery('map')}
+              >
+                <Map className="h-4 w-4" />
+                <span>Voir sur la carte</span>
+              </Button>
+            )}
+          </div>
           
           <div className="grid grid-cols-2 gap-3 mb-4">
             <div className="text-xs">
@@ -337,8 +391,8 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
           
           <div className="py-4">
             <div className="mb-4">
-              <h4 className="font-medium mb-1">{project.title}</h4>
-              <p className="text-sm text-gray-600">{project.description}</p>
+              <h4 className="font-medium mb-1">{displayTitle}</h4>
+              <p className="text-sm text-gray-600">{displayDescription}</p>
             </div>
             
             <div className="mb-6">
@@ -399,12 +453,14 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
         </DialogContent>
       </Dialog>
       
-      {/* Photos gallery dialog */}
+      {/* Photos and map gallery dialog */}
       <ProjectPhotosGallery 
         isOpen={showPhotos}
         onClose={() => setShowPhotos(false)}
         photos={displayedPhotos}
         title={projectPhotos.length > 0 ? 'Photos du projet' : 'Photos du terrain'}
+        terrainCoordinates={terrainCoordinates}
+        initialTab={galleryTab}
       />
     </>
   );
