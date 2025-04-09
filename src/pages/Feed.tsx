@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { AgriculturalProject } from "@/types/agriculturalProject";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { toast } from 'sonner';
+import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import AgriculturalProjectCard from '@/components/AgriculturalProjectCard';
 
@@ -44,8 +44,6 @@ const Feed: React.FC = () => {
           id_tantsaha,
           id_commune,
           id_technicien,
-          titre,
-          description,
           utilisateur!id_tantsaha(id_utilisateur, nom, prenoms, photo_profil),
           commune(nom_commune, district(nom_district, region(nom_region)))
         `)
@@ -177,14 +175,9 @@ const Feed: React.FC = () => {
           avatar: undefined,
         };
         
-        // Generate default title and description if not available
-        const defaultTitle = `Projet de culture de ${cultivationType}`;
-        const defaultDescription = `Projet de culture de ${cultivationType} sur un terrain de ${projet.surface_ha} hectares.`;
-        
         return {
           id: projet.id_projet.toString(),
-          title: projet.titre || defaultTitle,
-          description: projet.description || defaultDescription,
+          title: `Projet de culture de ${cultivationType}`,
           farmer,
           location: {
             region: projet.commune?.district?.region?.nom_region || "Non spécifié",
@@ -198,6 +191,7 @@ const Feed: React.FC = () => {
           expectedRevenue,
           creationDate: new Date(projet.created_at).toISOString().split('T')[0],
           images: [],
+          description: `Projet de culture de ${cultivationType} sur un terrain de ${projet.surface_ha} hectares.`,
           fundingGoal: farmingCost * projet.surface_ha,
           currentFunding,
           likes,
