@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Heart, MessageCircle, Share, Edit, Info } from 'lucide-react';
+import { Heart, MessageCircle, Share, Edit, Info, Shield } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import UserAvatar from './UserAvatar';
 import { Badge } from "@/components/ui/badge";
@@ -33,7 +33,9 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
   
   const isInvestor = userRole === 'investisseur';
   const isFarmer = userRole === 'agriculteur';
-  const canInvest = isInvestor || isFarmer;
+  const isSimpleUser = userRole === 'simple';
+  // Updated: Allow users of type 'simple' to invest
+  const canInvest = isInvestor || isFarmer || isSimpleUser;
   
   const fundingGap = Math.max(0, project.fundingGoal - project.currentFunding);
   
@@ -118,12 +120,17 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
             </div>
             
             <div className="flex items-center">
+              {/* Make technician contact more prominent */}
               {project.technicianId && (
-                <TechnicienContactLink 
-                  technicienId={project.technicianId} 
-                  size="sm" 
-                  className="mr-2" 
-                />
+                <div className="flex items-center bg-muted/50 rounded-lg p-1 mr-2">
+                  <Shield className="h-3 w-3 text-primary mr-1" />
+                  <span className="text-xs mr-1">Validé par technicien</span>
+                  <TechnicienContactLink 
+                    technicienId={project.technicianId} 
+                    size="sm"
+                    showName={true}
+                  />
+                </div>
               )}
               <Button variant={project.technicianId ? "default" : "destructive"} size="sm" className="text-xs">
                 {project.technicianId ? "Validé" : "En attente"}
