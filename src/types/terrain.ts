@@ -26,6 +26,14 @@ export interface TerrainData {
   region?: RegionData;
   district?: DistrictData;
   commune?: CommuneData;
+  
+  // Add these properties to match the fields used in the components
+  region_name?: string;
+  district_name?: string;
+  commune_name?: string;
+  tantsahaNom?: string;
+  techniqueNom?: string;
+  superviseurNom?: string;
 }
 
 export interface RegionData {
@@ -51,4 +59,21 @@ export interface CommuneData {
   id_region?: number;
   emplacement_chef_lieu?: string;
   created_at?: string;
+}
+
+// Add these interfaces for sorting and filtering
+export interface TerrainSortOptions {
+  field: keyof TerrainData;
+  direction: 'asc' | 'desc';
+}
+
+export interface TerrainFilters {
+  region?: number;
+  district?: number;
+  commune?: number;
+  hasWater?: boolean;
+  hasRoad?: boolean;
+  validated?: boolean;
+  tantsaha?: string;
+  technicien?: string;
 }
