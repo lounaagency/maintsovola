@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "./ui/button";
 import { MessageSquare } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -31,7 +31,14 @@ const TechnicienContactLink: React.FC<TechnicienContactLinkProps> = ({
   } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Fetch technicien details when needed
+  // Fetch technicien details when component mounts or when technicienId changes
+  useEffect(() => {
+    if (technicienId && !technicien) {
+      fetchTechnicienDetails();
+    }
+  }, [technicienId]);
+
+  // Fetch technicien details from Supabase
   const fetchTechnicienDetails = async () => {
     if (!technicienId || technicien) return;
     
@@ -59,11 +66,11 @@ const TechnicienContactLink: React.FC<TechnicienContactLinkProps> = ({
     }
   };
 
-  const handleClick = async () => {
-    await fetchTechnicienDetails();
+  const handleClick = () => {
     setIsMessageDialogOpen(true);
   };
 
+  // Don't render anything if the user is not logged in or if the user is the technician
   if (!user || user.id === technicienId) {
     return null;
   }
@@ -74,10 +81,7 @@ const TechnicienContactLink: React.FC<TechnicienContactLinkProps> = ({
     lg: "h-10 px-4"
   }[size];
 
-  if (variant === "avatar" && !technicien) {
-    fetchTechnicienDetails();
-  }
-
+  // Render avatar variant
   if (variant === "avatar") {
     return (
       <>
@@ -110,6 +114,7 @@ const TechnicienContactLink: React.FC<TechnicienContactLinkProps> = ({
     );
   }
 
+  // Render default button variant
   return (
     <>
       <Button 

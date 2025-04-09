@@ -34,12 +34,12 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
   const isInvestor = userRole === 'investisseur';
   const isFarmer = userRole === 'agriculteur';
   const isSimpleUser = userRole === 'simple';
-  // Updated: Allow users of type 'simple' to invest
+  // Allow users of type 'simple' to invest
   const canInvest = isInvestor || isFarmer || isSimpleUser;
   
   const fundingGap = Math.max(0, project.fundingGoal - project.currentFunding);
   
-  // Initialiser le montant d'investissement au gap restant lors de l'ouverture du modal
+  // Initialize investment amount to the remaining gap when opening the modal
   const handleOpenInvestModal = () => {
     setInvestAmount(fundingGap);
     setShowInvestModal(true);
@@ -82,7 +82,7 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
       toast.success("Votre investissement a été enregistré avec succès");
       setShowInvestModal(false);
       
-      // Rafraîchir les données du projet (idéalement via un callback)
+      // Refresh project data (ideally via a callback)
     } catch (error) {
       console.error("Erreur lors de l'investissement:", error);
       toast.error("Une erreur est survenue lors de l'enregistrement de votre investissement");
@@ -150,7 +150,7 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
             </div>
           </div>
           
-          {/* Technicien contact section - moved here */}
+          {/* Technicien contact section */}
           {project.technicianId && (
             <div className="mb-4 bg-muted/30 p-2 rounded-md">
               <div className="flex items-center">
@@ -165,7 +165,7 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
             </div>
           )}
           
-          {/* Synthèse financière du projet */}
+          {/* Financial project summary */}
           <div className="grid grid-cols-2 gap-3 mb-4 bg-muted/30 p-2 rounded-md">
             <div className="text-xs">
               <span className="text-gray-500 block">Coût d'exploitation</span>
@@ -185,7 +185,7 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
             </div>
           </div>
           
-          {/* Affichage du financement */}
+          {/* Funding display */}
           <div className="mb-4">
             <div className="flex justify-between text-xs mb-1">
               <span>Financement</span>
@@ -199,7 +199,7 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
             </div>
           </div>
           
-          {/* Boutons d'actions */}
+          {/* Action buttons */}
           <div className="flex items-center justify-between pt-3 border-t border-gray-100">
             <ProjectActions 
               projectId={project.id}
@@ -233,7 +233,7 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
         )}
       </Card>
       
-      {/* Modal d'investissement */}
+      {/* Investment modal */}
       <Dialog open={showInvestModal} onOpenChange={setShowInvestModal}>
         <DialogContent>
           <DialogHeader>
