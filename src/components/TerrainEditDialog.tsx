@@ -5,20 +5,24 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
-import TerrainForm from "@/components/terrain/TerrainForm";
+import { Button } from "@/components/ui/button";
 import { TerrainData } from "@/types/terrain";
+import { toast } from "sonner";
+import TerrainForm from "@/components/terrain/TerrainForm";
 import { supabase } from "@/integrations/supabase/client";
+import { Loader2 } from "lucide-react";
 
 interface TerrainEditDialogProps {
   isOpen: boolean;
   onClose: () => void;
   terrain?: TerrainData;
-  onSubmitSuccess: (updatedTerrain: TerrainData) => void; // Updated to return the terrain data
+  onSubmitSuccess: (terrain: TerrainData) => void;
   userId: string;
   userRole?: string;
-  agriculteurs?: { id_utilisateur: string; nom: string; prenoms?: string }[];
   isValidationMode?: boolean;
+  agriculteurs?: {id_utilisateur: string; nom: string; prenoms?: string}[];
 }
 
 const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
@@ -27,66 +31,252 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
   terrain,
   onSubmitSuccess,
   userId,
-  userRole,
+  userRole = 'simple',
+  isValidationMode = false,
   agriculteurs = [],
-  isValidationMode = false
 }) => {
-  const [techniciens, setTechniciens] = useState<{ id_utilisateur: string; nom: string; prenoms?: string }[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState<Partial<TerrainData> | null>(null);
   
-  // Fetch techniciens when dialog opens if user is superviseur
-  useEffect(() => {
-    if (isOpen && userRole === 'superviseur') {
-      const fetchTechniciens = async () => {
-        try {
-          // Using the correct role ID (4 for 'technicien')
-          const { data, error } = await supabase
-            .from('utilisateurs_par_role')
-            .select('id_utilisateur, nom, prenoms')
-            .eq('id_role', 4); // 4 = technicien
-          
-          if (error) {
-            console.error("Error fetching techniciens:", error);
-            return;
-          }
-          
-          setTechniciens(data || []);
-        } catch (error) {
-          console.error("Error in fetchTechniciens:", error);
-        }
-      };
-      
-      fetchTechniciens();
-    }
-  }, [isOpen, userRole]);
+  const isNew = !terrain || !terrain.id_terrain;
 
-  // Handle the success callback to pass the updated terrain data
-  const handleFormSuccess = (updatedTerrain: TerrainData) => {
-    onSubmitSuccess(updatedTerrain);
+  const handleSubmit = async (data: Partial<TerrainData>) => {
+    if (!userId) return;
+    
+    setLoading(true);
+    try {
+      // Handle image URLs (convert arrays to strings)
+      if (Array.isArray(data.photos)) {
+        data.photos = data.photos.join(',');
+      }
+      
+      if (Array.isArray(data.photos_validation)) {
+        data.photos_validation = data.photos_validation.join(',');
+      }
+      
+      let result;
+      
+      if (isNew) {
+        // Create new terrain
+        const newTerrain = {
+          ...data,
+          id_tantsaha: userRole === 'simple' ? userId : data.id_tantsaha,
+          statut: false,
+          archive: false,
+          created_by: userId
+        };
+        
+        const { data: insertedData, error } = await supabase
+          .from('terrain')
+          .insert(newTerrain)
+          .select('*')
+          .single();
+          
+        if (error) throw error;
+        result = insertedData;
+        
+        toast.success("Terrain ajouté avec succès");
+      } else if (isValidationMode && terrain) {
+        // Update terrain and set as validated
+        const updatedTerrain = {
+          ...data,
+          statut: true,
+          surface_validee: data.surface_validee || terrain.surface_proposee,
+          id_superviseur: userId,
+          date_validation: new Date().toISOString().split('T')[0]
+        };
+        
+        const { data: updatedData, error } = await supabase
+          .from('terrain')
+          .update(updatedTerrain)
+          .eq('id_terrain', terrain.id_terrain)
+          .select('*')
+          .single();
+          
+        if (error) throw error;
+        result = updatedData;
+        
+        // Send notification to owner
+        if (terrain.id_tantsaha) {
+          await supabase
+            .from('notification')
+            .insert({
+              id_destinataire: terrain.id_tantsaha,
+              id_expediteur: userId,
+              titre: "Terrain validé",
+              contenu: `Votre terrain ${terrain.nom_terrain} a été validé`,
+              type: "success",
+              contexte: "terrain",
+              id_contexte: terrain.id_terrain
+            });
+        }
+        
+        // Send notification to technician if assigned
+        if (terrain.id_technicien) {
+          await supabase
+            .from('notification')
+            .insert({
+              id_destinataire: terrain.id_technicien,
+              id_expediteur: userId,
+              titre: "Terrain validé",
+              contenu: `Le terrain ${terrain.nom_terrain} a été validé`,
+              type: "success",
+              contexte: "terrain",
+              id_contexte: terrain.id_terrain
+            });
+        }
+        
+        toast.success("Terrain validé avec succès");
+      } else if (terrain) {
+        // Update existing terrain
+        const { data: updatedData, error } = await supabase
+          .from('terrain')
+          .update(data)
+          .eq('id_terrain', terrain.id_terrain)
+          .select('*')
+          .single();
+          
+        if (error) throw error;
+        result = updatedData;
+        
+        toast.success("Terrain mis à jour avec succès");
+      }
+      
+      // Fetch additional data for the terrain
+      if (result) {
+        // Get region name
+        if (result.id_region) {
+          const { data: regionData } = await supabase
+            .from('region')
+            .select('nom_region')
+            .eq('id_region', result.id_region)
+            .single();
+            
+          if (regionData) {
+            result.region_name = regionData.nom_region;
+          }
+        }
+        
+        // Get district name
+        if (result.id_district) {
+          const { data: districtData } = await supabase
+            .from('district')
+            .select('nom_district')
+            .eq('id_district', result.id_district)
+            .single();
+            
+          if (districtData) {
+            result.district_name = districtData.nom_district;
+          }
+        }
+        
+        // Get commune name
+        if (result.id_commune) {
+          const { data: communeData } = await supabase
+            .from('commune')
+            .select('nom_commune')
+            .eq('id_commune', result.id_commune)
+            .single();
+            
+          if (communeData) {
+            result.commune_name = communeData.nom_commune;
+          }
+        }
+        
+        // Get farmer name
+        if (result.id_tantsaha) {
+          const { data: ownerData } = await supabase
+            .from('utilisateurs_par_role')
+            .select('nom, prenoms')
+            .eq('id_utilisateur', result.id_tantsaha)
+            .single();
+            
+          if (ownerData) {
+            result.tantsahaNom = `${ownerData.nom} ${ownerData.prenoms || ''}`.trim();
+          }
+        }
+        
+        // Get technician name
+        if (result.id_technicien) {
+          const { data: techData } = await supabase
+            .from('utilisateurs_par_role')
+            .select('nom, prenoms')
+            .eq('id_utilisateur', result.id_technicien)
+            .single();
+            
+          if (techData) {
+            result.techniqueNom = `${techData.nom} ${techData.prenoms || ''}`.trim();
+          } else {
+            result.techniqueNom = 'Non assigné';
+          }
+        } else {
+          result.techniqueNom = 'Non assigné';
+        }
+        
+        // Get supervisor name
+        if (result.id_superviseur) {
+          const { data: supervData } = await supabase
+            .from('utilisateurs_par_role')
+            .select('nom, prenoms')
+            .eq('id_utilisateur', result.id_superviseur)
+            .single();
+            
+          if (supervData) {
+            result.superviseurNom = `${supervData.nom} ${supervData.prenoms || ''}`.trim();
+          } else {
+            result.superviseurNom = 'Non assigné';
+          }
+        } else {
+          result.superviseurNom = 'Non assigné';
+        }
+        
+        onSubmitSuccess(result as TerrainData);
+      }
+      
+      onClose();
+    } catch (error: any) {
+      console.error("Error saving terrain:", error);
+      toast.error(`Erreur: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+    <Dialog 
+      open={isOpen} 
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
+      }}
+    >
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {terrain?.id_terrain 
-              ? isValidationMode 
-                ? "Validation du terrain" 
-                : "Modifier le terrain" 
-              : "Ajouter un terrain"
-            }
+            {isValidationMode
+              ? `Valider le terrain: ${terrain?.nom_terrain}`
+              : isNew
+                ? "Ajouter un terrain"
+                : `Modifier le terrain: ${terrain?.nom_terrain}`}
           </DialogTitle>
         </DialogHeader>
-        <TerrainForm
-          initialData={terrain}
-          onSubmitSuccess={handleFormSuccess}
-          onCancel={onClose}
-          userId={userId}
-          userRole={userRole}
-          agriculteurs={agriculteurs}
-          techniciens={techniciens}
-          isValidationMode={isValidationMode}
-        />
+
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
+            <p>{isNew ? "Création" : "Mise à jour"} du terrain en cours...</p>
+          </div>
+        ) : (
+          <TerrainForm
+            terrain={terrain}
+            onSubmit={handleSubmit}
+            isValidationMode={isValidationMode}
+            userRole={userRole}
+            userId={userId}
+            agriculteurs={agriculteurs}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );

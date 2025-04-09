@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -8,28 +8,21 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Trash2, MapPin, Droplets, Route } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TerrainData } from "@/types/terrain";
-import { MapContainer, TileLayer, Polygon } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
-import { toast } from "sonner";
+import { MapPin, Water, Road, Calendar, CheckCircle, AlertTriangle, Trash } from "lucide-react";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
-import { sendNotification } from "@/types/notification";
-import { useAuth } from "@/contexts/AuthContext";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { toast } from "sonner";
+import UserAvatar from "./UserAvatar";
 
 interface TerrainCardProps {
   isOpen: boolean;
   onClose: () => void;
   terrain: TerrainData;
-  onTerrainUpdate?: (deletedTerrain?: TerrainData, action?: 'delete') => void;
+  onTerrainUpdate?: (terrain?: TerrainData, action?: 'add' | 'update' | 'delete') => void;
   isDeleteMode?: boolean;
 }
 
@@ -38,50 +31,30 @@ const TerrainCard: React.FC<TerrainCardProps> = ({
   onClose,
   terrain,
   onTerrainUpdate,
-  isDeleteMode = false
+  isDeleteMode = false,
 }) => {
-  const { user } = useAuth();
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   
-  const photoArray = React.useMemo(() => {
-    if (!terrain.photos) return [];
-    return typeof terrain.photos === 'string'
-      ? terrain.photos.split(',').filter(url => url.trim() !== '')
-      : terrain.photos.filter(url => url !== '');
-  }, [terrain.photos]);
-  
-  const validationPhotoArray = React.useMemo(() => {
-    if (!terrain.photos_validation) return [];
-    return typeof terrain.photos_validation === 'string'
-      ? terrain.photos_validation.split(',').filter(url => url.trim() !== '')
-      : terrain.photos_validation.filter(url => url !== '');
-  }, [terrain.photos_validation]);
-  
-  const polygonCoordinates = React.useMemo(() => {
-    if (!terrain.geom) return [];
+  const handleDelete = async () => {
+    if (!terrain.id_terrain) return;
     
     try {
-      const geomData = typeof terrain.geom === 'string' 
-        ? JSON.parse(terrain.geom) 
-        : terrain.geom;
-        
-      if (geomData && geomData.coordinates && geomData.coordinates[0]) {
-        // Convert GeoJSON format to LatLngExpression[]
-        return geomData.coordinates[0].map((coord: number[]) => [coord[1], coord[0]]);
-      }
-    } catch (error) {
-      console.error("Error parsing polygon geometry:", error);
-    }
-    
-    return [];
-  }, [terrain.geom]);
-
-  const handleDeleteTerrain = async () => {
-    if (!user) return;
-    
-    try {
-      setIsSubmitting(true);
+      setIsDeleting(true);
       
+      // Check if terrain is used in any projects
+      const { data: projectsData, error: projectsError } = await supabase
+        .from('projet')
+        .select('id_projet')
+        .eq('id_terrain', terrain.id_terrain);
+        
+      if (projectsError) throw projectsError;
+      
+      if (projectsData && projectsData.length > 0) {
+        toast.error("Ce terrain est utilisé dans des projets et ne peut pas être supprimé.");
+        return;
+      }
+      
+      // Mark terrain as archived instead of deleting
       const { error } = await supabase
         .from('terrain')
         .update({ archive: true })
@@ -89,239 +62,258 @@ const TerrainCard: React.FC<TerrainCardProps> = ({
         
       if (error) throw error;
       
-      // Notifications
-      if (terrain.id_technicien) {
-        await sendNotification(
-          supabase,
-          user.id,
-          [{ id_utilisateur: terrain.id_technicien }],
-          "Terrain supprimé",
-          `Le terrain ${terrain.nom_terrain || `#${terrain.id_terrain}`} a été supprimé`,
-          "warning",
-          "terrain",
-          terrain.id_terrain
-        );
+      toast.success("Terrain supprimé avec succès");
+      
+      if (onTerrainUpdate) {
+        onTerrainUpdate(terrain, 'delete');
       }
       
-      if (terrain.id_superviseur && terrain.id_superviseur !== terrain.id_technicien) {
-        await sendNotification(
-          supabase,
-          user.id,
-          [{ id_utilisateur: terrain.id_superviseur }],
-          "Terrain supprimé",
-          `Le terrain ${terrain.nom_terrain || `#${terrain.id_terrain}`} a été supprimé`,
-          "warning",
-          "terrain",
-          terrain.id_terrain
-        );
-      }
-      
-      if (terrain.id_tantsaha && terrain.id_tantsaha !== user.id) {
-        await sendNotification(
-          supabase,
-          user.id,
-          [{ id_utilisateur: terrain.id_tantsaha }],
-          "Terrain supprimé",
-          `Le terrain ${terrain.nom_terrain || `#${terrain.id_terrain}`} a été supprimé`,
-          "warning",
-          "terrain",
-          terrain.id_terrain
-        );
-      }
-      
-      toast.success("Le terrain a été supprimé avec succès");
       onClose();
-      if (onTerrainUpdate) onTerrainUpdate(terrain, 'delete');
-    } catch (error) {
-      console.error("Erreur lors de la suppression du terrain:", error);
-      toast.error("Impossible de supprimer le terrain");
+    } catch (error: any) {
+      console.error("Error deleting terrain:", error);
+      toast.error("Erreur lors de la suppression: " + error.message);
     } finally {
-      setIsSubmitting(false);
+      setIsDeleting(false);
     }
   };
+  
+  // Format validation date if available
+  const validationDate = terrain.date_validation
+    ? format(new Date(terrain.date_validation), 'dd MMMM yyyy', { locale: fr })
+    : null;
+    
+  // Check if we have photos
+  const photos = typeof terrain.photos === 'string' 
+    ? terrain.photos.split(',').filter(p => p.trim() !== '') 
+    : Array.isArray(terrain.photos) 
+      ? terrain.photos 
+      : [];
+      
+  // Check if we have validation photos  
+  const validationPhotos = typeof terrain.photos_validation === 'string' 
+    ? terrain.photos_validation.split(',').filter(p => p.trim() !== '') 
+    : Array.isArray(terrain.photos_validation) 
+      ? terrain.photos_validation 
+      : [];
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-auto">
-        <DialogHeader>
-          <DialogTitle>
-            {isDeleteMode ? "Supprimer le terrain" : "Détails du terrain"}
-          </DialogTitle>
-        </DialogHeader>
-        
-        <div className="space-y-6">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <h3 className="font-semibold text-lg">{terrain.nom_terrain}</h3>
-              <p className="flex items-center text-sm text-muted-foreground">
-                <MapPin className="w-4 h-4 mr-2" />
-                {terrain.region_name || 'N/A'}, {terrain.district_name || 'N/A'}, {terrain.commune_name || 'N/A'}
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        {isDeleteMode ? (
+          <>
+            <DialogHeader>
+              <DialogTitle className="text-destructive flex items-center">
+                <Trash className="h-5 w-5 mr-2" /> 
+                Confirmer la suppression
+              </DialogTitle>
+            </DialogHeader>
+            
+            <div className="py-4">
+              <p className="mb-4">
+                Êtes-vous sûr de vouloir supprimer ce terrain ? Cette action ne peut pas être annulée.
               </p>
               
-              <div className="flex space-x-4 mt-2">
-                <div className="flex items-center">
-                  <Droplets className={`w-4 h-4 mr-1 ${terrain.acces_eau ? 'text-blue-500' : 'text-gray-400'}`} />
-                  <span className="text-sm">{terrain.acces_eau ? 'Accès à l\'eau' : 'Pas d\'accès à l\'eau'}</span>
-                </div>
-                <div className="flex items-center">
-                  <Route className={`w-4 h-4 mr-1 ${terrain.acces_route ? 'text-blue-500' : 'text-gray-400'}`} />
-                  <span className="text-sm">{terrain.acces_route ? 'Accès routier' : 'Pas d\'accès routier'}</span>
-                </div>
-              </div>
-              
-              <div className="mt-3">
-                <p className="text-sm font-medium">Surface proposée: {terrain.surface_proposee} ha</p>
-                {terrain.surface_validee && (
-                  <p className="text-sm font-medium text-green-600">Surface validée: {terrain.surface_validee} ha</p>
-                )}
-                <p className="text-sm text-muted-foreground mt-1">
-                  Statut: <span className={terrain.statut ? 'text-green-600 font-medium' : 'text-amber-600 font-medium'}>
-                    {terrain.statut ? 'Validé' : 'En attente de validation'}
-                  </span>
+              <div className="bg-muted/50 p-4 rounded-md">
+                <h3 className="font-medium">{terrain.nom_terrain}</h3>
+                <p className="text-sm text-muted-foreground">
+                  {terrain.surface_proposee} ha · {terrain.region_name}, {terrain.district_name}
                 </p>
               </div>
             </div>
             
-            <div className="h-[200px]">
-              {polygonCoordinates.length > 0 ? (
-                <MapContainer
-                  bounds={polygonCoordinates}
-                  style={{ height: '100%', width: '100%' }}
-                  zoomControl={false}
-                  attributionControl={false}
-                >
-                  <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                  <Polygon 
-                    positions={polygonCoordinates}
-                    pathOptions={{ color: 'red', fillColor: '#f03', weight: 2, opacity: 0.7, fillOpacity: 0.3 }}
-                  />
-                </MapContainer>
-              ) : (
-                <div className="h-full w-full bg-gray-100 rounded-md flex items-center justify-center">
-                  <p className="text-sm text-gray-500">Aucune géométrie définie</p>
-                </div>
-              )}
-            </div>
-          </div>
-          
-          {photoArray.length > 0 && (
-            <div>
-              <h4 className="text-sm font-medium mb-2">Photos</h4>
-              <div className="grid grid-cols-4 gap-2">
-                {photoArray.map((url, index) => (
-                  <a 
-                    key={index} 
-                    href={url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="block"
-                  >
-                    <img 
-                      src={url} 
-                      alt={`Terrain ${index + 1}`} 
-                      className="h-20 w-full object-cover rounded-md"
-                    />
-                  </a>
-                ))}
-              </div>
-            </div>
-          )}
-          
-          {terrain.statut && (terrain.rapport_validation || validationPhotoArray.length > 0) && (
-            <div className="border-t pt-4 mt-4">
-              <h4 className="font-medium">Rapport de validation</h4>
+            <DialogFooter>
+              <Button variant="outline" onClick={onClose}>
+                Annuler
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={handleDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? "Suppression..." : "Supprimer"}
+              </Button>
+            </DialogFooter>
+          </>
+        ) : (
+          <>
+            <DialogHeader>
+              <DialogTitle>{terrain.nom_terrain}</DialogTitle>
+            </DialogHeader>
+            
+            <Tabs defaultValue="info">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="info">Informations</TabsTrigger>
+                <TabsTrigger value="validation" disabled={!terrain.statut}>
+                  Rapport de validation
+                </TabsTrigger>
+              </TabsList>
               
-              {terrain.date_validation && (
-                <p className="text-sm text-muted-foreground mt-1">
-                  Validé le: {
-                    typeof terrain.date_validation === 'string' 
-                      ? format(new Date(terrain.date_validation), 'dd MMMM yyyy', {locale: fr})
-                      : format(terrain.date_validation, 'dd MMMM yyyy', {locale: fr})
-                  }
-                </p>
-              )}
-              
-              {terrain.rapport_validation && (
-                <div className="mt-2 bg-gray-50 p-3 rounded-md">
-                  <p className="text-sm">{terrain.rapport_validation}</p>
-                </div>
-              )}
-              
-              {validationPhotoArray.length > 0 && (
-                <div className="mt-3">
-                  <h5 className="text-sm font-medium mb-2">Photos de validation</h5>
-                  <div className="grid grid-cols-4 gap-2">
-                    {validationPhotoArray.map((url, index) => (
-                      <a 
-                        key={index} 
-                        href={url} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="block"
-                      >
-                        <img 
-                          src={url} 
-                          alt={`Validation ${index + 1}`} 
-                          className="h-20 w-full object-cover rounded-md"
-                        />
-                      </a>
-                    ))}
+              <TabsContent value="info" className="space-y-4 py-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-1">Surface</h3>
+                    <p className="text-lg font-semibold">{terrain.surface_proposee} hectares</p>
+                  </div>
+                  
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-1">Statut</h3>
+                    <div>
+                      {terrain.statut ? (
+                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                          <CheckCircle className="h-3.5 w-3.5 mr-1" />
+                          Validé
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                          <AlertTriangle className="h-3.5 w-3.5 mr-1" />
+                          En attente de validation
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </div>
-              )}
-            </div>
-          )}
-          
-          <div className="border-t pt-4 mt-4">
-            <h4 className="font-medium mb-1">Propriétaire</h4>
-            <p className="text-sm">{terrain.tantsahaNom || 'Non spécifié'}</p>
+                
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground mb-1">Localisation</h3>
+                  <div className="flex items-start">
+                    <MapPin className="h-4 w-4 mr-2 mt-0.5 text-muted-foreground" />
+                    <p>{terrain.region_name}, {terrain.district_name}, {terrain.commune_name}</p>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-1">Accès</h3>
+                    <div className="space-y-2">
+                      <div className="flex items-center">
+                        <Water className={`h-4 w-4 mr-2 ${terrain.acces_eau ? 'text-blue-500' : 'text-muted-foreground'}`} />
+                        <span>{terrain.acces_eau ? 'Accès à l\'eau' : 'Pas d\'accès à l\'eau'}</span>
+                      </div>
+                      <div className="flex items-center">
+                        <Road className={`h-4 w-4 mr-2 ${terrain.acces_route ? 'text-amber-500' : 'text-muted-foreground'}`} />
+                        <span>{terrain.acces_route ? 'Accès à la route' : 'Pas d\'accès à la route'}</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {terrain.statut && terrain.surface_validee && (
+                    <div>
+                      <h3 className="text-sm font-medium text-muted-foreground mb-1">Surface validée</h3>
+                      <p className="text-lg font-semibold">{terrain.surface_validee} hectares</p>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="space-y-4">
+                  <h3 className="text-sm font-medium text-muted-foreground">Personnes impliquées</h3>
+                  
+                  <div className="space-y-3">
+                    {terrain.tantsahaNom && terrain.tantsahaNom !== 'Non spécifié' && (
+                      <div className="flex items-center">
+                        <UserAvatar name={terrain.tantsahaNom} size="sm" />
+                        <div className="ml-2">
+                          <p className="text-sm font-medium">{terrain.tantsahaNom}</p>
+                          <p className="text-xs text-muted-foreground">Propriétaire</p>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {terrain.techniqueNom && terrain.techniqueNom !== 'Non assigné' && (
+                      <div className="flex items-center">
+                        <UserAvatar name={terrain.techniqueNom} size="sm" />
+                        <div className="ml-2">
+                          <p className="text-sm font-medium">{terrain.techniqueNom}</p>
+                          <p className="text-xs text-muted-foreground">Technicien</p>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {terrain.superviseurNom && terrain.superviseurNom !== 'Non assigné' && (
+                      <div className="flex items-center">
+                        <UserAvatar name={terrain.superviseurNom} size="sm" />
+                        <div className="ml-2">
+                          <p className="text-sm font-medium">{terrain.superviseurNom}</p>
+                          <p className="text-xs text-muted-foreground">Superviseur</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                {photos.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-2">Photos</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                      {photos.map((photo, index) => (
+                        <img 
+                          key={index}
+                          src={photo}
+                          alt={`Terrain ${index + 1}`}
+                          className="h-24 w-full object-cover rounded-md"
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </TabsContent>
+              
+              <TabsContent value="validation" className="space-y-4 py-4">
+                {validationDate && (
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-1">Date de validation</h3>
+                    <div className="flex items-center">
+                      <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
+                      <p>{validationDate}</p>
+                    </div>
+                  </div>
+                )}
+                
+                {terrain.rapport_validation && (
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-1">Rapport de validation</h3>
+                    <div className="bg-muted/50 p-3 rounded-md">
+                      <p className="whitespace-pre-line">{terrain.rapport_validation}</p>
+                    </div>
+                  </div>
+                )}
+                
+                {validationPhotos.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-2">Photos de validation</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                      {validationPhotos.map((photo, index) => (
+                        <img 
+                          key={index}
+                          src={photo}
+                          alt={`Validation ${index + 1}`}
+                          className="h-24 w-full object-cover rounded-md"
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {terrain.id_superviseur && (
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-1">Validé par</h3>
+                    <div className="flex items-center">
+                      <UserAvatar name={terrain.superviseurNom || 'Superviseur'} size="sm" />
+                      <div className="ml-2">
+                        <p className="text-sm font-medium">{terrain.superviseurNom}</p>
+                        <p className="text-xs text-muted-foreground">Superviseur</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
             
-            {terrain.id_technicien && (
-              <>
-                <h4 className="font-medium mb-1 mt-3">Technicien assigné</h4>
-                <p className="text-sm">{terrain.techniqueNom || 'Non spécifié'}</p>
-              </>
-            )}
-            
-            {terrain.id_superviseur && (
-              <>
-                <h4 className="font-medium mb-1 mt-3">Superviseur</h4>
-                <p className="text-sm">{terrain.superviseurNom || 'Non spécifié'}</p>
-              </>
-            )}
-          </div>
-        </div>
-        
-        {isDeleteMode ? (
-          <DialogFooter className="flex justify-between">
-            <Button 
-              variant="secondary" 
-              onClick={onClose}
-            >
-              Annuler
-            </Button>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    variant="destructive" 
-                    onClick={handleDeleteTerrain}
-                    disabled={isSubmitting}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Supprimer le terrain
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Confirmer la suppression du terrain</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </DialogFooter>
-        ) : (
-          <DialogFooter>
-            <Button variant="secondary" onClick={onClose}>Fermer</Button>
-          </DialogFooter>
+            <DialogFooter>
+              <Button variant="outline" onClick={onClose}>
+                Fermer
+              </Button>
+            </DialogFooter>
+          </>
         )}
       </DialogContent>
     </Dialog>
