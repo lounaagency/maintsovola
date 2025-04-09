@@ -446,6 +446,7 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
         photos={displayedPhotos}
         title={projectPhotos.length > 0 ? 'Photos du projet' : 'Photos du terrain'}
         polygonCoordinates={polygonCoordinates}
+        initialTab={hasMap && !hasPhotos ? 'map' : undefined}
       />
     </>
   );
