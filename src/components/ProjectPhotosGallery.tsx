@@ -23,22 +23,27 @@ const ProjectPhotosGallery: React.FC<ProjectPhotosGalleryProps> = ({
   photos,
   title = "Photos",
   polygonCoordinates,
-  initialTab
+  initialTab = 'photos'
 }) => {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const hasPolygon = polygonCoordinates && polygonCoordinates.length > 2;
   const hasPhotos = photos && photos.length > 0;
   
-  // Determine the default active tab
-  const defaultTab = initialTab || 
-                    (hasPhotos ? 'photos' : hasPolygon ? 'map' : 'photos');
+  // Determine the default active tab based on what's available and the initial tab preference
+  const determineDefaultTab = () => {
+    if (initialTab === 'map' && hasPolygon) return 'map';
+    if (initialTab === 'photos' && hasPhotos) return 'photos';
+    if (hasPhotos) return 'photos';
+    if (hasPolygon) return 'map';
+    return 'photos';
+  };
                     
-  const [activeTab, setActiveTab] = useState<string>(defaultTab);
+  const [activeTab, setActiveTab] = useState<string>(determineDefaultTab());
   
-  // Reset to the appropriate tab when dialog opens
+  // Reset to the appropriate tab when dialog opens or initialTab changes
   useEffect(() => {
     if (isOpen) {
-      setActiveTab(initialTab || (hasPhotos ? 'photos' : hasPolygon ? 'map' : 'photos'));
+      setActiveTab(determineDefaultTab());
     }
   }, [isOpen, initialTab, hasPhotos, hasPolygon]);
   

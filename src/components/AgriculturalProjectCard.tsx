@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,7 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
   const [polygonCoordinates, setPolygonCoordinates] = useState<[number, number][]>([]);
   const [projectTitle, setProjectTitle] = useState<string>(project.title as string);
   const [projectDescription, setProjectDescription] = useState<string>(project.description);
+  const [activeGalleryTab, setActiveGalleryTab] = useState<'photos' | 'map'>('photos');
   const { user, profile } = useAuth();
   const userRole = profile?.nom_role?.toLowerCase() || '';
   
@@ -206,7 +208,13 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
   const hasPhotos = displayedPhotos.length > 0;
   const hasMap = polygonCoordinates.length > 2;
   
-  const openPhotoGallery = (initialTab: 'photos' | 'map' = 'photos') => {
+  const openPhotoGallery = () => {
+    setActiveGalleryTab('photos');
+    setShowPhotos(true);
+  };
+  
+  const openMapGallery = () => {
+    setActiveGalleryTab('map');
     setShowPhotos(true);
   };
   
@@ -263,9 +271,7 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
                 variant="outline" 
                 size="sm" 
                 className="flex-1 flex items-center justify-center gap-2"
-                onClick={() => {
-                  setShowPhotos(true);
-                }}
+                onClick={openPhotoGallery}
               >
                 <Image className="h-4 w-4" />
                 <span>Voir les photos {projectPhotos.length > 0 ? 'du projet' : 'du terrain'}</span>
@@ -277,9 +283,7 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
                 variant="outline" 
                 size="sm" 
                 className="flex-1 flex items-center justify-center gap-2"
-                onClick={() => {
-                  setShowPhotos(true);
-                }}
+                onClick={openMapGallery}
               >
                 <Map className="h-4 w-4" />
                 <span>Voir sur la carte</span>
@@ -446,7 +450,7 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
         photos={displayedPhotos}
         title={projectPhotos.length > 0 ? 'Photos du projet' : 'Photos du terrain'}
         polygonCoordinates={polygonCoordinates}
-        initialTab={hasMap && !hasPhotos ? 'map' : undefined}
+        initialTab={activeGalleryTab}
       />
     </>
   );
