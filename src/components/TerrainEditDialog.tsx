@@ -5,7 +5,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { TerrainData } from "@/types/terrain";
@@ -70,7 +70,7 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
         
         const { data: insertedData, error } = await supabase
           .from('terrain')
-          .insert(newTerrain)
+          .insert(newTerrain as any)
           .select('*')
           .single();
           
@@ -90,7 +90,7 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
         
         const { data: updatedData, error } = await supabase
           .from('terrain')
-          .update(updatedTerrain)
+          .update(updatedTerrain as any)
           .eq('id_terrain', terrain.id_terrain)
           .select('*')
           .single();
@@ -133,7 +133,7 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
         // Update existing terrain
         const { data: updatedData, error } = await supabase
           .from('terrain')
-          .update(dataToSave)
+          .update(dataToSave as any)
           .eq('id_terrain', terrain.id_terrain)
           .select('*')
           .single();
@@ -152,7 +152,7 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
             .from('region')
             .select('nom_region')
             .eq('id_region', result.id_region)
-            .single();
+            .maybeSingle();
             
           if (regionData) {
             result.region_name = regionData.nom_region;
@@ -165,7 +165,7 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
             .from('district')
             .select('nom_district')
             .eq('id_district', result.id_district)
-            .single();
+            .maybeSingle();
             
           if (districtData) {
             result.district_name = districtData.nom_district;
@@ -178,7 +178,7 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
             .from('commune')
             .select('nom_commune')
             .eq('id_commune', result.id_commune)
-            .single();
+            .maybeSingle();
             
           if (communeData) {
             result.commune_name = communeData.nom_commune;
@@ -191,7 +191,7 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
             .from('utilisateurs_par_role')
             .select('nom, prenoms')
             .eq('id_utilisateur', result.id_tantsaha)
-            .single();
+            .maybeSingle();
             
           if (ownerData) {
             result.tantsahaNom = `${ownerData.nom} ${ownerData.prenoms || ''}`.trim();
@@ -204,7 +204,7 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
             .from('utilisateurs_par_role')
             .select('nom, prenoms')
             .eq('id_utilisateur', result.id_technicien)
-            .single();
+            .maybeSingle();
             
           if (techData) {
             result.techniqueNom = `${techData.nom} ${techData.prenoms || ''}`.trim();
@@ -221,7 +221,7 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
             .from('utilisateurs_par_role')
             .select('nom, prenoms')
             .eq('id_utilisateur', result.id_superviseur)
-            .single();
+            .maybeSingle();
             
           if (supervData) {
             result.superviseurNom = `${supervData.nom} ${supervData.prenoms || ''}`.trim();
@@ -244,14 +244,20 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
     }
   };
 
+  // Improved focus management
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      // Allow proper focus return before closing
+      setTimeout(() => {
+        onClose();
+      }, 0);
+    }
+  };
+
   return (
     <Dialog 
       open={isOpen} 
-      onOpenChange={(open) => {
-        if (!open) {
-          onClose();
-        }
-      }}
+      onOpenChange={handleOpenChange}
     >
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -262,6 +268,13 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
                 ? "Ajouter un terrain"
                 : `Modifier le terrain: ${terrain?.nom_terrain}`}
           </DialogTitle>
+          <DialogDescription>
+            {isValidationMode 
+              ? "Completez le formulaire pour valider ce terrain"
+              : isNew 
+                ? "Remplissez les informations du nouveau terrain"
+                : "Modifiez les informations du terrain"}
+          </DialogDescription>
         </DialogHeader>
 
         {loading ? (

@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import React, { useState, useEffect } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -29,7 +29,7 @@ const ProjectPhotosGallery: React.FC<ProjectPhotosGalleryProps> = ({
   const [activeTab, setActiveTab] = useState<'photos' | 'map'>(initialTab);
   
   // Reset to initial tab each time the dialog opens
-  React.useEffect(() => {
+  useEffect(() => {
     if (isOpen) {
       setActiveTab(initialTab);
     }
@@ -59,12 +59,29 @@ const ProjectPhotosGallery: React.FC<ProjectPhotosGalleryProps> = ({
   const polygonCoordinates = terrainCoordinates ? 
     terrainCoordinates.map(coord => [coord[1], coord[0]]) : 
     [];
+
+  // Improved focus management
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      // Allow proper focus return before closing
+      setTimeout(() => {
+        onClose();
+      }, 0);
+    }
+  };
   
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[800px]">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>
+            {hasPhotos && hasMapData 
+              ? "Naviguez entre les photos et la carte du terrain" 
+              : hasPhotos 
+                ? "Parcourez les photos du terrain" 
+                : "Visualisez l'emplacement du terrain"}
+          </DialogDescription>
         </DialogHeader>
         
         {hasPhotos && hasMapData ? (
@@ -167,7 +184,7 @@ const ProjectPhotosGallery: React.FC<ProjectPhotosGalleryProps> = ({
     return (
       <div className="w-full h-[400px] my-4 bg-gray-100 rounded-md overflow-hidden">
         <MapContainer
-          bounds={polygonCoordinates}
+          bounds={polygonCoordinates as any}
           style={{ height: '100%', width: '100%' }}
           zoomControl={true}
           attributionControl={true}
