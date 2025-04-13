@@ -45,6 +45,11 @@ const App = () => {
                     <Profile />
                   </Layout>
                 } />
+                <Route path="/profile/:id" element={
+                  <Layout>
+                    <Profile />
+                  </Layout>
+                } />
                 <Route path="/terrain" element={
                   <Layout>
                     <Terrain />

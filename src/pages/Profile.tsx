@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate,Navigate } from 'react-router-dom';
+import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -39,6 +40,7 @@ export const Profile = () => {
   if (!user) {
     return <Navigate to="/auth" replace />;
   }
+  
   useEffect(() => {
     if (!id) return;
     
@@ -65,12 +67,26 @@ export const Profile = () => {
         .from('utilisateur')
         .select(`
           *,
-          role:id_role(nom_role)
+          role:id_role(nom_role),
+          telephones:telephone(*)
         `)
         .eq('id_utilisateur', userId)
         .single();
       
       if (error) throw error;
+      
+      // Extract first telephone number if available
+      const telephones = data.telephones || [];
+      const mappedTelephones = telephones.map((tel: any) => ({
+        id_telephone: tel.id_telephone,
+        id_utilisateur: tel.id_utilisateur,
+        numero: tel.numero,
+        type: tel.type as "principal" | "whatsapp" | "mobile_banking" | "autre",
+        est_whatsapp: tel.est_whatsapp,
+        est_mobile_banking: tel.est_mobile_banking,
+        created_at: tel.created_at || new Date().toISOString(),
+        modified_at: tel.modified_at || new Date().toISOString()
+      }));
       
       setProfile({
         id_utilisateur: data.id_utilisateur,
@@ -79,10 +95,13 @@ export const Profile = () => {
         prenoms: data.prenoms,
         email: data.email,
         photo_profil: data.photo_profil,
-        telephone: data.telephone || undefined,
+        photo_couverture: data.photo_couverture,
+        telephone: telephones[0]?.numero,
         adresse: data.adresse || undefined,
         bio: data.bio || undefined,
-        nom_role: data.role?.nom_role
+        id_role: data.id_role,
+        nom_role: data.role?.nom_role,
+        telephones: mappedTelephones
       });
     } catch (error) {
       console.error('Error fetching user profile:', error);
@@ -93,18 +112,22 @@ export const Profile = () => {
   const fetchFollowStatus = async (userId: string) => {
     try {
       // Nombre de followers
-      const { count: followersResult, error: followersError } = await supabase
-        .rpc('count_followers', { user_id: userId });
+      const { data: followersResult, error: followersError } = await supabase
+        .from('abonnement')
+        .select('id_abonnement', { count: 'exact' })
+        .eq('id_suivi', userId);
       
       if (followersError) throw followersError;
-      setFollowersCount(followersResult || 0);
+      setFollowersCount(followersResult?.length || 0);
       
       // Nombre d'abonnements
-      const { count: followingResult, error: followingError } = await supabase
-        .rpc('count_subscriptions', { user_id: userId });
+      const { data: followingResult, error: followingError } = await supabase
+        .from('abonnement')
+        .select('id_abonnement', { count: 'exact' })
+        .eq('id_abonne', userId);
       
       if (followingError) throw followingError;
-      setFollowingCount(followingResult || 0);
+      setFollowingCount(followingResult?.length || 0);
       
       // Vérifier si l'utilisateur actuel suit ce profil
       if (user && userId !== user.id) {
@@ -184,7 +207,7 @@ export const Profile = () => {
           images: [],
           description: project.description || "",
           fundingGoal: totalCost,
-          currentFunding: project.financement_actuel || 0,
+          currentFunding: project.montant_finance || 0, // Changed from financement_actuel to montant_finance
           likes: 0,
           comments: 0,
           shares: 0,
@@ -265,10 +288,11 @@ export const Profile = () => {
       } else {
         // Follow
         const { error } = await supabase
-          .rpc('create_subscription', { 
-            abonne_id: user.id, 
-            suivi_id: profile.id_utilisateur
-          });
+          .from('abonnement')
+          .insert([{
+            id_abonne: user.id,
+            id_suivi: profile.id_utilisateur
+          }]);
         
         if (error) throw error;
         
