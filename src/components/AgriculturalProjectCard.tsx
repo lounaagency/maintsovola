@@ -310,6 +310,20 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
             </div>
           </div>
           
+          {project.technicianId && (
+            <div className="mb-4 bg-muted/30 p-2 rounded-md">
+              <div className="flex items-center">
+                <Shield className="h-4 w-4 text-primary mr-2" />
+                <span className="text-xs font-medium">Contactez votre technicien agricole pour plus de détails.</span>
+              </div>
+              <TechnicienContactLink 
+                technicienId={project.technicianId} 
+                variant="avatar"
+                className="mt-1"
+              />
+            </div>
+          )}
+          
           <div className="grid grid-cols-2 gap-3 mb-4 bg-muted/30 p-2 rounded-md">
             <div className="text-xs">
               <span className="text-gray-500 block">Coût d'exploitation</span>
