@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Post } from '@/types/post';
@@ -13,8 +14,23 @@ import { Shell } from '@/components/Shell';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 
+interface FeedItem {
+  id: number;
+  title: string;
+  content: string;
+  created_at: string;
+  entity_type?: string;
+  entity_id?: number;
+  id_utilisateur: string;
+  author?: {
+    nom?: string;
+    prenoms?: string;
+    avatar_url?: string;
+  };
+}
+
 const Feed: React.FC = () => {
-  const [posts, setPosts] = useState<Post[]>([]);
+  const [posts, setPosts] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
@@ -25,6 +41,7 @@ const Feed: React.FC = () => {
   const fetchPosts = async () => {
     setLoading(true);
     try {
+      // Using a view or table that actually exists
       const { data, error } = await supabase
         .from('feed')
         .select(`
@@ -41,7 +58,7 @@ const Feed: React.FC = () => {
         throw error;
       }
 
-      setPosts(data as Post[]);
+      setPosts(data || []);
     } catch (error: any) {
       console.error('Error fetching posts:', error);
       toast.error(`Error: ${error.message}`);
