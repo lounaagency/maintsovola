@@ -113,17 +113,6 @@ const ProjectPhotosGallery: React.FC<ProjectPhotosGalleryProps> = ({
     
     return (
       <div className="flex flex-col items-center">
-        {/* First photo display at the top */}
-        {hasPhotos && (
-          <div className="w-full h-[200px] mb-4 bg-gray-100 rounded-md overflow-hidden">
-            <img 
-              src={photos[0]} 
-              alt="First Photo"
-              className="w-full h-full object-cover"
-            />
-          </div>
-        )}
-        
         <div className="relative w-full h-[300px] md:h-[400px] my-4 bg-gray-100 rounded-md overflow-hidden">
           {/* Main photo display */}
           <img 
@@ -212,4 +201,3 @@ const ProjectPhotosGallery: React.FC<ProjectPhotosGalleryProps> = ({
 };
 
 export default ProjectPhotosGallery;
-
