@@ -42,23 +42,29 @@ export const Profile = () => {
   }
   
   useEffect(() => {
-    if (!id) return;
-    
-    // Vérifier si c'est le profil de l'utilisateur actuel
-    if (user?.id === id) {
-      setIsCurrentUser(true);
-      if (currentUserProfile) {
-        setProfile(currentUserProfile);
+    const loadProfileData = async () => {
+      const userId = id || user?.id;
+      
+      if (!userId) return;
+      
+      // Check if this is the current user's profile
+      if (user?.id === userId) {
+        setIsCurrentUser(true);
+        if (currentUserProfile) {
+          setProfile(currentUserProfile);
+        }
+      } else {
+        setIsCurrentUser(false);
+        await fetchUserProfile(userId);
       }
-    } else {
-      setIsCurrentUser(false);
-      fetchUserProfile(id);
-    }
+      
+      await fetchFollowStatus(userId);
+      await fetchUserProjects(userId);
+      await fetchInvestedProjects(userId);
+      setLoading(false);
+    };
     
-    fetchFollowStatus(id);
-    fetchUserProjects(id);
-    fetchInvestedProjects(id);
-    
+    loadProfileData();
   }, [id, user, currentUserProfile]);
 
   const fetchUserProfile = async (userId: string) => {
@@ -207,7 +213,7 @@ export const Profile = () => {
           images: [],
           description: project.description || "",
           fundingGoal: totalCost,
-          currentFunding: project.montant_finance || 0, // Changed from financement_actuel to montant_finance
+          currentFunding: project.financement_actuel || 0,
           likes: 0,
           comments: 0,
           shares: 0,
