@@ -68,11 +68,6 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
           created_by: userId
         };
         
-        // Ensure photos is a string before sending to the database
-        if (newTerrain.photos && Array.isArray(newTerrain.photos)) {
-          newTerrain.photos = newTerrain.photos.join(',');
-        }
-        
         const { data: insertedData, error } = await supabase
           .from('terrain')
           .insert(newTerrain)
@@ -92,15 +87,6 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
           id_superviseur: userId,
           date_validation: new Date().toISOString().split('T')[0]
         };
-        
-        // Ensure photos and photos_validation are strings
-        if (updatedTerrain.photos && Array.isArray(updatedTerrain.photos)) {
-          updatedTerrain.photos = updatedTerrain.photos.join(',');
-        }
-        
-        if (updatedTerrain.photos_validation && Array.isArray(updatedTerrain.photos_validation)) {
-          updatedTerrain.photos_validation = updatedTerrain.photos_validation.join(',');
-        }
         
         const { data: updatedData, error } = await supabase
           .from('terrain')
@@ -145,11 +131,6 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
         toast.success("Terrain validé avec succès");
       } else if (terrain) {
         // Update existing terrain
-        // Ensure photos is a string
-        if (dataToSave.photos && Array.isArray(dataToSave.photos)) {
-          dataToSave.photos = dataToSave.photos.join(',');
-        }
-        
         const { data: updatedData, error } = await supabase
           .from('terrain')
           .update(dataToSave)
@@ -291,8 +272,7 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
         ) : (
           <TerrainForm
             initialData={terrain}
-            onSubmitSuccess={handleSubmit}
-            onCancel={onClose}
+            onSubmit={handleSubmit}
             isValidationMode={isValidationMode}
             userRole={userRole}
             userId={userId}

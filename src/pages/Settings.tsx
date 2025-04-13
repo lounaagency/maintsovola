@@ -160,11 +160,7 @@ const { user, profile } = useAuth();
         .single();
         
       if (refreshedProfile) {
-        setProfile({
-          ...refreshedProfile,
-          id: refreshedProfile.id_utilisateur,
-          telephones: telephones
-        } as UserProfile);
+        setUserProfile(refreshedProfile);
       }
       
       toast({
@@ -200,19 +196,16 @@ const { user, profile } = useAuth();
       if (error) throw error;
       
       if (data && data[0]) {
-        setTelephones([
-          ...telephones,
-          {
-            id_telephone: 0,
-            numero: data[0].numero,
-            id_utilisateur: data[0].id_utilisateur,
-            type: data[0].type as "principal" | "whatsapp" | "mobile_banking" | "autre",
-            est_whatsapp: data[0].est_whatsapp,
-            est_mobile_banking: data[0].est_mobile_banking,
-            created_at: new Date().toISOString(),
-            modified_at: new Date().toISOString()
-          }
-        ]);
+        const newPhoneWithId: UserTelephone = {
+          id_telephone: data[0].id_telephone,
+          id_utilisateur: data[0].id_utilisateur,
+          numero: data[0].numero,
+          type: data[0].type as "principal" | "whatsapp" | "mobile_banking" | "autre",
+          est_whatsapp: data[0].est_whatsapp,
+          est_mobile_banking: data[0].est_mobile_banking
+        };
+        
+        setTelephones([...telephones, newPhoneWithId]);
       }
       
       setNewPhone({

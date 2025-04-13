@@ -247,19 +247,17 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
       {isMobile ? (
         <div className="grid grid-cols-1 gap-4 p-4">
           {projects.map((project) => (
-            <div key={project.id_projet} className="bg-white">
-              <h3 className="green-title">{project.titre || `Projet #${project.id_projet}`}</h3>
-              <ProjectCard
-                project={project}
-                onViewDetails={handleOpenDetails}
-                onEdit={handleOpenEdit}
-                onValidate={handleOpenValidation}
-                onDelete={handleOpenDeleteConfirm}
-                canEdit={canEditProject(project, userRole, user?.id)}
-                canValidate={showValidateButton}
-                canDelete={canDeleteProject(project, userRole, user?.id)}
-              />
-            </div>
+            <ProjectCard
+              key={project.id_projet}
+              project={project}
+              onViewDetails={handleOpenDetails}
+              onEdit={handleOpenEdit}
+              onValidate={handleOpenValidation}
+              onDelete={handleOpenDeleteConfirm}
+              canEdit={canEditProject(project, userRole, user?.id)}
+              canValidate={showValidateButton}
+              canDelete={canDeleteProject(project, userRole, user?.id)}
+            />
           ))}
         </div>
       ) : (

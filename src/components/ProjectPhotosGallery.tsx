@@ -7,7 +7,6 @@ import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MapContainer, TileLayer, Polygon } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import { LatLngExpression, LatLngBoundsExpression } from 'leaflet';
 
 interface ProjectPhotosGalleryProps {
   isOpen: boolean;
@@ -57,14 +56,9 @@ const ProjectPhotosGallery: React.FC<ProjectPhotosGalleryProps> = ({
   };
   
   // Transform coordinates for Leaflet (swap lat/lng)
-  const polygonCoordinates: LatLngExpression[] = terrainCoordinates ? 
-    terrainCoordinates.map(coord => [coord[1], coord[0]] as LatLngExpression) : 
+  const polygonCoordinates = terrainCoordinates ? 
+    terrainCoordinates.map(coord => [coord[1], coord[0]]) : 
     [];
-  
-  // Create bounds for the map
-  const bounds: LatLngBoundsExpression = polygonCoordinates.length > 0 
-    ? polygonCoordinates as LatLngBoundsExpression 
-    : [[0, 0], [0, 0]] as LatLngBoundsExpression;
   
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -173,7 +167,7 @@ const ProjectPhotosGallery: React.FC<ProjectPhotosGalleryProps> = ({
     return (
       <div className="w-full h-[400px] my-4 bg-gray-100 rounded-md overflow-hidden">
         <MapContainer
-          bounds={bounds}
+          bounds={polygonCoordinates}
           style={{ height: '100%', width: '100%' }}
           zoomControl={true}
           attributionControl={true}
