@@ -241,19 +241,6 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
             <p className="text-sm text-gray-700">{displayDescription}</p>
           </div>
           
-          {project.technicianId && (
-            <div className="mb-4 bg-muted/30 p-2 rounded-md">
-              <div className="flex items-center">
-                <Shield className="h-4 w-4 text-primary mr-2" />
-                <span className="text-xs font-medium">Validé par:</span>
-              </div>
-              <TechnicienContactLink 
-                technicienId={project.technicianId} 
-                variant="avatar"
-                className="mt-1"
-              />
-            </div>
-          )}
           
           {displayedPhotos.length > 0 && (
             <div className="mb-4 rounded-md overflow-hidden">
