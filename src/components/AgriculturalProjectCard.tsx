@@ -228,12 +228,6 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
                 </div>
               </div>
             </div>
-            
-            <div>
-              <Button variant={project.technicianId ? "default" : "destructive"} size="sm" className="text-xs">
-                {project.technicianId ? "Validé" : "En attente"}
-              </Button>
-            </div>
           </div>
           
           <div className="mb-3">
@@ -261,7 +255,7 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
                 onClick={() => handleOpenGallery('photos')}
               >
                 <Image className="h-4 w-4" />
-                <span>Voir les photos {projectPhotos.length > 0 ? 'du projet' : 'du terrain'}</span>
+                <span>Voir les photos</span>
               </Button>
             )}
             
