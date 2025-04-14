@@ -380,7 +380,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                         onClick={() => onViewDetails(terrain)}
                       >
                         <Eye className="h-4 w-4 mr-1" />
-                        Détails
+                        
                       </Button>
                     )}
                     
@@ -391,7 +391,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                         onClick={() => onEdit(terrain)}
                       >
                         <Edit className="h-4 w-4 mr-1" />
-                        Modifier
+                        
                       </Button>
                     )}
                     
@@ -402,7 +402,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                         onClick={() => onValidate(terrain)}
                       >
                         <Check className="h-4 w-4 mr-1" />
-                        Valider
+                        
                       </Button>
                     )}
                     
@@ -414,7 +414,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                         className="text-destructive"
                       >
                         <Trash className="h-4 w-4 mr-1" />
-                        Supprimer
+                        
                       </Button>
                     )}
                     
