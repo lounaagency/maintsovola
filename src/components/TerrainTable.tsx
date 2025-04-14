@@ -325,7 +325,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                     disabled={userRole === 'technicien' && terrain.id_technicien !== user?.id}
                   >
                     <Check className="h-4 w-4 mr-1" />
-                    Valider
+                    
                   </Button>
                 )}
                 {canEdit(terrain) && (
@@ -335,7 +335,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                     onClick={() => handleEdit(terrain)}
                   >
                     <Edit className="h-4 w-4 mr-1" />
-                    Modifier
+                    
                   </Button>
                 )}
                 {canDelete(terrain) && (
@@ -346,7 +346,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                     onClick={() => handleDeleteTerrain(terrain.id_terrain || 0)}
                   >
                     <Trash className="h-4 w-4 mr-1" />
-                    Supprimer
+                    
                   </Button>
                 )}
                 {canContactTechnicien(terrain) && (
@@ -357,7 +357,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                     aria-label="Contacter le technicien"
                   >
                     <MessageSquare className="h-4 w-4 mr-1" />
-                    Contacter
+                    
                   </Button>
                 )}
               </div>
@@ -438,7 +438,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                         disabled={userRole === 'technicien' && terrain.id_technicien !== user?.id}
                       >
                         <Check className="h-4 w-4 mr-1" />
-                        Valider
+                        
                       </Button>
                     )}
                     {canEdit(terrain) && (
@@ -448,7 +448,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                         onClick={() => handleEdit(terrain)}
                       >
                         <Edit className="h-4 w-4 mr-1" />
-                        Modifier
+                        
                       </Button>
                     )}
                     {canDelete(terrain) && (
@@ -459,7 +459,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                         onClick={() => handleDeleteTerrain(terrain.id_terrain || 0)}
                       >
                         <Trash className="h-4 w-4 mr-1" />
-                        Supprimer
+                        
                       </Button>
                     )}
                     {canContactTechnicien(terrain) && (
@@ -469,7 +469,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                         onClick={() => handleContactTechnicien(terrain)}
                       >
                         <MessageSquare className="h-4 w-4 mr-1" />
-                        Contacter
+                        
                       </Button>
                     )}
                   </div>
