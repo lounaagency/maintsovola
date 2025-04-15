@@ -1,195 +1,149 @@
 
-import React, { useState, useEffect } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Search, Plus } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
-import ProjectTable from "@/components/ProjectTable";
-import NewProject from "@/components/NewProject";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { motion } from "framer-motion";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import React, { useEffect, useState } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import AgriculturalProjectCard from '@/components/AgriculturalProjectCard';
+import { AgriculturalProject } from '@/types/agriculturalProject';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import { RefreshCcw } from 'lucide-react';
 
 const Projects = () => {
-  const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState("en_attente");
-  const [showNewProjectDialog, setShowNewProjectDialog] = useState(false);
-  const [showNoTerrainAlert, setShowNoTerrainAlert] = useState(false);
-  const [hasValidTerrains, setHasValidTerrains] = useState(true);
-  const { user, profile } = useAuth();
+  const [projects, setProjects] = useState<AgriculturalProject[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchParams] = useSearchParams();
+  const projectId = searchParams.get('id');
   const navigate = useNavigate();
-  const isMobile = useIsMobile();
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-  };
-
-  const handleTabChange = (value: string) => {
-    setActiveTab(value);
-  };
-
+  
   useEffect(() => {
-    if (user && profile?.nom_role === 'simple') {
-      checkForValidTerrains();
-    }
-  }, [user, profile]);
-
-  const checkForValidTerrains = async () => {
-    if (!user) return;
-    
-    try {
-      // First, get projects that are not finished to exclude their terrains
-      const { data: activeProjects, error: projectsError } = await supabase
-        .from('projet')
-        .select('id_terrain')
-        .neq('statut', 'terminé');
-        
-      if (projectsError) {
-        console.error("Error fetching active projects:", projectsError);
-        return;
-      }
-      
-      // Get the list of terrain IDs that are already in use
-      const excludedTerrainIds = activeProjects?.map(p => p.id_terrain) || [];
-            
-      // Fetch terrains that belong to the user, are validated, and not in active projects
-      let query = supabase
-        .from('terrain')
-        .select('id_terrain')
-        .eq('id_tantsaha', user.id)
-        .eq('statut', true) // Only validated terrains
-        .eq('archive', false);
-        
-      if (excludedTerrainIds.length > 0) {
-        query = query.not('id_terrain', 'in', `(${excludedTerrainIds.join(',')})`);
-      }
-      
-      const { data: terrains, error: terrainsError } = await query;
-      
-      if (terrainsError) {
-        console.error("Error checking for valid terrains:", terrainsError);
-        return;
-      }
-      
-      setHasValidTerrains(terrains && terrains.length > 0);
-    } catch (error) {
-      console.error("Unexpected error checking terrains:", error);
-    }
-  };
-
-  const handleNewProjectClick = () => {
-    if (profile?.nom_role === 'simple' && !hasValidTerrains) {
-      setShowNoTerrainAlert(true);
+    if (projectId) {
+      // Rediriger vers la page détaillée si un ID est fourni
+      navigate(`/projects/${projectId}`);
     } else {
-      setShowNewProjectDialog(true);
+      fetchProjects();
+    }
+  }, [projectId, navigate]);
+  
+  const fetchProjects = async () => {
+    try {
+      setIsLoading(true);
+      
+      const { data, error } = await supabase
+        .from('projet')
+        .select(`
+          *,
+          utilisateur_tantsaha:id_tantsaha(id_utilisateur, nom, prenoms, photo_profil),
+          commune:id_commune(nom_commune),
+          district:id_district(nom_district),
+          region:id_region(nom_region),
+          terrain:id_terrain(*),
+          projet_culture(id_culture, culture:id_culture(nom_culture, nom_vernaculaire, rendement_moyen)),
+          technicien:id_technicien(id_utilisateur, nom, prenoms, photo_profil)
+        `)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      
+      // Get funding information for each project
+      const projectsWithFunding = await Promise.all(
+        data.map(async (project) => {
+          const { data: investmentsData, error: investmentsError } = await supabase
+            .from('investissement')
+            .select('montant')
+            .eq('id_projet', project.id_projet);
+            
+          if (investmentsError) throw investmentsError;
+          
+          const totalFunding = investmentsData.reduce((sum, inv) => sum + (inv.montant || 0), 0);
+          
+          return {
+            id: project.id_projet.toString(),
+            title: project.titre || 'Projet agricole',
+            farmer: {
+              id: project.utilisateur_tantsaha?.id_utilisateur || '',
+              name: `${project.utilisateur_tantsaha?.nom || ''} ${project.utilisateur_tantsaha?.prenoms || ''}`,
+              username: project.utilisateur_tantsaha?.nom || '',
+              avatar: project.utilisateur_tantsaha?.photo_profil || ''
+            },
+            location: {
+              region: project.region?.nom_region || '',
+              district: project.district?.nom_district || '',
+              commune: project.commune?.nom_commune || ''
+            },
+            cultivationArea: project.terrain?.surface_validee || 0,
+            cultivationType: project.projet_culture?.map(pc => pc.culture?.nom_culture).join(', ') || '',
+            farmingCost: project.cout_exploitation || 0,
+            expectedYield: project.rendement_attendu || 0,
+            expectedRevenue: project.revenu_attendu || 0,
+            creationDate: new Date(project.created_at).toLocaleDateString('fr-FR'),
+            images: project.photos || [],
+            description: project.description || '',
+            fundingGoal: project.objectif_financement || 0,
+            currentFunding: totalFunding || 0,
+            likes: Math.floor(Math.random() * 50), // Placeholder, à remplacer par des données réelles
+            comments: Math.floor(Math.random() * 10), // Placeholder, à remplacer par des données réelles
+            shares: Math.floor(Math.random() * 5), // Placeholder, à remplacer par des données réelles
+            technicianId: project.id_technicien || undefined,
+            status: project.statut || 'en_attente'
+          };
+        })
+      );
+      
+      setProjects(projectsWithFunding);
+    } catch (error) {
+      console.error('Erreur lors du chargement des projets:', error);
+      toast.error('Impossible de charger les projets');
+    } finally {
+      setIsLoading(false);
     }
   };
-
-  const handleRedirectToTerrains = () => {
-    navigate('/terrain');
+  
+  const handleLikeToggle = (isLiked: boolean) => {
+    // Cette fonction pourrait être implémentée plus tard pour gérer les likes
+    console.log('Toggle like:', isLiked);
   };
-
+  
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="container max-w-6xl mx-auto py-6 px-4 sm:px-6 space-y-8"
-    >
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Projets</h1>
+    <div className="container py-6 max-w-3xl">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Projets agricoles</h1>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={fetchProjects}
+          disabled={isLoading}
+        >
+          <RefreshCcw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+          Actualiser
+        </Button>
+      </div>
+      
+      {isLoading ? (
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-64 w-full rounded-md" />
+          ))}
+        </div>
+      ) : projects.length > 0 ? (
+        <div className="space-y-4">
+          {projects.map((project) => (
+            <AgriculturalProjectCard 
+              key={project.id} 
+              project={project} 
+              onLikeToggle={handleLikeToggle} 
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-12">
+          <h2 className="text-xl mb-2">Aucun projet disponible</h2>
           <p className="text-muted-foreground">
-            Gérez vos projets agricoles ici
+            Il n'y a actuellement aucun projet agricole à afficher.
           </p>
         </div>
-        
-        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-          <form onSubmit={handleSearch} className="flex w-full sm:w-auto">
-            <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Rechercher..."
-                className="pl-8 w-full sm:w-[300px]"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-          </form>
-          
-          <Button
-            onClick={handleNewProjectClick}
-            className="gap-1"
-          >
-            <Plus className="h-4 w-4" />
-            Nouveau projet
-          </Button>
-        </div>
-      </div>
-
-      <Tabs defaultValue="en_attente" value={activeTab} onValueChange={handleTabChange} className={isMobile ? "space-y-4" : ""}>
-        <div className={isMobile ? "sticky top-0 z-10 bg-background pt-2 pb-4" : ""}>
-          <TabsList className={isMobile ? "w-full grid grid-cols-4" : "grid grid-cols-4 w-full sm:w-auto"}>
-            <TabsTrigger value="en_attente">En attente</TabsTrigger>
-            <TabsTrigger value="en_financement">levée de fonds</TabsTrigger>
-            <TabsTrigger value="en_cours">En production</TabsTrigger>
-            <TabsTrigger value="terminé">Terminés</TabsTrigger>
-          </TabsList>
-        </div>
-               
-        <TabsContent value="en_attente" className="mt-4">
-          <ProjectTable filter={search} statutFilter="en attente" />
-        </TabsContent>
-        
-        <TabsContent value="en_financement" className="mt-4">
-          <ProjectTable filter={search} statutFilter="en financement" />
-        </TabsContent>
-        
-        <TabsContent value="en_cours" className="mt-4">
-          <ProjectTable filter={search} statutFilter="en cours" />
-        </TabsContent>
-
-        <TabsContent value="terminé" className="mt-4">
-          <ProjectTable filter={search} statutFilter="terminé" />
-        </TabsContent>
-      </Tabs>
-
-      <Dialog open={showNewProjectDialog} onOpenChange={setShowNewProjectDialog}>
-        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Créer un nouveau projet</DialogTitle>
-          </DialogHeader>
-          <NewProject 
-            onProjectCreated={() => {
-              setShowNewProjectDialog(false);
-            }} 
-          />
-        </DialogContent>
-      </Dialog>
-
-      <AlertDialog open={showNoTerrainAlert} onOpenChange={setShowNoTerrainAlert}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Aucun terrain disponible</AlertDialogTitle>
-            <AlertDialogDescription>
-              Vous devez d'abord ajouter un terrain et attendre sa validation avant de pouvoir créer un projet agricole.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction onClick={handleRedirectToTerrains}>
-              Ajouter un terrain
-            </AlertDialogAction>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </motion.div>
+      )}
+    </div>
   );
 };
 

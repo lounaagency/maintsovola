@@ -3,6 +3,12 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Heart, MessageCircle, Share2 } from 'lucide-react';
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
 
 interface ProjectActionsProps {
   projectId: string;
@@ -33,6 +39,37 @@ const ProjectActions: React.FC<ProjectActionsProps> = ({
   onInvest,
   fundingGap
 }) => {
+  const handleShare = (platform: string) => {
+    const projectUrl = `${window.location.origin}/projects?id=${projectId}`;
+    let shareUrl = '';
+    
+    switch (platform) {
+      case 'whatsapp':
+        shareUrl = `https://wa.me/?text=${encodeURIComponent(`Découvrez ce projet agricole: ${projectUrl}`)}`;
+        break;
+      case 'facebook':
+        shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(projectUrl)}`;
+        break;
+      case 'twitter':
+        shareUrl = `https://twitter.com/intent/tweet?url=${encodeURIComponent(projectUrl)}&text=${encodeURIComponent('Découvrez ce projet agricole')}`;
+        break;
+      case 'email':
+        shareUrl = `mailto:?subject=${encodeURIComponent('Projet agricole intéressant')}&body=${encodeURIComponent(`Découvrez ce projet agricole: ${projectUrl}`)}`;
+        break;
+      case 'copy':
+        navigator.clipboard.writeText(projectUrl);
+        if (onShare) onShare();
+        return;
+      default:
+        if (onShare) onShare();
+        return;
+    }
+    
+    // Ouvrir dans une nouvelle fenêtre
+    window.open(shareUrl, '_blank');
+    if (onShare) onShare();
+  };
+
   return (      
     <div className="flex items-center justify-between pt-4 border-t border-gray-100">
       {canInvest && (
@@ -73,15 +110,35 @@ const ProjectActions: React.FC<ProjectActionsProps> = ({
         <span>Commentaire{comments > 0 ? 's' : ''}</span>
       </Button>
 
-      <Button
-        variant="ghost"
-        size="sm"
-        className="flex items-center gap-1 text-sm font-normal text-muted-foreground"
-        onClick={onShare}
-      >
-        <Share2 size={18} />
-        <span>{shares > 0 ? shares : ''}</span>
-      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="flex items-center gap-1 text-sm font-normal text-muted-foreground"
+          >
+            <Share2 size={18} />
+            <span>{shares > 0 ? shares : ''}</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => handleShare('whatsapp')}>
+            Partager sur WhatsApp
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleShare('facebook')}>
+            Partager sur Facebook
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleShare('twitter')}>
+            Partager sur Twitter
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleShare('email')}>
+            Partager par email
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleShare('copy')}>
+            Copier le lien
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 };
