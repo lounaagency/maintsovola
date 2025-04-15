@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -6,7 +7,6 @@ import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MapContainer, TileLayer, Polygon } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import { LatLngExpression, LatLngTuple } from 'leaflet';
 
 interface ProjectPhotosGalleryProps {
   isOpen: boolean;
@@ -56,9 +56,8 @@ const ProjectPhotosGallery: React.FC<ProjectPhotosGalleryProps> = ({
   };
   
   // Transform coordinates for Leaflet (swap lat/lng)
-  // Fix: Explicitly convert to LatLngTuple[] to satisfy TypeScript
-  const polygonCoordinates: LatLngTuple[] = terrainCoordinates ? 
-    terrainCoordinates.map(coord => [coord[1], coord[0]] as LatLngTuple) : 
+  const polygonCoordinates = terrainCoordinates ? 
+    terrainCoordinates.map(coord => [coord[1], coord[0]]) : 
     [];
 
   // Improved focus management

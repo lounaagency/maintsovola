@@ -3,7 +3,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 
 interface LogoProps {
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  size?: 'sm' | 'md' | 'lg';
   className?: string;
   showText?: boolean;
 }
@@ -12,19 +12,18 @@ const Logo: React.FC<LogoProps> = ({ size = 'md', className = '', showText = tru
   const sizeClasses = {
     sm: 'h-6',
     md: 'h-8',
-    lg: 'h-10',
-    xl: 'h-16' // Nouvelle taille ajoutée
+    lg: 'h-10'
   };
 
   return (
-    <Link to="/feed" className={`font-bold flex items-center justify-center hover:opacity-90 ${className}`}>
+    <Link to="/feed" className={`font-bold flex items-center hover:opacity-90 ${className}`}>
       <img 
         src="/maintsovola_logo_pm.png" 
         alt="Maintso Vola" 
-        className={`${sizeClasses[size]} object-contain mx-auto`} 
+        className={`${sizeClasses[size]}`} 
       />
       {showText && (
-        <span className={`ml-2 text-maintso ${size === 'sm' ? 'text-xl' : size === 'md' ? 'text-2xl' : size === 'lg' ? 'text-3xl' : 'text-4xl'}`}>
+        <span className={`ml-2 text-maintso ${size === 'sm' ? 'text-xl' : size === 'md' ? 'text-2xl' : 'text-3xl'}`}>
           Maintso Vola
         </span>
       )}

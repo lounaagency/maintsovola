@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { TerrainData } from "@/types/terrain";
 import { toast } from "sonner";
-import TerrainForm from "@/components/TerrainForm";
+import TerrainForm from "@/components/terrain/TerrainForm";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 
@@ -36,30 +36,212 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
   agriculteurs = [],
 }) => {
   const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState<Partial<TerrainData> | null>(null);
   
   const isNew = !terrain || !terrain.id_terrain;
 
-  // Handle submission success from the TerrainForm component
-  const handleSubmissionSuccess = async () => {
-    if (terrain && terrain.id_terrain) {
-      try {
-        // Fetch the updated terrain data
-        const { data: updatedTerrain, error } = await supabase
+  const handleSubmit = async (data: Partial<TerrainData>) => {
+    if (!userId) return;
+    
+    setLoading(true);
+    try {
+      // Handle image URLs (convert arrays to strings)
+      const dataToSave = {...data};
+      
+      if (Array.isArray(dataToSave.photos)) {
+        dataToSave.photos = dataToSave.photos.join(',');
+      }
+      
+      if (Array.isArray(dataToSave.photos_validation)) {
+        dataToSave.photos_validation = dataToSave.photos_validation.join(',');
+      }
+      
+      let result;
+      
+      if (isNew) {
+        // Create new terrain
+        const newTerrain = {
+          ...dataToSave,
+          id_tantsaha: userRole === 'simple' ? userId : data.id_tantsaha,
+          statut: false,
+          archive: false,
+          created_by: userId
+        };
+        
+        const { data: insertedData, error } = await supabase
           .from('terrain')
+          .insert(newTerrain as any)
           .select('*')
-          .eq('id_terrain', terrain.id_terrain)
           .single();
           
         if (error) throw error;
+        result = insertedData;
         
-        onSubmitSuccess(updatedTerrain as TerrainData);
-      } catch (error) {
-        console.error("Error fetching updated terrain:", error);
+        toast.success("Terrain ajouté avec succès");
+      } else if (isValidationMode && terrain) {
+        // Update terrain and set as validated
+        const updatedTerrain = {
+          ...dataToSave,
+          statut: true,
+          surface_validee: data.surface_validee || terrain.surface_proposee,
+          id_superviseur: userId,
+          date_validation: new Date().toISOString().split('T')[0]
+        };
+        
+        const { data: updatedData, error } = await supabase
+          .from('terrain')
+          .update(updatedTerrain as any)
+          .eq('id_terrain', terrain.id_terrain)
+          .select('*')
+          .single();
+          
+        if (error) throw error;
+        result = updatedData;
+        
+        // Send notification to owner
+        if (terrain.id_tantsaha) {
+          await supabase
+            .from('notification')
+            .insert({
+              id_destinataire: terrain.id_tantsaha,
+              id_expediteur: userId,
+              titre: "Terrain validé",
+              message: `Votre terrain ${terrain.nom_terrain} a été validé`,
+              type: "success",
+              entity_type: "terrain",
+              entity_id: terrain.id_terrain
+            });
+        }
+        
+        // Send notification to technician if assigned
+        if (terrain.id_technicien) {
+          await supabase
+            .from('notification')
+            .insert({
+              id_destinataire: terrain.id_technicien,
+              id_expediteur: userId,
+              titre: "Terrain validé",
+              message: `Le terrain ${terrain.nom_terrain} a été validé`,
+              type: "success",
+              entity_type: "terrain",
+              entity_id: terrain.id_terrain
+            });
+        }
+        
+        toast.success("Terrain validé avec succès");
+      } else if (terrain) {
+        // Update existing terrain
+        const { data: updatedData, error } = await supabase
+          .from('terrain')
+          .update(dataToSave as any)
+          .eq('id_terrain', terrain.id_terrain)
+          .select('*')
+          .single();
+          
+        if (error) throw error;
+        result = updatedData;
+        
+        toast.success("Terrain mis à jour avec succès");
       }
+      
+      // Fetch additional data for the terrain
+      if (result) {
+        // Get region name
+        if (result.id_region) {
+          const { data: regionData } = await supabase
+            .from('region')
+            .select('nom_region')
+            .eq('id_region', result.id_region)
+            .maybeSingle();
+            
+          if (regionData) {
+            result.region_name = regionData.nom_region;
+          }
+        }
+        
+        // Get district name
+        if (result.id_district) {
+          const { data: districtData } = await supabase
+            .from('district')
+            .select('nom_district')
+            .eq('id_district', result.id_district)
+            .maybeSingle();
+            
+          if (districtData) {
+            result.district_name = districtData.nom_district;
+          }
+        }
+        
+        // Get commune name
+        if (result.id_commune) {
+          const { data: communeData } = await supabase
+            .from('commune')
+            .select('nom_commune')
+            .eq('id_commune', result.id_commune)
+            .maybeSingle();
+            
+          if (communeData) {
+            result.commune_name = communeData.nom_commune;
+          }
+        }
+        
+        // Get farmer name
+        if (result.id_tantsaha) {
+          const { data: ownerData } = await supabase
+            .from('utilisateurs_par_role')
+            .select('nom, prenoms')
+            .eq('id_utilisateur', result.id_tantsaha)
+            .maybeSingle();
+            
+          if (ownerData) {
+            result.tantsahaNom = `${ownerData.nom} ${ownerData.prenoms || ''}`.trim();
+          }
+        }
+        
+        // Get technician name
+        if (result.id_technicien) {
+          const { data: techData } = await supabase
+            .from('utilisateurs_par_role')
+            .select('nom, prenoms')
+            .eq('id_utilisateur', result.id_technicien)
+            .maybeSingle();
+            
+          if (techData) {
+            result.techniqueNom = `${techData.nom} ${techData.prenoms || ''}`.trim();
+          } else {
+            result.techniqueNom = 'Non assigné';
+          }
+        } else {
+          result.techniqueNom = 'Non assigné';
+        }
+        
+        // Get supervisor name
+        if (result.id_superviseur) {
+          const { data: supervData } = await supabase
+            .from('utilisateurs_par_role')
+            .select('nom, prenoms')
+            .eq('id_utilisateur', result.id_superviseur)
+            .maybeSingle();
+            
+          if (supervData) {
+            result.superviseurNom = `${supervData.nom} ${supervData.prenoms || ''}`.trim();
+          } else {
+            result.superviseurNom = 'Non assigné';
+          }
+        } else {
+          result.superviseurNom = 'Non assigné';
+        }
+        
+        onSubmitSuccess(result as TerrainData);
+      }
+      
+      onClose();
+    } catch (error: any) {
+      console.error("Error saving terrain:", error);
+      toast.error(`Erreur: ${error.message}`);
+    } finally {
+      setLoading(false);
     }
-    
-    // Close the dialog
-    onClose();
   };
 
   // Improved focus management
@@ -103,8 +285,8 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
         ) : (
           <TerrainForm
             initialData={terrain}
-            onSubmitSuccess={handleSubmissionSuccess}
-            onCancel={onClose}
+            onSubmit={handleSubmit}
+            isValidationMode={isValidationMode}
             userRole={userRole}
             userId={userId}
             agriculteurs={agriculteurs}

@@ -101,7 +101,6 @@ const Post: React.FC<PostProps> = ({
             onOpenComments={toggleComments}
             onShare={() => {}}
             className=""
-            fundingGap={0} // Add the missing required prop with default value
           />
         </div>
       </div>
