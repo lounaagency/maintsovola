@@ -34,6 +34,7 @@ const Feed: React.FC = () => {
     try {
       setLoading(true);
       
+      // Base query for projects with status 'en financement'
       let query = supabase
         .from('projet')
         .select(`
@@ -49,23 +50,29 @@ const Feed: React.FC = () => {
           utilisateur!id_tantsaha(id_utilisateur, nom, prenoms, photo_profil),
           commune(nom_commune, district(nom_district, region(nom_region)))
         `)
-        .eq('statut', 'en financement')
-        .order('created_at', { ascending: false });
+        .eq('statut', 'en financement');
       
+      // Apply location filters if they exist
       if (activeFilters.region) {
-        query = query.filter('commune.district.region.nom_region', 'eq', activeFilters.region);
+        // Filter by region name
+        query = query.eq('commune.district.region.nom_region', activeFilters.region);
       }
       
       if (activeFilters.district) {
-        query = query.filter('commune.district.nom_district', 'eq', activeFilters.district);
+        // Filter by district name
+        query = query.eq('commune.district.nom_district', activeFilters.district);
       }
       
       if (activeFilters.commune) {
-        query = query.filter('commune.nom_commune', 'eq', activeFilters.commune);
+        // Filter by commune name
+        query = query.eq('commune.nom_commune', activeFilters.commune);
       }
-        
+      
+      // Execute the query and order by creation date
+      query = query.order('created_at', { ascending: false });
+      
       const { data: projetsData, error: projetsError } = await query;
-        
+      
       if (projetsError) {
         throw projetsError;
       }
