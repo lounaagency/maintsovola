@@ -99,7 +99,7 @@ const Notifications: React.FC = () => {
       
       const transformedNotifications: NotificationItem[] = (data as unknown as DatabaseNotification[]).map((notification) => {
         let type: "info" | "success" | "warning" | "error" = "info";
-        if (notification.type === "validation") type = "success";
+        if (notification.type === "validation" || notification.type === "success") type = "success";
         if (notification.type === "alerte") type = "warning";
         if (notification.type === "erreur") type = "error";
         

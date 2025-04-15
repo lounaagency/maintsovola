@@ -168,14 +168,27 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
     }
 
     try {
-      const { error } = await supabase.from('investissement').insert({
+      const { data: investmentData, error: investmentError } = await supabase.from('investissement').insert({
         id_investisseur: user.id,
         id_projet: parseInt(project.id),
         montant: investAmount,
         date_decision_investir: new Date().toISOString().split('T')[0]
-      });
+      }).select('id_investissement');
 
-      if (error) throw error;
+      if (investmentError) throw investmentError;
+      
+      const { error: notificationError } = await supabase.rpc(
+        'notify_investment_stakeholders',
+        {
+          project_id: parseInt(project.id),
+          investor_id: user.id,
+          investment_amount: investAmount
+        }
+      );
+      
+      if (notificationError) {
+        console.error("Erreur lors de l'envoi des notifications:", notificationError);
+      }
       
       toast.success("Votre investissement a été enregistré avec succès");
       setShowInvestModal(false);
