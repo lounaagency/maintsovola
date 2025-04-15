@@ -294,7 +294,6 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
             
           if (error) throw error;
           
-          console.log("Terrain updated:", updatedTerrain);
           toast.success("Terrain modifié avec succès");
           
           // Return the updated terrain data for UI update
@@ -327,8 +326,6 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
             .single();
             
           if (error) throw error;
-          
-          console.log("Terrain saved:", newTerrain);
           
           // Send notification to supervisors
           const { data: supervisors } = await supabase

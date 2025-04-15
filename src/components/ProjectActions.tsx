@@ -14,6 +14,9 @@ interface ProjectActionsProps {
   onOpenComments?: () => void;
   onShare?: () => void;
   className?: string;
+  canInvest?: boolean;
+  onInvest?: () => void;
+  fundingGap: number;
 }
 
 const ProjectActions: React.FC<ProjectActionsProps> = ({
@@ -25,10 +28,23 @@ const ProjectActions: React.FC<ProjectActionsProps> = ({
   onLikeToggle,
   onOpenComments,
   onShare,
-  className
+  className,
+  canInvest,
+  onInvest,
+  fundingGap
 }) => {
-  return (
-    <div className={cn('flex justify-between items-center py-2 px-1', className)}>
+  return (      
+    <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+      {canInvest && (
+        <Button 
+          size="sm" 
+          className="text-xs" 
+          onClick={onInvest}
+          disabled={fundingGap === 0}
+        >
+          {fundingGap > 0 ? "S'investir" : "Financé"}
+        </Button>
+      )}
       <Button
         variant="ghost"
         size="sm"
@@ -38,11 +54,12 @@ const ProjectActions: React.FC<ProjectActionsProps> = ({
         )}
         onClick={onLikeToggle}
       >
+        <span>{likes > 0 ? likes : ''}</span>
         <Heart
           size={18}
           className={cn(isLiked && 'fill-red-500')}
         />
-        <span>{likes > 0 ? likes : ''}</span>
+        <span>Jaime{likes > 1 ? 's' : ''}</span>
       </Button>
 
       <Button
@@ -51,8 +68,9 @@ const ProjectActions: React.FC<ProjectActionsProps> = ({
         className="flex items-center gap-1 text-sm font-normal text-muted-foreground"
         onClick={onOpenComments}
       >
-        <MessageCircle size={18} />
         <span>{comments > 0 ? comments : ''}</span>
+        <MessageCircle size={18} />
+        <span>Commentaire{comments > 0 ? 's' : ''}</span>
       </Button>
 
       <Button

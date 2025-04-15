@@ -61,7 +61,7 @@ BEGIN
     'Vous avez été assigné au terrain ' || COALESCE(terrain_name, 'ID ' || terrain_id),
     false,
     'assignment',
-    terrain_id::text,
+    terrain_id,
     'terrain'
   );
 END;
@@ -111,7 +111,7 @@ BEGIN
       'Un nouvel investissement de ' || investment_amount || ' Ar a été réalisé sur votre projet "' || project_title || '".',
       false,
       'success',
-      project_id::text,
+      project_id,
       'projet',
       project_id
     );
@@ -136,7 +136,7 @@ BEGIN
       'Un nouvel investissement de ' || investment_amount || ' Ar a été réalisé sur le projet "' || project_title || '".',
       false,
       'info',
-      project_id::text,
+      project_id,
       'projet',
       project_id
     );
@@ -161,7 +161,7 @@ BEGIN
       'Un nouvel investissement de ' || investment_amount || ' Ar a été réalisé sur le projet "' || project_title || '".',
       false,
       'info',
-      project_id::text,
+      project_id,
       'projet',
       project_id
     );
@@ -190,7 +190,7 @@ BEGIN
       'Un nouvel investissement de ' || investment_amount || ' Ar a été réalisé sur le projet "' || project_title || '" dans lequel vous avez également investi.',
       false,
       'info',
-      project_id::text,
+      project_id,
       'projet',
       project_id
     );

@@ -349,32 +349,21 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
               ></div>
             </div>
           </div>
-          
-          <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-            <ProjectActions 
-              projectId={project.id}
-              likes={project.likes}
-              comments={project.comments}
-              shares={project.shares}
-              isLiked={liked}
-              onLikeToggle={handleLike}
-              onOpenComments={handleToggleComments}
-              onShare={() => {
-                toast.info("Fonctionnalité de partage à venir");
-              }}
-            />
-            
-            {canInvest && (
-              <Button 
-                size="sm" 
-                className="text-xs" 
-                onClick={handleOpenInvestModal}
-                disabled={fundingGap === 0}
-              >
-                {fundingGap > 0 ? "S'investir" : "Financé"}
-              </Button>
-            )}
-          </div>
+          <ProjectActions 
+            projectId={project.id}
+            likes={project.likes}
+            comments={project.comments}
+            shares={project.shares}
+            isLiked={liked}
+            onLikeToggle={handleLike}
+            onOpenComments={handleToggleComments}
+            onInvest={handleOpenInvestModal}
+            fundingGap = {fundingGap}
+            canInvest = {canInvest}
+            onShare={() => {
+              toast.info("Fonctionnalité de partage à venir");
+            }}
+          />            
         </div>
         
         {showComments && (
