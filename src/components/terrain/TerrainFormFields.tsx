@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { 
   FormField, 
@@ -24,7 +23,7 @@ import "leaflet/dist/leaflet.css";
 import "leaflet-draw/dist/leaflet.draw.css";
 
 interface TerrainFormFieldsProps {
-  form: UseFormReturn<TerrainFormData>;
+  form: UseFormReturn<any>;
   userRole?: string;
   userId: string;
   agriculteurs?: { id_utilisateur: string; nom: string; prenoms?: string }[];
@@ -64,7 +63,6 @@ const TerrainFormFields: React.FC<TerrainFormFieldsProps> = ({
   const watchRegion = form.watch("id_region");
   const watchDistrict = form.watch("id_district");
 
-  // Custom map component to handle events and map initialization
   const MapInitializer = () => {
     const map = useMap();
     
@@ -72,14 +70,12 @@ const TerrainFormFields: React.FC<TerrainFormFieldsProps> = ({
       mapRef.current = map;
       setMapInitialized(true);
       
-      // Center map on polygon if it exists
       if (polygonCoordinates && polygonCoordinates.length >= 3) {
         try {
           const latLngs = polygonCoordinates.map(coord => [coord[1], coord[0]] as L.LatLngTuple);
           const bounds = new L.LatLngBounds(latLngs);
           map.fitBounds(bounds, { padding: [20, 20] });
           
-          // Add polygon to the map
           if (featureGroupRef.current) {
             featureGroupRef.current.clearLayers();
             const polygon = L.polygon(latLngs, {
@@ -95,12 +91,11 @@ const TerrainFormFields: React.FC<TerrainFormFieldsProps> = ({
           console.error("Error centering map on terrain:", error);
         }
       }
-    }, [map, polygonCoordinates]);
+    }, [map]);
     
     return null;
   };
 
-  // Fetch regions, districts, and communes data
   useEffect(() => {
     const fetchRegions = async () => {
       const { data, error } = await supabase.from("region").select("*").order("nom_region");
@@ -134,7 +129,6 @@ const TerrainFormFields: React.FC<TerrainFormFieldsProps> = ({
     fetchCommunes();
   }, []);
 
-  // Filter districts based on selected region
   useEffect(() => {
     if (watchRegion) {
       const regionId = parseInt(watchRegion);
@@ -150,7 +144,6 @@ const TerrainFormFields: React.FC<TerrainFormFieldsProps> = ({
     }
   }, [watchRegion, districts, form, watchDistrict]);
 
-  // Filter communes based on selected district
   useEffect(() => {
     if (watchDistrict) {
       const districtId = parseInt(watchDistrict);
@@ -166,21 +159,18 @@ const TerrainFormFields: React.FC<TerrainFormFieldsProps> = ({
     }
   }, [watchDistrict, communes, form]);
 
-  // Handle file input for photos
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     
     const selectedFiles = Array.from(e.target.files);
     setPhotos(prevPhotos => [...prevPhotos, ...selectedFiles]);
     
-    // Create preview URLs for the photos
     selectedFiles.forEach(file => {
       const previewUrl = URL.createObjectURL(file);
       setPhotoUrls(prevUrls => [...prevUrls, previewUrl]);
     });
   };
 
-  // Remove photo from the list
   const removePhoto = (index: number) => {
     setPhotos(prevPhotos => {
       const newPhotos = [...prevPhotos];
@@ -200,23 +190,18 @@ const TerrainFormFields: React.FC<TerrainFormFieldsProps> = ({
     });
   };
 
-  // Calculate area in hectares from polygon coordinates
   const calculateAreaInHectares = (coords: number[][]) => {
     if (!coords || coords.length < 3) return 0;
 
-    // Convert to LatLng for Leaflet's area calculation
     const latLngs = coords.map(coord => new L.LatLng(coord[1], coord[0]));
     
     const polygon = new L.Polygon(latLngs);
     
-    // Calculate geodesic area in square meters
     const areaInSquareMeters = L.GeometryUtil.geodesicArea(polygon.getLatLngs()[0] as L.LatLng[]);
     
-    // Convert to hectares (1 hectare = 10000 square meters) and round to 2 decimal places
     return parseFloat((areaInSquareMeters / 10000).toFixed(2));
   };
 
-  // Update surface area when polygon changes, but only if shouldUpdateSurface is true
   useEffect(() => {
     if (shouldUpdateSurface && polygonCoordinates && polygonCoordinates.length >= 3) {
       const area = calculateAreaInHectares(polygonCoordinates);
@@ -225,7 +210,6 @@ const TerrainFormFields: React.FC<TerrainFormFieldsProps> = ({
     }
   }, [polygonCoordinates, form, shouldUpdateSurface]);
 
-  // Handle map drawing events
   const handleCreated = (e: any) => {
     const { layerType, layer } = e;
     
@@ -237,7 +221,6 @@ const TerrainFormFields: React.FC<TerrainFormFieldsProps> = ({
         coords.push([latLng.lng, latLng.lat]);
       });
       
-      // Close the polygon by adding the first point at the end
       coords.push([latLngs[0].lng, latLngs[0].lat]);
       
       setPolygonCoordinates(coords);

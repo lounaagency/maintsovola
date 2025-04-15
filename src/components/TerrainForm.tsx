@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
@@ -31,6 +30,17 @@ import { MapContainer, TileLayer, Marker, useMapEvents, Polygon, useMap } from '
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Upload, X, Loader2 } from 'lucide-react';
+
+type TerrainFormValues = {
+  nom_terrain: string;
+  surface_proposee: number;
+  id_region: string;
+  id_district: string;
+  id_commune: string;
+  acces_eau: boolean;
+  acces_route: boolean;
+  id_tantsaha: string;
+};
 
 const formSchema = yup.object().shape({
   nom_terrain: yup.string().required('Le nom du terrain est obligatoire'),
@@ -84,7 +94,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const form = useForm<TerrainFormData>({
+  const form = useForm<TerrainFormValues>({
     resolver: yupResolver(formSchema),
     defaultValues: {
       nom_terrain: initialData?.nom_terrain || '',
@@ -98,7 +108,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     }
   });
 
-  const { control, handleSubmit, setValue, formState: { errors }, watch } = form;
+  const { handleSubmit, setValue, formState: { errors }, watch } = form;
   const selectedTantsaha = watch('id_tantsaha');
 
   useEffect(() => {
@@ -109,9 +119,8 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       loadTerrainData(initialData);
     }
 
-    // Initialize with default values for new terrain
     if (!initialData && userRole && (userRole === 'technicien' || userRole === 'superviseur')) {
-      setValue('id_tantsaha', ''); // Clear default value for technicians/supervisors
+      setValue('id_tantsaha', '');
     }
   }, [initialData, userRole]);
 
@@ -144,7 +153,6 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     setValue('acces_route', data.acces_route || false);
     setValue('id_tantsaha', data.id_tantsaha || userId);
     
-    // Load polygon coordinates if available
     if (data.geom) {
       try {
         const geomData = typeof data.geom === 'string' 
@@ -152,7 +160,6 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
           : data.geom;
           
         if (geomData && geomData.coordinates && geomData.coordinates[0]) {
-          // Convert GeoJSON format to LatLngExpression[]
           const coords = geomData.coordinates[0].map((coord: number[]) => 
             [coord[1], coord[0]] as L.LatLngExpression
           );
@@ -163,7 +170,6 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       }
     }
     
-    // Load photos
     if (data.photos) {
       const photoArray = typeof data.photos === 'string' 
         ? data.photos.split(',') 
@@ -256,7 +262,6 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     setPhotoUrls(prevUrls => {
       const newUrls = [...prevUrls];
       
-      // Only revoke if it's a blob URL (newly added photo)
       if (newUrls[index].startsWith('blob:')) {
         URL.revokeObjectURL(newUrls[index]);
       }
@@ -305,14 +310,13 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     }
   };
 
-  const onSubmit = async (formData: TerrainFormData) => {
+  const onSubmit = async (formData: TerrainFormValues) => {
     setLoading(true);
     try {
       if (!user) {
         throw new Error("User not authenticated.");
       }
 
-      // Make sure we have a valid id_tantsaha
       const tantsahaId = userRole && (userRole === 'technicien' || userRole === 'superviseur') 
         ? formData.id_tantsaha 
         : userId;
@@ -321,14 +325,11 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
         throw new Error("Un agriculteur doit être sélectionné.");
       }
 
-      // Upload new photos
       const uploadedPhotoUrls = await uploadPhotos();
       
-      // Combine existing urls (that aren't blob URLs) with newly uploaded ones
       const existingUrls = photoUrls.filter(url => !url.startsWith('blob:'));
       const allPhotoUrls = [...existingUrls, ...uploadedPhotoUrls];
       
-      // Convert polygon coordinates to GeoJSON format
       const geojson = {
         type: "Polygon",
         coordinates: [
@@ -338,25 +339,43 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
         ]
       };
       
-      // Convert form data to the correct types
       const terrainData = convertFormDataToTerrainData(formData);
       terrainData.id_tantsaha = tantsahaId;
       terrainData.photos = allPhotoUrls.join(',');
       terrainData.geom = geojson;
 
-      console.log("Submitting terrain data:", terrainData);
-
       let response;
       if (isEditMode && initialData?.id_terrain) {
         response = await supabase
           .from('terrain')
-          .update(terrainData)
+          .update({
+            id_region: parseInt(terrainData.id_region),
+            id_district: parseInt(terrainData.id_district),
+            id_commune: parseInt(terrainData.id_commune),
+            nom_terrain: terrainData.nom_terrain,
+            surface_proposee: terrainData.surface_proposee,
+            acces_eau: terrainData.acces_eau,
+            acces_route: terrainData.acces_route,
+            id_tantsaha: terrainData.id_tantsaha,
+            photos: terrainData.photos,
+            geom: terrainData.geom
+          })
           .eq('id_terrain', initialData.id_terrain);
       } else {
-        const { id_terrain, ...newTerrainData } = terrainData;
         response = await supabase
           .from('terrain')
-          .insert([newTerrainData]);
+          .insert([{
+            id_region: parseInt(terrainData.id_region),
+            id_district: parseInt(terrainData.id_district),
+            id_commune: parseInt(terrainData.id_commune),
+            nom_terrain: terrainData.nom_terrain,
+            surface_proposee: terrainData.surface_proposee,
+            acces_eau: terrainData.acces_eau,
+            acces_route: terrainData.acces_route,
+            id_tantsaha: terrainData.id_tantsaha,
+            photos: terrainData.photos,
+            geom: terrainData.geom
+          }]);
       }
 
       if (response.error) {
@@ -386,7 +405,6 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     setSelectedDistrict(Number(selectedValue));
   };
 
-  // Custom map component to handle events and polygon editing
   const MapEvents = () => {
     const map = useMap();
 
@@ -395,7 +413,6 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
         mapRef.current = map;
         setMapInitialized(true);
         
-        // Center map on polygon if it exists
         if (polygonCoordinates.length > 0) {
           const bounds = L.latLngBounds(polygonCoordinates as L.LatLngExpression[]);
           map.fitBounds(bounds, { padding: [30, 30] });
@@ -403,21 +420,18 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       }
     }, [map]);
 
-    // Handle map clicks to create/edit polygon
     useMapEvents({
       click: (e) => {
         const { lat, lng } = e.latlng;
         setPolygonCoordinates(prev => [...prev, [lat, lng]]);
       },
       dblclick: (e) => {
-        // Prevent default double-click zoom
         e.originalEvent.stopPropagation();
         
-        // Close the polygon if we have at least 3 points
         if (polygonCoordinates.length >= 3) {
           setPolygonCoordinates(prev => {
             if (prev[0] !== prev[prev.length - 1]) {
-              return [...prev, prev[0]]; // Close the polygon
+              return [...prev, prev[0]];
             }
             return prev;
           });
@@ -433,7 +447,6 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       <h1 className="text-2xl font-bold mb-4">{isEditMode ? 'Modifier un Terrain' : 'Ajouter un Terrain'}</h1>
       <Form {...form}>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          {/* Show agriculteur select for technicien/superviseur */}
           {userRole && (userRole === 'technicien' || userRole === 'superviseur') && (
             <FormField
               control={control}

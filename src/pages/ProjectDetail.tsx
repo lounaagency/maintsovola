@@ -8,7 +8,6 @@ import { ArrowLeft } from 'lucide-react';
 import AgriculturalProjectCard from '@/components/AgriculturalProjectCard';
 import { AgriculturalProject } from '@/types/agriculturalProject';
 import { toast } from 'sonner';
-import { formatCurrency } from '@/lib/utils';
 
 const ProjectDetail = () => {
   const { id } = useParams();
@@ -32,6 +31,9 @@ const ProjectDetail = () => {
     try {
       setIsLoading(true);
       
+      // Convert projectId to number if needed or handle as string
+      const projectIdValue = parseInt(projectId, 10); // Convert to number
+      
       const { data: projectData, error } = await supabase
         .from('projet')
         .select(`
@@ -44,7 +46,7 @@ const ProjectDetail = () => {
           projet_culture(id_culture, culture:id_culture(nom_culture, nom_vernaculaire, rendement_moyen)),
           technicien:id_technicien(id_utilisateur, nom, prenoms, photo_profil)
         `)
-        .eq('id_projet', projectId)
+        .eq('id_projet', projectIdValue)
         .single();
       
       if (error) throw error;
@@ -53,13 +55,14 @@ const ProjectDetail = () => {
       const { data: investmentsData, error: investmentsError } = await supabase
         .from('investissement')
         .select('montant')
-        .eq('id_projet', projectId);
+        .eq('id_projet', projectIdValue);
         
       if (investmentsError) throw investmentsError;
       
       const totalFunding = investmentsData.reduce((sum, inv) => sum + (inv.montant || 0), 0);
       
       // Format project data for AgriculturalProjectCard
+      // Handle potential null/undefined values and type errors
       const formattedProject: AgriculturalProject = {
         id: projectData.id_projet.toString(),
         title: projectData.titre || 'Projet agricole',
@@ -75,10 +78,14 @@ const ProjectDetail = () => {
           commune: projectData.commune?.nom_commune || ''
         },
         cultivationArea: projectData.terrain?.surface_validee || 0,
-        cultivationType: projectData.projet_culture?.map(pc => pc.culture?.nom_culture).join(', ') || '',
-        farmingCost: projectData.cout_exploitation || 0,
-        expectedYield: projectData.rendement_attendu || 0,
-        expectedRevenue: projectData.revenu_attendu || 0,
+        cultivationType: projectData.projet_culture?.length > 0 ? 
+          projectData.projet_culture
+            .map((pc: any) => pc.culture?.nom_culture)
+            .filter(Boolean)
+            .join(', ') : '',
+        farmingCost: projectData.cout_exploitation_previsionnel || 0,
+        expectedYield: projectData.rendement_previsionnel || 0,
+        expectedRevenue: projectData.revenu_previsionnel || 0,
         creationDate: new Date(projectData.created_at).toLocaleDateString('fr-FR'),
         images: projectData.photos || [],
         description: projectData.description || '',

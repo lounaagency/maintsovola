@@ -22,7 +22,7 @@ interface ProjectActionsProps {
   className?: string;
   canInvest?: boolean;
   onInvest?: () => void;
-  fundingGap: number;
+  fundingGap?: number; // Making this optional with a default value
 }
 
 const ProjectActions: React.FC<ProjectActionsProps> = ({
@@ -37,7 +37,7 @@ const ProjectActions: React.FC<ProjectActionsProps> = ({
   className,
   canInvest,
   onInvest,
-  fundingGap
+  fundingGap = 0 // Default value
 }) => {
   const handleShare = (platform: string) => {
     const projectUrl = `${window.location.origin}/projects?id=${projectId}`;
