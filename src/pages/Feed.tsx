@@ -52,15 +52,15 @@ const Feed: React.FC = () => {
         .order('created_at', { ascending: false });
       
       if (activeFilters.region) {
-        query = query.eq('commune.district.region.nom_region', activeFilters.region);
+        query = query.filter('commune.district.region.nom_region', 'eq', activeFilters.region);
       }
       
       if (activeFilters.district) {
-        query = query.eq('commune.district.nom_district', activeFilters.district);
+        query = query.filter('commune.district.nom_district', 'eq', activeFilters.district);
       }
       
       if (activeFilters.commune) {
-        query = query.eq('commune.nom_commune', activeFilters.commune);
+        query = query.filter('commune.nom_commune', 'eq', activeFilters.commune);
       }
         
       const { data: projetsData, error: projetsError } = await query;
