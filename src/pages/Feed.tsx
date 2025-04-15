@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Navigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -127,6 +128,8 @@ const Feed: React.FC = () => {
       });
       
       let finalProjects = projetsData;
+      
+      // Apply culture filter
       if (activeFilters.culture) {
         const filteredProjectIds = filteredCultures.map(fc => fc.id_projet);
         finalProjects = projetsData.filter(
