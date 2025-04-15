@@ -13,8 +13,6 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
-import { notifyInvestment } from "@/utils/notificationUtils";
-import { useAuth } from "@/contexts/AuthContext";
 
 interface ProjectDetailsDialogProps {
   isOpen: boolean;
@@ -30,7 +28,6 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
   userRole
 }) => {
   const { toast } = useToast();
-  const { user } = useAuth();
   const [project, setProject] = useState<any>(null);
   const [investments, setInvestments] = useState<any[]>([]);
   const [jalons, setJalons] = useState<any[]>([]);
@@ -127,57 +124,6 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
       sum + (pc.cout_exploitation_previsionnel || 0), 0);
     
     return totalCost === 0 ? 0 : Math.min(Math.round((totalInvestment / totalCost) * 100), 100);
-  };
-
-  const handleInvestment = async (amount: number) => {
-    if (!user) {
-      toast({
-        title: "Erreur",
-        description: "Vous devez être connecté pour investir",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    try {
-      // Create the investment record
-      const { data, error } = await supabase
-        .from('investissement')
-        .insert({
-          id_projet: projectId,
-          id_investisseur: user.id,
-          montant: amount,
-          date_paiement: new Date().toISOString().split('T')[0]
-        })
-        .select('id_investissement')
-        .single();
-      
-      if (error) throw error;
-      
-      // Send notifications about the new investment
-      await notifyInvestment(
-        user.id,
-        projectId,
-        data.id_investissement,
-        amount,
-        project?.titre || `Projet #${projectId}`
-      );
-      
-      toast({
-        title: "Succès",
-        description: `Votre investissement de ${amount} Ar a été enregistré`,
-      });
-      
-      // Refresh investments
-      fetchInvestments();
-    } catch (error) {
-      console.error('Error making investment:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible d'enregistrer votre investissement",
-        variant: "destructive"
-      });
-    }
   };
 
   const handleStartProduction = async () => {
