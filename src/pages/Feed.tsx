@@ -34,8 +34,8 @@ const Feed: React.FC = () => {
     try {
       setLoading(true);
       
-      // Base query for projects with status 'en financement'
-      let query = supabase
+      // First, fetch all projects with status 'en financement'
+      let { data: projetsData, error: projetsError } = await supabase
         .from('projet')
         .select(`
           id_projet,
@@ -50,31 +50,41 @@ const Feed: React.FC = () => {
           utilisateur!id_tantsaha(id_utilisateur, nom, prenoms, photo_profil),
           commune(nom_commune, district(nom_district, region(nom_region)))
         `)
-        .eq('statut', 'en financement');
-      
-      // Apply location filters if they exist
-      if (activeFilters.region) {
-        // Filter by region name
-        query = query.eq('commune.district.region.nom_region', activeFilters.region);
-      }
-      
-      if (activeFilters.district) {
-        // Filter by district name
-        query = query.eq('commune.district.nom_district', activeFilters.district);
-      }
-      
-      if (activeFilters.commune) {
-        // Filter by commune name
-        query = query.eq('commune.nom_commune', activeFilters.commune);
-      }
-      
-      // Execute the query and order by creation date
-      query = query.order('created_at', { ascending: false });
-      
-      const { data: projetsData, error: projetsError } = await query;
+        .eq('statut', 'en financement')
+        .order('created_at', { ascending: false });
       
       if (projetsError) {
         throw projetsError;
+      }
+      
+      // Apply location filters manually
+      if (activeFilters.region || activeFilters.district || activeFilters.commune) {
+        projetsData = projetsData.filter(projet => {
+          // Skip projects with missing location data
+          if (!projet.commune || !projet.commune.district || !projet.commune.district.region) {
+            return false;
+          }
+          
+          // Apply region filter
+          if (activeFilters.region && 
+              projet.commune.district.region.nom_region !== activeFilters.region) {
+            return false;
+          }
+          
+          // Apply district filter
+          if (activeFilters.district && 
+              projet.commune.district.nom_district !== activeFilters.district) {
+            return false;
+          }
+          
+          // Apply commune filter
+          if (activeFilters.commune && 
+              projet.commune.nom_commune !== activeFilters.commune) {
+            return false;
+          }
+          
+          return true;
+        });
       }
       
       const { data: culturesData, error: culturesError } = await supabase
@@ -144,6 +154,7 @@ const Feed: React.FC = () => {
         );
       }
       
+      // Transform projects to the format expected by the UI
       const transformedProjects = finalProjects.map(projet => {
         const projetCultures = culturesData.filter(pc => pc.id_projet === projet.id_projet);
         
