@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -16,16 +15,16 @@ import { sendNotification } from "@/types/notification";
 
 interface TerrainFormProps {
   initialData?: TerrainData;
-  onSubmitSuccess: (updatedTerrain: TerrainData) => void;
+  onSubmit: (data: Partial<TerrainData>) => void;
   onCancel: () => void;
   userId: string;
   userRole?: string;
   agriculteurs?: { id_utilisateur: string; nom: string; prenoms?: string }[];
   techniciens?: { id_utilisateur: string; nom: string; prenoms?: string }[];
   isValidationMode?: boolean;
+  onSubmitSuccess?: (terrain: TerrainData) => void;
 }
 
-// Create validation schemas for regular mode and validation mode
 const terrainSchema = yup.object({
   nom_terrain: yup.string().required("Le nom du terrain est obligatoire"),
   surface_proposee: yup.number().required("La surface est obligatoire").positive("La surface doit être positive"),
@@ -46,13 +45,14 @@ const validationSchema = yup.object({
 
 const TerrainForm: React.FC<TerrainFormProps> = ({
   initialData,
-  onSubmitSuccess,
+  onSubmit,
   onCancel,
   userId,
   userRole,
   agriculteurs = [],
   techniciens = [],
-  isValidationMode = false
+  isValidationMode = false,
+  onSubmitSuccess
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [polygonCoordinates, setPolygonCoordinates] = useState<number[][]>([]);
@@ -62,10 +62,8 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   
-  // Choose the appropriate form schema based on validation mode
   const formSchema = isValidationMode ? validationSchema : terrainSchema;
   
-  // Use explicit type assertion for schema to avoid TypeScript errors
   const form = useForm({
     resolver: yupResolver(formSchema as any),
     defaultValues: {
@@ -87,13 +85,10 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     }
   });
 
-  // Initialize terrain data when component mounts or initialData changes
   useEffect(() => {
     if (initialData) {
-      // Process geometry data if available
       if (initialData.geom) {
         try {
-          // Handle both string and object geom formats
           const geomData = typeof initialData.geom === 'string' 
             ? JSON.parse(initialData.geom) 
             : initialData.geom;
@@ -106,7 +101,6 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
         }
       }
       
-      // Process photos if available
       if (initialData.photos) {
         try {
           const photosArray = typeof initialData.photos === 'string' 
@@ -119,7 +113,6 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
         }
       }
 
-      // Process validation photos if available
       if (initialData.photos_validation) {
         try {
           const photosArray = typeof initialData.photos_validation === 'string' 
@@ -134,7 +127,6 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     }
   }, [initialData]);
 
-  // Upload photos to Supabase storage
   const uploadPhotos = async (photos: File[], folder: string = 'terrain-photos'): Promise<string[]> => {
     if (photos.length === 0) return [];
     
@@ -174,43 +166,34 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     }
   };
 
-  // Form submission handler
-  const onSubmit = async (data: any) => {
+  const onSubmitHandler = async (data: any) => {
     setIsSubmitting(true);
     try {
-      // Assign polygon coordinates to form data
       if (!isValidationMode) {
         data.geom = polygonCoordinates;
       }
       
-      // Round surface to 2 decimal places
       data.surface_proposee = parseFloat(data.surface_proposee.toFixed(2));
       if (data.surface_validee) {
         data.surface_validee = parseFloat(data.surface_validee.toFixed(2));
       }
       
-      // Determine the terrain owner based on user role
       const terrainOwnerId = userRole === 'simple' ? userId :
                              userRole === 'technicien' || userRole === 'superviseur' ?
                              (data.id_tantsaha || userId) : userId;
       
-      // Convert form data to terrain data
       const terrainData = convertFormDataToTerrainData({...data} as TerrainFormData);
       terrainData.id_tantsaha = terrainOwnerId;
       
       if (isValidationMode) {
-        // Upload validation photos
         const uploadedValidationPhotos = await uploadPhotos(validationPhotos, 'terrain-validation-photos');
         
-        // Filter out blob URLs which are just previews
         const existingValidationPhotoUrls = photoValidationUrls.filter(url => !url.startsWith('blob:'));
         const allValidationPhotoUrls = [...existingValidationPhotoUrls, ...uploadedValidationPhotos];
         
-        // Update terrain with validation data
         terrainData.photos_validation = allValidationPhotoUrls.join(',');
         terrainData.statut = data.validation_decision === 'valider';
         
-        // Ensure date_validation is a string for the API
         if (terrainData.date_validation && typeof terrainData.date_validation !== 'string') {
           terrainData.date_validation = terrainData.date_validation.toString();
         }
@@ -229,7 +212,6 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
           
         if (error) throw error;
         
-        // Send notification to terrain owner
         if (initialData?.id_tantsaha) {
           await sendNotification(
             supabase,
@@ -245,31 +227,27 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
         
         toast.success(`Terrain ${data.validation_decision === 'valider' ? 'validé' : 'rejeté'} avec succès`);
         
-        // Return the updated terrain data for UI update
-        onSubmitSuccess({
-          ...initialData!,
-          photos_validation: terrainData.photos_validation,
-          statut: terrainData.statut,
-          date_validation: terrainData.date_validation,
-          rapport_validation: terrainData.rapport_validation,
-          validation_decision: terrainData.validation_decision,
-          surface_validee: terrainData.surface_validee
-        });
+        if (onSubmitSuccess) {
+          onSubmitSuccess({
+            ...initialData!,
+            photos_validation: terrainData.photos_validation,
+            statut: terrainData.statut,
+            date_validation: terrainData.date_validation,
+            rapport_validation: terrainData.rapport_validation,
+            validation_decision: terrainData.validation_decision,
+            surface_validee: terrainData.surface_validee
+          });
+        }
       } else {
-        // Regular terrain create/update mode
-        // Upload new photos and combine with existing ones
         const uploadedPhotoUrls = await uploadPhotos(photos);
         
-        // Filter out blob URLs which are just previews
         const existingPhotoUrls = photoUrls.filter(url => !url.startsWith('blob:'));
         const allPhotoUrls = [...existingPhotoUrls, ...uploadedPhotoUrls];
         
-        // Ensure photos is always a string when sending to API
         terrainData.photos = allPhotoUrls.join(',');
         
         console.log("Saving terrain data:", terrainData);
         
-        // Update existing terrain or create new one
         if (initialData?.id_terrain) {
           terrainData.statut = initialData.statut;
           
@@ -296,17 +274,16 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
           
           toast.success("Terrain modifié avec succès");
           
-          // Return the updated terrain data for UI update
-          onSubmitSuccess({
-            ...initialData,
-            ...updatedTerrain
-          });
+          if (onSubmitSuccess) {
+            onSubmitSuccess({
+              ...initialData,
+              ...updatedTerrain
+            });
+          }
         } else {
           terrainData.statut = false;
-          // Remove id_terrain if creating a new terrain
           const { id_terrain, ...dataSansId } = terrainData;
 
-          // Create a record with explicit values instead of passing the whole object
           const { data: newTerrain, error } = await supabase
             .from('terrain')
             .insert([{
@@ -327,11 +304,10 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
             
           if (error) throw error;
           
-          // Send notification to supervisors
           const { data: supervisors } = await supabase
             .from('utilisateur')
             .select('id_utilisateur')
-            .eq('id_role', 3); // 3 = superviseur
+            .eq('id_role', 3);
             
           if (supervisors && supervisors.length > 0 && userId) {
             await sendNotification(
@@ -348,8 +324,9 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
           
           toast.success("Terrain ajouté avec succès");
           
-          // Return the new terrain data for UI update
-          onSubmitSuccess(newTerrain);
+          if (onSubmitSuccess) {
+            onSubmitSuccess(newTerrain);
+          }
         }
       }
     } catch (error: any) {
@@ -362,9 +339,8 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(onSubmitHandler)} className="space-y-6">
         {isValidationMode ? (
-          // Validation mode - show summary and validation form
           <ValidationForm 
             form={form}
             photoValidationUrls={photoValidationUrls}
@@ -374,7 +350,6 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
             terrain={initialData!}
           />
         ) : (
-          // Regular mode - show full terrain form
           <TerrainFormFields 
             form={form}
             userRole={userRole}

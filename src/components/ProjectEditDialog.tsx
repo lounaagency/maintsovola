@@ -74,6 +74,7 @@ const ProjectEditDialog: React.FC<ProjectEditDialogProps> = ({
       
       toast.success("Projet mis à jour avec succès");
       onSubmitSuccess();
+      onClose();
     } catch (error) {
       console.error("Error updating project:", error);
       toast.error("Erreur lors de la mise à jour du projet");

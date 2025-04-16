@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -286,10 +285,12 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
           <TerrainForm
             initialData={terrain}
             onSubmit={handleSubmit}
+            onCancel={onClose}
             isValidationMode={isValidationMode}
             userRole={userRole}
             userId={userId}
             agriculteurs={agriculteurs}
+            onSubmitSuccess={onSubmitSuccess}
           />
         )}
       </DialogContent>

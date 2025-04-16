@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -9,10 +9,15 @@ import ProjectForm from "./ProjectForm";
 
 interface NewProjectProps {
   onProjectCreated?: (project: AgriculturalProject) => void;
+  onCancel?: () => void;
 }
 
-const NewProject: React.FC<NewProjectProps> = ({ onProjectCreated }) => {
+const NewProject: React.FC<NewProjectProps> = ({ 
+  onProjectCreated,
+  onCancel 
+}) => {
   const { user, profile } = useAuth();
+  const [showForm, setShowForm] = useState(true);
 
   const handleSubmit = async (data: any) => {
     if (!user) {
@@ -111,16 +116,30 @@ const NewProject: React.FC<NewProjectProps> = ({ onProjectCreated }) => {
       }
       
       toast.success("Projet créé avec succès!");
+      setShowForm(false);
     } catch (error) {
       console.error("Erreur lors de la création du projet:", error);
       toast.error("Erreur lors de la création du projet");
     }
   };
 
+  const handleCancel = () => {
+    if (onCancel) {
+      onCancel();
+    } else {
+      setShowForm(false);
+    }
+  };
+
   return (
     <Card className="mb-4 overflow-hidden border-border">
       <CardContent className="p-4">
-        <ProjectForm onSubmit={handleSubmit} />
+        {showForm && (
+          <ProjectForm 
+            onSubmit={handleSubmit} 
+            onCancel={handleCancel}
+          />
+        )}
       </CardContent>
     </Card>
   );
