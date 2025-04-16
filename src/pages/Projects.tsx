@@ -43,21 +43,21 @@ const Projects = () => {
     if (!user) return;
     
     try {
-      // First, get projects that are not finished to exclude their terrains
-      const { data: activeProjects, error: projectsError } = await supabase
+      // Get ALL projects (including deleted ones) to exclude their terrains
+      // This prevents users from creating projects on terrains that already had projects
+      const { data: allProjects, error: projectsError } = await supabase
         .from('projet')
-        .select('id_terrain')
-        .neq('statut', 'terminé');
+        .select('id_terrain');
         
       if (projectsError) {
-        console.error("Error fetching active projects:", projectsError);
+        console.error("Error fetching all projects:", projectsError);
         return;
       }
       
-      // Get the list of terrain IDs that are already in use
-      const excludedTerrainIds = activeProjects?.map(p => p.id_terrain) || [];
+      // Get the list of terrain IDs that have ever been in projects
+      const excludedTerrainIds = allProjects?.map(p => p.id_terrain) || [];
             
-      // Fetch terrains that belong to the user, are validated, and not in active projects
+      // Fetch terrains that belong to the user, are validated, and have never been in projects
       let query = supabase
         .from('terrain')
         .select('id_terrain')
