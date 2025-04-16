@@ -31,7 +31,7 @@ const ProjectActions: React.FC<ProjectActionsProps> = ({
   className,
   canInvest,
   onInvest,
-  fundingGap
+  fundingGap = 0
 }) => {
   return (      
     <div className="flex items-center justify-between pt-4 border-t border-gray-100">

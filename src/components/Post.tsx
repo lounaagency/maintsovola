@@ -101,6 +101,7 @@ const Post: React.FC<PostProps> = ({
             onOpenComments={toggleComments}
             onShare={() => {}}
             className=""
+            fundingGap={0}
           />
         </div>
       </div>

@@ -1948,6 +1948,14 @@ export type Database = {
         Args: { "": unknown } | { "": unknown }
         Returns: string
       }
+      create_technicien_assignment_notification: {
+        Args: {
+          technicien_id: string
+          terrain_id: number
+          superviseur_id: string
+        }
+        Returns: undefined
+      }
       disablelongtransactions: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -2203,6 +2211,22 @@ export type Database = {
         Args: { "": string }
         Returns: unknown
       }
+      get_notifications_for_user: {
+        Args: { user_id: string }
+        Returns: {
+          date_creation: string | null
+          entity_id: number | null
+          entity_type: string | null
+          id_destinataire: string
+          id_expediteur: string | null
+          id_notification: number
+          lu: boolean | null
+          message: string
+          projet_id: number | null
+          titre: string
+          type: string | null
+        }[]
+      }
       get_proj4_from_srid: {
         Args: { "": number }
         Returns: string
@@ -2230,6 +2254,22 @@ export type Database = {
       longtransactionsenabled: {
         Args: Record<PropertyKey, never>
         Returns: boolean
+      }
+      mark_all_notifications_as_read: {
+        Args: { user_id: string }
+        Returns: undefined
+      }
+      mark_notification_as_read: {
+        Args: { notification_id: number }
+        Returns: undefined
+      }
+      notify_investment_stakeholders: {
+        Args: {
+          project_id: number
+          investor_id: string
+          investment_amount: number
+        }
+        Returns: undefined
       }
       path: {
         Args: { "": unknown }
