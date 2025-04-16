@@ -55,13 +55,36 @@ const ProjectEditDialog: React.FC<ProjectEditDialogProps> = ({
         
       if (deleteError) throw deleteError;
       
-      // Insert new project cultures
+      // Get culture details for financial calculations
+      const { data: culturesData, error: cultureError } = await supabase
+        .from('culture')
+        .select('*')
+        .in('id_culture', data.cultures);
+      
+      if (cultureError) throw cultureError;
+      
+      // Calculate terrain surface area
+      const terrainSurface = data.surface_ha || 0;
+      
+      // Insert new project cultures with calculated financial values
       const projetCultures = data.cultures.map((cultureId: number) => {
+        // Find the corresponding culture data
+        const cultureInfo = culturesData.find((c) => c.id_culture === cultureId);
+        
+        // Calculate financials based on terrain surface
+        const coutExploitation = cultureInfo?.cout_exploitation_ha 
+          ? cultureInfo.cout_exploitation_ha * terrainSurface 
+          : 0;
+        
+        const rendementTonne = cultureInfo?.rendement_ha 
+          ? cultureInfo.rendement_ha * terrainSurface 
+          : 0;
+          
         return {
           id_projet: project.id_projet,
           id_culture: cultureId,
-          cout_exploitation_previsionnel: data.financialSummary?.totalCost / data.cultures.length || 0,
-          rendement_previsionnel: 0,
+          cout_exploitation_previsionnel: coutExploitation,
+          rendement_previsionnel: rendementTonne,
           date_debut_previsionnelle: new Date().toISOString().split('T')[0]
         };
       });
