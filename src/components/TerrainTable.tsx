@@ -249,12 +249,11 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
     }
     // Supervisor sees all terrains, so no additional filtering for them
     
-    console.log('Filtered terrains:', { count: filtered.length });
+    console.log('Filtered terrains:', filtered, userRole, user.id);
     return filtered;
   };
 
   const filteredTerrains = filterTerrainsByRole();
-
   if (isMobile) {
     return (
       <div className="space-y-4">
@@ -377,8 +376,8 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>ID</TableHead>
-            <TableHead>Nom</TableHead>
+            <TableHead>ID {user.id ? user.id : ''}</TableHead>
+            <TableHead>Nom </TableHead>
             <TableHead>Surface</TableHead>
             <TableHead>Zone géographique</TableHead>
             <TableHead>Accès eau</TableHead>
@@ -396,8 +395,8 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
           {filteredTerrains.length > 0 ? (
             filteredTerrains.map((terrain) => (
               <TableRow key={terrain.id_terrain}>
-                <TableCell>{terrain.id_terrain}</TableCell>
-                <TableCell>{terrain.nom_terrain}</TableCell>
+                <TableCell>{terrain.id_terrain} id_technicien {terrain.id_technicien}</TableCell>
+                <TableCell>{terrain.nom_terrain} </TableCell>
                 <TableCell>{terrain.surface_proposee} ha</TableCell>
                 <TableCell>
                   {terrain.region_name || 'N/A'}, 

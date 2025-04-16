@@ -13,6 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import UserAvatar from './UserAvatar';
 
 interface ProjectDetailsDialogProps {
   isOpen: boolean;
@@ -48,7 +49,9 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
         .from('projet')
         .select(`
           *,
-          tantsaha:id_tantsaha(nom, prenoms),
+          tantsaha:id_tantsaha(nom, prenoms,photo_profil),
+          technicien:id_technicien(nom, prenoms,photo_profil),
+          superviseur:id_superviseur(nom, prenoms,photo_profil),
           terrain:id_terrain(*),
           region:id_region(nom_region),
           district:id_district(nom_district),
@@ -287,20 +290,32 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
           <Card>
             <CardContent className="pt-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Agriculteur</p>
-                  <p>{project.tantsaha?.nom} {project.tantsaha?.prenoms || ''}</p>
+                <div  className="text-xs">
+                  <p className="text-muted-foreground">Agriculteur</p>
+                  
+                  <div className="flex items-center">
+                    <UserAvatar 
+                      src={project.tantsaha?.photo_profil} 
+                      alt={typeof project.tantsaha?.nom === 'string' ? project.tantsaha.nom : 'Agriculteur'} 
+                      size="sm" 
+                    />
+                    <div  className="text-xs">
+                      <div className="text-green-900">
+                        {project.tantsaha?.nom} {project.tantsaha?.prenoms || ''}
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Terrain</p>
-                  <p>{project.terrain?.nom_terrain} ({project.surface_ha} ha)</p>
+                <div  className="text-xs">
+                  <p className="text-muted-foreground">Terrain</p>
+                  <p className="text-green-900">{project.terrain?.nom_terrain} ({project.surface_ha} ha)</p>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Localisation</p>
-                  <p>{project.region?.nom_region}, {project.district?.nom_district}, {project.commune?.nom_commune}</p>
+                <div  className="text-xs">
+                  <p className="text-muted-foreground">Localisation</p>
+                  <p className="text-green-900">{project.region?.nom_region}, {project.district?.nom_district}, {project.commune?.nom_commune}</p>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Statut</p>
+                <div  className="text-xs">
+                  <p className="text-muted-foreground">Statut</p>
                   <Badge 
                     variant={
                       project.statut === 'en attente' ? 'outline' : 
@@ -312,8 +327,8 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
                     {project.statut}
                   </Badge>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Cultures</p>
+                <div  className="text-xs">
+                  <p className="text-muted-foreground">Cultures</p>
                   <div className="flex flex-wrap gap-1 mt-1">
                     {project.projet_culture.map((pc: any) => (
                       <Badge key={pc.id_projet_culture} variant="outline">
@@ -322,24 +337,53 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
                     ))}
                   </div>
                 </div>
+                <div  className="text-xs">
+                  <p className="text-muted-foreground">Equipe Maintso Vola</p>                  
+                  {project.superviseur && (
+                    <div className="flex items-center">
+                      <span className="text-green-900">Superviseur : </span>
+                      <UserAvatar 
+                        src={project.superviseur?.photo_profil} 
+                        alt={typeof project.superviseur?.nom === 'string' ? project.superviseur.nom : 'Agriculteur'} 
+                        size="sm" 
+                      />
+                      <div className="font-semibold text-sm text-green-900">
+                        {project.superviseur?.nom} {project.superviseur?.prenoms || ''}
+                      </div>
+                    </div>
+                  )}
+                  {project.technicien && (
+                    <div className="flex items-center">
+                    <span className="text-green-900">Technicien : </span>
+                      <UserAvatar 
+                        src={project.technicien?.photo_profil} 
+                        alt={typeof project.technicien?.nom === 'string' ? project.technicien.nom : 'Agriculteur'} 
+                        size="sm" 
+                      />
+                      <div className="text-green-900">
+                        {project.technicien?.nom} {project.technicien?.prenoms || ''}
+                      </div>
+                    </div>
+                  )}
+                </div>
                 {project.date_lancement && (
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">Date de lancement</p>
-                    <p>{formatDate(project.date_lancement)}</p>
+                    <p className="text-muted-foreground">Date de lancement</p>
+                    <p className="text-green-900">{formatDate(project.date_lancement)}</p>
                   </div>
                 )}
               </div>
               
               {project.description && (
-                <div className="mt-4">
-                  <p className="text-sm font-medium text-muted-foreground mb-1">Description</p>
-                  <p className="text-sm">{project.description}</p>
+                <div className="mt-4 text-xs">
+                  <p className="text-muted-foreground mb-1">Description</p>
+                  <p  className="text-green-900">{project.description}</p>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          <Tabs defaultValue="finances" className="w-full">
+          <Tabs defaultValue="finances" className="w-full text-xs">
             <TabsList className="grid grid-cols-2">
               <TabsTrigger value="finances">Financement</TabsTrigger>
               <TabsTrigger value="jalons">Jalons & Production</TabsTrigger>

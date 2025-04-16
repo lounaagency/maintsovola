@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { sendNotification } from "@/types/notification";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -70,6 +71,8 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
   onDelete,
   onContactTechnicien,
 }) => {
+  
+  const { user } = useAuth();
   const [sortOptions, setSortOptions] = useState<TerrainSortOptions>({
     field: 'created_at',
     direction: 'desc'
@@ -175,14 +178,14 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
     try {
       const { error } = await supabase
         .from('terrain')
-        .update({ id_technicien: selectedTechId })
+        .update({ id_technicien: selectedTechId },{id_superviseur: user.id})
         .eq('id_terrain', selectedTerrain.id_terrain);
         
       if (error) throw error;
       
       await sendNotification(
         supabase,
-        selectedTerrain.id_tantsaha || '',
+        user.id,
         [{ id_utilisateur: selectedTechId }],
         "Terrain assigné",
         `Vous avez été assigné au terrain ${selectedTerrain.nom_terrain}`,
@@ -193,7 +196,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
       
       await sendNotification(
         supabase,
-        'system',
+        user.id,
         [{ id_utilisateur: selectedTerrain.id_tantsaha || '' }],
         "Technicien assigné",
         `Un technicien a été assigné à votre terrain ${selectedTerrain.nom_terrain}`,
@@ -395,7 +398,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                       </Button>
                     )}
                     
-                    {type === 'pending' && onValidate && userRole === 'superviseur' && (
+                    {type === 'pending' && onValidate && userRole !== 'simple' && (
                       <Button 
                         variant="outline" 
                         size="sm"
@@ -714,7 +717,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                               </DropdownMenuItem>
                             )}
                             
-                            {type === 'pending' && userRole === 'superviseur' && onValidate && (
+                            {type === 'pending' && userRole !== 'simple' && onValidate && (
                               <DropdownMenuItem onClick={() => onValidate(terrain)}>
                                 <Check className="mr-2 h-4 w-4" />
                                 Valider
