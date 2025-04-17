@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import {
   Popover,
@@ -48,6 +47,9 @@ const NotificationItem: React.FC<{ notification: NotificationItem; onRead: (id: 
     if (notification.entity_type === "projet" && notification.entity_id) {
       // Navigate to the feed with the project ID parameter
       navigate(`/feed?project=${notification.entity_id}`);
+    } else if (notification.entity_type === "terrain" && notification.entity_id) {
+      // Navigate to the terrain view with the terrain ID parameter
+      navigate(`/terrain?id=${notification.entity_id}`);
     } else if (notification.link) {
       // Navigate to any other link
       navigate(notification.link);
@@ -76,7 +78,6 @@ const NotificationItem: React.FC<{ notification: NotificationItem; onRead: (id: 
     </motion.div>
   );
 
-  // Instead of using Link, we now handle navigation through handleClick
   return content;
 };
 
@@ -118,13 +119,12 @@ const Notifications: React.FC = () => {
           link = `/projet?id=${notification.projet_id}#investissements`;
         }
         
-        // Convert entity_id to string if it exists
         const entityId = notification.entity_id !== undefined 
           ? String(notification.entity_id) 
           : undefined;
         
         return {
-          id: String(notification.id_notification), // Convert to string
+          id: String(notification.id_notification),
           title: notification.titre,
           description: notification.message,
           timestamp: notification.date_creation,
