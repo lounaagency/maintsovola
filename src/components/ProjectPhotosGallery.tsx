@@ -32,6 +32,7 @@ const ProjectPhotosGallery: React.FC<ProjectPhotosGalleryProps> = ({
   useEffect(() => {
     if (isOpen) {
       setActiveTab(initialTab);
+      setCurrentPhotoIndex(0); // Reset to first photo when opening
     }
   }, [isOpen, initialTab]);
   
