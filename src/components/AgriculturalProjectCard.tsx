@@ -247,6 +247,8 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
   
   const handlePhotoNavigation = (direction: 'next' | 'prev') => {
     const totalPhotos = displayedPhotos.length;
+    if (totalPhotos <= 1) return;
+    
     setCurrentPhotoIndex((prevIndex) => {
       if (direction === 'next') {
         return (prevIndex + 1) % totalPhotos;
@@ -293,8 +295,8 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
           {displayedPhotos.length > 0 && (
             <div className="mb-4 rounded-md overflow-hidden relative">
               <img 
-                src={displayedPhotos[0]} 
-                alt="Première photo du projet" 
+                src={displayedPhotos[currentPhotoIndex]} 
+                alt={`Photo du projet ${currentPhotoIndex + 1}`} 
                 className="w-full h-48 object-cover"
               />
               {displayedPhotos.length > 1 && (
