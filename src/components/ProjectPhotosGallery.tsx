@@ -1,16 +1,12 @@
 
-import React, { useState } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MapContainer, TileLayer, Polygon } from 'react-leaflet';
-import { LatLngTuple } from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
 interface ProjectPhotosGalleryProps {
   isOpen: boolean;
@@ -25,177 +21,183 @@ const ProjectPhotosGallery: React.FC<ProjectPhotosGalleryProps> = ({
   isOpen,
   onClose,
   photos,
-  title = 'Photos',
-  terrainCoordinates = [],
+  title = "Photos",
+  terrainCoordinates,
   initialTab = 'photos'
 }) => {
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const [activeTab, setActiveTab] = useState<'photos' | 'map'>(initialTab);
   
-  const handleNext = () => {
-    setCurrentIndex((prevIndex) => (prevIndex + 1) % photos.length);
-  };
+  // Reset to initial tab each time the dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      setActiveTab(initialTab);
+    }
+  }, [isOpen, initialTab]);
+  
+  const hasPhotos = photos && photos.length > 0;
+  const hasMapData = terrainCoordinates && terrainCoordinates.length >= 3;
+  
+  // If no content is available, don't render the dialog
+  if (!hasPhotos && !hasMapData) {
+    return null;
+  }
   
   const handlePrevious = () => {
-    setCurrentIndex((prevIndex) => (prevIndex - 1 + photos.length) % photos.length);
+    setCurrentPhotoIndex((prev) => (prev === 0 ? photos.length - 1 : prev - 1));
   };
   
-  // Convert coordinates to LatLngTuple[] for Leaflet
-  const polygonCoordinates: LatLngTuple[] = terrainCoordinates.map(
-    coord => [coord[1], coord[0]] as LatLngTuple
-  );
+  const handleNext = () => {
+    setCurrentPhotoIndex((prev) => (prev === photos.length - 1 ? 0 : prev + 1));
+  };
   
-  // Calculate map center
-  const calculateCenter = (): LatLngTuple => {
-    if (polygonCoordinates.length === 0) {
-      // Default to Madagascar's approximate center
-      return [-18.9, 47.5];
+  const handleThumbnailClick = (index: number) => {
+    setCurrentPhotoIndex(index);
+  };
+  
+  // Transform coordinates for Leaflet (swap lat/lng)
+  const polygonCoordinates = terrainCoordinates ? 
+    terrainCoordinates.map(coord => [coord[1], coord[0]]) : 
+    [];
+
+  // Improved focus management
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      // Allow proper focus return before closing
+      setTimeout(() => {
+        onClose();
+      }, 0);
     }
-    
-    const lats = polygonCoordinates.map(coord => coord[0]);
-    const lngs = polygonCoordinates.map(coord => coord[1]);
-    
-    const centerLat = (Math.min(...lats) + Math.max(...lats)) / 2;
-    const centerLng = (Math.min(...lngs) + Math.max(...lngs)) / 2;
-    
-    return [centerLat, centerLng];
   };
-  
-  const mapCenter = calculateCenter();
-  const hasMap = terrainCoordinates.length >= 3;
   
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[800px] min-h-[500px] p-0">
-        <DialogHeader className="p-4 pb-0">
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      <DialogContent className="sm:max-w-[800px]">
+        <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>
+            {hasPhotos && hasMapData 
+              ? "Naviguez entre les photos et la carte du terrain" 
+              : hasPhotos 
+                ? "Parcourez les photos du terrain" 
+                : "Visualisez l'emplacement du terrain"}
+          </DialogDescription>
         </DialogHeader>
         
-        {hasMap ? (
-          <Tabs defaultValue={activeTab} onValueChange={(value) => setActiveTab(value as 'photos' | 'map')} className="flex flex-col h-full">
-            <TabsList className="mx-4 mb-0">
+        {hasPhotos && hasMapData ? (
+          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'photos' | 'map')}>
+            <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="photos">Photos</TabsTrigger>
               <TabsTrigger value="map">Carte</TabsTrigger>
             </TabsList>
             
-            <TabsContent value="photos" className="flex-1 relative mt-0">
-              {photos.length > 0 ? (
-                <>
-                  <div className="w-full h-[400px] relative">
-                    <img 
-                      src={photos[currentIndex]} 
-                      alt={`Photo ${currentIndex + 1}`} 
-                      className="w-full h-full object-contain"
-                    />
-                    
-                    {photos.length > 1 && (
-                      <>
-                        <Button 
-                          variant="outline" 
-                          size="icon" 
-                          className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-background/80"
-                          onClick={handlePrevious}
-                        >
-                          <ChevronLeft className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="icon" 
-                          className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-background/80"
-                          onClick={handleNext}
-                        >
-                          <ChevronRight className="h-4 w-4" />
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                  
-                  <div className="p-2 text-center text-sm text-muted-foreground">
-                    {photos.length > 1
-                      ? `Photo ${currentIndex + 1} sur ${photos.length}`
-                      : 'Photo unique'
-                    }
-                  </div>
-                </>
-              ) : (
-                <div className="w-full h-[400px] flex items-center justify-center">
-                  <p className="text-muted-foreground">Aucune photo disponible</p>
-                </div>
-              )}
+            <TabsContent value="photos" className="mt-4">
+              {renderPhotoContent()}
             </TabsContent>
             
-            <TabsContent value="map" className="flex-1 mt-0">
-              <div className="w-full h-[400px]">
-                <MapContainer 
-                  center={mapCenter} 
-                  zoom={13} 
-                  style={{ height: '100%', width: '100%' }}
-                  scrollWheelZoom={false}
-                >
-                  <TileLayer
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  />
-                  {polygonCoordinates.length >= 3 && (
-                    <Polygon 
-                      positions={polygonCoordinates}
-                      pathOptions={{ color: 'green', fillColor: 'green', fillOpacity: 0.2 }}
-                    />
-                  )}
-                </MapContainer>
-              </div>
+            <TabsContent value="map" className="mt-4">
+              {renderMapContent()}
             </TabsContent>
           </Tabs>
+        ) : hasPhotos ? (
+          renderPhotoContent()
         ) : (
-          <>
-            {photos.length > 0 ? (
-              <div className="relative">
-                <div className="w-full h-[400px] relative">
-                  <img 
-                    src={photos[currentIndex]} 
-                    alt={`Photo ${currentIndex + 1}`} 
-                    className="w-full h-full object-contain"
-                  />
-                  
-                  {photos.length > 1 && (
-                    <>
-                      <Button 
-                        variant="outline" 
-                        size="icon" 
-                        className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-background/80"
-                        onClick={handlePrevious}
-                      >
-                        <ChevronLeft className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="icon" 
-                        className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-background/80"
-                        onClick={handleNext}
-                      >
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                    </>
-                  )}
-                </div>
-                
-                <div className="p-2 text-center text-sm text-muted-foreground">
-                  {photos.length > 1
-                    ? `Photo ${currentIndex + 1} sur ${photos.length}`
-                    : 'Photo unique'
-                  }
-                </div>
-              </div>
-            ) : (
-              <div className="w-full h-[400px] flex items-center justify-center">
-                <p className="text-muted-foreground">Aucune photo disponible</p>
-              </div>
-            )}
-          </>
+          renderMapContent()
         )}
       </DialogContent>
     </Dialog>
   );
+  
+  function renderPhotoContent() {
+    if (!hasPhotos) return null;
+    
+    return (
+      <div className="flex flex-col items-center">
+        <div className="relative w-full h-[300px] md:h-[400px] my-4 bg-gray-100 rounded-md overflow-hidden">
+          {/* Main photo display */}
+          <img 
+            src={photos[currentPhotoIndex]} 
+            alt={`Photo ${currentPhotoIndex + 1}`}
+            className="w-full h-full object-contain"
+          />
+          
+          {/* Navigation arrows */}
+          {photos.length > 1 && (
+            <>
+              <Button 
+                variant="ghost" 
+                size="icon"
+                className="absolute left-2 top-1/2 transform -translate-y-1/2 rounded-full bg-black/30 hover:bg-black/50"
+                onClick={handlePrevious}
+              >
+                <ChevronLeft className="h-6 w-6 text-white" />
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="icon"
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 rounded-full bg-black/30 hover:bg-black/50"
+                onClick={handleNext}
+              >
+                <ChevronRight className="h-6 w-6 text-white" />
+              </Button>
+            </>
+          )}
+          
+          {/* Photo counter */}
+          <div className="absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded-md">
+            {currentPhotoIndex + 1} / {photos.length}
+          </div>
+        </div>
+        
+        {/* Thumbnails */}
+        {photos.length > 1 && (
+          <div className="flex flex-wrap justify-center gap-2 mt-4">
+            {photos.map((photo, index) => (
+              <div
+                key={index}
+                className={cn(
+                  "w-16 h-16 cursor-pointer rounded-md overflow-hidden border-2",
+                  index === currentPhotoIndex ? "border-primary" : "border-transparent"
+                )}
+                onClick={() => handleThumbnailClick(index)}
+              >
+                <img 
+                  src={photo} 
+                  alt={`Thumbnail ${index + 1}`}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+  
+  function renderMapContent() {
+    if (!hasMapData) return (
+      <div className="flex items-center justify-center h-[300px] bg-muted rounded-md">
+        <p className="text-muted-foreground">Aucune donnée de carte disponible</p>
+      </div>
+    );
+    
+    return (
+      <div className="w-full h-[400px] my-4 bg-gray-100 rounded-md overflow-hidden">
+        <MapContainer
+          bounds={polygonCoordinates as any}
+          style={{ height: '100%', width: '100%' }}
+          zoomControl={true}
+          attributionControl={true}
+        >
+          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+          <Polygon 
+            positions={polygonCoordinates}
+            pathOptions={{ color: 'red', fillColor: '#f03', weight: 2, opacity: 0.7, fillOpacity: 0.3 }}
+          />
+        </MapContainer>
+      </div>
+    );
+  }
 };
 
 export default ProjectPhotosGallery;
