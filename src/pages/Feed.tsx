@@ -1,438 +1,175 @@
-
 import React, { useState, useEffect } from "react";
-import { Navigate } from "react-router-dom";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { motion } from "framer-motion";
-import { AgriculturalProject } from "@/types/agriculturalProject";
-import { supabase } from "@/integrations/supabase/client";
+import { useSearchParams } from "react-router-dom";
+import NewPost from "@/components/NewPost";
+import Post from "@/components/Post";
+import ProjectCard from "@/components/ProjectCard";
 import { useAuth } from "@/contexts/AuthContext";
-import { toast } from "sonner";
-import { Link } from "react-router-dom";
-import AgriculturalProjectCard from '@/components/AgriculturalProjectCard';
+import { supabase } from "@/integrations/supabase/client";
+import { AgriculturalProject } from "@/types/agriculturalProject";
+import AgriculturalProjectCard from "@/components/AgriculturalProjectCard";
+import ProjectDetailsDialog from "@/components/ProjectDetailsDialog";
 
-const Feed: React.FC = () => {
+const Feed = () => {
+  const [posts, setPosts] = useState<any[]>([]);
   const [projects, setProjects] = useState<AgriculturalProject[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeFilters, setActiveFilters] = useState<{
-    culture?: string;
-    region?: string;
-    district?: string;
-    commune?: string;
-  }>({});
-  const { user } = useAuth();
-  
-  // Redirect to auth if not logged in
-  if (!user) {
-    return <Navigate to="/auth" replace />;
-  }
+  const { user, profile } = useAuth();
+  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const projectIdParam = searchParams.get('projectId');
   
   useEffect(() => {
-    fetchProjects();
-  }, [activeFilters]);
+    if (projectIdParam) {
+      setSelectedProjectId(parseInt(projectIdParam));
+    }
+  }, [projectIdParam]);
   
-  const fetchProjects = async () => {
+  useEffect(() => {
+    fetchPosts();
+  }, []);
+  
+  const fetchPosts = async () => {
     try {
       setLoading(true);
+      const { data: postsData, error: postsError } = await supabase
+        .from('post')
+        .select('*')
+        .order('created_at', { ascending: false });
+        
+      if (postsError) throw postsError;
+      setPosts(postsData || []);
       
-      // First, fetch all projects with status 'en financement'
-      let { data: projetsData, error: projetsError } = await supabase
+      const { data: projectsData, error: projectsError } = await supabase
         .from('projet')
         .select(`
           id_projet,
-          surface_ha,
-          statut,
-          created_at,
-          id_tantsaha,
-          id_commune,
-          id_technicien,
           titre,
           description,
-          utilisateur!id_tantsaha(id_utilisateur, nom, prenoms, photo_profil),
-          commune(nom_commune, district(nom_district, region(nom_region)))
+          id_tantsaha,
+          surface_ha,
+          commune:id_commune(nom_commune),
+          district:id_district(nom_district),
+          region:id_region(nom_region),
+          projet_culture(
+            culture:id_culture(nom_culture)
+          )
         `)
-        .eq('statut', 'en financement')
-        .order('created_at', { ascending: false });
+        .limit(5);
+        
+      if (projectsError) throw projectsError;
       
-      if (projetsError) {
-        throw projetsError;
-      }
-      
-      // Apply location filters manually
-      if (activeFilters.region || activeFilters.district || activeFilters.commune) {
-        projetsData = projetsData.filter(projet => {
-          // Skip projects with missing location data
-          if (!projet.commune || !projet.commune.district || !projet.commune.district.region) {
-            return false;
-          }
-          
-          // Apply region filter
-          if (activeFilters.region && 
-              projet.commune.district.region.nom_region !== activeFilters.region) {
-            return false;
-          }
-          
-          // Apply district filter
-          if (activeFilters.district && 
-              projet.commune.district.nom_district !== activeFilters.district) {
-            return false;
-          }
-          
-          // Apply commune filter
-          if (activeFilters.commune && 
-              projet.commune.nom_commune !== activeFilters.commune) {
-            return false;
-          }
-          
-          return true;
-        });
-      }
-      
-      const { data: culturesData, error: culturesError } = await supabase
-        .from('projet_culture')
-        .select(`
-          id_projet,
-          id_culture,
-          cout_exploitation_previsionnel,
-          rendement_previsionnel,
-          culture(nom_culture)
-        `);
-        
-      if (culturesError) {
-        throw culturesError;
-      }
-      
-      let filteredCultures = culturesData;
-      if (activeFilters.culture) {
-        filteredCultures = culturesData.filter(
-          pc => pc.culture && pc.culture.nom_culture === activeFilters.culture
-        );
-      }
-      
-      const { data: investissementsData, error: investissementsError } = await supabase
-        .from('investissement')
-        .select(`
-          id_projet,
-          montant
-        `);
-        
-      if (investissementsError) {
-        throw investissementsError;
-      }
-      
-      const { data: likesData, error: likesError } = await supabase
-        .from('aimer_projet')
-        .select(`
-          id_projet,
-          id_utilisateur
-        `);
-        
-      if (likesError) {
-        throw likesError;
-      }
-      
-      const { data: commentsCountData, error: commentsError } = await supabase
-        .from('commentaire')
-        .select('id_projet');
-        
-      if (commentsError) {
-        throw commentsError;
-      }
-      
-      const commentsCount: Record<string, number> = {};
-      commentsCountData.forEach(comment => {
-        const projectId = comment.id_projet.toString();
-        commentsCount[projectId] = (commentsCount[projectId] || 0) + 1;
-      });
-      
-      let finalProjects = projetsData;
-      
-      // Apply culture filter
-      if (activeFilters.culture) {
-        const filteredProjectIds = filteredCultures.map(fc => fc.id_projet);
-        finalProjects = projetsData.filter(
-          project => filteredProjectIds.includes(project.id_projet)
-        );
-      }
-      
-      // Transform projects to the format expected by the UI
-      const transformedProjects = finalProjects.map(projet => {
-        const projetCultures = culturesData.filter(pc => pc.id_projet === projet.id_projet);
-        
-        const currentFunding = investissementsData
-          .filter(inv => inv.id_projet === projet.id_projet)
-          .reduce((sum, inv) => sum + inv.montant, 0);
-        
-        const likes = likesData.filter(like => like.id_projet === projet.id_projet).length;
-        
-        const isLiked = user ? 
-          likesData.some(like => like.id_projet === projet.id_projet && like.id_utilisateur === user.id) : 
-          false;
-        
-        const commentCount = commentsCount[projet.id_projet.toString()] || 0;
-        
-        const cultivationType = projetCultures.length > 0 
-          ? projetCultures[0].culture.nom_culture 
-          : "Non spécifié";
-        
-        const farmingCost = projetCultures.length > 0 
-          ? projetCultures[0].cout_exploitation_previsionnel || 0 
-          : 0;
-        
-        const expectedYield = projetCultures.length > 0 
-          ? projetCultures[0].rendement_previsionnel || 0 
-          : 0;
-        
-        const expectedRevenue = expectedYield * projet.surface_ha * 1.5 * farmingCost;
-        
-        const tantsaha = projet.utilisateur;
-        const farmer = tantsaha ? {
-          id: tantsaha.id_utilisateur,
-          name: `${tantsaha.nom} ${tantsaha.prenoms || ''}`.trim(),
-          username: tantsaha.nom.toLowerCase().replace(/\s+/g, ''),
-          avatar: tantsaha.photo_profil,
-        } : {
-          id: "",
-          name: "Utilisateur inconnu",
-          username: "inconnu",
-          avatar: undefined,
-        };
-        
-        return {
-          id: projet.id_projet.toString(),
-          title: projet.titre || `Projet de culture de ${cultivationType}`,
-          description: projet.description || `Projet de culture de ${cultivationType} sur un terrain de ${projet.surface_ha} hectares.`,
-          farmer,
-          location: {
-            region: projet.commune?.district?.region?.nom_region || "Non spécifié",
-            district: projet.commune?.district?.nom_district || "Non spécifié",
-            commune: projet.commune?.nom_commune || "Non spécifié"
+      // Mock data for now
+      setProjects([
+        {
+          id: "1",
+          farmer: {
+            name: "Jean Dupont",
+            avatar: "https://randomuser.me/api/portraits/men/1.jpg"
           },
-          cultivationArea: projet.surface_ha,
-          cultivationType,
-          farmingCost,
-          expectedYield,
-          expectedRevenue,
-          creationDate: new Date(projet.created_at).toISOString().split('T')[0],
-          images: [],
-          fundingGoal: farmingCost * projet.surface_ha,
-          currentFunding,
-          likes,
-          comments: commentCount,
-          shares: 0,
-          isLiked,
-          technicianId: projet.id_technicien,
-        };
-      });
+          creationDate: "2023-04-15",
+          cultivationType: "Riz",
+          cultivationArea: 5,
+          location: {
+            region: "Analamanga",
+            district: "Antananarivo",
+            commune: "Antananarivo"
+          },
+          fundingGoal: 5000000,
+          currentFunding: 2500000,
+          farmingCost: 1000000,
+          expectedYield: 3.5,
+          expectedRevenue: 7000000,
+          likes: 12,
+          comments: 5,
+          shares: 3,
+          technicianId: "tech-123",
+          isLiked: false
+        },
+        {
+          id: "2",
+          farmer: {
+            name: "Marie Razafy",
+            avatar: "https://randomuser.me/api/portraits/women/2.jpg"
+          },
+          creationDate: "2023-04-10",
+          cultivationType: "Maïs",
+          cultivationArea: 3,
+          location: {
+            region: "Itasy",
+            district: "Miarinarivo",
+            commune: "Miarinarivo"
+          },
+          fundingGoal: 3000000,
+          currentFunding: 1800000,
+          farmingCost: 800000,
+          expectedYield: 2.5,
+          expectedRevenue: 4500000,
+          likes: 8,
+          comments: 3,
+          shares: 1,
+          technicianId: "tech-456",
+          isLiked: true
+        }
+      ]);
       
-      setProjects(transformedProjects);
+      setLoading(false);
     } catch (error) {
-      console.error("Erreur lors de la récupération des projets:", error);
-      toast.error("Erreur lors du chargement des projets");
-    } finally {
+      console.error("Error fetching feed data:", error);
       setLoading(false);
     }
   };
   
-  const handleToggleLike = async (projectId: string, isCurrentlyLiked: boolean) => {
-    if (!user) {
-      toast.error("Vous devez être connecté pour aimer un projet");
-      return;
-    }
-    
-    try {
-      if (isCurrentlyLiked) {
-        const { error } = await supabase
-          .from('aimer_projet')
-          .delete()
-          .match({ 
-            id_projet: parseInt(projectId), 
-            id_utilisateur: user.id 
-          });
-          
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('aimer_projet')
-          .insert({ 
-            id_projet: parseInt(projectId), 
-            id_utilisateur: user.id 
-          });
-          
-        if (error) throw error;
-      }
-      
-      setProjects(projects.map(project => {
-        if (project.id === projectId) {
-          return {
-            ...project,
-            likes: isCurrentlyLiked ? project.likes - 1 : project.likes + 1,
-            isLiked: !isCurrentlyLiked
-          };
-        }
-        return project;
-      }));
-    } catch (error) {
-      console.error("Erreur lors de la gestion du like:", error);
-      toast.error("Erreur lors de la gestion du like");
-    }
+  const handleProjectDetailsClose = () => {
+    setSelectedProjectId(null);
+    // Remove the projectId parameter from the URL
+    const newSearchParams = new URLSearchParams(searchParams);
+    newSearchParams.delete('projectId');
+    setSearchParams(newSearchParams);
   };
   
-  const applyFilter = (filterType: string, value: string) => {
-    setActiveFilters(prev => ({
-      ...prev,
-      [filterType]: value
-    }));
-  };
-  
-  const clearFilters = () => {
-    setActiveFilters({});
-  };
-  
-  const container = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
-  };
-  
-  const item = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 200, damping: 25 } }
-  };
-
-  const renderActiveFilters = () => {
-    if (Object.keys(activeFilters).length === 0) return null;
-    
-    return (
-      <div className="mb-4 p-2 bg-muted rounded-lg flex flex-wrap items-center gap-2">
-        <span className="text-sm font-medium">Filtres :</span>
-        {Object.entries(activeFilters).map(([key, value]) => (
-          <span 
-            key={key} 
-            className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary text-primary-foreground"
-          >
-            {key}: {value}
-            <button 
-              className="ml-1 rounded-full" 
-              onClick={() => {
-                const newFilters = {...activeFilters};
-                delete newFilters[key as keyof typeof activeFilters];
-                setActiveFilters(newFilters);
-              }}
-            >
-              ×
-            </button>
-          </span>
-        ))}
-        <button 
-          className="text-xs text-muted-foreground hover:text-primary ml-auto"
-          onClick={clearFilters}
-        >
-          Effacer tout
-        </button>
-      </div>
+  const handleLikeToggle = (projectId: string) => {
+    // Update the like status in the projects list
+    setProjects(prevProjects => 
+      prevProjects.map(project => 
+        project.id === projectId
+          ? { ...project, isLiked: !project.isLiked, likes: project.isLiked ? project.likes - 1 : project.likes + 1 }
+          : project
+      )
     );
   };
 
   return (
-    <div className="max-w-md mx-auto px-4 py-4">
-      <header className="mb-4">
-        <h1 className="text-2xl font-bold text-gray-900">Projets en financement</h1>
-      </header>
+    <div className="container mx-auto py-4 max-w-3xl">
+      {user && <NewPost />}
       
-      <Tabs defaultValue="for-you" className="mb-6">
-        <TabsList className="grid w-full grid-cols-2 bg-muted rounded-lg">
-          <TabsTrigger value="for-you" className="rounded-md">Pour vous</TabsTrigger>
-          <TabsTrigger value="following" className="rounded-md">Abonnements</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="for-you" className="mt-4">
-          {renderActiveFilters()}
+      {loading ? (
+        <div className="flex justify-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+        </div>
+      ) : (
+        <div>
+          {projects.map(project => (
+            <AgriculturalProjectCard 
+              key={project.id} 
+              project={project} 
+              onLikeToggle={(isLiked) => handleLikeToggle(project.id)}
+            />
+          ))}
           
-          {loading ? (
-            <div className="flex items-center justify-center h-40">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-          ) : (
-            <motion.div
-              className="space-y-4"
-              variants={container}
-              initial="hidden"
-              animate="show"
-            >
-              {projects.length > 0 ? (
-                projects.map((project) => (
-                  <motion.div key={project.id} variants={item}>
-                    <AgriculturalProjectCard 
-                      project={{
-                        ...project,
-                        farmer: {
-                          ...project.farmer,
-                          name: (
-                            <Link to={`/profile/${project.farmer.id}`} className="hover:underline">
-                              {project.farmer.name}
-                            </Link>
-                          )
-                        },
-                        cultivationType: (
-                          <button 
-                            className="text-primary hover:underline" 
-                            onClick={() => applyFilter('culture', project.cultivationType as string)}
-                          >
-                            {project.cultivationType}
-                          </button>
-                        ),
-                        location: {
-                          region: (
-                            <button 
-                              className="text-primary hover:underline" 
-                              onClick={() => applyFilter('region', project.location.region as string)}
-                            >
-                              {project.location.region}
-                            </button>
-                          ),
-                          district: (
-                            <button 
-                              className="text-primary hover:underline" 
-                              onClick={() => applyFilter('district', project.location.district as string)}
-                            >
-                              {project.location.district}
-                            </button>
-                          ),
-                          commune: (
-                            <button 
-                              className="text-primary hover:underline" 
-                              onClick={() => applyFilter('commune', project.location.commune as string)}
-                            >
-                              {project.location.commune}
-                            </button>
-                          )
-                        }
-                      }}
-                      onLikeToggle={(isLiked) => handleToggleLike(project.id, isLiked)}
-                    />
-                  </motion.div>
-                ))
-              ) : (
-                <div className="flex items-center justify-center h-40 border rounded-lg border-dashed text-gray-500">
-                  {Object.keys(activeFilters).length > 0 
-                    ? "Aucun projet ne correspond à ces filtres" 
-                    : "Aucun projet en financement disponible pour le moment"}
-                </div>
-              )}
-            </motion.div>
-          )}
-        </TabsContent>
-        
-        <TabsContent value="following" className="mt-4">
-          <div className="flex items-center justify-center h-40 border rounded-lg border-dashed text-gray-500">
-            Suivez des agriculteurs pour voir leurs projets
-          </div>
-        </TabsContent>
-      </Tabs>
+          {posts.map(post => (
+            <Post key={post.id} post={post} />
+          ))}
+        </div>
+      )}
+      
+      {selectedProjectId && (
+        <ProjectDetailsDialog 
+          isOpen={!!selectedProjectId}
+          onClose={handleProjectDetailsClose}
+          projectId={selectedProjectId}
+          userRole={profile?.nom_role?.toLowerCase()}
+        />
+      )}
     </div>
   );
 };

@@ -107,7 +107,8 @@ const Notifications: React.FC = () => {
         if (notification.entity_type === "terrain") {
           link = `/terrain?id=${notification.entity_id}`;
         } else if (notification.entity_type === "projet") {
-          link = `/feed?project=${notification.entity_id}`;
+          // Changed this line to open ProjectDetailsDialog
+          link = `/feed?projectId=${notification.entity_id}`;
         } else if (notification.entity_type === "jalon") {
           link = `/projet?id=${notification.projet_id}#jalons`;
         } else if (notification.entity_type === "investissement") {

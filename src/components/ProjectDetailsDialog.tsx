@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -14,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import UserAvatar from './UserAvatar';
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
 
 interface ProjectDetailsDialogProps {
   isOpen: boolean;
@@ -33,16 +35,66 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
   const [investments, setInvestments] = useState<any[]>([]);
   const [jalons, setJalons] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [allProjectIds, setAllProjectIds] = useState<number[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  
+  useEffect(() => {
+    if (isOpen) {
+      fetchAllProjectIds();
+    }
+  }, [isOpen]);
   
   useEffect(() => {
     if (isOpen && projectId) {
       fetchProjectDetails();
       fetchInvestments();
       fetchJalons();
+      
+      // Update current index when projectId changes
+      const index = allProjectIds.findIndex(id => id === projectId);
+      if (index !== -1) {
+        setCurrentIndex(index);
+      }
     }
-  }, [isOpen, projectId]);
+  }, [isOpen, projectId, allProjectIds]);
   
-  const fetchProjectDetails = async () => {
+  const fetchAllProjectIds = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('projet')
+        .select('id_projet')
+        .order('id_projet', { ascending: true });
+      
+      if (error) throw error;
+      
+      const ids = data.map(p => p.id_projet);
+      setAllProjectIds(ids);
+    } catch (error) {
+      console.error('Error fetching project IDs:', error);
+    }
+  };
+  
+  const navigateToProject = (direction: 'next' | 'prev') => {
+    if (allProjectIds.length <= 1) return;
+    
+    let newIndex;
+    if (direction === 'next') {
+      newIndex = (currentIndex + 1) % allProjectIds.length;
+    } else {
+      newIndex = (currentIndex - 1 + allProjectIds.length) % allProjectIds.length;
+    }
+    
+    const newProjectId = allProjectIds[newIndex];
+    setLoading(true);
+    
+    // We're not closing and reopening the dialog, just changing the projectId
+    fetchProjectDetails(newProjectId);
+    fetchInvestments(newProjectId);
+    fetchJalons(newProjectId);
+    setCurrentIndex(newIndex);
+  };
+  
+  const fetchProjectDetails = async (specificProjectId = projectId) => {
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -65,7 +117,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
             culture:id_culture(nom_culture)
           )
         `)
-        .eq('id_projet', projectId)
+        .eq('id_projet', specificProjectId)
         .single();
       
       if (error) throw error;
@@ -82,7 +134,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
     }
   };
   
-  const fetchInvestments = async () => {
+  const fetchInvestments = async (specificProjectId = projectId) => {
     try {
       const { data, error } = await supabase
         .from('investissement')
@@ -90,7 +142,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
           *,
           investisseur:id_investisseur(nom, prenoms)
         `)
-        .eq('id_projet', projectId)
+        .eq('id_projet', specificProjectId)
         .order('date_paiement', { ascending: false });
       
       if (error) throw error;
@@ -100,7 +152,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
     }
   };
   
-  const fetchJalons = async () => {
+  const fetchJalons = async (specificProjectId = projectId) => {
     try {
       const { data, error } = await supabase
         .from('projet_jalon')
@@ -109,7 +161,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
           jalon:id_jalon(nom_jalon, action_a_faire, id_culture),
           culture:jalon(id_culture(nom_culture))
         `)
-        .eq('id_projet', projectId)
+        .eq('id_projet', specificProjectId)
         .order('date_previsionnelle', { ascending: true });
       
       if (error) throw error;
@@ -282,8 +334,35 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Détails du projet #{project.id_projet}</DialogTitle>
+        <DialogHeader className="flex flex-row items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <DialogTitle>Détails du projet #{project.id_projet}</DialogTitle>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={() => navigateToProject('prev')}
+              disabled={allProjectIds.length <= 1}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={() => navigateToProject('next')}
+              disabled={allProjectIds.length <= 1}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={onClose}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </DialogHeader>
         
         <div className="space-y-6">
@@ -534,6 +613,27 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
               )}
             </TabsContent>
           </Tabs>
+        </div>
+        
+        <div className="flex justify-between mt-4">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => navigateToProject('prev')}
+            disabled={allProjectIds.length <= 1}
+          >
+            <ChevronLeft className="h-4 w-4 mr-2" />
+            Projet précédent
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => navigateToProject('next')}
+            disabled={allProjectIds.length <= 1}
+          >
+            Projet suivant
+            <ChevronRight className="h-4 w-4 ml-2" />
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
