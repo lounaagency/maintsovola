@@ -80,6 +80,14 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({
     "annulé": "bg-red-500 hover:bg-red-600",
   };
 
+  // Safe status class determination
+  const getStatusColorClass = (status: string | undefined) => {
+    if (!status) return "bg-gray-500"; // Default if no status
+    
+    const normalizedStatus = status.toLowerCase();
+    return statusColorMap[normalizedStatus] || "bg-gray-500";
+  };
+
   return (
     <>
       <Card 
@@ -141,8 +149,8 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({
             </div>
           )}
           
-          <Badge className={`absolute top-2 right-2 ${statusColorMap[statut.toLowerCase()] || "bg-gray-500"}`}>
-            {statut}
+          <Badge className={`absolute top-2 right-2 ${getStatusColorClass(statut)}`}>
+            {statut || "Non défini"}
           </Badge>
         </div>
         
