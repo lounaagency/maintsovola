@@ -292,17 +292,19 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
         return;
       }
 
-      const { data: activeProjects, error: projectsError } = await supabase
+      // Get ALL projects (including deleted/completed ones) to exclude their terrains
+      // This prevents selecting terrains that already had projects
+      const { data: allProjects, error: projectsError } = await supabase
         .from('projet')
-        .select('id_terrain')
-        .neq('statut', 'terminé');
+        .select('id_terrain');
         
       if (projectsError) {
-        console.error("Error fetching active projects:", projectsError);
+        console.error("Error fetching all projects:", projectsError);
       }
       
-      const excludedTerrainIds = activeProjects
-        ? activeProjects
+      // Filter out terrains that have ever been in any project, except the current one being edited
+      const excludedTerrainIds = allProjects
+        ? allProjects
             .filter(p => !isEditing || p.id_terrain !== initialData?.id_terrain)
             .map(p => p.id_terrain)
         : [];

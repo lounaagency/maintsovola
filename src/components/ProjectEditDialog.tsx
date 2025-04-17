@@ -29,6 +29,8 @@ const ProjectEditDialog: React.FC<ProjectEditDialogProps> = ({
 }) => {
   const handleSubmit = async (data: any) => {
     try {
+      console.log("Updating project with data:", data);
+      
       // Update the project
       const { error: projectError } = await supabase
         .from('projet')
@@ -44,25 +46,11 @@ const ProjectEditDialog: React.FC<ProjectEditDialogProps> = ({
           id_commune: data.id_commune
         })
         .eq('id_projet', project.id_projet);
-
-        // Console.log de la requête (utile surtout pour voir les paramètres)
-        console.log('Requête Supabase :', {
-          table: 'projet',
-          update: {
-            titre: data.titre,
-            description: data.description,
-            photos: data.photos,
-            statut: data.statut,
-            surface_ha: data.surface_ha,
-            id_terrain: data.id_terrain,
-            id_region: data.id_region,
-            id_district: data.id_district,
-            id_commune: data.id_commune
-          },
-          where: { id_projet: project.id_projet }
-        });
-          
-      if (projectError) throw projectError;
+        
+      if (projectError) {
+        console.error("Error updating project:", projectError);
+        throw projectError;
+      }
       
       // Delete existing project cultures and add new ones
       const { error: deleteError } = await supabase
@@ -70,7 +58,10 @@ const ProjectEditDialog: React.FC<ProjectEditDialogProps> = ({
         .delete()
         .eq('id_projet', project.id_projet);
         
-      if (deleteError) throw deleteError;
+      if (deleteError) {
+        console.error("Error deleting existing cultures:", deleteError);
+        throw deleteError;
+      }
       
       // Get culture details for financial calculations
       const { data: culturesData, error: cultureError } = await supabase
@@ -78,7 +69,10 @@ const ProjectEditDialog: React.FC<ProjectEditDialogProps> = ({
         .select('*')
         .in('id_culture', data.cultures);
       
-      if (cultureError) throw cultureError;
+      if (cultureError) {
+        console.error("Error fetching culture data:", cultureError);
+        throw cultureError;
+      }
       
       // Calculate terrain surface area
       const terrainSurface = data.surface_ha || 0;
@@ -97,20 +91,30 @@ const ProjectEditDialog: React.FC<ProjectEditDialogProps> = ({
           ? cultureInfo.rendement_ha * terrainSurface 
           : 0;
           
+        const rendementFinancier = cultureInfo?.prix_tonne && rendementTonne
+          ? cultureInfo.prix_tonne * rendementTonne
+          : 0;
+          
         return {
           id_projet: project.id_projet,
           id_culture: cultureId,
           cout_exploitation_previsionnel: coutExploitation,
           rendement_previsionnel: rendementTonne,
+          rendement_financier_previsionnel: rendementFinancier,
           date_debut_previsionnelle: new Date().toISOString().split('T')[0]
         };
       });
+      
+      console.log("Inserting project cultures:", projetCultures);
       
       const { error: insertError } = await supabase
         .from('projet_culture')
         .insert(projetCultures);
         
-      if (insertError) throw insertError;
+      if (insertError) {
+        console.error("Error inserting project cultures:", insertError);
+        throw insertError;
+      }
       
       toast.success("Projet mis à jour avec succès");
       onSubmitSuccess();
