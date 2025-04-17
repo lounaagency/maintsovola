@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Heart, MessageCircle, Share, Edit, Info, Shield, Image, Map, BarChart, ExternalLink } from 'lucide-react';
+import { Heart, MessageCircle, Share, Edit, Info, Shield, Image, Map, BarChart, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import UserAvatar from './UserAvatar';
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +44,7 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
   }>({ title: null, description: null });
   const [projectCultures, setProjectCultures] = useState<ProjetCulture[]>([]);
   const [galleryTab, setGalleryTab] = useState<'photos' | 'map'>('photos');
+  const [currentPhotoIndex, setCurrentPhotoIndex] = useState<number>(0);
   const { user, profile } = useAuth();
   const userRole = profile?.nom_role?.toLowerCase() || '';
   
@@ -244,6 +245,17 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
     setShowFinancialDetails(true);
   };
   
+  const handlePhotoNavigation = (direction: 'next' | 'prev') => {
+    const totalPhotos = displayedPhotos.length;
+    setCurrentPhotoIndex((prevIndex) => {
+      if (direction === 'next') {
+        return (prevIndex + 1) % totalPhotos;
+      } else {
+        return (prevIndex - 1 + totalPhotos) % totalPhotos;
+      }
+    });
+  };
+  
   const hasPhotos = displayedPhotos.length > 0;
   const hasMap = terrainCoordinates.length >= 3;
   
@@ -278,14 +290,42 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
             <p className="text-sm text-gray-700">{displayDescription}</p>
           </div>
           
-          
           {displayedPhotos.length > 0 && (
-            <div className="mb-4 rounded-md overflow-hidden">
+            <div className="mb-4 rounded-md overflow-hidden relative">
               <img 
                 src={displayedPhotos[0]} 
                 alt="Première photo du projet" 
                 className="w-full h-48 object-cover"
               />
+              {displayedPhotos.length > 1 && (
+                <>
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    className="absolute left-2 top-1/2 transform -translate-y-1/2 rounded-full bg-black/30 hover:bg-black/50"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handlePhotoNavigation('prev');
+                    }}
+                  >
+                    <ChevronLeft className="h-6 w-6 text-white" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 rounded-full bg-black/30 hover:bg-black/50"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handlePhotoNavigation('next');
+                    }}
+                  >
+                    <ChevronRight className="h-6 w-6 text-white" />
+                  </Button>
+                  <div className="absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded-md">
+                    {currentPhotoIndex + 1} / {displayedPhotos.length}
+                  </div>
+                </>
+              )}
             </div>
           )}
           
