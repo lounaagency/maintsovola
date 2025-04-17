@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Heart, MessageCircle, Share, Edit, Info, Shield, Image, Map } from 'lucide-react';
+import { Heart, MessageCircle, Share, Edit, Info, Shield, Image, Map, BarChart, ExternalLink } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import UserAvatar from './UserAvatar';
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +17,8 @@ import ProjectActions from './ProjectActions';
 import CommentSection from './CommentSection';
 import TechnicienContactLink from './TechnicienContactLink';
 import ProjectPhotosGallery from './ProjectPhotosGallery';
+import FinancialDetailsDialog from './FinancialDetailsDialog';
+import { ProjetCulture } from "@/types/culture";
 
 interface AgriculturalProjectCardProps {
   project: AgriculturalProject;
@@ -28,6 +30,7 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
   const [showInvestModal, setShowInvestModal] = useState<boolean>(false);
   const [showComments, setShowComments] = useState<boolean>(false);
   const [showPhotos, setShowPhotos] = useState<boolean>(false);
+  const [showFinancialDetails, setShowFinancialDetails] = useState<boolean>(false);
   const [investAmount, setInvestAmount] = useState<number>(0);
   const [currentFunding, setCurrentFunding] = useState<number>(project.currentFunding);
   const [fundingGap, setFundingGap] = useState<number>(Math.max(0, project.fundingGoal - project.currentFunding));
@@ -39,6 +42,7 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
     title: string | null;
     description: string | null;
   }>({ title: null, description: null });
+  const [projectCultures, setProjectCultures] = useState<ProjetCulture[]>([]);
   const [galleryTab, setGalleryTab] = useState<'photos' | 'map'>('photos');
   const { user, profile } = useAuth();
   const userRole = profile?.nom_role?.toLowerCase() || '';
@@ -56,7 +60,25 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
     try {
       const { data: projectData, error: projectError } = await supabase
         .from('projet')
-        .select('photos, id_terrain, titre, description')
+        .select(`
+          photos, 
+          id_terrain, 
+          titre, 
+          description,
+          projet_culture (
+            id_projet_culture,
+            id_culture,
+            rendement_previsionnel,
+            cout_exploitation_previsionnel,
+            culture (
+              id_culture,
+              nom_culture,
+              rendement_ha,
+              cout_exploitation_ha,
+              prix_tonne
+            )
+          )
+        `)
         .eq('id_projet', parseInt(project.id))
         .single();
       
@@ -66,6 +88,10 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
         title: projectData.titre,
         description: projectData.description
       });
+      
+      if (projectData.projet_culture) {
+        setProjectCultures(projectData.projet_culture);
+      }
       
       if (projectData.photos) {
         const photos = Array.isArray(projectData.photos) 
@@ -214,6 +240,10 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
     setShowPhotos(true);
   };
   
+  const handleOpenFinancialDetails = () => {
+    setShowFinancialDetails(true);
+  };
+  
   const hasPhotos = displayedPhotos.length > 0;
   const hasMap = terrainCoordinates.length >= 3;
   
@@ -318,18 +348,30 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
             </div>
           )}
           
-          <div className="grid grid-cols-2 gap-3 mb-4 bg-muted/30 p-2 rounded-md">
+          <div 
+            className="grid grid-cols-2 gap-3 mb-4 bg-muted/30 p-2 rounded-md cursor-pointer hover:bg-muted/50 transition-colors"
+            onClick={handleOpenFinancialDetails}
+          >
             <div className="text-xs">
               <span className="text-gray-500 block">Coût d'exploitation</span>
-              <span className="font-medium">{formatCurrency(project.farmingCost)} / ha</span>
+              <span className="font-medium flex items-center">
+                {formatCurrency(project.farmingCost)} / ha
+                <ExternalLink className="h-3 w-3 ml-1 text-primary" />
+              </span>
             </div>
             <div className="text-xs">
               <span className="text-gray-500 block">Rendement prévu</span>
-              <span className="font-medium">{project.expectedYield} t / ha</span>
+              <span className="font-medium flex items-center">
+                {project.expectedYield} t / ha
+                <ExternalLink className="h-3 w-3 ml-1 text-primary" />
+              </span>
             </div>
             <div className="text-xs">
               <span className="text-gray-500 block">Revenu estimé</span>
-              <span className="font-medium">{formatCurrency(project.expectedRevenue)}</span>
+              <span className="font-medium flex items-center">
+                {formatCurrency(project.expectedRevenue)}
+                <ExternalLink className="h-3 w-3 ml-1 text-primary" />
+              </span>
             </div>
             <div className="text-xs">
               <span className="text-gray-500 block">Objectif financement</span>
@@ -448,6 +490,12 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
         title={projectPhotos.length > 0 ? 'Photos du projet' : 'Photos du terrain'}
         terrainCoordinates={terrainCoordinates}
         initialTab={galleryTab}
+      />
+      
+      <FinancialDetailsDialog
+        isOpen={showFinancialDetails}
+        onClose={() => setShowFinancialDetails(false)}
+        projectCultures={projectCultures}
       />
     </>
   );

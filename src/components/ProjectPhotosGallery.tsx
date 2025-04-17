@@ -191,7 +191,7 @@ const ProjectPhotosGallery: React.FC<ProjectPhotosGalleryProps> = ({
         >
           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
           <Polygon 
-            positions={polygonCoordinates}
+            positions={polygonCoordinates as any}
             pathOptions={{ color: 'red', fillColor: '#f03', weight: 2, opacity: 0.7, fillOpacity: 0.3 }}
           />
         </MapContainer>
