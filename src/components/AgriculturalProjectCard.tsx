@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils";
 import ProjectPhotosGallery from "./ProjectPhotosGallery";
 import FinancialDetailsDialog from "./FinancialDetailsDialog";
+import { ProjetCulture } from "@/types/culture";
 
 interface Culture {
   id_culture: number;
@@ -14,16 +15,6 @@ interface Culture {
   cout_exploitation_ha: number;
   rendement_ha: number;
   prix_tonne: number;
-}
-
-interface ProjetCulture {
-  id_projet_culture?: number;
-  id_projet?: number;
-  id_culture?: number;
-  surface_prevue?: number;
-  rendement_previsionnel?: number;
-  cout_exploitation_previsionnel?: number;
-  culture?: Culture;
 }
 
 interface AgriculturalProjectCardProps {
@@ -71,14 +62,14 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({
     }
   };
 
-  const totalBudget = cultures.reduce((sum, culture) => {
+  const totalBudget = cultures && cultures.length > 0 ? cultures.reduce((sum, culture) => {
     return sum + (culture.cout_exploitation_previsionnel || 
       (culture.surface_prevue && culture.culture?.cout_exploitation_ha 
         ? culture.surface_prevue * culture.culture.cout_exploitation_ha 
         : 0));
-  }, 0);
+  }, 0) : 0;
 
-  const hasFinancialData = cultures.length > 0;
+  const hasFinancialData = cultures && cultures.length > 0;
   
   const statusColorMap: Record<string, string> = {
     "en attente": "bg-yellow-400 hover:bg-yellow-500",
@@ -176,7 +167,7 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({
             <div className="flex justify-between">
               <span className="text-gray-500">Cultures:</span>
               <span className="font-medium truncate max-w-[130px]">
-                {cultures.map(c => c.culture?.nom_culture).join(', ')}
+                {cultures?.map(c => c.culture?.nom_culture).join(', ') || "Aucune culture"}
               </span>
             </div>
             <div className="flex justify-between">
@@ -212,7 +203,7 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({
       <FinancialDetailsDialog
         isOpen={financialDialogOpen}
         onClose={() => setFinancialDialogOpen(false)}
-        projectCultures={cultures}
+        projectCultures={cultures || []}
         title={`Détails financiers - ${title}`}
       />
     </>
