@@ -33,6 +33,8 @@ export interface TerrainData {
 export interface TerrainFormData {
   id_terrain?: number;
   id_tantsaha?: string;
+  id_technicien?: string | null;
+  id_superviseur?: string | null;
   id_region: string;
   id_district: string;
   id_commune: string;

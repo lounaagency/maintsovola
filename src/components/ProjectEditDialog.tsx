@@ -44,7 +44,24 @@ const ProjectEditDialog: React.FC<ProjectEditDialogProps> = ({
           id_commune: data.id_commune
         })
         .eq('id_projet', project.id_projet);
-        
+
+        // Console.log de la requête (utile surtout pour voir les paramètres)
+        console.log('Requête Supabase :', {
+          table: 'projet',
+          update: {
+            titre: data.titre,
+            description: data.description,
+            photos: data.photos,
+            statut: data.statut,
+            surface_ha: data.surface_ha,
+            id_terrain: data.id_terrain,
+            id_region: data.id_region,
+            id_district: data.id_district,
+            id_commune: data.id_commune
+          },
+          where: { id_projet: project.id_projet }
+        });
+          
       if (projectError) throw projectError;
       
       // Delete existing project cultures and add new ones

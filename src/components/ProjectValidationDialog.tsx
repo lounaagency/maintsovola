@@ -118,7 +118,7 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
       const { error: updateError } = await supabase
         .from('projet')
         .update({
-          statut: validationDecision === "valider" ? "en cours de financement" : "rejeté",
+          statut: validationDecision === "valider" ? "en financement" : "rejeté",
           date_validation: validationDate,
           rapport_validation: validationReport || null,
           photos_validation: uploadedPhotoUrls.length > 0 ? uploadedPhotoUrls.join(',') : null,

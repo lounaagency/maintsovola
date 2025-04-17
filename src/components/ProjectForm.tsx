@@ -179,8 +179,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
         id_region: selectedTerrain.id_region,
         id_district: selectedTerrain.id_district,
         id_commune: selectedTerrain.id_commune,  
-        id_technicien: selectedTerrain.id_commune,  
-        id_superviseur: selectedTerrain.id_commune,
+        id_technicien: selectedTerrain.id_technicien,  
+        id_tantsaha: selectedTerrain.id_tantsaha,  
+        id_superviseur: selectedTerrain.id_superviseur,
         financialSummary
       };
       
