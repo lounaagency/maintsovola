@@ -113,12 +113,13 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
         }
       }
       
+      // Use consistent status values that match the tab values in Projects.tsx
       const newStatus = validationDecision === "valider" ? "en financement" : "rejeté";
       
       const { error: updateError } = await supabase
         .from('projet')
         .update({
-          statut: validationDecision === "valider" ? "en cours de financement" : "rejeté",
+          statut: newStatus, // Use consistent status naming
           date_validation: validationDate,
           rapport_validation: validationReport || null,
           photos_validation: uploadedPhotoUrls.length > 0 ? uploadedPhotoUrls.join(',') : null,
