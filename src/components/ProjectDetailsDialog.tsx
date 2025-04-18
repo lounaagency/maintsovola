@@ -223,6 +223,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
       
       console.log("Starting production with date:", productionStartDate);
       
+      // Step 1: Update project status to "en cours"
       const { error: updateError } = await supabase
         .from('projet')
         .update({
@@ -237,14 +238,23 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
         throw updateError;
       }
       
-      console.log("Project updated successfully, now inserting jalons");
+      console.log("Project updated successfully");
       
+      // Step 2: Insert jalons only if we have any
       if (jalons && jalons.length > 0) {
-        const jalonEntries = jalons.map(jalon => ({
-          id_projet: projectId,
-          id_jalon: jalon.id_jalon,
-          date_previsionnelle: jalon.date_previsionnelle
-        }));
+        console.log("Preparing jalon entries for insertion:", jalons.length);
+        
+        // Map jalons to the format expected by the database
+        const jalonEntries = jalons.map(jalon => {
+          console.log("Processing jalon:", jalon.id_jalon, "with date:", jalon.date_previsionnelle);
+          return {
+            id_projet: projectId,
+            id_jalon: jalon.id_jalon,
+            date_previsionnelle: jalon.date_previsionnelle
+          };
+        });
+        
+        console.log("Jalon entries to insert:", jalonEntries);
         
         const { error: jalonError } = await supabase
           .from('projet_jalon')
@@ -254,9 +264,16 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
           console.error("Error inserting jalons:", jalonError);
           throw jalonError;
         }
+        
+        console.log("Jalons inserted successfully");
+      } else {
+        console.log("No jalons to insert");
       }
       
-      if (project.id_tantsaha) {
+      // Step 3: Send notification to farmer if we have their ID
+      if (project && project.id_tantsaha) {
+        console.log("Sending notification to farmer:", project.id_tantsaha);
+        
         await supabase
           .from('notification')
           .insert({
