@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -452,10 +453,10 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
                     </div>
                   )}
                 </div>
-                {project.date_lancement && (
+                {project.date_debut_production && (
                   <div className="text-xs">
                     <p className="text-muted-foreground">Date de lancement</p>
-                    <p className="text-green-900">{formatDate(project.date_lancement)}</p>
+                    <p className="text-green-900">{formatDate(project.date_debut_production)}</p>
                   </div>
                 )}
               </div>
