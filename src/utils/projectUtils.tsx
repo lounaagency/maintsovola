@@ -64,7 +64,7 @@ export const canEditProject = (project: ProjectData, userRole: string | null, us
  * Calculate the funding percentage of a project
  */
 export const calculateProjectFunding = (project: ProjectData, investments: any[]): number => {
-  if (!project || !project.projet_culture || !investments) return 0;
+  if (!project || !project.projet_culture) return 0;
   
   const totalInvestment = investments.reduce((sum, inv) => sum + (inv.montant || 0), 0);
   const totalCost = project.projet_culture.reduce((sum, pc) => 

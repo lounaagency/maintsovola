@@ -54,6 +54,7 @@ export interface ProjectData {
     culture?: {
       nom_culture?: string;
     };
+    cout_exploitation_previsionnel?: number;
   }>;
   photos?: string;
   id_region?: number;
@@ -129,10 +130,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
             culture:id_culture(nom_culture),
             cout_exploitation_previsionnel
           ),
-          vue_suivi_financier_projet!projet_id(
-            total_investissement,
-            cout_total_previsionnel
-          )
+          investissements:investissement(montant)
         `);
       
       if (userRole === 'simple') {
@@ -150,27 +148,47 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
       if (statutFilter) {
         query = query.eq('statut', statutFilter);
       }
-
-      if (fundingStatus && statutFilter === 'en financement') {
-        query = query.neq('vue_suivi_financier_projet', null);
-      }
       
       query = query.order(sortColumn, { ascending: sortDirection === 'asc' });
       
       const { data: allProjects, error } = await query;
       if (error) throw error;
 
-      const filteredProjects = allProjects.filter(project => {
-        if (!fundingStatus || statutFilter !== 'en financement') return true;
-
-        const investmentTotal = project.vue_suivi_financier_projet?.[0]?.total_investissement || 0;
-        const totalCost = project.vue_suivi_financier_projet?.[0]?.cout_total_previsionnel || 0;
-        const fundingPercentage = totalCost === 0 ? 0 : Math.min((investmentTotal / totalCost) * 100, 100);
-
-        return fundingStatus === 'completed' ? fundingPercentage >= 100 : fundingPercentage < 100;
-      });
-      
-      setProjects(filteredProjects as ProjectData[]);
+      if (fundingStatus && statutFilter === 'en financement' && allProjects) {
+        const projectIds = allProjects.map(p => p.id_projet);
+        
+        if (projectIds.length > 0) {
+          const { data: projectCultures, error: cultureError } = await supabase
+            .from('projet_culture')
+            .select('id_projet, cout_exploitation_previsionnel')
+            .in('id_projet', projectIds);
+            
+          if (cultureError) throw cultureError;
+          
+          const projectCosts = projectIds.reduce((acc, id) => {
+            const cultures = projectCultures?.filter(pc => pc.id_projet === id) || [];
+            const totalCost = cultures.reduce((sum, culture) => sum + (culture.cout_exploitation_previsionnel || 0), 0);
+            acc[id] = totalCost;
+            return acc;
+          }, {} as Record<number, number>);
+          
+          const filteredProjects = allProjects.filter(project => {
+            const totalCost = projectCosts[project.id_projet] || 0;
+            if (totalCost === 0) return fundingStatus === 'in_progress';
+            
+            const totalInvestment = project.investissements?.reduce((sum, inv) => sum + (inv.montant || 0), 0) || 0;
+            const fundingPercentage = Math.min((totalInvestment / totalCost) * 100, 100);
+            
+            return fundingStatus === 'completed' ? fundingPercentage >= 100 : fundingPercentage < 100;
+          });
+          
+          setProjects(filteredProjects as ProjectData[]);
+        } else {
+          setProjects([]);
+        }
+      } else {
+        setProjects((allProjects || []) as ProjectData[]);
+      }
     } catch (error) {
       console.error("Erreur lors de la récupération des projets:", error);
       toast.error("Impossible de charger les projets");
