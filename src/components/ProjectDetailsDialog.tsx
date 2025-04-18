@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -126,44 +125,58 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
     return totalCost === 0 ? 0 : Math.min(Math.round((totalInvestment / totalCost) * 100), 100);
   };
 
+  const [productionStartDate, setProductionStartDate] = useState(
+    new Date().toISOString().split('T')[0]
+  );
+
+  // Update jalon dates when production start date changes
+  const updateJalonDates = (startDate: string) => {
+    if (!project?.projet_culture) return;
+    
+    const newJalons = jalons.map(jalon => {
+      if (!jalon.jalon?.jours_apres_lancement) return jalon;
+      
+      const jalonDate = new Date(startDate);
+      jalonDate.setDate(jalonDate.getDate() + jalon.jalon.jours_apres_lancement);
+      
+      return {
+        ...jalon,
+        date_previsionnelle: jalonDate.toISOString().split('T')[0]
+      };
+    });
+    
+    setJalons(newJalons);
+  };
+
+  useEffect(() => {
+    updateJalonDates(productionStartDate);
+  }, [productionStartDate]);
+
   const handleStartProduction = async () => {
     try {
-      const startDate = new Date().toISOString().split('T')[0];
-      
-      // Update project status
+      // Update project status and add production start date
       const { error } = await supabase
         .from('projet')
         .update({
           statut: 'en cours',
-          date_lancement: startDate
+          date_debut_production: productionStartDate,
+          id_lanceur_production: user?.id
         })
         .eq('id_projet', projectId);
       
       if (error) throw error;
       
-      // Create jalons for each culture in the project
-      for (const projectCulture of project.projet_culture) {
-        const { data: jalons, error: jalonsError } = await supabase
-          .from('jalon')
-          .select('*')
-          .eq('id_culture', projectCulture.id_culture);
+      // Create jalons for each culture with the calculated dates
+      for (const jalon of jalons) {
+        const { error: jalonError } = await supabase
+          .from('projet_jalon')
+          .insert({
+            id_projet: projectId,
+            id_jalon: jalon.id_jalon,
+            date_previsionnelle: jalon.date_previsionnelle
+          });
         
-        if (jalonsError) throw jalonsError;
-        
-        for (const jalon of jalons || []) {
-          const jalonDate = new Date(startDate);
-          jalonDate.setDate(jalonDate.getDate() + jalon.jours_apres_lancement);
-          
-          const { error: insertError } = await supabase
-            .from('projet_jalon')
-            .insert({
-              id_projet: projectId,
-              id_jalon: jalon.id_jalon,
-              date_previsionnelle: jalonDate.toISOString().split('T')[0]
-            });
-          
-          if (insertError) throw insertError;
-        }
+        if (jalonError) throw jalonError;
       }
       
       // Send notification to farmer
@@ -182,10 +195,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
       }
       
       toast.success("Le projet a été lancé en production");
-      
-      // Refresh project data
       fetchProjectDetails();
-      fetchJalons();
     } catch (error) {
       console.error('Error starting production:', error);
       toast.error("Impossible de lancer le projet en production");
@@ -378,7 +388,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
             </CardContent>
           </Card>
 
-          <Tabs defaultValue="finances" className="w-full text-xs">
+          <Tabs defaultValue={canLaunchProduction ? "jalons" : "finances"} className="w-full text-xs">
             <TabsList className="grid grid-cols-2">
               <TabsTrigger value="finances">Financement</TabsTrigger>
               <TabsTrigger value="jalons">Jalons & Production</TabsTrigger>
@@ -453,8 +463,21 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
             </TabsContent>
             
             <TabsContent value="jalons" className="space-y-4 mt-4">
-              {project.statut === 'en cours' ? (
+              {canLaunchProduction ? (
                 <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label htmlFor="startDate" className="text-sm font-medium">
+                      Date de début de production
+                    </label>
+                    <input
+                      id="startDate"
+                      type="date"
+                      value={productionStartDate}
+                      onChange={(e) => setProductionStartDate(e.target.value)}
+                      className="w-full p-2 border rounded"
+                    />
+                  </div>
+
                   <div className="border rounded-md">
                     <table className="w-full">
                       <thead>
@@ -462,8 +485,6 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
                           <th className="p-2 text-left text-sm">Jalon</th>
                           <th className="p-2 text-left text-sm">Culture</th>
                           <th className="p-2 text-left text-sm">Date prévue</th>
-                          <th className="p-2 text-left text-sm">Date réelle</th>
-                          {userRole === 'technicien' && <th className="p-2 text-sm"></th>}
                         </tr>
                       </thead>
                       <tbody>
@@ -479,27 +500,11 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
                               <td className="p-2 text-sm">
                                 {formatDate(jalon.date_previsionnelle)}
                               </td>
-                              <td className="p-2 text-sm">
-                                {jalon.date_reelle ? formatDate(jalon.date_reelle) : 'Non réalisé'}
-                              </td>
-                              {userRole === 'technicien' && (
-                                <td className="p-2 text-right">
-                                  {!jalon.date_reelle && (
-                                    <Button 
-                                      size="sm" 
-                                      variant="outline"
-                                      onClick={() => handleCompleteJalon(jalon.id_jalon)}
-                                    >
-                                      Marquer réalisé
-                                    </Button>
-                                  )}
-                                </td>
-                              )}
                             </tr>
                           ))
                         ) : (
                           <tr>
-                            <td colSpan={userRole === 'technicien' ? 5 : 4} className="p-4 text-center text-sm text-muted-foreground">
+                            <td colSpan={3} className="p-4 text-center text-sm text-muted-foreground">
                               Aucun jalon défini pour ce projet
                             </td>
                           </tr>
@@ -507,14 +512,12 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
                       </tbody>
                     </table>
                   </div>
-                  
-                  {userRole === 'technicien' && allJalonsCompleted() && (
-                    <div className="flex justify-end mt-4">
-                      <Button onClick={handleCompleteProject}>
-                        Terminer le projet
-                      </Button>
-                    </div>
-                  )}
+
+                  <div className="flex justify-end mt-4">
+                    <Button onClick={handleStartProduction}>
+                      Lancer la production
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <div className="p-8 text-center text-muted-foreground">

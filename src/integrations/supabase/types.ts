@@ -978,11 +978,13 @@ export type Database = {
         Row: {
           created_at: string | null
           created_by: string | null
+          date_debut_production: string | null
           date_validation: string | null
           description: string | null
           geom: unknown | null
           id_commune: number | null
           id_district: number | null
+          id_lanceur_production: string | null
           id_projet: number
           id_region: number | null
           id_superviseur: string | null
@@ -1001,11 +1003,13 @@ export type Database = {
         Insert: {
           created_at?: string | null
           created_by?: string | null
+          date_debut_production?: string | null
           date_validation?: string | null
           description?: string | null
           geom?: unknown | null
           id_commune?: number | null
           id_district?: number | null
+          id_lanceur_production?: string | null
           id_projet?: number
           id_region?: number | null
           id_superviseur?: string | null
@@ -1024,11 +1028,13 @@ export type Database = {
         Update: {
           created_at?: string | null
           created_by?: string | null
+          date_debut_production?: string | null
           date_validation?: string | null
           description?: string | null
           geom?: unknown | null
           id_commune?: number | null
           id_district?: number | null
+          id_lanceur_production?: string | null
           id_projet?: number
           id_region?: number | null
           id_superviseur?: string | null
@@ -1100,6 +1106,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "district"
             referencedColumns: ["id_district"]
+          },
+          {
+            foreignKeyName: "projet_id_lanceur_production_fkey"
+            columns: ["id_lanceur_production"]
+            isOneToOne: false
+            referencedRelation: "utilisateur"
+            referencedColumns: ["id_utilisateur"]
+          },
+          {
+            foreignKeyName: "projet_id_lanceur_production_fkey"
+            columns: ["id_lanceur_production"]
+            isOneToOne: false
+            referencedRelation: "utilisateurs_par_role"
+            referencedColumns: ["id_utilisateur"]
           },
           {
             foreignKeyName: "projet_id_region_fkey"
