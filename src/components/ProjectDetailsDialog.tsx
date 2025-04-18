@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -14,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import UserAvatar from './UserAvatar';
+import { toast } from "sonner";
 
 interface ProjectDetailsDialogProps {
   isOpen: boolean;
@@ -28,7 +30,6 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
   projectId,
   userRole
 }) => {
-  const { toast } = useToast();
   const [project, setProject] = useState<any>(null);
   const [investments, setInvestments] = useState<any[]>([]);
   const [jalons, setJalons] = useState<any[]>([]);
@@ -72,11 +73,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
       setProject(data);
     } catch (error) {
       console.error('Error fetching project details:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de récupérer les détails du projet",
-        variant: "destructive"
-      });
+      toast.error("Impossible de récupérer les détails du projet");
     } finally {
       setLoading(false);
     }
@@ -169,21 +166,29 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
         }
       }
       
-      toast({
-        title: "Succès",
-        description: "Le projet a été lancé en production",
-      });
+      // Send notification to farmer
+      if (project.id_tantsaha) {
+        await supabase
+          .from('notification')
+          .insert({
+            id_destinataire: project.id_tantsaha,
+            titre: "Votre projet est en production",
+            message: `Votre projet "${project.titre || `Projet #${project.id_projet}`}" est maintenant en cours de production.`,
+            type: "success",
+            entity_type: "projet",
+            entity_id: projectId,
+            projet_id: projectId
+          });
+      }
+      
+      toast.success("Le projet a été lancé en production");
       
       // Refresh project data
       fetchProjectDetails();
       fetchJalons();
     } catch (error) {
       console.error('Error starting production:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de lancer le projet en production",
-        variant: "destructive"
-      });
+      toast.error("Impossible de lancer le projet en production");
     }
   };
 
@@ -200,20 +205,13 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
       
       if (error) throw error;
       
-      toast({
-        title: "Succès",
-        description: "Jalon marqué comme réalisé",
-      });
+      toast.success("Jalon marqué comme réalisé");
       
       // Refresh jalons
       fetchJalons();
     } catch (error) {
       console.error('Error completing jalon:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de mettre à jour le jalon",
-        variant: "destructive"
-      });
+      toast.error("Impossible de mettre à jour le jalon");
     }
   };
 
@@ -230,20 +228,13 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
       
       if (error) throw error;
       
-      toast({
-        title: "Succès",
-        description: "Le projet a été marqué comme terminé",
-      });
+      toast.success("Le projet a été marqué comme terminé");
       
       // Refresh project data
       fetchProjectDetails();
     } catch (error) {
       console.error('Error completing project:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de terminer le projet",
-        variant: "destructive"
-      });
+      toast.error("Impossible de terminer le projet");
     }
   };
   
@@ -278,6 +269,9 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
 
   const fundingProgress = calculateFundingProgress();
   const isFundingComplete = fundingProgress >= 100;
+  const canLaunchProduction = (userRole === 'technicien' || userRole === 'superviseur') && 
+                             project.statut === 'en financement' && 
+                             isFundingComplete;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -290,7 +284,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
           <Card>
             <CardContent className="pt-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div  className="text-xs">
+                <div className="text-xs">
                   <p className="text-muted-foreground">Agriculteur</p>
                   
                   <div className="flex items-center">
@@ -299,27 +293,28 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
                       alt={typeof project.tantsaha?.nom === 'string' ? project.tantsaha.nom : 'Agriculteur'} 
                       size="sm" 
                     />
-                    <div  className="text-xs">
+                    <div className="text-xs">
                       <div className="text-green-900">
                         {project.tantsaha?.nom} {project.tantsaha?.prenoms || ''}
                       </div>
                     </div>
                   </div>
                 </div>
-                <div  className="text-xs">
+                <div className="text-xs">
                   <p className="text-muted-foreground">Terrain</p>
                   <p className="text-green-900">{project.terrain?.nom_terrain} ({project.surface_ha} ha)</p>
                 </div>
-                <div  className="text-xs">
+                <div className="text-xs">
                   <p className="text-muted-foreground">Localisation</p>
                   <p className="text-green-900">{project.region?.nom_region}, {project.district?.nom_district}, {project.commune?.nom_commune}</p>
                 </div>
-                <div  className="text-xs">
+                <div className="text-xs">
                   <p className="text-muted-foreground">Statut</p>
                   <Badge 
                     variant={
                       project.statut === 'en attente' ? 'outline' : 
                       project.statut === 'validé' ? 'secondary' :
+                      project.statut === 'en financement' ? 'secondary' :
                       project.statut === 'en cours' ? 'default' :
                       project.statut === 'terminé' ? 'secondary' : 'outline'
                     }
@@ -327,7 +322,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
                     {project.statut}
                   </Badge>
                 </div>
-                <div  className="text-xs">
+                <div className="text-xs">
                   <p className="text-muted-foreground">Cultures</p>
                   <div className="flex flex-wrap gap-1 mt-1">
                     {project.projet_culture.map((pc: any) => (
@@ -337,7 +332,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
                     ))}
                   </div>
                 </div>
-                <div  className="text-xs">
+                <div className="text-xs">
                   <p className="text-muted-foreground">Equipe Maintso Vola</p>                  
                   {project.superviseur && (
                     <div className="flex items-center">
@@ -367,7 +362,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
                   )}
                 </div>
                 {project.date_lancement && (
-                  <div>
+                  <div className="text-xs">
                     <p className="text-muted-foreground">Date de lancement</p>
                     <p className="text-green-900">{formatDate(project.date_lancement)}</p>
                   </div>
@@ -377,7 +372,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
               {project.description && (
                 <div className="mt-4 text-xs">
                   <p className="text-muted-foreground mb-1">Description</p>
-                  <p  className="text-green-900">{project.description}</p>
+                  <p className="text-green-900">{project.description}</p>
                 </div>
               )}
             </CardContent>
@@ -448,9 +443,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
                 </table>
               </div>
               
-              {userRole === 'technicien' && 
-               project.statut === 'validé' && 
-               isFundingComplete && (
+              {canLaunchProduction && (
                 <div className="flex justify-end mt-4">
                   <Button onClick={handleStartProduction}>
                     Lancer la production
