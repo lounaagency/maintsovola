@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Navigate, useSearchParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -391,7 +392,7 @@ const Feed: React.FC = () => {
             >
               {projects.length > 0 ? (
                 projects.map((project) => (
-                  <motion.div key={project.id} variants={item} onClick={() => handleProjectSelect(project.id)}>
+                  <motion.div key={project.id} variants={item}>
                     <AgriculturalProjectCard 
                       project={{
                         ...project,
@@ -450,6 +451,7 @@ const Feed: React.FC = () => {
                           )
                         }
                       }}
+                      onCardClick={() => handleProjectSelect(project.id)}
                       onLikeToggle={(isLiked) => {
                         handleToggleLike(project.id, isLiked);
                         return false; // Prevent event propagation

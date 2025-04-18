@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -225,6 +224,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
       }
       
       console.log("Starting production with date:", productionStartDate);
+      console.log("Project ID:", projectId);
       
       // Step 1: Update project status to "en cours"
       const { error: updateError } = await supabase
@@ -259,25 +259,45 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
         }
         
         // Now insert each jalon individually
+        const jalonInsertPromises = [];
+        
         for (const jalon of jalons) {
+          if (!jalon || !jalon.id_jalon) {
+            console.error("Invalid jalon entry:", jalon);
+            continue;
+          }
+          
           const jalonEntry = {
             id_projet: projectId,
             id_jalon: jalon.id_jalon,
-            date_previsionnelle: jalon.date_previsionnelle
+            date_previsionnelle: jalon.date_previsionnelle || new Date().toISOString().split('T')[0]
           };
           
           console.log("Inserting jalon:", jalonEntry);
           
-          const { error: insertError } = await supabase
+          const insertPromise = supabase
             .from('projet_jalon')
-            .insert(jalonEntry);
+            .insert(jalonEntry)
+            .then(({ error }) => {
+              if (error) {
+                console.error("Error inserting jalon:", error);
+                console.error("Failed jalon entry:", jalonEntry);
+                return { success: false, error };
+              }
+              console.log("Jalon inserted successfully:", jalon.id_jalon);
+              return { success: true };
+            });
             
-          if (insertError) {
-            console.error("Error inserting jalon:", insertError);
-            console.error("Failed jalon entry:", jalonEntry);
-          } else {
-            console.log("Jalon inserted successfully:", jalon.id_jalon);
-          }
+          jalonInsertPromises.push(insertPromise);
+        }
+        
+        // Wait for all inserts to complete
+        const insertResults = await Promise.all(jalonInsertPromises);
+        const failedInserts = insertResults.filter(result => !result.success);
+        
+        if (failedInserts.length > 0) {
+          console.error(`${failedInserts.length} jalons failed to insert`);
+          // Continue anyway, as we want to try to launch production even if some jalons fail
         }
       } else {
         console.log("No jalons to insert");
@@ -622,42 +642,46 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
                     />
                   </div>
 
-                  {Object.entries(jalonsByCulture).map(([cultureName, cultureJalons]) => (
-                    <div key={cultureName} className="space-y-2">
-                      <h3 className="font-medium text-lg">{cultureName}</h3>
-                      <div className="border rounded-md">
-                        <table className="w-full">
-                          <thead>
-                            <tr className="bg-muted">
-                              <th className="p-2 text-left text-sm">Jalon</th>
-                              <th className="p-2 text-left text-sm">Action à faire</th>
-                              <th className="p-2 text-left text-sm">Date prévue</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {Array.isArray(cultureJalons) && cultureJalons.map((jalon) => (
-                              <tr key={`${projectId}-${jalon.id_jalon}`} className="border-t">
-                                <td className="p-2 text-sm">
-                                  {jalon.nom_jalon}
-                                </td>
-                                <td className="p-2 text-sm">
-                                  {jalon.action_a_faire}
-                                </td>
-                                <td className="p-2 text-sm">
-                                  <input
-                                    type="date"
-                                    value={calculateJalonDate(productionStartDate, jalon.jours_apres_lancement, jalon.id_jalon)}
-                                    onChange={(e) => handleDateChange(jalon.id_jalon, e.target.value)}
-                                    className="border rounded p-1 w-full"
-                                  />
-                                </td>
+                  {Object.entries(jalonsByCulture).map(([cultureName, cultureJalons]) => {
+                    const jalonsArray = Array.isArray(cultureJalons) ? cultureJalons : [];
+                    
+                    return (
+                      <div key={cultureName} className="space-y-2">
+                        <h3 className="font-medium text-lg">{cultureName}</h3>
+                        <div className="border rounded-md">
+                          <table className="w-full">
+                            <thead>
+                              <tr className="bg-muted">
+                                <th className="p-2 text-left text-sm">Jalon</th>
+                                <th className="p-2 text-left text-sm">Action à faire</th>
+                                <th className="p-2 text-left text-sm">Date prévue</th>
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                            </thead>
+                            <tbody>
+                              {jalonsArray.map((jalon) => (
+                                <tr key={`${projectId}-${jalon.id_jalon}`} className="border-t">
+                                  <td className="p-2 text-sm">
+                                    {jalon.nom_jalon}
+                                  </td>
+                                  <td className="p-2 text-sm">
+                                    {jalon.action_a_faire}
+                                  </td>
+                                  <td className="p-2 text-sm">
+                                    <input
+                                      type="date"
+                                      value={calculateJalonDate(productionStartDate, jalon.jours_apres_lancement, jalon.id_jalon)}
+                                      onChange={(e) => handleDateChange(jalon.id_jalon, e.target.value)}
+                                      className="border rounded p-1 w-full"
+                                    />
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
 
                   <div className="flex justify-end mt-4">
                     <Button onClick={handleStartProduction}>
