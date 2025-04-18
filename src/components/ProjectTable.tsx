@@ -3,7 +3,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Loader2, Eye, FileEdit, CheckCircle, Trash2 } from "lucide-react";
+import { Loader2, Eye, FileEdit, CheckCircle, Trash2, PlayCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ProjectDetailsDialog from "./ProjectDetailsDialog";
 import ProjectEditDialog from "./ProjectEditDialog";
@@ -13,6 +13,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { canDeleteProject, canEditProject, canValidateProject, renderStatusBadge } from "@/utils/projectUtils";
+import { calculateProjectFunding, canLaunchProduction } from "@/utils/projectUtils";
 
 interface ProjectTableProps {
   filter?: string;
@@ -362,85 +363,111 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {projects.map((project) => (
-                <TableRow 
-                  key={project.id_projet}
-                  className="cursor-pointer"
-                  onClick={() => handleOpenDetails(project)}
-                >
-                  <TableCell className="font-medium">{project.id_projet}</TableCell>
-                  <TableCell>{project.titre || `Projet #${project.id_projet}`}</TableCell>
-                  <TableCell>
-                    {project.projet_culture?.map(pc => pc.culture?.nom_culture).join(', ')}
+              {projects.length > 0 ? (
+                projects.map((project) => {
+                  const fundingPercentage = calculateProjectFunding(project, project.investissements || []);
+                  const canLaunch = canLaunchProduction(project, fundingPercentage, userRole);
+                  
+                  return (
+                    <TableRow 
+                      key={project.id_projet}
+                      className="cursor-pointer"
+                      onClick={() => handleOpenDetails(project)}
+                    >
+                      <TableCell className="font-medium">{project.id_projet}</TableCell>
+                      <TableCell>{project.titre || `Projet #${project.id_projet}`}</TableCell>
+                      <TableCell>
+                        {project.projet_culture?.map(pc => pc.culture?.nom_culture).join(', ')}
+                      </TableCell>
+                      <TableCell>{project.terrain?.nom_terrain || `Terrain #${project.id_terrain}`}</TableCell>
+                      <TableCell>{project.surface_ha}</TableCell>
+                      <TableCell>{renderStatusBadge(project.statut)}</TableCell>
+                      {userRole !== 'simple' && (
+                        <TableCell>
+                          {project.tantsaha ? `${project.tantsaha.nom} ${project.tantsaha.prenoms || ''}` : 'N/A'}
+                        </TableCell>
+                      )}
+                      <TableCell>
+                        {project.region?.nom_region}, {project.district?.nom_district}
+                      </TableCell>
+                      {showActions && (
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenDetails(project);
+                              }}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            {canEditProject(project, userRole, user?.id) && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenEdit(project);
+                                }}
+                              >
+                                <FileEdit className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {showValidateButton && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                title="Valider ce projet"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenValidation(project);
+                                }}
+                              >
+                                <CheckCircle className="h-4 w-4 text-green-500" />
+                              </Button>
+                            )}
+                            {canLaunch && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                title="Lancer la production"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenDetails(project);
+                                }}
+                              >
+                                <PlayCircle className="h-4 w-4 text-green-500" />
+                              </Button>
+                            )}
+                            {canDeleteProject(project, userRole, user?.id) && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                title="Supprimer ce projet"
+                                className="text-destructive hover:text-destructive/90"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenDeleteConfirm(project);
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  );
+                })
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={10} className="text-center text-muted-foreground">
+                    Aucun projet trouvé.
                   </TableCell>
-                  <TableCell>{project.terrain?.nom_terrain || `Terrain #${project.id_terrain}`}</TableCell>
-                  <TableCell>{project.surface_ha}</TableCell>
-                  <TableCell>{renderStatusBadge(project.statut)}</TableCell>
-                  {userRole !== 'simple' && (
-                    <TableCell>
-                      {project.tantsaha ? `${project.tantsaha.nom} ${project.tantsaha.prenoms || ''}` : 'N/A'}
-                    </TableCell>
-                  )}
-                  <TableCell>
-                    {project.region?.nom_region}, {project.district?.nom_district}
-                  </TableCell>
-                  {showActions && (
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOpenDetails(project);
-                          }}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        {canEditProject(project, userRole, user?.id) && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenEdit(project);
-                            }}
-                          >
-                            <FileEdit className="h-4 w-4" />
-                          </Button>
-                        )}
-                        {showValidateButton && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            title="Valider ce projet"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenValidation(project);
-                            }}
-                          >
-                            <CheckCircle className="h-4 w-4 text-green-500" />
-                          </Button>
-                        )}
-                        {canDeleteProject(project, userRole, user?.id) && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            title="Supprimer ce projet"
-                            className="text-destructive hover:text-destructive/90"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenDeleteConfirm(project);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  )}
                 </TableRow>
-              ))}
+              )}
             </TableBody>
           </Table>
         </div>
