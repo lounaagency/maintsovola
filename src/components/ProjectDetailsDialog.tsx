@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -15,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import UserAvatar from './UserAvatar';
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface ProjectDetailsDialogProps {
   isOpen: boolean;
@@ -33,6 +35,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
   const [investments, setInvestments] = useState<any[]>([]);
   const [jalons, setJalons] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
   
   useEffect(() => {
     if (isOpen && projectId) {
@@ -98,21 +101,66 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
   
   const fetchJalons = async () => {
     try {
+      console.log("Fetching jalons for project:", projectId);
+      // First, get all cultures for this project
+      const { data: cultureData, error: cultureError } = await supabase
+        .from('projet_culture')
+        .select('id_culture')
+        .eq('id_projet', projectId);
+      
+      if (cultureError) throw cultureError;
+      
+      if (!cultureData || cultureData.length === 0) {
+        console.log("No cultures found for this project");
+        return;
+      }
+      
+      const cultureIds = cultureData.map(c => c.id_culture);
+      console.log("Culture IDs:", cultureIds);
+      
+      // Fetch jalons for these cultures
       const { data, error } = await supabase
-        .from('projet_jalon')
+        .from('jalon')
         .select(`
-          *,
-          jalon:id_jalon(nom_jalon, action_a_faire, id_culture),
-          culture:jalon(id_culture(nom_culture))
+          id_jalon,
+          nom_jalon,
+          action_a_faire,
+          jours_apres_lancement,
+          id_culture,
+          culture:id_culture(nom_culture)
         `)
-        .eq('id_projet', projectId)
-        .order('date_previsionnelle', { ascending: true });
+        .in('id_culture', cultureIds);
       
       if (error) throw error;
-      setJalons(data || []);
+      
+      console.log("Fetched jalons:", data);
+      
+      if (data) {
+        const formattedJalons = data.map(jalon => ({
+          id_jalon: jalon.id_jalon,
+          nom_jalon: jalon.nom_jalon,
+          action_a_faire: jalon.action_a_faire,
+          jours_apres_lancement: jalon.jours_apres_lancement,
+          id_culture: jalon.id_culture,
+          culture: jalon.culture,
+          date_previsionnelle: calculateJalonDate(productionStartDate, jalon.jours_apres_lancement)
+        }));
+        
+        setJalons(formattedJalons);
+      } else {
+        setJalons([]);
+      }
     } catch (error) {
       console.error('Error fetching jalons:', error);
+      toast.error("Impossible de récupérer les jalons");
     }
+  };
+  
+  // Helper function to calculate jalon date
+  const calculateJalonDate = (startDate: string, daysAfter: number): string => {
+    const date = new Date(startDate);
+    date.setDate(date.getDate() + daysAfter);
+    return date.toISOString().split('T')[0];
   };
   
   const calculateFundingProgress = () => {
@@ -131,17 +179,14 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
 
   // Update jalon dates when production start date changes
   const updateJalonDates = (startDate: string) => {
-    if (!project?.projet_culture) return;
+    if (!jalons.length) return;
     
     const newJalons = jalons.map(jalon => {
-      if (!jalon.jalon?.jours_apres_lancement) return jalon;
-      
-      const jalonDate = new Date(startDate);
-      jalonDate.setDate(jalonDate.getDate() + jalon.jalon.jours_apres_lancement);
+      if (!jalon.jours_apres_lancement) return jalon;
       
       return {
         ...jalon,
-        date_previsionnelle: jalonDate.toISOString().split('T')[0]
+        date_previsionnelle: calculateJalonDate(startDate, jalon.jours_apres_lancement)
       };
     });
     
@@ -150,34 +195,39 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
 
   useEffect(() => {
     updateJalonDates(productionStartDate);
-  }, [productionStartDate]);
+  }, [productionStartDate, jalons.length]);
 
   const handleStartProduction = async () => {
     try {
+      if (!user) {
+        toast.error("Vous devez être connecté pour lancer la production");
+        return;
+      }
+      
       // Update project status and add production start date
       const { error } = await supabase
         .from('projet')
         .update({
           statut: 'en cours',
           date_debut_production: productionStartDate,
-          id_lanceur_production: user?.id
+          id_lanceur_production: user.id
         })
         .eq('id_projet', projectId);
       
       if (error) throw error;
       
       // Create jalons for each culture with the calculated dates
-      for (const jalon of jalons) {
-        const { error: jalonError } = await supabase
+      const jalonPromises = jalons.map(jalon => 
+        supabase
           .from('projet_jalon')
           .insert({
             id_projet: projectId,
             id_jalon: jalon.id_jalon,
             date_previsionnelle: jalon.date_previsionnelle
-          });
-        
-        if (jalonError) throw jalonError;
-      }
+          })
+      );
+      
+      await Promise.all(jalonPromises);
       
       // Send notification to farmer
       if (project.id_tantsaha) {
@@ -282,6 +332,9 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
   const canLaunchProduction = (userRole === 'technicien' || userRole === 'superviseur') && 
                              project.statut === 'en financement' && 
                              isFundingComplete;
+
+  // Set default active tab based on project state and user role
+  const defaultTab = canLaunchProduction ? "jalons" : "finances";
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -388,7 +441,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
             </CardContent>
           </Card>
 
-          <Tabs defaultValue={canLaunchProduction ? "jalons" : "finances"} className="w-full text-xs">
+          <Tabs defaultValue={defaultTab} className="w-full text-xs">
             <TabsList className="grid grid-cols-2">
               <TabsTrigger value="finances">Financement</TabsTrigger>
               <TabsTrigger value="jalons">Jalons & Production</TabsTrigger>
@@ -490,9 +543,9 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
                       <tbody>
                         {jalons.length > 0 ? (
                           jalons.map((jalon) => (
-                            <tr key={`${jalon.id_projet}-${jalon.id_jalon}`} className="border-t">
+                            <tr key={`${projectId}-${jalon.id_jalon}`} className="border-t">
                               <td className="p-2 text-sm">
-                                {jalon.jalon?.nom_jalon}
+                                {jalon.nom_jalon}
                               </td>
                               <td className="p-2 text-sm">
                                 {jalon.culture?.nom_culture || ''}
