@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import {
   Popover,
@@ -25,6 +26,7 @@ interface NotificationItem {
   link?: string;
   entity_id?: string;
   entity_type?: "terrain" | "projet" | "jalon" | "investissement";
+  projet_id?: number;
 }
 
 const NotificationItem: React.FC<{ notification: NotificationItem; onRead: (id: string) => void }> = ({ 
@@ -50,12 +52,12 @@ const NotificationItem: React.FC<{ notification: NotificationItem; onRead: (id: 
     } else if (notification.entity_type === "terrain" && notification.entity_id) {
       // Navigate to the terrain view with the terrain ID parameter
       navigate(`/terrain?id=${notification.entity_id}`);
-    } else if (notification.entity_type === "jalon" && notification.entity_id) {
+    } else if (notification.entity_type === "jalon" && notification.projet_id) {
       // Navigate to the projet view with the jalon tab open
-      navigate(`/projet?id=${notification.entity_id}#jalons`);
-    } else if (notification.entity_type === "investissement" && notification.entity_id) {
+      navigate(`/feed?project=${notification.projet_id}#jalons`);
+    } else if (notification.entity_type === "investissement" && notification.projet_id) {
       // Navigate to the projet view with the investissement tab open
-      navigate(`/projet?id=${notification.entity_id}#investissements`);
+      navigate(`/feed?project=${notification.projet_id}#investissements`);
     } else if (notification.link) {
       // Navigate to any other link
       navigate(notification.link);
@@ -120,9 +122,9 @@ const Notifications: React.FC = () => {
         } else if (notification.entity_type === "projet") {
           link = `/feed?project=${notification.entity_id}`;
         } else if (notification.entity_type === "jalon") {
-          link = `/projet?id=${notification.projet_id}#jalons`;
+          link = `/feed?project=${notification.projet_id}#jalons`;
         } else if (notification.entity_type === "investissement") {
-          link = `/projet?id=${notification.projet_id}#investissements`;
+          link = `/feed?project=${notification.projet_id}#investissements`;
         }
         
         const entityId = notification.entity_id !== undefined 
@@ -138,7 +140,8 @@ const Notifications: React.FC = () => {
           type,
           link,
           entity_id: entityId,
-          entity_type: notification.entity_type as "terrain" | "projet" | "jalon" | "investissement" | undefined
+          entity_type: notification.entity_type as "terrain" | "projet" | "jalon" | "investissement" | undefined,
+          projet_id: notification.projet_id
         };
       });
       
@@ -183,9 +186,9 @@ const Notifications: React.FC = () => {
               } else if (newNotification.entity_type === "projet") {
                 link = `/feed?project=${newNotification.entity_id}`;
               } else if (newNotification.entity_type === "jalon") {
-                link = `/projet?id=${newNotification.projet_id}#jalons`;
+                link = `/feed?project=${newNotification.projet_id}#jalons`;
               } else if (newNotification.entity_type === "investissement") {
-                link = `/projet?id=${newNotification.projet_id}#investissements`;
+                link = `/feed?project=${newNotification.projet_id}#investissements`;
               }
               
               const formattedNotification: NotificationItem = {
@@ -197,7 +200,8 @@ const Notifications: React.FC = () => {
                 type,
                 link,
                 entity_id: newNotification.entity_id ? String(newNotification.entity_id) : undefined,
-                entity_type: newNotification.entity_type as "terrain" | "projet" | "jalon" | "investissement" | undefined
+                entity_type: newNotification.entity_type as "terrain" | "projet" | "jalon" | "investissement" | undefined,
+                projet_id: newNotification.projet_id
               };
               
               toast(formattedNotification.title, {

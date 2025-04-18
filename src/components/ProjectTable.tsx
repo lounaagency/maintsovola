@@ -12,13 +12,71 @@ import ProjectDetailsDialog from "./ProjectDetailsDialog";
 import ProjectValidationDialog from "./ProjectValidationDialog";
 import { motion } from "framer-motion";
 
+export interface ProjectData {
+  id_projet: number;
+  titre?: string;
+  nom_projet?: string;
+  description?: string;
+  statut: string;
+  date_creation?: string;
+  date_validation?: string;
+  photos?: string[];
+  photos_validation?: string[];
+  rapport_validation?: string;
+  surface_ha: number;
+  id_terrain: number;
+  id_region?: number;
+  id_district?: number;
+  id_commune?: number;
+  id_tantsaha?: string;
+  id_technicien?: string;
+  id_superviseur?: string;
+  id_validateur?: string;
+  fundingPercentage?: number;
+  terrain?: {
+    id_terrain: number;
+    nom_terrain?: string;
+  };
+  tantsaha?: {
+    nom: string;
+    prenoms?: string;
+    photo_profil?: string;
+  };
+  technicien?: {
+    nom: string;
+    prenoms?: string;
+  };
+  superviseur?: {
+    nom: string;
+    prenoms?: string;
+  };
+  region?: {
+    nom_region: string;
+  };
+  district?: {
+    nom_district: string;
+  };
+  commune?: {
+    nom_commune: string;
+  };
+  projet_culture?: {
+    id_projet_culture: number;
+    id_culture: number;
+    cout_exploitation_previsionnel?: number;
+    rendement_previsionnel?: number;
+    culture?: {
+      nom_culture: string;
+    };
+  }[];
+}
+
 interface ProjectTableProps {
   filter?: string;
   statutFilter?: string;
 }
 
 const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", statutFilter = "en attente" }) => {
-  const [projects, setProjects] = useState<any[]>([]);
+  const [projects, setProjects] = useState<ProjectData[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [showValidationDialog, setShowValidationDialog] = useState(false);
@@ -53,7 +111,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", statutFilter =
             culture:id_culture(nom_culture)
           )
         `)
-        .order('date_creation', { ascending: false });
+        .order('modified_at', { ascending: false });
 
       // Filter by status
       if (statutFilter === "en attente") {
@@ -177,7 +235,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", statutFilter =
               {projects.map((project) => (
                 <TableRow key={project.id_projet}>
                   <TableCell className="font-medium">
-                    {project.nom_projet}
+                    {project.nom_projet || project.titre}
                     {project.id_technicien === null && project.statut === "en attente" && (
                       <div className="flex items-center text-amber-500 text-xs mt-1">
                         <AlertTriangle className="h-3 w-3 mr-1" />
@@ -208,7 +266,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", statutFilter =
                   </TableCell>
                   <TableCell className="hidden md:table-cell">
                     <div className="flex flex-wrap gap-1">
-                      {project.projet_culture.map((pc: any) => (
+                      {project.projet_culture?.map((pc) => (
                         <Badge key={pc.id_projet_culture} variant="outline" className="text-xs">
                           {pc.culture?.nom_culture}
                         </Badge>
@@ -292,7 +350,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", statutFilter =
               setShowValidationDialog(false);
               fetchProjects(); // Refresh data after validation
             }}
-            projectId={selectedProjectId}
+            project={selectedProjectId}
           />
         </>
       )}

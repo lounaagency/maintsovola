@@ -1,64 +1,92 @@
 
-import React from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { MapPin } from "lucide-react";
-import { format } from "date-fns";
-import { ProjectData } from "./ProjectTable";
-import { renderStatusBadge } from "@/utils/projectUtils";
+import React from 'react';
+import { Badge } from './ui/badge';
+import { ProjectData } from './ProjectTable';
+import { renderStatusBadge } from '@/utils/projectUtils';
 
 interface ProjectSummaryProps {
   project: ProjectData;
-  showDescription?: boolean;
 }
 
-const ProjectSummary: React.FC<ProjectSummaryProps> = ({ 
-  project, 
-  showDescription = true 
-}) => {
+const ProjectSummary: React.FC<ProjectSummaryProps> = ({ project }) => {
   return (
-    <Card className="mb-4">
-      <CardContent className="p-4">
-        <h3 className="text-lg font-medium mb-2">
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold">
           {project.titre || `Projet #${project.id_projet}`}
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <p className="flex items-center text-sm mb-1">
-              <MapPin className="w-4 h-4 mr-1" />
-              {project.region?.nom_region || 'N/A'}, 
-              {project.district?.nom_district || 'N/A'}, 
-              {project.commune?.nom_commune || 'N/A'}
-            </p>
-            <p className="text-sm mb-1">
-              <span className="font-medium">Surface:</span> {project.surface_ha} ha
-            </p>
-            <p className="text-sm mb-1">
-              <span className="font-medium">Statut actuel:</span> {renderStatusBadge(project.statut)}
-            </p>
-            <p className="text-sm mb-1">
-              <span className="font-medium">Culture(s):</span> {project.projet_culture?.map(pc => pc.culture?.nom_culture).join(', ') || 'N/A'}
-            </p>
+        </h2>
+        {renderStatusBadge(project.statut)}
+      </div>
+      
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-2 text-sm">
+          <div className="flex justify-between">
+            <span className="text-gray-500">Agriculteur:</span>
+            <span className="font-medium">
+              {project.tantsaha ? `${project.tantsaha.nom} ${project.tantsaha.prenoms || ''}` : 'Non assigné'}
+            </span>
           </div>
-          <div>
-            <p className="text-sm mb-1">
-              <span className="font-medium">Propriétaire:</span> {project.tantsaha ? `${project.tantsaha.nom} ${project.tantsaha.prenoms || ''}` : 'N/A'}
-            </p>
-            <p className="text-sm mb-1">
-              <span className="font-medium">Terrain:</span> {project.terrain?.nom_terrain || `Terrain #${project.id_terrain}`}
-            </p>
-            <p className="text-sm mb-1">
-              <span className="font-medium">Date de création:</span> {project.created_at ? format(new Date(project.created_at), 'dd/MM/yyyy') : 'N/A'}
-            </p>
+          
+          <div className="flex justify-between">
+            <span className="text-gray-500">Surface:</span>
+            <span className="font-medium">{project.surface_ha} ha</span>
+          </div>
+          
+          <div className="flex justify-between">
+            <span className="text-gray-500">Terrain:</span>
+            <span className="font-medium">
+              {project.terrain?.nom_terrain || `#${project.id_terrain}`}
+            </span>
+          </div>
+          
+          <div className="flex justify-between">
+            <span className="text-gray-500">Localisation:</span>
+            <span className="font-medium">
+              {project.region?.nom_region}, {project.district?.nom_district}
+            </span>
           </div>
         </div>
-        {showDescription && project.description && (
-          <div className="mt-2">
-            <p className="text-sm font-medium">Description:</p>
-            <p className="text-sm text-muted-foreground mt-1">{project.description}</p>
+        
+        <div className="space-y-2 text-sm">
+          <div className="flex justify-between">
+            <span className="text-gray-500">Status:</span>
+            <span className="font-medium capitalize">{project.statut}</span>
           </div>
-        )}
-      </CardContent>
-    </Card>
+          
+          <div className="flex justify-between">
+            <span className="text-gray-500">Technicien:</span>
+            <span className="font-medium">
+              {project.technicien ? `${project.technicien.nom} ${project.technicien.prenoms || ''}` : 'Non assigné'}
+            </span>
+          </div>
+          
+          <div className="flex justify-between">
+            <span className="text-gray-500">Superviseur:</span>
+            <span className="font-medium">
+              {project.superviseur ? `${project.superviseur.nom} ${project.superviseur.prenoms || ''}` : 'Non assigné'}
+            </span>
+          </div>
+          
+          <div className="flex justify-between">
+            <span className="text-gray-500">Cultures:</span>
+            <div className="flex flex-wrap justify-end gap-1">
+              {project.projet_culture?.map((pc) => (
+                <Badge key={pc.id_projet_culture} variant="outline" className="text-xs">
+                  {pc.culture?.nom_culture}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {project.description && (
+        <div className="mt-4">
+          <h3 className="text-sm font-medium mb-2">Description</h3>
+          <p className="text-sm text-gray-600">{project.description}</p>
+        </div>
+      )}
+    </div>
   );
 };
 
