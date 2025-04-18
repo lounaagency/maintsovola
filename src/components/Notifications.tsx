@@ -9,7 +9,7 @@ import { Bell } from "lucide-react";
 import { Button } from "./ui/button";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -50,6 +50,12 @@ const NotificationItem: React.FC<{ notification: NotificationItem; onRead: (id: 
     } else if (notification.entity_type === "terrain" && notification.entity_id) {
       // Navigate to the terrain view with the terrain ID parameter
       navigate(`/terrain?id=${notification.entity_id}`);
+    } else if (notification.entity_type === "jalon" && notification.entity_id) {
+      // Navigate to the projet view with the jalon tab open
+      navigate(`/projet?id=${notification.entity_id}#jalons`);
+    } else if (notification.entity_type === "investissement" && notification.entity_id) {
+      // Navigate to the projet view with the investissement tab open
+      navigate(`/projet?id=${notification.entity_id}#investissements`);
     } else if (notification.link) {
       // Navigate to any other link
       navigate(notification.link);
