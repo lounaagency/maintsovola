@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -16,6 +17,7 @@ import { useToast } from "@/components/ui/use-toast";
 import UserAvatar from './UserAvatar';
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import FinancialDetailsDialog from './FinancialDetailsDialog';
 
 interface ProjectDetailsDialogProps {
   isOpen: boolean;
@@ -37,6 +39,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
   const { user } = useAuth();
   
   const [editedDates, setEditedDates] = useState<{[key: string]: string}>({});
+  const [showFinancialDetails, setShowFinancialDetails] = useState(false);
   
   useEffect(() => {
     if (isOpen && projectId) {
@@ -73,7 +76,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
             cout_exploitation_previsionnel,
             rendement_previsionnel,
             date_debut_previsionnelle,
-            culture:id_culture(nom_culture)
+            culture:id_culture(nom_culture, rendement_ha, cout_exploitation_ha, prix_tonne)
           )
         `)
         .eq('id_projet', projectId)
@@ -232,7 +235,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
           id_lanceur_production: user.id
         })
         .eq('id_projet', projectId);
-      toast.success("mis à jour projet", productionStartDate);
+      
       if (updateError) {
         console.error("Error updating project:", updateError);
         throw updateError;
@@ -240,23 +243,11 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
       
       console.log("Project updated successfully");
       
-      // Step 2: Insert jalons only if we have any
+      // Step 2: Insert jalons if we have any
       if (jalons && jalons.length > 0) {
         console.log("Preparing jalon entries for insertion:", jalons.length);
         
-        // Map jalons to the format expected by the database
-        const jalonEntries = jalons.map(jalon => {
-          console.log("Processing jalon:", jalon.id_jalon, "with date:", jalon.date_previsionnelle);
-          return {
-            id_projet: projectId,
-            id_jalon: jalon.id_jalon,
-            date_previsionnelle: jalon.date_previsionnelle
-          };
-        });
-        
-        console.log("Jalon entries to insert:", jalonEntries);
-        
-        // First, check if there are any existing jalons for this project and delete them
+        // First, delete any existing jalons for this project
         const { error: deleteError } = await supabase
           .from('projet_jalon')
           .delete()
@@ -267,19 +258,27 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
           // Continue anyway, as they might not exist yet
         }
         
-        // Now insert the new jalons
-        for (const entry of jalonEntries) {
-          const { error: jalonError } = await supabase
+        // Now insert each jalon individually
+        for (const jalon of jalons) {
+          const jalonEntry = {
+            id_projet: projectId,
+            id_jalon: jalon.id_jalon,
+            date_previsionnelle: jalon.date_previsionnelle
+          };
+          
+          console.log("Inserting jalon:", jalonEntry);
+          
+          const { error: insertError } = await supabase
             .from('projet_jalon')
-            .insert(entry);
+            .insert(jalonEntry);
             
-          if (jalonError) {
-            console.error("Error inserting jalon:", jalonError, "Entry:", entry);
-            // Don't throw, continue with others
+          if (insertError) {
+            console.error("Error inserting jalon:", insertError);
+            console.error("Failed jalon entry:", jalonEntry);
+          } else {
+            console.log("Jalon inserted successfully:", jalon.id_jalon);
           }
         }
-        
-        console.log("Jalons inserted successfully");
       } else {
         console.log("No jalons to insert");
       }
@@ -288,7 +287,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
       if (project && project.id_tantsaha) {
         console.log("Sending notification to farmer:", project.id_tantsaha);
         
-        await supabase
+        const { error: notificationError } = await supabase
           .from('notification')
           .insert({
             id_destinataire: project.id_tantsaha,
@@ -299,6 +298,10 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
             entity_id: projectId,
             projet_id: projectId
           });
+          
+        if (notificationError) {
+          console.error("Error sending notification:", notificationError);
+        }
       }
       
       toast.success("Le projet a été lancé en production");
@@ -363,6 +366,10 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
       month: 'long',
       day: 'numeric'
     });
+  };
+
+  const handleOpenFinancialDetails = () => {
+    setShowFinancialDetails(true);
   };
 
   if (loading || !project) {
@@ -499,6 +506,29 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
                   <p className="text-green-900">{project.description}</p>
                 </div>
               )}
+              
+              <div 
+                className="mt-4 p-3 bg-muted/30 rounded-md cursor-pointer hover:bg-muted/50 transition-colors"
+                onClick={handleOpenFinancialDetails}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium">Détails financiers</span>
+                  <span className="text-xs text-muted-foreground">Cliquez pour voir plus</span>
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <span className="text-muted-foreground block">Coût d'exploitation total</span>
+                    <span className="font-medium">
+                      {project.projet_culture.reduce((sum: number, pc: any) => 
+                        sum + (pc.cout_exploitation_previsionnel || 0), 0).toLocaleString()} Ar
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground block">Surface totale</span>
+                    <span className="font-medium">{project.surface_ha} ha</span>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
 
@@ -648,6 +678,13 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
           </Tabs>
         </div>
       </DialogContent>
+      
+      <FinancialDetailsDialog
+        isOpen={showFinancialDetails}
+        onClose={() => setShowFinancialDetails(false)}
+        projectCultures={project.projet_culture}
+        title="Détails financiers par culture"
+      />
     </Dialog>
   );
 };
