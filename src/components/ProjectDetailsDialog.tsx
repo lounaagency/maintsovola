@@ -232,7 +232,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
           id_lanceur_production: user.id
         })
         .eq('id_projet', projectId);
-      
+      toast.success("mis à jour projet", productionStartDate);
       if (updateError) {
         console.error("Error updating project:", updateError);
         throw updateError;
