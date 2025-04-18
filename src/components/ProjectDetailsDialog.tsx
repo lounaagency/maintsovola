@@ -258,46 +258,36 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
           // Continue anyway, as they might not exist yet
         }
         
-        // Now insert each jalon individually
-        const jalonInsertPromises = [];
-        
-        for (const jalon of jalons) {
+        // Now insert each jalon using Promise.all for better performance
+        const jalonEntries = jalons.map(jalon => {
           if (!jalon || !jalon.id_jalon) {
             console.error("Invalid jalon entry:", jalon);
-            continue;
+            return null; // Skip invalid entries
           }
           
-          const jalonEntry = {
+          return {
             id_projet: projectId,
             id_jalon: jalon.id_jalon,
             date_previsionnelle: jalon.date_previsionnelle || new Date().toISOString().split('T')[0]
           };
-          
-          console.log("Inserting jalon:", jalonEntry);
-          
-          const insertPromise = supabase
+        }).filter(entry => entry !== null); // Remove null entries
+        
+        console.log("Jalon entries to insert:", jalonEntries);
+        
+        if (jalonEntries.length === 0) {
+          console.log("No valid jalon entries to insert");
+        } else {
+          // Insert all entries in a single request
+          const { error: insertError } = await supabase
             .from('projet_jalon')
-            .insert(jalonEntry)
-            .then(({ error }) => {
-              if (error) {
-                console.error("Error inserting jalon:", error);
-                console.error("Failed jalon entry:", jalonEntry);
-                return { success: false, error };
-              }
-              console.log("Jalon inserted successfully:", jalon.id_jalon);
-              return { success: true };
-            });
+            .insert(jalonEntries);
             
-          jalonInsertPromises.push(insertPromise);
-        }
-        
-        // Wait for all inserts to complete
-        const insertResults = await Promise.all(jalonInsertPromises);
-        const failedInserts = insertResults.filter(result => !result.success);
-        
-        if (failedInserts.length > 0) {
-          console.error(`${failedInserts.length} jalons failed to insert`);
-          // Continue anyway, as we want to try to launch production even if some jalons fail
+          if (insertError) {
+            console.error("Error inserting jalons:", insertError);
+            // Continue anyway to complete the process
+          } else {
+            console.log("All jalons inserted successfully");
+          }
         }
       } else {
         console.log("No jalons to insert");

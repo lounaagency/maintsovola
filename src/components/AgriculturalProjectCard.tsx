@@ -34,11 +34,11 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({
     <Card className="overflow-hidden">
       <CardContent className="p-4">
         {/* Header with farmer info */}
-        <div 
-          className="flex items-center justify-between mb-3 cursor-pointer"
-          onClick={handleCardClick}
-        >
-          <div className="flex items-center">
+        <div className="flex items-center justify-between mb-3">
+          <div 
+            className="flex items-center cursor-pointer"
+            onClick={handleCardClick}
+          >
             <UserAvatar 
               src={project.farmer.avatar} 
               alt={typeof project.farmer.name === 'string' ? project.farmer.name : 'Farmer'} 
@@ -54,12 +54,19 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({
         </div>
         
         {/* Project details */}
-        <div 
-          className="mb-4 cursor-pointer"
-          onClick={handleCardClick}
-        >
-          <h3 className="text-base font-semibold mb-2">{project.title}</h3>
-          <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{project.description}</p>
+        <div className="mb-4">
+          <h3 
+            className="text-base font-semibold mb-2 cursor-pointer"
+            onClick={handleCardClick}
+          >
+            {project.title}
+          </h3>
+          <p 
+            className="text-sm text-muted-foreground mb-3 line-clamp-2 cursor-pointer"
+            onClick={handleCardClick}
+          >
+            {project.description}
+          </p>
           
           <div className="grid grid-cols-2 gap-3 text-xs mb-3">
             <div>
@@ -74,7 +81,10 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({
             </div>
           </div>
           
-          <div className="space-y-2">
+          <div 
+            className="space-y-2 cursor-pointer"
+            onClick={handleCardClick}
+          >
             <div className="flex items-center justify-between text-xs">
               <span className="text-muted-foreground">Financement</span>
               <span>{fundingProgress}%</span>
