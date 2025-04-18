@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -37,6 +36,8 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   
+  const [editedDates, setEditedDates] = useState<{[key: string]: string}>({});
+  
   useEffect(() => {
     if (isOpen && projectId) {
       fetchProjectDetails();
@@ -44,6 +45,13 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
       fetchJalons();
     }
   }, [isOpen, projectId]);
+  
+  useEffect(() => {
+    if (isOpen) {
+      setProductionStartDate(new Date().toISOString().split('T')[0]);
+      setEditedDates({});
+    }
+  }, [isOpen]);
   
   const fetchProjectDetails = async () => {
     try {
@@ -143,7 +151,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
           jours_apres_lancement: jalon.jours_apres_lancement,
           id_culture: jalon.id_culture,
           culture: jalon.culture,
-          date_previsionnelle: calculateJalonDate(productionStartDate, jalon.jours_apres_lancement)
+          date_previsionnelle: calculateJalonDate(productionStartDate, jalon.jours_apres_lancement, jalon.id_jalon)
         }));
         
         setJalons(formattedJalons);
@@ -156,11 +164,23 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
     }
   };
   
-  // Helper function to calculate jalon date
-  const calculateJalonDate = (startDate: string, daysAfter: number): string => {
+  const calculateJalonDate = (startDate: string, daysAfter: number, jalonId: number): string => {
+    const editedKey = `${projectId}-${jalonId}`;
+    if (editedDates[editedKey]) {
+      return editedDates[editedKey];
+    }
+    
     const date = new Date(startDate);
     date.setDate(date.getDate() + daysAfter);
     return date.toISOString().split('T')[0];
+  };
+  
+  const handleDateChange = (jalonId: number, newDate: string) => {
+    const editedKey = `${projectId}-${jalonId}`;
+    setEditedDates(prev => ({
+      ...prev,
+      [editedKey]: newDate
+    }));
   };
   
   const calculateFundingProgress = () => {
@@ -186,7 +206,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
       
       return {
         ...jalon,
-        date_previsionnelle: calculateJalonDate(startDate, jalon.jours_apres_lancement)
+        date_previsionnelle: calculateJalonDate(startDate, jalon.jours_apres_lancement, jalon.id_jalon)
       };
     });
     
@@ -333,8 +353,16 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
                              project.statut === 'en financement' && 
                              isFundingComplete;
 
-  // Set default active tab based on project state and user role
   const defaultTab = canLaunchProduction ? "jalons" : "finances";
+
+  const jalonsByCulture = jalons.reduce((acc: {[key: string]: typeof jalons}, jalon) => {
+    const cultureName = jalon.culture?.nom_culture || 'Sans culture';
+    if (!acc[cultureName]) {
+      acc[cultureName] = [];
+    }
+    acc[cultureName].push(jalon);
+    return acc;
+  }, {});
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -531,40 +559,42 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
                     />
                   </div>
 
-                  <div className="border rounded-md">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="bg-muted">
-                          <th className="p-2 text-left text-sm">Jalon</th>
-                          <th className="p-2 text-left text-sm">Culture</th>
-                          <th className="p-2 text-left text-sm">Date prévue</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {jalons.length > 0 ? (
-                          jalons.map((jalon) => (
-                            <tr key={`${projectId}-${jalon.id_jalon}`} className="border-t">
-                              <td className="p-2 text-sm">
-                                {jalon.nom_jalon}
-                              </td>
-                              <td className="p-2 text-sm">
-                                {jalon.culture?.nom_culture || ''}
-                              </td>
-                              <td className="p-2 text-sm">
-                                {formatDate(jalon.date_previsionnelle)}
-                              </td>
+                  {Object.entries(jalonsByCulture).map(([cultureName, cultureJalons]) => (
+                    <div key={cultureName} className="space-y-2">
+                      <h3 className="font-medium text-lg">{cultureName}</h3>
+                      <div className="border rounded-md">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="bg-muted">
+                              <th className="p-2 text-left text-sm">Jalon</th>
+                              <th className="p-2 text-left text-sm">Action à faire</th>
+                              <th className="p-2 text-left text-sm">Date prévue</th>
                             </tr>
-                          ))
-                        ) : (
-                          <tr>
-                            <td colSpan={3} className="p-4 text-center text-sm text-muted-foreground">
-                              Aucun jalon défini pour ce projet
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
+                          </thead>
+                          <tbody>
+                            {cultureJalons.map((jalon) => (
+                              <tr key={`${projectId}-${jalon.id_jalon}`} className="border-t">
+                                <td className="p-2 text-sm">
+                                  {jalon.nom_jalon}
+                                </td>
+                                <td className="p-2 text-sm">
+                                  {jalon.action_a_faire}
+                                </td>
+                                <td className="p-2 text-sm">
+                                  <input
+                                    type="date"
+                                    value={calculateJalonDate(productionStartDate, jalon.jours_apres_lancement, jalon.id_jalon)}
+                                    onChange={(e) => handleDateChange(jalon.id_jalon, e.target.value)}
+                                    className="border rounded p-1 w-full"
+                                  />
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ))}
 
                   <div className="flex justify-end mt-4">
                     <Button onClick={handleStartProduction}>
