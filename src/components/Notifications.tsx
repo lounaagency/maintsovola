@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import {
   Popover,
@@ -9,7 +10,7 @@ import { Bell } from "lucide-react";
 import { Button } from "./ui/button";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -31,7 +32,6 @@ const NotificationItem: React.FC<{ notification: NotificationItem; onRead: (id: 
   notification,
   onRead 
 }) => {
-  const navigate = useNavigate();
   const typeStyles = {
     info: "bg-blue-50 border-blue-200",
     success: "bg-green-50 border-green-200",
@@ -43,17 +43,6 @@ const NotificationItem: React.FC<{ notification: NotificationItem; onRead: (id: 
     if (!notification.read) {
       onRead(notification.id);
     }
-    
-    if (notification.entity_type === "projet" && notification.entity_id) {
-      // Navigate to the feed with the project ID parameter
-      navigate(`/feed?project=${notification.entity_id}`);
-    } else if (notification.entity_type === "terrain" && notification.entity_id) {
-      // Navigate to the terrain view with the terrain ID parameter
-      navigate(`/terrain?id=${notification.entity_id}`);
-    } else if (notification.link) {
-      // Navigate to any other link
-      navigate(notification.link);
-    }
   };
 
   const content = (
@@ -61,7 +50,7 @@ const NotificationItem: React.FC<{ notification: NotificationItem; onRead: (id: 
       initial={{ opacity: 0, y: 5 }}
       animate={{ opacity: 1, y: 0 }}
       className={cn(
-        "p-3 border rounded-md mb-2 relative cursor-pointer",
+        "p-3 border rounded-md mb-2 relative",
         notification.read ? "bg-gray-50 border-gray-200" : typeStyles[notification.type],
         !notification.read && "font-medium"
       )}
@@ -78,7 +67,13 @@ const NotificationItem: React.FC<{ notification: NotificationItem; onRead: (id: 
     </motion.div>
   );
 
-  return content;
+  return notification.link ? (
+    <Link to={notification.link} className="block">
+      {content}
+    </Link>
+  ) : (
+    content
+  );
 };
 
 const Notifications: React.FC = () => {
@@ -119,12 +114,13 @@ const Notifications: React.FC = () => {
           link = `/projet?id=${notification.projet_id}#investissements`;
         }
         
+        // Convert entity_id to string if it exists
         const entityId = notification.entity_id !== undefined 
           ? String(notification.entity_id) 
           : undefined;
         
         return {
-          id: String(notification.id_notification),
+          id: String(notification.id_notification), // Convert to string
           title: notification.titre,
           description: notification.message,
           timestamp: notification.date_creation,

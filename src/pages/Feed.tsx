@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from "react";
-import { Navigate, useSearchParams } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion } from "framer-motion";
 import { AgriculturalProject } from "@/types/agriculturalProject";
@@ -9,7 +9,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import AgriculturalProjectCard from '@/components/AgriculturalProjectCard';
-import ProjectDetailsDialog from '@/components/ProjectDetailsDialog';
 
 const Feed: React.FC = () => {
   const [projects, setProjects] = useState<AgriculturalProject[]>([]);
@@ -20,8 +19,6 @@ const Feed: React.FC = () => {
     district?: string;
     commune?: string;
   }>({});
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [selectedProject, setSelectedProject] = useState<string | null>(null);
   const { user } = useAuth();
   
   // Redirect to auth if not logged in
@@ -31,13 +28,7 @@ const Feed: React.FC = () => {
   
   useEffect(() => {
     fetchProjects();
-    
-    // Check if there's a project ID in the URL
-    const projectId = searchParams.get('project');
-    if (projectId) {
-      setSelectedProject(projectId);
-    }
-  }, [activeFilters, searchParams]);
+  }, [activeFilters]);
   
   const fetchProjects = async () => {
     try {
@@ -346,24 +337,6 @@ const Feed: React.FC = () => {
     );
   };
 
-  const handleProjectSelect = (projectId: string) => {
-    setSelectedProject(projectId);
-    setSearchParams(prev => {
-      const newParams = new URLSearchParams(prev);
-      newParams.set('project', projectId);
-      return newParams;
-    });
-  };
-
-  const handleDialogClose = () => {
-    setSelectedProject(null);
-    setSearchParams(prev => {
-      const newParams = new URLSearchParams(prev);
-      newParams.delete('project');
-      return newParams;
-    });
-  };
-
   return (
     <div className="max-w-md mx-auto px-4 py-4">
       <header className="mb-4">
@@ -399,7 +372,7 @@ const Feed: React.FC = () => {
                         farmer: {
                           ...project.farmer,
                           name: (
-                            <Link to={`/profile/${project.farmer.id}`} className="hover:underline" onClick={(e) => e.stopPropagation()}>
+                            <Link to={`/profile/${project.farmer.id}`} className="hover:underline">
                               {project.farmer.name}
                             </Link>
                           )
@@ -407,10 +380,7 @@ const Feed: React.FC = () => {
                         cultivationType: (
                           <button 
                             className="text-primary hover:underline" 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              applyFilter('culture', project.cultivationType as string);
-                            }}
+                            onClick={() => applyFilter('culture', project.cultivationType as string)}
                           >
                             {project.cultivationType}
                           </button>
@@ -419,10 +389,7 @@ const Feed: React.FC = () => {
                           region: (
                             <button 
                               className="text-primary hover:underline" 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                applyFilter('region', project.location.region as string);
-                              }}
+                              onClick={() => applyFilter('region', project.location.region as string)}
                             >
                               {project.location.region}
                             </button>
@@ -430,10 +397,7 @@ const Feed: React.FC = () => {
                           district: (
                             <button 
                               className="text-primary hover:underline" 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                applyFilter('district', project.location.district as string);
-                              }}
+                              onClick={() => applyFilter('district', project.location.district as string)}
                             >
                               {project.location.district}
                             </button>
@@ -441,21 +405,14 @@ const Feed: React.FC = () => {
                           commune: (
                             <button 
                               className="text-primary hover:underline" 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                applyFilter('commune', project.location.commune as string);
-                              }}
+                              onClick={() => applyFilter('commune', project.location.commune as string)}
                             >
                               {project.location.commune}
                             </button>
                           )
                         }
                       }}
-                      onCardClick={() => handleProjectSelect(project.id)}
-                      onLikeToggle={(isLiked) => {
-                        handleToggleLike(project.id, isLiked);
-                        return false; // Prevent event propagation
-                      }}
+                      onLikeToggle={(isLiked) => handleToggleLike(project.id, isLiked)}
                     />
                   </motion.div>
                 ))
@@ -476,14 +433,6 @@ const Feed: React.FC = () => {
           </div>
         </TabsContent>
       </Tabs>
-      
-      {selectedProject && (
-        <ProjectDetailsDialog 
-          isOpen={!!selectedProject}
-          onClose={handleDialogClose}
-          projectId={parseInt(selectedProject)}
-        />
-      )}
     </div>
   );
 };

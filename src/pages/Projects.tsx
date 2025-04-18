@@ -147,16 +147,8 @@ const Projects = () => {
           <ProjectTable filter={search} statutFilter="en attente" />
         </TabsContent>
         
-        <TabsContent value="en_financement" className="mt-4 space-y-6">
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Projets entièrement financés</h3>
-            <ProjectTable filter={search} statutFilter="en financement" fundingStatus="completed" />
-          </div>
-          
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Projets en cours de financement</h3>
-            <ProjectTable filter={search} statutFilter="en financement" fundingStatus="in_progress" />
-          </div>
+        <TabsContent value="en_financement" className="mt-4">
+          <ProjectTable filter={search} statutFilter="en financement" />
         </TabsContent>
         
         <TabsContent value="en_cours" className="mt-4">

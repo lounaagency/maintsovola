@@ -14,9 +14,6 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import UserAvatar from './UserAvatar';
-import { toast } from "sonner";
-import { useAuth } from "@/contexts/AuthContext";
-import FinancialDetailsDialog from './FinancialDetailsDialog';
 
 interface ProjectDetailsDialogProps {
   isOpen: boolean;
@@ -31,14 +28,11 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
   projectId,
   userRole
 }) => {
+  const { toast } = useToast();
   const [project, setProject] = useState<any>(null);
   const [investments, setInvestments] = useState<any[]>([]);
   const [jalons, setJalons] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
-  
-  const [editedDates, setEditedDates] = useState<{[key: string]: string}>({});
-  const [showFinancialDetails, setShowFinancialDetails] = useState(false);
   
   useEffect(() => {
     if (isOpen && projectId) {
@@ -47,13 +41,6 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
       fetchJalons();
     }
   }, [isOpen, projectId]);
-  
-  useEffect(() => {
-    if (isOpen) {
-      setProductionStartDate(new Date().toISOString().split('T')[0]);
-      setEditedDates({});
-    }
-  }, [isOpen]);
   
   const fetchProjectDetails = async () => {
     try {
@@ -75,7 +62,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
             cout_exploitation_previsionnel,
             rendement_previsionnel,
             date_debut_previsionnelle,
-            culture:id_culture(nom_culture, rendement_ha, cout_exploitation_ha, prix_tonne)
+            culture:id_culture(nom_culture)
           )
         `)
         .eq('id_projet', projectId)
@@ -85,7 +72,11 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
       setProject(data);
     } catch (error) {
       console.error('Error fetching project details:', error);
-      toast.error("Impossible de récupérer les détails du projet");
+      toast({
+        title: "Erreur",
+        description: "Impossible de récupérer les détails du projet",
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
@@ -111,76 +102,21 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
   
   const fetchJalons = async () => {
     try {
-      console.log("Fetching jalons for project:", projectId);
-      const { data: cultureData, error: cultureError } = await supabase
-        .from('projet_culture')
-        .select('id_culture')
-        .eq('id_projet', projectId);
-      
-      if (cultureError) throw cultureError;
-      
-      if (!cultureData || cultureData.length === 0) {
-        console.log("No cultures found for this project");
-        return;
-      }
-      
-      const cultureIds = cultureData.map(c => c.id_culture);
-      console.log("Culture IDs:", cultureIds);
-      
       const { data, error } = await supabase
-        .from('jalon')
+        .from('projet_jalon')
         .select(`
-          id_jalon,
-          nom_jalon,
-          action_a_faire,
-          jours_apres_lancement,
-          id_culture,
-          culture:id_culture(nom_culture)
+          *,
+          jalon:id_jalon(nom_jalon, action_a_faire, id_culture),
+          culture:jalon(id_culture(nom_culture))
         `)
-        .in('id_culture', cultureIds);
+        .eq('id_projet', projectId)
+        .order('date_previsionnelle', { ascending: true });
       
       if (error) throw error;
-      
-      console.log("Fetched jalons:", data);
-      
-      if (data) {
-        const formattedJalons = data.map(jalon => ({
-          id_jalon: jalon.id_jalon,
-          nom_jalon: jalon.nom_jalon,
-          action_a_faire: jalon.action_a_faire,
-          jours_apres_lancement: jalon.jours_apres_lancement,
-          id_culture: jalon.id_culture,
-          culture: jalon.culture,
-          date_previsionnelle: calculateJalonDate(productionStartDate, jalon.jours_apres_lancement, jalon.id_jalon)
-        }));
-        
-        setJalons(formattedJalons);
-      } else {
-        setJalons([]);
-      }
+      setJalons(data || []);
     } catch (error) {
       console.error('Error fetching jalons:', error);
-      toast.error("Impossible de récupérer les jalons");
     }
-  };
-  
-  const calculateJalonDate = (startDate: string, daysAfter: number, jalonId: number): string => {
-    const editedKey = `${projectId}-${jalonId}`;
-    if (editedDates[editedKey]) {
-      return editedDates[editedKey];
-    }
-    
-    const date = new Date(startDate);
-    date.setDate(date.getDate() + daysAfter);
-    return date.toISOString().split('T')[0];
-  };
-  
-  const handleDateChange = (jalonId: number, newDate: string) => {
-    const editedKey = `${projectId}-${jalonId}`;
-    setEditedDates(prev => ({
-      ...prev,
-      [editedKey]: newDate
-    }));
   };
   
   const calculateFundingProgress = () => {
@@ -193,137 +129,67 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
     return totalCost === 0 ? 0 : Math.min(Math.round((totalInvestment / totalCost) * 100), 100);
   };
 
-  const [productionStartDate, setProductionStartDate] = useState(
-    new Date().toISOString().split('T')[0]
-  );
-
-  const updateJalonDates = (startDate: string) => {
-    if (!jalons.length) return;
-    
-    const newJalons = jalons.map(jalon => {
-      if (!jalon.jours_apres_lancement) return jalon;
-      
-      return {
-        ...jalon,
-        date_previsionnelle: calculateJalonDate(startDate, jalon.jours_apres_lancement, jalon.id_jalon)
-      };
-    });
-    
-    setJalons(newJalons);
-  };
-
-  useEffect(() => {
-    updateJalonDates(productionStartDate);
-  }, [productionStartDate, jalons.length]);
-
   const handleStartProduction = async () => {
     try {
-      if (!user) {
-        toast.error("Vous devez être connecté pour lancer la production");
-        return;
-      }
+      const startDate = new Date().toISOString().split('T')[0];
       
-      console.log("Starting production with date:", productionStartDate);
-      console.log("Project ID:", projectId);
-      
-      // Step 1: Update project status to "en cours"
-      const { error: updateError } = await supabase
+      // Update project status
+      const { error } = await supabase
         .from('projet')
         .update({
           statut: 'en cours',
-          date_debut_production: productionStartDate,
-          id_lanceur_production: user.id
+          date_lancement: startDate
         })
         .eq('id_projet', projectId);
       
-      if (updateError) {
-        console.error("Error updating project:", updateError);
-        throw updateError;
-      }
+      if (error) throw error;
       
-      console.log("Project updated successfully");
-      
-      // Step 2: Insert jalons if we have any
-      if (jalons && jalons.length > 0) {
-        console.log("Preparing jalon entries for insertion:", jalons.length);
+      // Create jalons for each culture in the project
+      for (const projectCulture of project.projet_culture) {
+        const { data: jalons, error: jalonsError } = await supabase
+          .from('jalon')
+          .select('*')
+          .eq('id_culture', projectCulture.id_culture);
         
-        // First, delete any existing jalons for this project
-        const { error: deleteError } = await supabase
-          .from('projet_jalon')
-          .delete()
-          .eq('id_projet', projectId);
+        if (jalonsError) throw jalonsError;
+        
+        for (const jalon of jalons || []) {
+          const jalonDate = new Date(startDate);
+          jalonDate.setDate(jalonDate.getDate() + jalon.jours_apres_lancement);
           
-        if (deleteError) {
-          console.error("Error deleting existing jalons:", deleteError);
-          // Continue anyway, as they might not exist yet
-        }
-        
-        // Now insert each jalon using Promise.all for better performance
-        const jalonEntries = jalons.map(jalon => {
-          if (!jalon || !jalon.id_jalon) {
-            console.error("Invalid jalon entry:", jalon);
-            return null; // Skip invalid entries
-          }
-          
-          return {
-            id_projet: projectId,
-            id_jalon: jalon.id_jalon,
-            date_previsionnelle: jalon.date_previsionnelle || new Date().toISOString().split('T')[0]
-          };
-        }).filter(entry => entry !== null); // Remove null entries
-        
-        console.log("Jalon entries to insert:", jalonEntries);
-        
-        if (jalonEntries.length === 0) {
-          console.log("No valid jalon entries to insert");
-        } else {
-          // Insert all entries in a single request
           const { error: insertError } = await supabase
             .from('projet_jalon')
-            .insert(jalonEntries);
-            
-          if (insertError) {
-            console.error("Error inserting jalons:", insertError);
-            // Continue anyway to complete the process
-          } else {
-            console.log("All jalons inserted successfully");
-          }
-        }
-      } else {
-        console.log("No jalons to insert");
-      }
-      
-      // Step 3: Send notification to farmer if we have their ID
-      if (project && project.id_tantsaha) {
-        console.log("Sending notification to farmer:", project.id_tantsaha);
-        
-        const { error: notificationError } = await supabase
-          .from('notification')
-          .insert({
-            id_destinataire: project.id_tantsaha,
-            titre: "Votre projet est en production",
-            message: `Votre projet "${project.titre || `Projet #${project.id_projet}`}" est maintenant en cours de production.`,
-            type: "success",
-            entity_type: "projet",
-            entity_id: projectId,
-            projet_id: projectId
-          });
+            .insert({
+              id_projet: projectId,
+              id_jalon: jalon.id_jalon,
+              date_previsionnelle: jalonDate.toISOString().split('T')[0]
+            });
           
-        if (notificationError) {
-          console.error("Error sending notification:", notificationError);
+          if (insertError) throw insertError;
         }
       }
       
-      toast.success("Le projet a été lancé en production");
+      toast({
+        title: "Succès",
+        description: "Le projet a été lancé en production",
+      });
+      
+      // Refresh project data
       fetchProjectDetails();
+      fetchJalons();
     } catch (error) {
       console.error('Error starting production:', error);
-      toast.error("Impossible de lancer le projet en production");
+      toast({
+        title: "Erreur",
+        description: "Impossible de lancer le projet en production",
+        variant: "destructive"
+      });
     }
   };
 
   const handleCompleteJalon = async (jalonId: number) => {
     try {
+      // Update jalon with real date
       const { error } = await supabase
         .from('projet_jalon')
         .update({
@@ -334,17 +200,26 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
       
       if (error) throw error;
       
-      toast.success("Jalon marqué comme réalisé");
+      toast({
+        title: "Succès",
+        description: "Jalon marqué comme réalisé",
+      });
       
+      // Refresh jalons
       fetchJalons();
     } catch (error) {
       console.error('Error completing jalon:', error);
-      toast.error("Impossible de mettre à jour le jalon");
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour le jalon",
+        variant: "destructive"
+      });
     }
   };
 
   const handleCompleteProject = async () => {
     try {
+      // Update project status
       const { error } = await supabase
         .from('projet')
         .update({
@@ -355,12 +230,20 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
       
       if (error) throw error;
       
-      toast.success("Le projet a été marqué comme terminé");
+      toast({
+        title: "Succès",
+        description: "Le projet a été marqué comme terminé",
+      });
       
+      // Refresh project data
       fetchProjectDetails();
     } catch (error) {
       console.error('Error completing project:', error);
-      toast.error("Impossible de terminer le projet");
+      toast({
+        title: "Erreur",
+        description: "Impossible de terminer le projet",
+        variant: "destructive"
+      });
     }
   };
   
@@ -376,10 +259,6 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
       month: 'long',
       day: 'numeric'
     });
-  };
-
-  const handleOpenFinancialDetails = () => {
-    setShowFinancialDetails(true);
   };
 
   if (loading || !project) {
@@ -399,20 +278,6 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
 
   const fundingProgress = calculateFundingProgress();
   const isFundingComplete = fundingProgress >= 100;
-  const canLaunchProduction = (userRole === 'technicien' || userRole === 'superviseur') && 
-                             project.statut === 'en financement' && 
-                             isFundingComplete;
-
-  const defaultTab = canLaunchProduction ? "jalons" : "finances";
-
-  const jalonsByCulture = jalons.reduce((acc: {[key: string]: typeof jalons}, jalon) => {
-    const cultureName = jalon.culture?.nom_culture || 'Sans culture';
-    if (!acc[cultureName]) {
-      acc[cultureName] = [];
-    }
-    acc[cultureName].push(jalon);
-    return acc;
-  }, {});
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -425,7 +290,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
           <Card>
             <CardContent className="pt-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div className="text-xs">
+                <div  className="text-xs">
                   <p className="text-muted-foreground">Agriculteur</p>
                   
                   <div className="flex items-center">
@@ -434,28 +299,27 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
                       alt={typeof project.tantsaha?.nom === 'string' ? project.tantsaha.nom : 'Agriculteur'} 
                       size="sm" 
                     />
-                    <div className="text-xs">
+                    <div  className="text-xs">
                       <div className="text-green-900">
                         {project.tantsaha?.nom} {project.tantsaha?.prenoms || ''}
                       </div>
                     </div>
                   </div>
                 </div>
-                <div className="text-xs">
+                <div  className="text-xs">
                   <p className="text-muted-foreground">Terrain</p>
                   <p className="text-green-900">{project.terrain?.nom_terrain} ({project.surface_ha} ha)</p>
                 </div>
-                <div className="text-xs">
+                <div  className="text-xs">
                   <p className="text-muted-foreground">Localisation</p>
                   <p className="text-green-900">{project.region?.nom_region}, {project.district?.nom_district}, {project.commune?.nom_commune}</p>
                 </div>
-                <div className="text-xs">
+                <div  className="text-xs">
                   <p className="text-muted-foreground">Statut</p>
                   <Badge 
                     variant={
                       project.statut === 'en attente' ? 'outline' : 
                       project.statut === 'validé' ? 'secondary' :
-                      project.statut === 'en financement' ? 'secondary' :
                       project.statut === 'en cours' ? 'default' :
                       project.statut === 'terminé' ? 'secondary' : 'outline'
                     }
@@ -463,7 +327,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
                     {project.statut}
                   </Badge>
                 </div>
-                <div className="text-xs">
+                <div  className="text-xs">
                   <p className="text-muted-foreground">Cultures</p>
                   <div className="flex flex-wrap gap-1 mt-1">
                     {project.projet_culture.map((pc: any) => (
@@ -473,7 +337,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
                     ))}
                   </div>
                 </div>
-                <div className="text-xs">
+                <div  className="text-xs">
                   <p className="text-muted-foreground">Equipe Maintso Vola</p>                  
                   {project.superviseur && (
                     <div className="flex items-center">
@@ -502,10 +366,10 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
                     </div>
                   )}
                 </div>
-                {project.date_debut_production && (
-                  <div className="text-xs">
+                {project.date_lancement && (
+                  <div>
                     <p className="text-muted-foreground">Date de lancement</p>
-                    <p className="text-green-900">{formatDate(project.date_debut_production)}</p>
+                    <p className="text-green-900">{formatDate(project.date_lancement)}</p>
                   </div>
                 )}
               </div>
@@ -513,36 +377,13 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
               {project.description && (
                 <div className="mt-4 text-xs">
                   <p className="text-muted-foreground mb-1">Description</p>
-                  <p className="text-green-900">{project.description}</p>
+                  <p  className="text-green-900">{project.description}</p>
                 </div>
               )}
-              
-              <div 
-                className="mt-4 p-3 bg-muted/30 rounded-md cursor-pointer hover:bg-muted/50 transition-colors"
-                onClick={handleOpenFinancialDetails}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium">Détails financiers</span>
-                  <span className="text-xs text-muted-foreground">Cliquez pour voir plus</span>
-                </div>
-                <div className="grid grid-cols-2 gap-3 text-xs">
-                  <div>
-                    <span className="text-muted-foreground block">Coût d'exploitation total</span>
-                    <span className="font-medium">
-                      {project.projet_culture.reduce((sum: number, pc: any) => 
-                        sum + (pc.cout_exploitation_previsionnel || 0), 0).toLocaleString()} Ar
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground block">Surface totale</span>
-                    <span className="font-medium">{project.surface_ha} ha</span>
-                  </div>
-                </div>
-              </div>
             </CardContent>
           </Card>
 
-          <Tabs defaultValue={defaultTab} className="w-full text-xs">
+          <Tabs defaultValue="finances" className="w-full text-xs">
             <TabsList className="grid grid-cols-2">
               <TabsTrigger value="finances">Financement</TabsTrigger>
               <TabsTrigger value="jalons">Jalons & Production</TabsTrigger>
@@ -607,7 +448,9 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
                 </table>
               </div>
               
-              {canLaunchProduction && (
+              {userRole === 'technicien' && 
+               project.statut === 'validé' && 
+               isFundingComplete && (
                 <div className="flex justify-end mt-4">
                   <Button onClick={handleStartProduction}>
                     Lancer la production
@@ -617,67 +460,68 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
             </TabsContent>
             
             <TabsContent value="jalons" className="space-y-4 mt-4">
-              {canLaunchProduction ? (
+              {project.statut === 'en cours' ? (
                 <div className="space-y-4">
-                  <div className="space-y-2">
-                    <label htmlFor="startDate" className="text-sm font-medium">
-                      Date de début de production
-                    </label>
-                    <input
-                      id="startDate"
-                      type="date"
-                      value={productionStartDate}
-                      onChange={(e) => setProductionStartDate(e.target.value)}
-                      className="w-full p-2 border rounded"
-                    />
+                  <div className="border rounded-md">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="bg-muted">
+                          <th className="p-2 text-left text-sm">Jalon</th>
+                          <th className="p-2 text-left text-sm">Culture</th>
+                          <th className="p-2 text-left text-sm">Date prévue</th>
+                          <th className="p-2 text-left text-sm">Date réelle</th>
+                          {userRole === 'technicien' && <th className="p-2 text-sm"></th>}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {jalons.length > 0 ? (
+                          jalons.map((jalon) => (
+                            <tr key={`${jalon.id_projet}-${jalon.id_jalon}`} className="border-t">
+                              <td className="p-2 text-sm">
+                                {jalon.jalon?.nom_jalon}
+                              </td>
+                              <td className="p-2 text-sm">
+                                {jalon.culture?.nom_culture || ''}
+                              </td>
+                              <td className="p-2 text-sm">
+                                {formatDate(jalon.date_previsionnelle)}
+                              </td>
+                              <td className="p-2 text-sm">
+                                {jalon.date_reelle ? formatDate(jalon.date_reelle) : 'Non réalisé'}
+                              </td>
+                              {userRole === 'technicien' && (
+                                <td className="p-2 text-right">
+                                  {!jalon.date_reelle && (
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline"
+                                      onClick={() => handleCompleteJalon(jalon.id_jalon)}
+                                    >
+                                      Marquer réalisé
+                                    </Button>
+                                  )}
+                                </td>
+                              )}
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={userRole === 'technicien' ? 5 : 4} className="p-4 text-center text-sm text-muted-foreground">
+                              Aucun jalon défini pour ce projet
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
                   </div>
-
-                  {Object.entries(jalonsByCulture).map(([cultureName, cultureJalons]) => {
-                    const jalonsArray = Array.isArray(cultureJalons) ? cultureJalons : [];
-                    
-                    return (
-                      <div key={cultureName} className="space-y-2">
-                        <h3 className="font-medium text-lg">{cultureName}</h3>
-                        <div className="border rounded-md">
-                          <table className="w-full">
-                            <thead>
-                              <tr className="bg-muted">
-                                <th className="p-2 text-left text-sm">Jalon</th>
-                                <th className="p-2 text-left text-sm">Action à faire</th>
-                                <th className="p-2 text-left text-sm">Date prévue</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {jalonsArray.map((jalon) => (
-                                <tr key={`${projectId}-${jalon.id_jalon}`} className="border-t">
-                                  <td className="p-2 text-sm">
-                                    {jalon.nom_jalon}
-                                  </td>
-                                  <td className="p-2 text-sm">
-                                    {jalon.action_a_faire}
-                                  </td>
-                                  <td className="p-2 text-sm">
-                                    <input
-                                      type="date"
-                                      value={calculateJalonDate(productionStartDate, jalon.jours_apres_lancement, jalon.id_jalon)}
-                                      onChange={(e) => handleDateChange(jalon.id_jalon, e.target.value)}
-                                      className="border rounded p-1 w-full"
-                                    />
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                  <div className="flex justify-end mt-4">
-                    <Button onClick={handleStartProduction}>
-                      Lancer la production
-                    </Button>
-                  </div>
+                  
+                  {userRole === 'technicien' && allJalonsCompleted() && (
+                    <div className="flex justify-end mt-4">
+                      <Button onClick={handleCompleteProject}>
+                        Terminer le projet
+                      </Button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="p-8 text-center text-muted-foreground">
@@ -692,13 +536,6 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
           </Tabs>
         </div>
       </DialogContent>
-      
-      <FinancialDetailsDialog
-        isOpen={showFinancialDetails}
-        onClose={() => setShowFinancialDetails(false)}
-        projectCultures={project.projet_culture}
-        title="Détails financiers par culture"
-      />
     </Dialog>
   );
 };

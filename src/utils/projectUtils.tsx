@@ -14,7 +14,6 @@ export const renderStatusBadge = (status: string) => {
       variant = "outline";
       break;
     case 'validé':
-      variant = "secondary";
       break;
     case 'en financement':
       variant = "secondary";
@@ -58,28 +57,6 @@ export const canEditProject = (project: ProjectData, userRole: string | null, us
   return userRole === 'superviseur' || 
          userRole === 'technicien' || 
          (userRole === 'simple' && project.id_tantsaha === userId);
-};
-
-/**
- * Calculate the funding percentage of a project
- */
-export const calculateProjectFunding = (project: ProjectData, investments: any[]): number => {
-  if (!project || !project.projet_culture) return 0;
-  
-  const totalInvestment = investments.reduce((sum, inv) => sum + (inv.montant || 0), 0);
-  const totalCost = project.projet_culture.reduce((sum, pc) => 
-    sum + (pc.cout_exploitation_previsionnel || 0), 0);
-  
-  return totalCost === 0 ? 0 : Math.min(Math.round((totalInvestment / totalCost) * 100), 100);
-};
-
-/**
- * Check if project can be launched into production (100% funded, in 'en financement' status)
- */
-export const canLaunchProduction = (project: ProjectData, fundingPercentage: number, userRole: string | null): boolean => {
-  return (userRole === 'technicien' || userRole === 'superviseur') && 
-         project.statut === 'en financement' && 
-         fundingPercentage >= 100;
 };
 
 /**
