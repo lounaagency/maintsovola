@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Badge } from "@/components/ui/badge";
 import { ProjectData } from "@/components/ProjectTable";
@@ -6,20 +7,31 @@ import { ProjectData } from "@/components/ProjectTable";
  * Renders a status badge with appropriate styling based on project status
  */
 export const renderStatusBadge = (status: string) => {
+  let variant: "outline" | "secondary" | "destructive" | "default" = "outline";
+  
   switch (status) {
-    case "en attente":
-      return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">En attente</Badge>;
-    case "validé":
-      return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">En financement</Badge>;
-    case "en cours":
-      return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">En production</Badge>;
-    case "terminé":
-      return <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">Terminé</Badge>;
-    case "rejeté":
-      return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">Rejeté</Badge>;
+    case 'en attente':
+      variant = "outline";
+      break;
+    case 'validé':
+      break;
+    case 'en financement':
+      variant = "secondary";
+      break;
+    case 'en cours':
+      variant = "default";
+      break;
+    case 'terminé':
+      variant = "secondary";
+      break;
+    case 'rejeté':
+      variant = "destructive";
+      break;
     default:
-      return <Badge variant="outline">{status}</Badge>;
+      variant = "outline";
   }
+  
+  return <Badge variant={variant}>{status}</Badge>;
 };
 
 /**
@@ -62,25 +74,4 @@ export const getProjectSummary = (project: ProjectData) => {
     status: project.statut,
     createdAt: project.created_at || 'N/A'
   };
-};
-
-/**
- * Calculate the funding percentage based on project costs and total investment
- */
-export const getFundingPercentage = (
-  project: ProjectData, 
-  totalInvestment: number | null = null
-): number => {
-  // If totalInvestment is provided directly, use it
-  if (totalInvestment !== null) {
-    const totalCost = project.projet_culture?.reduce(
-      (sum, pc) => sum + (pc.cout_exploitation_previsionnel || 0), 
-      0
-    ) || 0;
-    
-    return totalCost === 0 ? 0 : Math.min(Math.round((totalInvestment / totalCost) * 100), 100);
-  }
-  
-  // Otherwise use the pre-calculated percentage if available
-  return project.fundingPercentage || 0;
 };
