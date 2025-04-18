@@ -18,6 +18,7 @@ interface ProjectTableProps {
   filter?: string;
   showActions?: boolean;
   statutFilter?: string;
+  fundingStatus?: 'completed' | 'in_progress';
 }
 
 export interface ProjectData {
@@ -60,7 +61,12 @@ export interface ProjectData {
   id_commune?: number;
 }
 
-const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = true, statutFilter="" }) => {
+const ProjectTable: React.FC<ProjectTableProps> = ({ 
+  filter = "", 
+  showActions = true, 
+  statutFilter = "",
+  fundingStatus
+}) => {
   const [projects, setProjects] = useState<ProjectData[]>([]);
   const [loading, setLoading] = useState(true);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -101,7 +107,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
 
   useEffect(() => {
     fetchProjects();
-  }, [statutFilter, filter, user, userRole, sortColumn, sortDirection]);
+  }, [statutFilter, filter, user, userRole, sortColumn, sortDirection, fundingStatus]);
 
   const fetchProjects = async () => {
     if (!user) return;
@@ -120,7 +126,12 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
           projet_culture:projet_culture(
             id_projet_culture,
             id_culture,
-            culture:id_culture(nom_culture)
+            culture:id_culture(nom_culture),
+            cout_exploitation_previsionnel
+          ),
+          vue_suivi_financier_projet!projet_id(
+            total_investissement,
+            cout_total_previsionnel
           )
         `);
       
@@ -137,15 +148,29 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
       }
       
       if (statutFilter) {
-        query = query.eq(`statut`, statutFilter);
+        query = query.eq('statut', statutFilter);
+      }
+
+      if (fundingStatus && statutFilter === 'en financement') {
+        query = query.neq('vue_suivi_financier_projet', null);
       }
       
       query = query.order(sortColumn, { ascending: sortDirection === 'asc' });
       
-      const { data, error } = await query;
+      const { data: allProjects, error } = await query;
       if (error) throw error;
+
+      const filteredProjects = allProjects.filter(project => {
+        if (!fundingStatus || statutFilter !== 'en financement') return true;
+
+        const investmentTotal = project.vue_suivi_financier_projet?.[0]?.total_investissement || 0;
+        const totalCost = project.vue_suivi_financier_projet?.[0]?.cout_total_previsionnel || 0;
+        const fundingPercentage = totalCost === 0 ? 0 : Math.min((investmentTotal / totalCost) * 100, 100);
+
+        return fundingStatus === 'completed' ? fundingPercentage >= 100 : fundingPercentage < 100;
+      });
       
-      setProjects(data as unknown as ProjectData[]);
+      setProjects(filteredProjects as ProjectData[]);
     } catch (error) {
       console.error("Erreur lors de la récupération des projets:", error);
       toast.error("Impossible de charger les projets");
