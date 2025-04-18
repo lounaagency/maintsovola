@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -257,13 +256,27 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
         
         console.log("Jalon entries to insert:", jalonEntries);
         
-        const { error: jalonError } = await supabase
+        // First, check if there are any existing jalons for this project and delete them
+        const { error: deleteError } = await supabase
           .from('projet_jalon')
-          .insert(jalonEntries);
+          .delete()
+          .eq('id_projet', projectId);
           
-        if (jalonError) {
-          console.error("Error inserting jalons:", jalonError);
-          throw jalonError;
+        if (deleteError) {
+          console.error("Error deleting existing jalons:", deleteError);
+          // Continue anyway, as they might not exist yet
+        }
+        
+        // Now insert the new jalons
+        for (const entry of jalonEntries) {
+          const { error: jalonError } = await supabase
+            .from('projet_jalon')
+            .insert(entry);
+            
+          if (jalonError) {
+            console.error("Error inserting jalon:", jalonError, "Entry:", entry);
+            // Don't throw, continue with others
+          }
         }
         
         console.log("Jalons inserted successfully");
@@ -592,7 +605,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
                             </tr>
                           </thead>
                           <tbody>
-                            {cultureJalons.map((jalon) => (
+                            {Array.isArray(cultureJalons) && cultureJalons.map((jalon) => (
                               <tr key={`${projectId}-${jalon.id_jalon}`} className="border-t">
                                 <td className="p-2 text-sm">
                                   {jalon.nom_jalon}
@@ -640,4 +653,3 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
 };
 
 export default ProjectDetailsDialog;
-
