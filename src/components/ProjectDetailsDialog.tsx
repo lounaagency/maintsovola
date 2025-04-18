@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -111,7 +110,6 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
   const fetchJalons = async () => {
     try {
       console.log("Fetching jalons for project:", projectId);
-      // First, get all cultures for this project
       const { data: cultureData, error: cultureError } = await supabase
         .from('projet_culture')
         .select('id_culture')
@@ -127,7 +125,6 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
       const cultureIds = cultureData.map(c => c.id_culture);
       console.log("Culture IDs:", cultureIds);
       
-      // Fetch jalons for these cultures
       const { data, error } = await supabase
         .from('jalon')
         .select(`
@@ -198,7 +195,6 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
     new Date().toISOString().split('T')[0]
   );
 
-  // Update jalon dates when production start date changes
   const updateJalonDates = (startDate: string) => {
     if (!jalons.length) return;
     
@@ -225,8 +221,9 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
         return;
       }
       
-      // Update project status and add production start date
-      const { error } = await supabase
+      console.log("Starting production with date:", productionStartDate);
+      
+      const { error: updateError } = await supabase
         .from('projet')
         .update({
           statut: 'en cours',
@@ -235,22 +232,30 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
         })
         .eq('id_projet', projectId);
       
-      if (error) throw error;
+      if (updateError) {
+        console.error("Error updating project:", updateError);
+        throw updateError;
+      }
       
-      // Create jalons for each culture with the calculated dates
-      const jalonPromises = jalons.map(jalon => 
-        supabase
+      console.log("Project updated successfully, now inserting jalons");
+      
+      if (jalons && jalons.length > 0) {
+        const jalonEntries = jalons.map(jalon => ({
+          id_projet: projectId,
+          id_jalon: jalon.id_jalon,
+          date_previsionnelle: jalon.date_previsionnelle
+        }));
+        
+        const { error: jalonError } = await supabase
           .from('projet_jalon')
-          .insert({
-            id_projet: projectId,
-            id_jalon: jalon.id_jalon,
-            date_previsionnelle: jalon.date_previsionnelle
-          })
-      );
+          .insert(jalonEntries);
+          
+        if (jalonError) {
+          console.error("Error inserting jalons:", jalonError);
+          throw jalonError;
+        }
+      }
       
-      await Promise.all(jalonPromises);
-      
-      // Send notification to farmer
       if (project.id_tantsaha) {
         await supabase
           .from('notification')
@@ -275,7 +280,6 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
 
   const handleCompleteJalon = async (jalonId: number) => {
     try {
-      // Update jalon with real date
       const { error } = await supabase
         .from('projet_jalon')
         .update({
@@ -288,7 +292,6 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
       
       toast.success("Jalon marqué comme réalisé");
       
-      // Refresh jalons
       fetchJalons();
     } catch (error) {
       console.error('Error completing jalon:', error);
@@ -298,7 +301,6 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
 
   const handleCompleteProject = async () => {
     try {
-      // Update project status
       const { error } = await supabase
         .from('projet')
         .update({
@@ -311,7 +313,6 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
       
       toast.success("Le projet a été marqué comme terminé");
       
-      // Refresh project data
       fetchProjectDetails();
     } catch (error) {
       console.error('Error completing project:', error);
