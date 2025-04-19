@@ -30,7 +30,6 @@ interface ProjectData {
   titre?: string;
   description?: string;
   surface_ha: number;
-  statut: string;
   terrain?: {
     nom_terrain?: string;
   };
@@ -72,7 +71,6 @@ const ProductionLaunchDialog: React.FC<ProductionLaunchDialogProps> = ({
   }, [isOpen, project]);
 
   useEffect(() => {
-    // Update jalon dates when start date changes
     updateJalonDates();
   }, [startDate]);
 
@@ -81,12 +79,10 @@ const ProductionLaunchDialog: React.FC<ProductionLaunchDialogProps> = ({
     
     setLoading(true);
     try {
-      // Get all culture IDs from the project
       const cultureIds = project.projet_culture.map(pc => pc.id_culture);
       
       if (!cultureIds.length) return;
       
-      // Fetch all jalons for these cultures
       const { data, error } = await supabase
         .from('jalon')
         .select(`
@@ -101,12 +97,10 @@ const ProductionLaunchDialog: React.FC<ProductionLaunchDialogProps> = ({
       
       if (error) throw error;
       
-      // Group jalons by culture
       const jalonsByCulture: { [key: number]: JalonData[] } = {};
       
       if (data) {
         data.forEach(jalon => {
-          // Calculate planned date based on current start date
           const datePrevue = new Date(startDate);
           datePrevue.setDate(datePrevue.getDate() + jalon.jours_apres_lancement);
           
@@ -119,7 +113,6 @@ const ProductionLaunchDialog: React.FC<ProductionLaunchDialogProps> = ({
           jalonsByCulture[jalon.id_culture].push(jalonWithDate);
         });
         
-        // Sort jalons by days after launch
         for (const cultureId in jalonsByCulture) {
           jalonsByCulture[cultureId].sort((a, b) => a.jours_apres_lancement - b.jours_apres_lancement);
         }
@@ -178,7 +171,6 @@ const ProductionLaunchDialog: React.FC<ProductionLaunchDialogProps> = ({
         }
       }
       
-      // Insert all jalons in a single operation
       if (jalonsToInsert.length > 0) {
         const { error: jalonsError } = await supabase
           .from('projet_jalon')

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Navigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -21,7 +20,6 @@ const Feed: React.FC = () => {
   }>({});
   const { user } = useAuth();
   
-  // Redirect to auth if not logged in
   if (!user) {
     return <Navigate to="/auth" replace />;
   }
@@ -34,7 +32,6 @@ const Feed: React.FC = () => {
     try {
       setLoading(true);
       
-      // First, fetch all projects with status 'en financement'
       let { data: projetsData, error: projetsError } = await supabase
         .from('projet')
         .select(`
@@ -70,46 +67,15 @@ const Feed: React.FC = () => {
       if (culturesError) {
         throw culturesError;
       }
-      
-      // Filtrage par culture - c'est ici que le problème se trouvait
+
       if (activeFilters.culture) {
         const filteredProjectIds = culturesData
-          .filter(pc => pc.culture && pc.culture.nom_culture === activeFilters.culture)
+          .filter(pc => pc.culture?.nom_culture === activeFilters.culture)
           .map(pc => pc.id_projet);
         
-        projetsData = projetsData.filter(projet => 
-          filteredProjectIds.includes(projet.id_projet)
+        projetsData = projetsData?.filter(project => 
+          filteredProjectIds.includes(project.id_projet)
         );
-      }
-      
-      // Apply location filters manually
-      if (activeFilters.region || activeFilters.district || activeFilters.commune) {
-        projetsData = projetsData.filter(projet => {
-          // Skip projects with missing location data
-          if (!projet.commune || !projet.commune.district || !projet.commune.district.region) {
-            return false;
-          }
-          
-          // Apply region filter
-          if (activeFilters.region && 
-              projet.commune.district.region.nom_region !== activeFilters.region) {
-            return false;
-          }
-          
-          // Apply district filter
-          if (activeFilters.district && 
-              projet.commune.district.nom_district !== activeFilters.district) {
-            return false;
-          }
-          
-          // Apply commune filter
-          if (activeFilters.commune && 
-              projet.commune.nom_commune !== activeFilters.commune) {
-            return false;
-          }
-          
-          return true;
-        });
       }
       
       const { data: investissementsData, error: investissementsError } = await supabase
@@ -148,7 +114,6 @@ const Feed: React.FC = () => {
         commentsCount[projectId] = (commentsCount[projectId] || 0) + 1;
       });
       
-      // Transform projects to the format expected by the UI
       const transformedProjects = projetsData.map(projet => {
         const projetCultures = culturesData.filter(pc => pc.id_projet === projet.id_projet);
         
