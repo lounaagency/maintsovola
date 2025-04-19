@@ -57,6 +57,31 @@ const Feed: React.FC = () => {
         throw projetsError;
       }
       
+      const { data: culturesData, error: culturesError } = await supabase
+        .from('projet_culture')
+        .select(`
+          id_projet,
+          id_culture,
+          cout_exploitation_previsionnel,
+          rendement_previsionnel,
+          culture(nom_culture)
+        `);
+        
+      if (culturesError) {
+        throw culturesError;
+      }
+      
+      // Filtrage par culture - c'est ici que le problème se trouvait
+      if (activeFilters.culture) {
+        const filteredProjectIds = culturesData
+          .filter(pc => pc.culture && pc.culture.nom_culture === activeFilters.culture)
+          .map(pc => pc.id_projet);
+        
+        projetsData = projetsData.filter(projet => 
+          filteredProjectIds.includes(projet.id_projet)
+        );
+      }
+      
       // Apply location filters manually
       if (activeFilters.region || activeFilters.district || activeFilters.commune) {
         projetsData = projetsData.filter(projet => {
@@ -85,27 +110,6 @@ const Feed: React.FC = () => {
           
           return true;
         });
-      }
-      
-      const { data: culturesData, error: culturesError } = await supabase
-        .from('projet_culture')
-        .select(`
-          id_projet,
-          id_culture,
-          cout_exploitation_previsionnel,
-          rendement_previsionnel,
-          culture(nom_culture)
-        `);
-        
-      if (culturesError) {
-        throw culturesError;
-      }
-      
-      let filteredCultures = culturesData;
-      if (activeFilters.culture) {
-        filteredCultures = culturesData.filter(
-          pc => pc.culture && pc.culture.nom_culture === activeFilters.culture
-        );
       }
       
       const { data: investissementsData, error: investissementsError } = await supabase
@@ -144,18 +148,8 @@ const Feed: React.FC = () => {
         commentsCount[projectId] = (commentsCount[projectId] || 0) + 1;
       });
       
-      let finalProjects = projetsData;
-      
-      // Apply culture filter
-      if (activeFilters.culture) {
-        const filteredProjectIds = filteredCultures.map(fc => fc.id_projet);
-        finalProjects = projetsData.filter(
-          project => filteredProjectIds.includes(project.id_projet)
-        );
-      }
-      
       // Transform projects to the format expected by the UI
-      const transformedProjects = finalProjects.map(projet => {
+      const transformedProjects = projetsData.map(projet => {
         const projetCultures = culturesData.filter(pc => pc.id_projet === projet.id_projet);
         
         const currentFunding = investissementsData
@@ -380,7 +374,11 @@ const Feed: React.FC = () => {
                         cultivationType: (
                           <button 
                             className="text-primary hover:underline" 
-                            onClick={() => applyFilter('culture', project.cultivationType as string)}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              applyFilter('culture', project.cultivationType as string);
+                            }}
                           >
                             {project.cultivationType}
                           </button>
@@ -389,7 +387,11 @@ const Feed: React.FC = () => {
                           region: (
                             <button 
                               className="text-primary hover:underline" 
-                              onClick={() => applyFilter('region', project.location.region as string)}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                applyFilter('region', project.location.region as string);
+                              }}
                             >
                               {project.location.region}
                             </button>
@@ -397,7 +399,11 @@ const Feed: React.FC = () => {
                           district: (
                             <button 
                               className="text-primary hover:underline" 
-                              onClick={() => applyFilter('district', project.location.district as string)}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                applyFilter('district', project.location.district as string);
+                              }}
                             >
                               {project.location.district}
                             </button>
@@ -405,7 +411,11 @@ const Feed: React.FC = () => {
                           commune: (
                             <button 
                               className="text-primary hover:underline" 
-                              onClick={() => applyFilter('commune', project.location.commune as string)}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                applyFilter('commune', project.location.commune as string);
+                              }}
                             >
                               {project.location.commune}
                             </button>

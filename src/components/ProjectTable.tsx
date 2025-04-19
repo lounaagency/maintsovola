@@ -1,13 +1,15 @@
+
 import React, { useState, useEffect } from "react";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Loader2, Eye, FileEdit, CheckCircle, Trash2 } from "lucide-react";
+import { Loader2, Eye, FileEdit, CheckCircle, Trash2, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ProjectDetailsDialog from "./ProjectDetailsDialog";
 import ProjectEditDialog from "./ProjectEditDialog";
 import ProjectValidationDialog from "./ProjectValidationDialog";
+import ProductionLaunchDialog from "./ProductionLaunchDialog";
 import ProjectCard from "./ProjectCard";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
@@ -18,6 +20,7 @@ interface ProjectTableProps {
   filter?: string;
   showActions?: boolean;
   statutFilter?: string;
+  showFullyFundedOnly?: boolean;
 }
 
 export interface ProjectData {
@@ -53,19 +56,32 @@ export interface ProjectData {
     culture?: {
       nom_culture?: string;
     };
+    cout_exploitation_previsionnel?: number;
   }>;
   photos?: string;
   id_region?: number;
   id_district?: number;
   id_commune?: number;
+  investissements?: Array<{
+    id_investissement: number;
+    montant: number;
+  }>;
+  currentFunding?: number;
+  fundingGoal?: number;
 }
 
-const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = true, statutFilter="" }) => {
+const ProjectTable: React.FC<ProjectTableProps> = ({ 
+  filter = "", 
+  showActions = true, 
+  statutFilter = "",
+  showFullyFundedOnly 
+}) => {
   const [projects, setProjects] = useState<ProjectData[]>([]);
   const [loading, setLoading] = useState(true);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [validationOpen, setValidationOpen] = useState(false);
+  const [productionLaunchOpen, setProductionLaunchOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<ProjectData | null>(null);
   const { user, profile } = useAuth();
@@ -101,7 +117,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
 
   useEffect(() => {
     fetchProjects();
-  }, [statutFilter, filter, user, userRole, sortColumn, sortDirection]);
+  }, [statutFilter, filter, user, userRole, sortColumn, sortDirection, showFullyFundedOnly]);
 
   const fetchProjects = async () => {
     if (!user) return;
@@ -120,7 +136,12 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
           projet_culture:projet_culture(
             id_projet_culture,
             id_culture,
-            culture:id_culture(nom_culture)
+            culture:id_culture(nom_culture),
+            cout_exploitation_previsionnel
+          ),
+          investissements:investissement(
+            id_investissement,
+            montant
           )
         `);
       
@@ -145,13 +166,54 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
       const { data, error } = await query;
       if (error) throw error;
       
-      setProjects(data as unknown as ProjectData[]);
+      // Calculate funding goal and current funding for each project
+      const projectsWithFunding = data.map(project => {
+        const fundingGoal = calculateFundingGoal(project);
+        const currentFunding = calculateCurrentFunding(project);
+        const isFunded = currentFunding >= fundingGoal;
+        
+        return {
+          ...project,
+          fundingGoal,
+          currentFunding,
+          isFunded
+        };
+      });
+      
+      // Filter projects based on funding status if needed
+      let filteredProjects = projectsWithFunding;
+      if (statutFilter === 'en financement' && showFullyFundedOnly !== undefined) {
+        filteredProjects = projectsWithFunding.filter(project => {
+          return showFullyFundedOnly ? project.isFunded : !project.isFunded;
+        });
+      }
+      
+      setProjects(filteredProjects as unknown as ProjectData[]);
     } catch (error) {
       console.error("Erreur lors de la récupération des projets:", error);
       toast.error("Impossible de charger les projets");
     } finally {
       setLoading(false);
     }
+  };
+
+  const calculateFundingGoal = (project: any): number => {
+    if (!project.projet_culture || project.projet_culture.length === 0) return 0;
+    
+    const totalCost = project.projet_culture.reduce((sum: number, culture: any) => {
+      const cultureCost = culture.cout_exploitation_previsionnel || 0;
+      return sum + (cultureCost * project.surface_ha);
+    }, 0);
+    
+    return totalCost;
+  };
+
+  const calculateCurrentFunding = (project: any): number => {
+    if (!project.investissements || project.investissements.length === 0) return 0;
+    
+    return project.investissements.reduce((sum: number, inv: any) => {
+      return sum + (inv.montant || 0);
+    }, 0);
   };
 
   const handleOpenDetails = (project: ProjectData) => {
@@ -167,6 +229,11 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
   const handleOpenValidation = (project: ProjectData) => {
     setSelectedProject(project);
     setValidationOpen(true);
+  };
+
+  const handleOpenProductionLaunch = (project: ProjectData) => {
+    setSelectedProject(project);
+    setProductionLaunchOpen(true);
   };
 
   const handleOpenDeleteConfirm = (project: ProjectData) => {
@@ -207,6 +274,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
     fetchProjects();
     setEditOpen(false);
     setValidationOpen(false);
+    setProductionLaunchOpen(false);
   };
   
   const handleSort = (column: string) => {
@@ -220,6 +288,11 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
 
   const isValidationUser = canValidateProject(userRole);
   const showValidateButton = isValidationUser && statutFilter === "en attente";
+  
+  // Show Production Launch button for projects with 100% funding
+  const canLaunchProduction = (userRole === 'technicien' || userRole === 'superviseur') && 
+                              statutFilter === "en financement" && 
+                              showFullyFundedOnly === true;
 
   if (loading) {
     return (
@@ -253,10 +326,13 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
               onViewDetails={handleOpenDetails}
               onEdit={handleOpenEdit}
               onValidate={handleOpenValidation}
+              onLaunchProduction={canLaunchProduction ? handleOpenProductionLaunch : undefined}
               onDelete={handleOpenDeleteConfirm}
               canEdit={canEditProject(project, userRole, user?.id)}
               canValidate={showValidateButton}
+              canLaunchProduction={canLaunchProduction}
               canDelete={canDeleteProject(project, userRole, user?.id)}
+              showFunding={statutFilter === "en financement"}
             />
           ))}
         </div>
@@ -302,6 +378,9 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
                 >
                   Surface (ha)
                 </TableHead>
+                {statutFilter === "en financement" && (
+                  <TableHead>Financement</TableHead>
+                )}
                 <TableHead 
                   className="cursor-pointer"
                   onClick={() => handleSort('statut')}
@@ -332,6 +411,14 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
                   </TableCell>
                   <TableCell>{project.terrain?.nom_terrain || `Terrain #${project.id_terrain}`}</TableCell>
                   <TableCell>{project.surface_ha}</TableCell>
+                  {statutFilter === "en financement" && (
+                    <TableCell>
+                      {project.fundingGoal && project.currentFunding 
+                        ? `${Math.round((project.currentFunding / project.fundingGoal) * 100)}%`
+                        : 'N/A'
+                      }
+                    </TableCell>
+                  )}
                   <TableCell>{renderStatusBadge(project.statut)}</TableCell>
                   {userRole !== 'simple' && (
                     <TableCell>
@@ -377,6 +464,19 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
                             }}
                           >
                             <CheckCircle className="h-4 w-4 text-green-500" />
+                          </Button>
+                        )}
+                        {canLaunchProduction && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Lancer la production"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenProductionLaunch(project);
+                            }}
+                          >
+                            <Play className="h-4 w-4 text-green-500" />
                           </Button>
                         )}
                         {canDeleteProject(project, userRole, user?.id) && (
@@ -426,6 +526,12 @@ const ProjectTable: React.FC<ProjectTableProps> = ({ filter = "", showActions = 
             onSubmitSuccess={handleProjectUpdated}
             userId={user?.id}
             userRole={userRole}
+          />
+          <ProductionLaunchDialog
+            isOpen={productionLaunchOpen}
+            onClose={() => setProductionLaunchOpen(false)}
+            project={selectedProject}
+            onSubmitSuccess={handleProjectUpdated}
           />
         </>
       )}

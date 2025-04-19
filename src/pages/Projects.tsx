@@ -135,9 +135,10 @@ const Projects = () => {
 
       <Tabs defaultValue="en_attente" value={activeTab} onValueChange={handleTabChange} className={isMobile ? "space-y-4" : ""}>
         <div className={isMobile ? "sticky top-0 z-10 bg-background pt-2 pb-4" : ""}>
-          <TabsList className={isMobile ? "w-full grid grid-cols-4" : "grid grid-cols-4 w-full sm:w-auto"}>
+          <TabsList className={isMobile ? "w-full grid grid-cols-5" : "grid grid-cols-5 w-full sm:w-auto"}>
             <TabsTrigger value="en_attente">En attente</TabsTrigger>
-            <TabsTrigger value="en_financement">levée de fonds</TabsTrigger>
+            <TabsTrigger value="en_financement_100">Financement 100%</TabsTrigger>
+            <TabsTrigger value="en_financement">Levée de fonds</TabsTrigger>
             <TabsTrigger value="en_cours">En production</TabsTrigger>
             <TabsTrigger value="terminé">Terminés</TabsTrigger>
           </TabsList>
@@ -147,8 +148,12 @@ const Projects = () => {
           <ProjectTable filter={search} statutFilter="en attente" />
         </TabsContent>
         
+        <TabsContent value="en_financement_100" className="mt-4">
+          <ProjectTable filter={search} statutFilter="en financement" showFullyFundedOnly={true} />
+        </TabsContent>
+        
         <TabsContent value="en_financement" className="mt-4">
-          <ProjectTable filter={search} statutFilter="en financement" />
+          <ProjectTable filter={search} statutFilter="en financement" showFullyFundedOnly={false} />
         </TabsContent>
         
         <TabsContent value="en_cours" className="mt-4">
