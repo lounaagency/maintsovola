@@ -151,7 +151,7 @@ const ProductionLaunchDialog: React.FC<ProductionLaunchDialogProps> = ({
         .from('projet')
         .update({
           statut: 'en cours',
-          date_lancement: startDate.toISOString().split('T')[0]
+          date_debut_production: startDate.toISOString().split('T')[0]
         })
         .eq('id_projet', project.id_projet);
       
