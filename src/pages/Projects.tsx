@@ -149,11 +149,19 @@ const Projects = () => {
         </TabsContent>
         
         <TabsContent value="en_financement_100" className="mt-4">
-          <ProjectTable filter={search} statutFilter="en financement" showFullyFundedOnly={true} />
+          <ProjectTable 
+            filter={search} 
+            statutFilter="en financement" 
+            fundingStatus="completed" 
+          />
         </TabsContent>
         
         <TabsContent value="en_financement" className="mt-4">
-          <ProjectTable filter={search} statutFilter="en financement" showFullyFundedOnly={false} />
+          <ProjectTable 
+            filter={search} 
+            statutFilter="en financement" 
+            fundingStatus="in_progress" 
+          />
         </TabsContent>
         
         <TabsContent value="en_cours" className="mt-4">

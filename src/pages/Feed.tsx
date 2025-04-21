@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Navigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -69,6 +70,7 @@ const Feed: React.FC = () => {
         culturesByProjet[pc.id_projet].push(pc);
       });
 
+      // Calculate funding goals - the total cost is the sum of all cultures' exploitation costs
       const projectFundingGoals: Record<number, number> = {};
       projetsData?.forEach(projet => {
         const cultures = culturesByProjet[projet.id_projet] || [];
@@ -94,6 +96,7 @@ const Feed: React.FC = () => {
         `);
       if (investissementsError) throw investissementsError;
 
+      // Calculate current funding - the total of all investments for a project
       const projectCurrentFundings: Record<number, number> = {};
       investissementsData.forEach(inv => {
         if (!projectCurrentFundings[inv.id_projet]) projectCurrentFundings[inv.id_projet] = 0;
@@ -123,16 +126,15 @@ const Feed: React.FC = () => {
         const cultivationType = projetCultures.length > 0 
           ? projetCultures[0].culture.nom_culture 
           : "Non spécifié";
-        const farmingCost = projetCultures.length > 0
-          ? projetCultures[0].cout_exploitation_previsionnel || 0
-          : 0;
+        const farmingCost = projetCultures.reduce((sum, culture) => 
+          sum + (culture.cout_exploitation_previsionnel || 0), 0);
         const expectedYield = projetCultures.length > 0
           ? projetCultures[0].rendement_previsionnel || 0
           : 0;
         const fundingGoal = projectFundingGoals[projet.id_projet] || 0;
         const currentFunding = projectCurrentFundings[projet.id_projet] || 0;
 
-        const expectedRevenue = expectedYield * projet.surface_ha * 1.5 * farmingCost;
+        const expectedRevenue = expectedYield * projet.surface_ha * 1.5 * (farmingCost > 0 ? farmingCost : 1);
         const tantsaha = projet.utilisateur;
         const farmer = tantsaha ? {
           id: tantsaha.id_utilisateur,

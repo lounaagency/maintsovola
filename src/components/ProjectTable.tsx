@@ -13,7 +13,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { canDeleteProject, canEditProject, canValidateProject, renderStatusBadge } from "@/utils/projectUtils";
-import { calculateProjectFunding, canLaunchProduction } from "@/utils/projectUtils";
+import ProductionLaunchDialog from "./ProductionLaunchDialog";
 
 interface ProjectTableProps {
   filter?: string;
@@ -61,6 +61,11 @@ export interface ProjectData {
   id_region?: number;
   id_district?: number;
   id_commune?: number;
+  fundingGoal?: number;
+  currentFunding?: number;
+  investissements?: Array<{
+    montant: number;
+  }>;
 }
 
 const ProjectTable: React.FC<ProjectTableProps> = ({ 
@@ -75,6 +80,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
   const [editOpen, setEditOpen] = useState(false);
   const [validationOpen, setValidationOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [launchProductionOpen, setLaunchProductionOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<ProjectData | null>(null);
   const { user, profile } = useAuth();
   const [userRole, setUserRole] = useState<string | null>(null);
@@ -173,22 +179,45 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
             return acc;
           }, {} as Record<number, number>);
           
-          const filteredProjects = allProjects.filter(project => {
-            const totalCost = projectCosts[project.id_projet] || 0;
-            if (totalCost === 0) return fundingStatus === 'in_progress';
+          const projectsWithFundingData = allProjects.map(project => {
+            const fundingGoal = projectCosts[project.id_projet] || 0;
+            const currentFunding = project.investissements?.reduce((sum, inv) => sum + (inv.montant || 0), 0) || 0;
             
-            const totalInvestment = project.investissements?.reduce((sum, inv) => sum + (inv.montant || 0), 0) || 0;
-            const fundingPercentage = Math.min((totalInvestment / totalCost) * 100, 100);
+            return {
+              ...project,
+              fundingGoal,
+              currentFunding
+            } as ProjectData;
+          });
+          
+          const filteredProjects = projectsWithFundingData.filter(project => {
+            if (project.fundingGoal === 0) return fundingStatus === 'in_progress';
             
+            const fundingPercentage = Math.min((project.currentFunding! / project.fundingGoal) * 100, 100);
             return fundingStatus === 'completed' ? fundingPercentage >= 100 : fundingPercentage < 100;
           });
           
-          setProjects(filteredProjects as ProjectData[]);
+          setProjects(filteredProjects);
         } else {
           setProjects([]);
         }
+      } else if (allProjects) {
+        const projectsWithFundingData = allProjects.map(project => {
+          const totalCost = project.projet_culture?.reduce((sum, culture) => 
+            sum + (culture.cout_exploitation_previsionnel || 0), 0) || 0;
+          const totalInvestment = project.investissements?.reduce((sum, inv) => 
+            sum + (inv.montant || 0), 0) || 0;
+            
+          return {
+            ...project,
+            fundingGoal: totalCost,
+            currentFunding: totalInvestment
+          } as ProjectData;
+        });
+        
+        setProjects(projectsWithFundingData);
       } else {
-        setProjects((allProjects || []) as ProjectData[]);
+        setProjects([]);
       }
     } catch (error) {
       console.error("Erreur lors de la récupération des projets:", error);
@@ -216,6 +245,11 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
   const handleOpenDeleteConfirm = (project: ProjectData) => {
     setSelectedProject(project);
     setDeleteConfirmOpen(true);
+  };
+
+  const handleOpenProductionLaunch = (project: ProjectData) => {
+    setSelectedProject(project);
+    setLaunchProductionOpen(true);
   };
 
   const handleDeleteProject = async () => {
@@ -262,6 +296,24 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
     }
   };
 
+  const calculateFundingPercentage = (project: ProjectData): number => {
+    if (!project.fundingGoal || !project.currentFunding || project.fundingGoal <= 0) {
+      return 0;
+    }
+    return Math.min(Math.round((project.currentFunding / project.fundingGoal) * 100), 100);
+  };
+
+  const canLaunchProduction = (project: ProjectData): boolean => {
+    if (!userRole || !project || project.statut !== 'en financement') {
+      return false;
+    }
+    
+    const fundingPercentage = calculateFundingPercentage(project);
+    const isValidRole = userRole === 'technicien' || userRole === 'superviseur';
+    
+    return isValidRole && fundingPercentage >= 100;
+  };
+
   const isValidationUser = canValidateProject(userRole);
   const showValidateButton = isValidationUser && statutFilter === "en attente";
 
@@ -297,10 +349,13 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
               onViewDetails={handleOpenDetails}
               onEdit={handleOpenEdit}
               onValidate={handleOpenValidation}
+              onLaunchProduction={canLaunchProduction(project) ? handleOpenProductionLaunch : undefined}
               onDelete={handleOpenDeleteConfirm}
               canEdit={canEditProject(project, userRole, user?.id)}
               canValidate={showValidateButton}
+              canLaunchProduction={canLaunchProduction(project)}
               canDelete={canDeleteProject(project, userRole, user?.id)}
+              showFunding={project.statut === 'en financement'}
             />
           ))}
         </div>
@@ -365,8 +420,8 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
             <TableBody>
               {projects.length > 0 ? (
                 projects.map((project) => {
-                  const fundingPercentage = calculateProjectFunding(project, project.investissements || []);
-                  const canLaunch = canLaunchProduction(project, fundingPercentage, userRole);
+                  const fundingPercentage = calculateFundingPercentage(project);
+                  const canLaunch = canLaunchProduction(project);
                   
                   return (
                     <TableRow 
@@ -435,7 +490,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
                                 title="Lancer la production"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleOpenDetails(project);
+                                  handleOpenProductionLaunch(project);
                                 }}
                               >
                                 <PlayCircle className="h-4 w-4 text-green-500" />
@@ -496,6 +551,12 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
             onSubmitSuccess={handleProjectUpdated}
             userId={user?.id}
             userRole={userRole}
+          />
+          <ProductionLaunchDialog
+            isOpen={launchProductionOpen}
+            onClose={() => setLaunchProductionOpen(false)}
+            project={selectedProject}
+            onSubmitSuccess={handleProjectUpdated}
           />
         </>
       )}

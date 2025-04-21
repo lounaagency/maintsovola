@@ -60,6 +60,32 @@ export const canEditProject = (project: ProjectData, userRole: string | null, us
 };
 
 /**
+ * Calculate project funding percentage
+ */
+export const calculateProjectFunding = (project: ProjectData, investments: Array<{montant: number}>): number => {
+  if (!project.fundingGoal || project.fundingGoal <= 0) return 0;
+  
+  const totalInvestment = investments.reduce((sum, inv) => sum + (inv.montant || 0), 0);
+  return Math.min(Math.round((totalInvestment / project.fundingGoal) * 100), 100);
+};
+
+/**
+ * Check if production can be launched
+ */
+export const canLaunchProduction = (
+  project: ProjectData, 
+  fundingPercentage: number, 
+  userRole: string | null
+): boolean => {
+  if (!userRole || !project || project.statut !== 'en financement') {
+    return false;
+  }
+  
+  const isValidRole = userRole === 'technicien' || userRole === 'superviseur';
+  return isValidRole && fundingPercentage >= 100;
+};
+
+/**
  * Format project summary for display
  */
 export const getProjectSummary = (project: ProjectData) => {

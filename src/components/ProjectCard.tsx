@@ -63,7 +63,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
   };
 
   const calculateFundingProgress = () => {
-    if (!project.fundingGoal || !project.currentFunding) return 0;
+    if (!project.fundingGoal || project.fundingGoal <= 0 || !project.currentFunding) return 0;
     return Math.min(Math.round((project.currentFunding / project.fundingGoal) * 100), 100);
   };
 
