@@ -123,18 +123,27 @@ const Feed: React.FC = () => {
 
       const transformedProjects = filteredProjetsData.map(projet => {
         const projetCultures = culturesByProjet[projet.id_projet] || [];
-        const cultivationType = projetCultures.length > 0 
-          ? projetCultures[0].culture.nom_culture 
+        
+        // Utilisons toutes les cultures au lieu d'une seule
+        const cultivationTypes = projetCultures.map(pc => pc.culture?.nom_culture || "Non spécifié");
+        const cultivationType = cultivationTypes.length > 0 
+          ? cultivationTypes.join(", ") 
           : "Non spécifié";
+        
+        // Calculons le coût total de toutes les cultures
         const farmingCost = projetCultures.reduce((sum, culture) => 
           sum + (culture.cout_exploitation_previsionnel || 0), 0);
-        const expectedYield = projetCultures.length > 0
-          ? projetCultures[0].rendement_previsionnel || 0
-          : 0;
+        
+        // Calculons le rendement attendu total pour toutes les cultures
+        const expectedYield = projetCultures.reduce((sum, culture) => 
+          sum + (culture.rendement_previsionnel || 0), 0);
+        
         const fundingGoal = projectFundingGoals[projet.id_projet] || 0;
         const currentFunding = projectCurrentFundings[projet.id_projet] || 0;
 
+        // Calcul du revenu attendu basé sur toutes les cultures
         const expectedRevenue = expectedYield * projet.surface_ha * 1.5 * (farmingCost > 0 ? farmingCost : 1);
+        
         const tantsaha = projet.utilisateur;
         const farmer = tantsaha ? {
           id: tantsaha.id_utilisateur,
