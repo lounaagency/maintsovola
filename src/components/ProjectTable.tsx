@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Card } from "@/components/ui/card";
@@ -12,7 +13,7 @@ import ProjectCard from "./ProjectCard";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { canDeleteProject, canEditProject, canValidateProject, renderStatusBadge } from "@/utils/projectUtils";
+import { canDeleteProject, canEditProject, canValidateProject, renderStatusBadge, calculateProjectFunding, canLaunchProduction } from "@/utils/projectUtils";
 import ProductionLaunchDialog from "./ProductionLaunchDialog";
 
 interface ProjectTableProps {
@@ -35,7 +36,7 @@ export interface ProjectData {
   id_terrain: number;
   tantsaha?: {
     nom: string;
-    prenoms: string;
+    prenoms?: string;
   } | null;
   terrain?: {
     nom_terrain?: string;
@@ -187,7 +188,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
               ...project,
               fundingGoal,
               currentFunding
-            } as ProjectData;
+            } as unknown as ProjectData;
           });
           
           const filteredProjects = projectsWithFundingData.filter(project => {
@@ -212,7 +213,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
             ...project,
             fundingGoal: totalCost,
             currentFunding: totalInvestment
-          } as ProjectData;
+          } as unknown as ProjectData;
         });
         
         setProjects(projectsWithFundingData);

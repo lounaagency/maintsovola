@@ -176,11 +176,8 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
     }
     
     try {
-      const { error } = await supabase
-        .from('terrain')
-        .update({ id_technicien: selectedTechId },{id_superviseur: user.id})
-        .eq('id_terrain', selectedTerrain.id_terrain);
-        
+      const { error } = await supabase.from('terrain').update({ id_technicien: selectedTechId, id_superviseur: user.id }).eq('id_terrain', selectedTerrain.id_terrain);
+      
       if (error) throw error;
       
       await sendNotification(

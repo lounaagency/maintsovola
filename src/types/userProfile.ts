@@ -23,5 +23,5 @@ export interface UserProfile {
   bio?: string;
   id_role?: number;
   nom_role?: string;
-  telephones: UserTelephone[];
+  telephones?: UserTelephone[];
 }

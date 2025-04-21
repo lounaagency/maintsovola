@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -36,7 +35,6 @@ export const Profile = () => {
   const [projectsCount, setProjectsCount] = useState(0);
   const [loading, setLoading] = useState(true);
   
-  // Redirect to auth if not logged in
   if (!user) {
     return <Navigate to="/auth" replace />;
   }
@@ -47,7 +45,6 @@ export const Profile = () => {
       
       if (!userId) return;
       
-      // Check if this is the current user's profile
       if (user?.id === userId) {
         setIsCurrentUser(true);
         if (currentUserProfile) {
@@ -81,7 +78,6 @@ export const Profile = () => {
       
       if (error) throw error;
       
-      // Extract first telephone number if available
       const telephones = data.telephones || [];
       const mappedTelephones = telephones.map((tel: any) => ({
         id_telephone: tel.id_telephone,
@@ -117,7 +113,6 @@ export const Profile = () => {
   
   const fetchFollowStatus = async (userId: string) => {
     try {
-      // Nombre de followers
       const { data: followersResult, error: followersError } = await supabase
         .from('abonnement')
         .select('id_abonnement', { count: 'exact' })
@@ -126,7 +121,6 @@ export const Profile = () => {
       if (followersError) throw followersError;
       setFollowersCount(followersResult?.length || 0);
       
-      // Nombre d'abonnements
       const { data: followingResult, error: followingError } = await supabase
         .from('abonnement')
         .select('id_abonnement', { count: 'exact' })
@@ -135,7 +129,6 @@ export const Profile = () => {
       if (followingError) throw followingError;
       setFollowingCount(followingResult?.length || 0);
       
-      // Vérifier si l'utilisateur actuel suit ce profil
       if (user && userId !== user.id) {
         const { data, error } = await supabase
           .from('abonnement')
@@ -147,7 +140,6 @@ export const Profile = () => {
         if (error) throw error;
         setIsFollowing(!!data);
       }
-      
     } catch (error) {
       console.error('Error fetching follow status:', error);
     }
@@ -157,7 +149,6 @@ export const Profile = () => {
     try {
       setLoading(true);
       
-      // Récupérer les projets créés par l'utilisateur
       const { data, error, count } = await supabase
         .from('projet')
         .select(`
@@ -170,21 +161,17 @@ export const Profile = () => {
       
       if (error) throw error;
       
-      // Transformer les données en format AgriculturalProject
       const formattedProjects: AgriculturalProject[] = (data || []).map(project => {
-        // Calculer le coût total d'exploitation
         const totalCost = project.projet_culture.reduce(
           (sum: number, pc: any) => sum + (pc.cout_exploitation_previsionnel || 0), 
           0
         );
         
-        // Calculer le rendement total
         const totalYield = project.projet_culture.reduce(
           (sum: number, pc: any) => sum + (pc.rendement_previsionnel || 0), 
           0
         );
         
-        // Calculer le revenu attendu
         const expectedRevenue = project.projet_culture.reduce(
           (sum: number, pc: any) => sum + (pc.rendement_previsionnel * (pc.culture?.prix_tonne || 0)), 
           0
@@ -213,7 +200,7 @@ export const Profile = () => {
           images: [],
           description: project.description || "",
           fundingGoal: totalCost,
-          currentFunding: project.financement_actuel || 0,
+          currentFunding: calculateCurrentFunding(project),
           likes: 0,
           comments: 0,
           shares: 0,
@@ -232,7 +219,6 @@ export const Profile = () => {
   
   const fetchInvestedProjects = async (userId: string) => {
     try {
-      // Récupérer les projets dans lesquels l'utilisateur a investi
       const { data, error } = await supabase
         .from('investissement')
         .select(`
@@ -247,7 +233,6 @@ export const Profile = () => {
       
       if (error) throw error;
       
-      // Regrouper les investissements par projet
       const projectsMap = new Map();
       
       data?.forEach(investment => {
@@ -274,12 +259,16 @@ export const Profile = () => {
     }
   };
   
+  const calculateCurrentFunding = (project: any) => {
+    if (!project.investissements) return 0;
+    return project.investissements.reduce((sum: number, inv: any) => sum + (inv.montant || 0), 0);
+  };
+  
   const handleFollow = async () => {
     if (!user || !profile) return;
     
     try {
       if (isFollowing) {
-        // Unfollow
         const { error } = await supabase
           .from('abonnement')
           .delete()
@@ -292,7 +281,6 @@ export const Profile = () => {
         setFollowersCount(prev => prev - 1);
         toast.success(`Vous ne suivez plus ${profile.nom}`);
       } else {
-        // Follow
         const { error } = await supabase
           .from('abonnement')
           .insert([{
@@ -313,7 +301,6 @@ export const Profile = () => {
   };
   
   const handleLikeToggle = async (projectId: string) => {
-    // Implementation for toggling like on a project
   };
   
   if (!profile) {
@@ -326,7 +313,6 @@ export const Profile = () => {
 
   return (
     <div className="container max-w-4xl py-6 space-y-6">
-      {/* Header Profile */}
       <div className="flex flex-col md:flex-row gap-6 items-start">
         <Avatar className="h-24 w-24 rounded-full border-4 border-background">
           {profile.photo_profil ? (
@@ -433,7 +419,6 @@ export const Profile = () => {
       
       <Separator />
       
-      {/* Content Tabs */}
       <Tabs defaultValue="projects">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="projects" className="flex items-center">

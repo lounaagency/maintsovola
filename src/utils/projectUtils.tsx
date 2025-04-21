@@ -62,11 +62,12 @@ export const canEditProject = (project: ProjectData, userRole: string | null, us
 /**
  * Calculate project funding percentage
  */
-export const calculateProjectFunding = (project: ProjectData, investments: Array<{montant: number}>): number => {
-  if (!project.fundingGoal || project.fundingGoal <= 0) return 0;
+export const calculateProjectFunding = (project: ProjectData): number => {
+  if (!project.fundingGoal || project.fundingGoal <= 0 || !project.currentFunding) {
+    return 0;
+  }
   
-  const totalInvestment = investments.reduce((sum, inv) => sum + (inv.montant || 0), 0);
-  return Math.min(Math.round((totalInvestment / project.fundingGoal) * 100), 100);
+  return Math.min(Math.round((project.currentFunding / project.fundingGoal) * 100), 100);
 };
 
 /**
@@ -74,14 +75,15 @@ export const calculateProjectFunding = (project: ProjectData, investments: Array
  */
 export const canLaunchProduction = (
   project: ProjectData, 
-  fundingPercentage: number, 
   userRole: string | null
 ): boolean => {
   if (!userRole || !project || project.statut !== 'en financement') {
     return false;
   }
   
+  const fundingPercentage = calculateProjectFunding(project);
   const isValidRole = userRole === 'technicien' || userRole === 'superviseur';
+  
   return isValidRole && fundingPercentage >= 100;
 };
 
