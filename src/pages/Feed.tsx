@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Navigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -60,7 +59,7 @@ const Feed: React.FC = () => {
           id_culture,
           cout_exploitation_previsionnel,
           rendement_previsionnel,
-          culture(nom_culture)
+          culture(nom_culture, prix_tonne)
         `);
       if (culturesError) throw culturesError;
 
@@ -70,24 +69,6 @@ const Feed: React.FC = () => {
         culturesByProjet[pc.id_projet].push(pc);
       });
 
-      // Calculate funding goals - the total cost is the sum of all cultures' exploitation costs
-      const projectFundingGoals: Record<number, number> = {};
-      projetsData?.forEach(projet => {
-        const cultures = culturesByProjet[projet.id_projet] || [];
-        const totalCout = cultures.reduce((sum, c) => sum + (c.cout_exploitation_previsionnel || 0), 0);
-        projectFundingGoals[projet.id_projet] = totalCout;
-      });
-
-      let filteredProjetsData = projetsData;
-      if (activeFilters.culture) {
-        const filteredIds = culturesData
-          .filter(pc => pc.culture?.nom_culture === activeFilters.culture)
-          .map(pc => pc.id_projet);
-        filteredProjetsData = projetsData?.filter(project => 
-          filteredIds.includes(project.id_projet)
-        );
-      }
-      
       const { data: investissementsData, error: investissementsError } = await supabase
         .from('investissement')
         .select(`
@@ -96,7 +77,6 @@ const Feed: React.FC = () => {
         `);
       if (investissementsError) throw investissementsError;
 
-      // Calculate current funding - the total of all investments for a project
       const projectCurrentFundings: Record<number, number> = {};
       investissementsData.forEach(inv => {
         if (!projectCurrentFundings[inv.id_projet]) projectCurrentFundings[inv.id_projet] = 0;
@@ -121,28 +101,29 @@ const Feed: React.FC = () => {
         commentsCount[projectId] = (commentsCount[projectId] || 0) + 1;
       });
 
-      const transformedProjects = filteredProjetsData.map(projet => {
+      const transformedProjects = projetsData.map(projet => {
         const projetCultures = culturesByProjet[projet.id_projet] || [];
-        
-        // Utilisons toutes les cultures au lieu d'une seule
-        const cultivationTypes = projetCultures.map(pc => pc.culture?.nom_culture || "Non spécifié");
-        const cultivationType = cultivationTypes.length > 0 
-          ? cultivationTypes.join(", ") 
-          : "Non spécifié";
-        
-        // Calculons le coût total de toutes les cultures
-        const farmingCost = projetCultures.reduce((sum, culture) => 
-          sum + (culture.cout_exploitation_previsionnel || 0), 0);
-        
-        // Calculons le rendement attendu total pour toutes les cultures
-        const expectedYield = projetCultures.reduce((sum, culture) => 
-          sum + (culture.rendement_previsionnel || 0), 0);
-        
-        const fundingGoal = projectFundingGoals[projet.id_projet] || 0;
-        const currentFunding = projectCurrentFundings[projet.id_projet] || 0;
 
-        // Calcul du revenu attendu basé sur toutes les cultures
-        const expectedRevenue = expectedYield * projet.surface_ha * 1.5 * (farmingCost > 0 ? farmingCost : 1);
+        const totalFarmingCost = projetCultures.reduce((sum, pc) => 
+          sum + ((pc.cout_exploitation_previsionnel || 0) * (projet.surface_ha || 1)), 0);
+
+        const yieldStrings = projetCultures.map(pc => {
+          const nom = pc.culture?.nom_culture || "Non spécifié";
+          const tonnage = (pc.rendement_previsionnel || 0) * (projet.surface_ha || 1);
+          return `${tonnage} t de ${nom}`;
+        });
+        const expectedYieldLabel = yieldStrings.length > 0 ? yieldStrings.join(", ") : "N/A";
+
+        const totalEstimatedRevenue = projetCultures.reduce((sum, pc) => {
+          const rendement = pc.rendement_previsionnel || 0;
+          const prixTonne = pc.culture?.prix_tonne || 0;
+          return sum + (rendement * (projet.surface_ha || 1) * prixTonne);
+        }, 0);
+
+        const totalMargin = totalEstimatedRevenue - totalFarmingCost;
+
+        const cultivationTypes = projetCultures.map(pc => pc.culture?.nom_culture || "Non spécifié");
+        const cultivationType = cultivationTypes.length > 0 ? cultivationTypes.join(", ") : "Non spécifié";
         
         const tantsaha = projet.utilisateur;
         const farmer = tantsaha ? {
@@ -156,7 +137,7 @@ const Feed: React.FC = () => {
           username: "inconnu",
           avatar: undefined,
         };
-        
+
         const likes = likesData.filter(like => like.id_projet === projet.id_projet).length;
         const isLiked = user ? 
           likesData.some(like => like.id_projet === projet.id_projet && like.id_utilisateur === user.id) : 
@@ -175,18 +156,19 @@ const Feed: React.FC = () => {
           },
           cultivationArea: projet.surface_ha,
           cultivationType,
-          farmingCost,
-          expectedYield,
-          expectedRevenue,
+          farmingCost: totalFarmingCost,
+          expectedYield: expectedYieldLabel,
+          expectedRevenue: totalEstimatedRevenue,
           creationDate: new Date(projet.created_at).toISOString().split('T')[0],
           images: [],
-          fundingGoal,
-          currentFunding,
+          fundingGoal: totalMargin,
+          currentFunding: projectCurrentFundings[projet.id_projet] || 0,
           likes,
           comments: commentCount,
           shares: 0,
           isLiked,
           technicianId: projet.id_technicien,
+          _multiCultures: projetCultures,
         };
       });
       setProjects(transformedProjects);

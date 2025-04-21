@@ -754,37 +754,43 @@ export type Database = {
         Row: {
           created_at: string | null
           created_by: string | null
-          date_prev_planifiee: string
-          date_reelle_execution: string | null
+          date_previsionnelle: string
+          date_reelle: string | null
           id_jalon_agricole: number
           id_jalon_projet: number
           id_projet: number
           modified_at: string | null
           observations: string | null
+          photos_jalon: string | null
+          rapport_jalon: string | null
           statut: string
         }
         Insert: {
           created_at?: string | null
           created_by?: string | null
-          date_prev_planifiee: string
-          date_reelle_execution?: string | null
+          date_previsionnelle: string
+          date_reelle?: string | null
           id_jalon_agricole: number
           id_jalon_projet?: number
           id_projet: number
           modified_at?: string | null
           observations?: string | null
+          photos_jalon?: string | null
+          rapport_jalon?: string | null
           statut?: string
         }
         Update: {
           created_at?: string | null
           created_by?: string | null
-          date_prev_planifiee?: string
-          date_reelle_execution?: string | null
+          date_previsionnelle?: string
+          date_reelle?: string | null
           id_jalon_agricole?: number
           id_jalon_projet?: number
           id_projet?: number
           modified_at?: string | null
           observations?: string | null
+          photos_jalon?: string | null
+          rapport_jalon?: string | null
           statut?: string
         }
         Relationships: [
