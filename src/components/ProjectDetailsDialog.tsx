@@ -103,7 +103,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
   const fetchJalons = async () => {
     try {
       const { data, error } = await supabase
-        .from('projet_jalon')
+        .from('jalon_projet')
         .select(`
           *,
           jalon:id_jalon(nom_jalon, action_a_faire, id_culture),
@@ -158,7 +158,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
           jalonDate.setDate(jalonDate.getDate() + jalon.jours_apres_lancement);
           
           const { error: insertError } = await supabase
-            .from('projet_jalon')
+            .from('jalon_projet')
             .insert({
               id_projet: projectId,
               id_jalon: jalon.id_jalon,
@@ -191,7 +191,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
     try {
       // Update jalon with real date
       const { error } = await supabase
-        .from('projet_jalon')
+        .from('jalon_projet')
         .update({
           date_reelle: new Date().toISOString().split('T')[0]
         })

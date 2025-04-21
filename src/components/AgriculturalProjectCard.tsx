@@ -416,8 +416,8 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
               </span>
             </div>
             <div className="text-xs">
-              <span className="text-gray-500 block">Objectif financement</span>
-              <span className="font-medium">{formatCurrency(project.fundingGoal)}</span>
+              <span className="text-gray-500 block">Bénéfice total</span>
+              <span className="font-medium">{formatCurrency(project.totalProfit)}</span>
             </div>
           </div>
           

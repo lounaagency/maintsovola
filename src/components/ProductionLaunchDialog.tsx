@@ -173,7 +173,7 @@ const ProductionLaunchDialog: React.FC<ProductionLaunchDialogProps> = ({
       
       if (jalonsToInsert.length > 0) {
         const { error: jalonsError } = await supabase
-          .from('projet_jalon')
+          .from('jalon_projet')
           .insert(jalonsToInsert);
         
         if (jalonsError) throw jalonsError;

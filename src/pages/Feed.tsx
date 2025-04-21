@@ -164,6 +164,7 @@ const Feed: React.FC = () => {
           farmingCost: totalFarmingCost, // Coût total d'exploitation à lever
           expectedYield: expectedYieldLabel, // Affichage textuel des rendements par culture
           expectedRevenue: totalEstimatedRevenue, // Revenu total estimé
+          totalProfit : totalProfit, // Benefice total
           creationDate: new Date(projet.created_at).toISOString().split('T')[0],
           images: [],
           fundingGoal: totalFarmingCost, // Objectif de financement = coût d'exploitation
