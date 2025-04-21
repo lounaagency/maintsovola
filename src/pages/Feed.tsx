@@ -50,9 +50,7 @@ const Feed: React.FC = () => {
         .eq('statut', 'en financement')
         .order('created_at', { ascending: false });
       
-      if (projetsError) {
-        throw projetsError;
-      }
+      if (projetsError) throw projetsError;
       
       const { data: culturesData, error: culturesError } = await supabase
         .from('projet_culture')
@@ -63,18 +61,28 @@ const Feed: React.FC = () => {
           rendement_previsionnel,
           culture(nom_culture)
         `);
-        
-      if (culturesError) {
-        throw culturesError;
-      }
+      if (culturesError) throw culturesError;
 
+      const culturesByProjet: Record<number, typeof culturesData> = {};
+      culturesData.forEach(pc => {
+        if (!culturesByProjet[pc.id_projet]) culturesByProjet[pc.id_projet] = [];
+        culturesByProjet[pc.id_projet].push(pc);
+      });
+
+      const projectFundingGoals: Record<number, number> = {};
+      projetsData?.forEach(projet => {
+        const cultures = culturesByProjet[projet.id_projet] || [];
+        const totalCout = cultures.reduce((sum, c) => sum + (c.cout_exploitation_previsionnel || 0), 0);
+        projectFundingGoals[projet.id_projet] = totalCout;
+      });
+
+      let filteredProjetsData = projetsData;
       if (activeFilters.culture) {
-        const filteredProjectIds = culturesData
+        const filteredIds = culturesData
           .filter(pc => pc.culture?.nom_culture === activeFilters.culture)
           .map(pc => pc.id_projet);
-        
-        projetsData = projetsData?.filter(project => 
-          filteredProjectIds.includes(project.id_projet)
+        filteredProjetsData = projetsData?.filter(project => 
+          filteredIds.includes(project.id_projet)
         );
       }
       
@@ -84,65 +92,47 @@ const Feed: React.FC = () => {
           id_projet,
           montant
         `);
-        
-      if (investissementsError) {
-        throw investissementsError;
-      }
-      
+      if (investissementsError) throw investissementsError;
+
+      const projectCurrentFundings: Record<number, number> = {};
+      investissementsData.forEach(inv => {
+        if (!projectCurrentFundings[inv.id_projet]) projectCurrentFundings[inv.id_projet] = 0;
+        projectCurrentFundings[inv.id_projet] += inv.montant;
+      });
+
       const { data: likesData, error: likesError } = await supabase
         .from('aimer_projet')
         .select(`
           id_projet,
           id_utilisateur
         `);
-        
-      if (likesError) {
-        throw likesError;
-      }
-      
+      if (likesError) throw likesError;
+
       const { data: commentsCountData, error: commentsError } = await supabase
         .from('commentaire')
         .select('id_projet');
-        
-      if (commentsError) {
-        throw commentsError;
-      }
-      
+      if (commentsError) throw commentsError;
       const commentsCount: Record<string, number> = {};
       commentsCountData.forEach(comment => {
         const projectId = comment.id_projet.toString();
         commentsCount[projectId] = (commentsCount[projectId] || 0) + 1;
       });
-      
-      const transformedProjects = projetsData.map(projet => {
-        const projetCultures = culturesData.filter(pc => pc.id_projet === projet.id_projet);
-        
-        const currentFunding = investissementsData
-          .filter(inv => inv.id_projet === projet.id_projet)
-          .reduce((sum, inv) => sum + inv.montant, 0);
-        
-        const likes = likesData.filter(like => like.id_projet === projet.id_projet).length;
-        
-        const isLiked = user ? 
-          likesData.some(like => like.id_projet === projet.id_projet && like.id_utilisateur === user.id) : 
-          false;
-        
-        const commentCount = commentsCount[projet.id_projet.toString()] || 0;
-        
+
+      const transformedProjects = filteredProjetsData.map(projet => {
+        const projetCultures = culturesByProjet[projet.id_projet] || [];
         const cultivationType = projetCultures.length > 0 
           ? projetCultures[0].culture.nom_culture 
           : "Non spécifié";
-        
-        const farmingCost = projetCultures.length > 0 
-          ? projetCultures[0].cout_exploitation_previsionnel || 0 
+        const farmingCost = projetCultures.length > 0
+          ? projetCultures[0].cout_exploitation_previsionnel || 0
           : 0;
-        
-        const expectedYield = projetCultures.length > 0 
-          ? projetCultures[0].rendement_previsionnel || 0 
+        const expectedYield = projetCultures.length > 0
+          ? projetCultures[0].rendement_previsionnel || 0
           : 0;
-        
+        const fundingGoal = projectFundingGoals[projet.id_projet] || 0;
+        const currentFunding = projectCurrentFundings[projet.id_projet] || 0;
+
         const expectedRevenue = expectedYield * projet.surface_ha * 1.5 * farmingCost;
-        
         const tantsaha = projet.utilisateur;
         const farmer = tantsaha ? {
           id: tantsaha.id_utilisateur,
@@ -156,6 +146,12 @@ const Feed: React.FC = () => {
           avatar: undefined,
         };
         
+        const likes = likesData.filter(like => like.id_projet === projet.id_projet).length;
+        const isLiked = user ? 
+          likesData.some(like => like.id_projet === projet.id_projet && like.id_utilisateur === user.id) : 
+          false;
+        const commentCount = commentsCount[projet.id_projet.toString()] || 0;
+
         return {
           id: projet.id_projet.toString(),
           title: projet.titre || `Projet de culture de ${cultivationType}`,
@@ -173,7 +169,7 @@ const Feed: React.FC = () => {
           expectedRevenue,
           creationDate: new Date(projet.created_at).toISOString().split('T')[0],
           images: [],
-          fundingGoal: farmingCost * projet.surface_ha,
+          fundingGoal,
           currentFunding,
           likes,
           comments: commentCount,
@@ -182,7 +178,6 @@ const Feed: React.FC = () => {
           technicianId: projet.id_technicien,
         };
       });
-      
       setProjects(transformedProjects);
     } catch (error) {
       console.error("Erreur lors de la récupération des projets:", error);

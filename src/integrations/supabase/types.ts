@@ -1149,6 +1149,7 @@ export type Database = {
           id_projet: number | null
           id_projet_culture: number
           modified_at: string | null
+          rendement_financier_previsionnel: number | null
           rendement_previsionnel: number | null
           rendement_reel: number | null
         }
@@ -1163,6 +1164,7 @@ export type Database = {
           id_projet?: number | null
           id_projet_culture?: number
           modified_at?: string | null
+          rendement_financier_previsionnel?: number | null
           rendement_previsionnel?: number | null
           rendement_reel?: number | null
         }
@@ -1177,6 +1179,7 @@ export type Database = {
           id_projet?: number | null
           id_projet_culture?: number
           modified_at?: string | null
+          rendement_financier_previsionnel?: number | null
           rendement_previsionnel?: number | null
           rendement_reel?: number | null
         }
