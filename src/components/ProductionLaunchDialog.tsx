@@ -2,8 +2,6 @@
 import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -11,19 +9,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { CalendarIcon, Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
-
-interface JalonData {
-  id_jalon: number;
-  nom_jalon: string;
-  action_a_faire: string;
-  jours_apres_lancement: number;
-  id_culture: number;
-  culture: {
-    nom_culture: string;
-  };
-  datePrevue: Date;
-}
 
 interface ProjectData {
   id_projet: number;
@@ -51,6 +36,24 @@ interface ProductionLaunchDialogProps {
   onSubmitSuccess: () => void;
 }
 
+type JalonsPreview = {
+  culture: string;
+  jalons: Array<{
+    id_jalon_agricole: number;
+    nom_jalon: string;
+    delai_apres_lancement: number;
+    description: string | null;
+    datePrevue: Date;
+    couts?: Array<{
+      id_cout_jalon_reference: number;
+      type_depense: string;
+      montant_par_hectare: number;
+      montant_total: number;
+      unite: string | null;
+    }>;
+  }>;
+};
+
 const ProductionLaunchDialog: React.FC<ProductionLaunchDialogProps> = ({
   isOpen,
   onClose,
@@ -59,94 +62,85 @@ const ProductionLaunchDialog: React.FC<ProductionLaunchDialogProps> = ({
 }) => {
   const today = new Date();
   const [startDate, setStartDate] = useState<Date>(today);
-  const [jalons, setJalons] = useState<{ [key: number]: JalonData[] }>({});
+  const [jalonsPreview, setJalonsPreview] = useState<JalonsPreview[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [openCalendar, setOpenCalendar] = useState(false);
 
   useEffect(() => {
     if (isOpen && project) {
-      fetchJalons();
+      fetchJalonsPreview();
     }
-  }, [isOpen, project]);
+    // eslint-disable-next-line
+  }, [isOpen, project, startDate]);
 
-  useEffect(() => {
-    updateJalonDates();
-  }, [startDate]);
+  const fetchJalonsPreview = async () => {
+    if (!project.projet_culture || project.projet_culture.length === 0) {
+      setJalonsPreview([]);
+      return;
+    }
 
-  const fetchJalons = async () => {
-    if (!project.projet_culture || project.projet_culture.length === 0) return;
-    
     setLoading(true);
     try {
       const cultureIds = project.projet_culture.map(pc => pc.id_culture);
-      
-      if (!cultureIds.length) return;
-      
-      const { data, error } = await supabase
-        .from('jalon')
-        .select(`
-          id_jalon,
-          nom_jalon,
-          action_a_faire,
-          jours_apres_lancement,
-          id_culture,
-          culture:id_culture(nom_culture)
-        `)
+
+      // Get all jalons agricoles for each culture
+      const { data: jalonsData, error } = await supabase
+        .from('jalon_agricole')
+        .select('id_jalon_agricole, nom_jalon, delai_apres_lancement, description, id_culture, culture:id_culture(nom_culture)')
         .in('id_culture', cultureIds);
-      
+
       if (error) throw error;
-      
-      const jalonsByCulture: { [key: number]: JalonData[] } = {};
-      
-      if (data) {
-        data.forEach(jalon => {
-          const datePrevue = new Date(startDate);
-          datePrevue.setDate(datePrevue.getDate() + jalon.jours_apres_lancement);
-          
-          const jalonWithDate = { ...jalon, datePrevue };
-          
-          if (!jalonsByCulture[jalon.id_culture]) {
-            jalonsByCulture[jalon.id_culture] = [];
-          }
-          
-          jalonsByCulture[jalon.id_culture].push(jalonWithDate);
-        });
-        
-        for (const cultureId in jalonsByCulture) {
-          jalonsByCulture[cultureId].sort((a, b) => a.jours_apres_lancement - b.jours_apres_lancement);
+
+      // Pour chaque culture, obtenir les couts par jalon de cout_jalon_reference
+      let jalonsPreviewByCulture: JalonsPreview[] = [];
+
+      for (const id_culture of cultureIds) {
+        const cultureJalons = (jalonsData || []).filter(j => j.id_culture === id_culture);
+        const cultureName = cultureJalons?.[0]?.culture?.nom_culture
+          || project.projet_culture.find(pc => pc.id_culture === id_culture)?.culture?.nom_culture
+          || `Culture #${id_culture}`;
+
+        // Fetch les coûts associés à chaque jalon
+        for (const jalon of cultureJalons) {
+          const { data: coutsData, error: coutsError } = await supabase
+            .from('cout_jalon_reference')
+            .select('id_cout_jalon_reference, type_depense, montant_par_hectare, unite')
+            .eq('id_jalon_agricole', jalon.id_jalon_agricole)
+            .eq('id_culture', id_culture);
+
+          if (coutsError) throw coutsError;
+
+          jalon.couts = (coutsData || []).map(c => ({
+            ...c,
+            montant_total: Number(c.montant_par_hectare) * (project.surface_ha || 1),
+          }));
         }
+
+        jalonsPreviewByCulture.push({
+          culture: cultureName,
+          jalons: cultureJalons.map(jalon => ({
+            ...jalon,
+            datePrevue: new Date(new Date(startDate).setDate(startDate.getDate() + jalon.delai_apres_lancement)),
+            couts: jalon.couts
+          }))
+        });
       }
-      
-      setJalons(jalonsByCulture);
-    } catch (error) {
-      console.error("Erreur lors de la récupération des jalons:", error);
-      toast.error("Impossible de charger les jalons");
+
+      setJalonsPreview(jalonsPreviewByCulture);
+    } catch (e) {
+      toast.error("Impossible de charger les jalons prévisionnels.");
+      setJalonsPreview([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const updateJalonDates = () => {
-    const updatedJalons: { [key: number]: JalonData[] } = {};
-    
-    for (const cultureId in jalons) {
-      updatedJalons[cultureId] = jalons[cultureId].map(jalon => {
-        const datePrevue = new Date(startDate);
-        datePrevue.setDate(datePrevue.getDate() + jalon.jours_apres_lancement);
-        
-        return { ...jalon, datePrevue };
-      });
-    }
-    
-    setJalons(updatedJalons);
-  };
-
   const handleStartProduction = async () => {
     setSubmitting(true);
-    
+
     try {
-      // 1. Update project status
+      // MAJ du statut projet : le trigger génère les jalons et les coûts
       const { error: projectError } = await supabase
         .from('projet')
         .update({
@@ -154,54 +148,17 @@ const ProductionLaunchDialog: React.FC<ProductionLaunchDialogProps> = ({
           date_debut_production: startDate.toISOString().split('T')[0]
         })
         .eq('id_projet', project.id_projet);
-      
+
       if (projectError) throw projectError;
-      
-      // 2. Insert all jalons
-      const jalonsToInsert = [];
-      
-      for (const cultureId in jalons) {
-        for (const jalon of jalons[cultureId]) {
-          jalonsToInsert.push({
-            id_projet: project.id_projet,
-            id_jalon: jalon.id_jalon,
-            date_previsionnelle: jalon.datePrevue.toISOString().split('T')[0],
-            statut: 'Prévu'
-          });
-        }
-      }
-      
-      if (jalonsToInsert.length > 0) {
-        const { error: jalonsError } = await supabase
-          .from('jalon_projet')
-          .insert(jalonsToInsert);
-        
-        if (jalonsError) throw jalonsError;
-      }
-      
-      toast.success("Le projet a été lancé en production");
+
+      toast.success("Le projet a été lancé en production (jalons & charges générés automatiquement)");
       onSubmitSuccess();
       onClose();
     } catch (error) {
-      console.error("Erreur lors du lancement de la production:", error);
       toast.error("Impossible de lancer le projet en production");
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const updateJalonDate = (cultureId: number, jalonId: number, newDate: Date) => {
-    setJalons(prev => {
-      const updated = { ...prev };
-      
-      if (updated[cultureId]) {
-        updated[cultureId] = updated[cultureId].map(jalon => 
-          jalon.id_jalon === jalonId ? { ...jalon, datePrevue: newDate } : jalon
-        );
-      }
-      
-      return updated;
-    });
   };
 
   if (!project) return null;
@@ -212,7 +169,7 @@ const ProductionLaunchDialog: React.FC<ProductionLaunchDialogProps> = ({
         <DialogHeader>
           <DialogTitle>Lancer la production - {project.titre || `Projet #${project.id_projet}`}</DialogTitle>
         </DialogHeader>
-        
+
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -229,7 +186,6 @@ const ProductionLaunchDialog: React.FC<ProductionLaunchDialogProps> = ({
                 )}
               </div>
             </div>
-            
             <div>
               <h3 className="text-sm font-medium mb-2">Date de lancement</h3>
               <Popover open={openCalendar} onOpenChange={setOpenCalendar}>
@@ -261,78 +217,62 @@ const ProductionLaunchDialog: React.FC<ProductionLaunchDialogProps> = ({
               </p>
             </div>
           </div>
-          
+
           <div>
-            <h3 className="text-sm font-medium mb-4">Planification des jalons par culture</h3>
-            
+            <h3 className="text-sm font-medium mb-4">Planification prévisionnelle des jalons et charges</h3>
             {loading ? (
               <div className="flex justify-center py-4">
                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
             ) : (
-              Object.keys(jalons).length > 0 ? (
-                <div className="space-y-6">
-                  {Object.entries(jalons).map(([cultureId, cultureJalons]) => {
-                    const cultureName = cultureJalons[0]?.culture?.nom_culture || `Culture #${cultureId}`;
-                    
-                    return (
-                      <div key={cultureId} className="border rounded-md overflow-hidden">
-                        <div className="bg-muted px-4 py-2 font-medium">
-                          {cultureName}
+              jalonsPreview.length > 0 ? (
+                jalonsPreview.map(culture => (
+                  <div key={culture.culture} className="border rounded-md overflow-hidden mb-4">
+                    <div className="bg-muted px-4 py-2 font-medium">
+                      {culture.culture}
+                    </div>
+                    <div className="p-2">
+                      <table className="w-full text-sm mb-2">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left py-2 px-2">Jalon</th>
+                            <th className="text-left py-2 px-2">Description</th>
+                            <th className="text-left py-2 px-2">Délai après lancement</th>
+                            <th className="text-left py-2 px-2">Date prévue</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {culture.jalons.map((jalon) => (
+                            <tr key={jalon.id_jalon_agricole} className="border-b">
+                              <td className="py-2 px-2">{jalon.nom_jalon}</td>
+                              <td className="py-2 px-2">{jalon.description}</td>
+                              <td className="py-2 px-2">{jalon.delai_apres_lancement} j</td>
+                              <td className="py-2 px-2">{format(jalon.datePrevue, 'PPP', { locale: fr })}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+
+                      {/* Détail des charges pour chaque jalon */}
+                      {culture.jalons.map(jalon => (
+                        <div key={jalon.id_jalon_agricole + "_charges"}>
+                          {jalon.couts?.length > 0 && (
+                            <div className="mb-2">
+                              <b>Coûts pour {jalon.nom_jalon} :</b>
+                              <ul className="list-disc pl-6">
+                                {jalon.couts.map(cout => (
+                                  <li key={cout.id_cout_jalon_reference}>
+                                    {cout.type_depense} : {cout.montant_total.toLocaleString()} Ar ({cout.montant_par_hectare} Ar/ha{cout.unite ? `, ${cout.unite}` : ""})
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
                         </div>
-                        <div className="p-2">
-                          <table className="w-full text-sm">
-                            <thead>
-                              <tr className="border-b">
-                                <th className="text-left py-2 px-2">Jalon</th>
-                                <th className="text-left py-2 px-2">Action</th>
-                                <th className="text-left py-2 px-2">Jours après lancement</th>
-                                <th className="text-left py-2 px-2">Date prévue</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {cultureJalons.map((jalon) => (
-                                <tr key={jalon.id_jalon} className="border-b">
-                                  <td className="py-2 px-2">{jalon.nom_jalon}</td>
-                                  <td className="py-2 px-2">{jalon.action_a_faire}</td>
-                                  <td className="py-2 px-2">{jalon.jours_apres_lancement}</td>
-                                  <td className="py-2 px-2">
-                                    <Popover>
-                                      <PopoverTrigger asChild>
-                                        <Button 
-                                          variant="outline" 
-                                          className={cn(
-                                            "w-full justify-start text-left font-normal",
-                                            !jalon.datePrevue && "text-muted-foreground"
-                                          )}
-                                        >
-                                          <CalendarIcon className="mr-2 h-4 w-4" />
-                                          {jalon.datePrevue ? format(jalon.datePrevue, 'PPP', { locale: fr }) : "Sélectionner une date"}
-                                        </Button>
-                                      </PopoverTrigger>
-                                      <PopoverContent className="w-auto p-0">
-                                        <Calendar
-                                          mode="single"
-                                          selected={jalon.datePrevue}
-                                          onSelect={(date) => {
-                                            if (date) {
-                                              updateJalonDate(parseInt(cultureId), jalon.id_jalon, date);
-                                            }
-                                          }}
-                                          initialFocus
-                                        />
-                                      </PopoverContent>
-                                    </Popover>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      ))}
+                    </div>
+                  </div>
+                ))
               ) : (
                 <div className="text-center py-4 text-muted-foreground">
                   Aucun jalon disponible pour les cultures de ce projet.
@@ -341,19 +281,19 @@ const ProductionLaunchDialog: React.FC<ProductionLaunchDialogProps> = ({
             )}
           </div>
         </div>
-        
+
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onClose}>
             Annuler
           </Button>
-          <Button 
-            type="button" 
+          <Button
+            type="button"
             onClick={handleStartProduction}
             disabled={submitting || loading}
           >
             {submitting ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Lancement en cours...
               </>
             ) : (
