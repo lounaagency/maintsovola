@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Navigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -104,9 +105,11 @@ const Feed: React.FC = () => {
       const transformedProjects = projetsData.map(projet => {
         const projetCultures = culturesByProjet[projet.id_projet] || [];
 
+        // Calcul du coût total d'exploitation (farmingCost) en tenant compte de la surface
         const totalFarmingCost = projetCultures.reduce((sum, pc) => 
           sum + ((pc.cout_exploitation_previsionnel || 0) * (projet.surface_ha || 1)), 0);
 
+        // Génération de l'affichage des rendements prévus pour chaque culture
         const yieldStrings = projetCultures.map(pc => {
           const nom = pc.culture?.nom_culture || "Non spécifié";
           const tonnage = (pc.rendement_previsionnel || 0) * (projet.surface_ha || 1);
@@ -114,13 +117,15 @@ const Feed: React.FC = () => {
         });
         const expectedYieldLabel = yieldStrings.length > 0 ? yieldStrings.join(", ") : "N/A";
 
+        // Calcul du revenu total estimé en tenant compte de la surface
         const totalEstimatedRevenue = projetCultures.reduce((sum, pc) => {
           const rendement = pc.rendement_previsionnel || 0;
           const prixTonne = pc.culture?.prix_tonne || 0;
           return sum + (rendement * (projet.surface_ha || 1) * prixTonne);
         }, 0);
 
-        const totalMargin = totalEstimatedRevenue - totalFarmingCost;
+        // Le bénéfice prévu est la différence entre le revenu estimé et le coût d'exploitation
+        const totalProfit = totalEstimatedRevenue - totalFarmingCost;
 
         const cultivationTypes = projetCultures.map(pc => pc.culture?.nom_culture || "Non spécifié");
         const cultivationType = cultivationTypes.length > 0 ? cultivationTypes.join(", ") : "Non spécifié";
@@ -156,12 +161,12 @@ const Feed: React.FC = () => {
           },
           cultivationArea: projet.surface_ha,
           cultivationType,
-          farmingCost: totalFarmingCost,
-          expectedYield: expectedYieldLabel,
-          expectedRevenue: totalEstimatedRevenue,
+          farmingCost: totalFarmingCost, // Coût total d'exploitation à lever
+          expectedYield: expectedYieldLabel, // Affichage textuel des rendements par culture
+          expectedRevenue: totalEstimatedRevenue, // Revenu total estimé
           creationDate: new Date(projet.created_at).toISOString().split('T')[0],
           images: [],
-          fundingGoal: totalMargin,
+          fundingGoal: totalFarmingCost, // Objectif de financement = coût d'exploitation
           currentFunding: projectCurrentFundings[projet.id_projet] || 0,
           likes,
           comments: commentCount,
@@ -171,6 +176,7 @@ const Feed: React.FC = () => {
           _multiCultures: projetCultures,
         };
       });
+      
       setProjects(transformedProjects);
     } catch (error) {
       console.error("Erreur lors de la récupération des projets:", error);

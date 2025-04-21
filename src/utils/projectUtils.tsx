@@ -103,4 +103,3 @@ export const getProjectSummary = (project: ProjectData) => {
     createdAt: project.created_at || 'N/A'
   };
 };
-

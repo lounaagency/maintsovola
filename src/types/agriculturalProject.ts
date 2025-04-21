@@ -20,7 +20,7 @@ export interface AgriculturalProject {
   cultivationArea: number; // en hectares
   cultivationType: string | ReactNode;
   farmingCost: number;
-  expectedYield: number;
+  expectedYield: string | number; // Modifié pour accepter une chaîne (pour les multi-cultures)
   expectedRevenue: number;
   creationDate: string;
   images: string[];
