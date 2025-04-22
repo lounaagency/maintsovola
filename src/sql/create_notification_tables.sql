@@ -1,4 +1,3 @@
-
 -- Create notification table
 CREATE TABLE IF NOT EXISTS public.notification (
     id_notification SERIAL PRIMARY KEY,
@@ -399,15 +398,15 @@ DECLARE
     project_record RECORD;
 BEGIN
     -- Get project information
-    SELECT p.id_tantsaha, t.id_technicien, p.titre, j.nom
+    SELECT p.id_tantsaha, t.id_technicien, p.id_superviseur, p.titre, j.nom_jalon
     INTO project_record
     FROM public.projet p
     JOIN public.terrain t ON p.id_terrain = t.id_terrain
-    JOIN public.jalon j ON NEW.id_jalon = j.id_jalon
+    JOIN public.jalon_agricole j ON NEW.id_jalon_agricole = j.id_jalon_agricole
     WHERE p.id_projet = NEW.id_projet;
     
-    -- Notification for jalon completion
-    IF OLD.statut IS DISTINCT FROM NEW.statut AND NEW.statut = 'Terminé' THEN
+    -- Only notify if the report was added (date_reelle was updated)
+    IF OLD.date_reelle IS NULL AND NEW.date_reelle IS NOT NULL THEN
         -- Notify farmer
         INSERT INTO public.notification (
             id_expediteur,
@@ -422,19 +421,111 @@ BEGIN
         VALUES (
             project_record.id_technicien,
             project_record.id_tantsaha,
-            'Jalon complété',
-            'Le jalon "' || project_record.nom || '" a été complété pour votre projet "' || 
-            COALESCE(project_record.titre, 'Projet #' || NEW.id_projet) || '".',
-            'success',
-            NEW.id_projet_jalon::VARCHAR,
+            'Jalon réalisé',
+            'Le jalon "' || project_record.nom_jalon || '" a été réalisé.',
+            'info',
+            NEW.id_jalon_agricole::VARCHAR,
             'jalon',
             NEW.id_projet
         );
+
+        -- Notify superviseur if assigned
+        IF project_record.id_superviseur IS NOT NULL THEN
+            INSERT INTO public.notification (
+                id_expediteur,
+                id_destinataire,
+                titre,
+                message,
+                type,
+                entity_id,
+                entity_type,
+                projet_id
+            )
+            VALUES (
+                project_record.id_technicien,
+                project_record.id_superviseur,
+                'Jalon réalisé',
+                'Le jalon "' || project_record.nom_jalon || '" a été réalisé.',
+                'info',
+                NEW.id_jalon_agricole::VARCHAR,
+                'jalon',
+                NEW.id_projet
+            );
+        END IF;
+
+        -- Notify technicien
+        IF project_record.id_technicien IS NOT NULL THEN
+            INSERT INTO public.notification (
+                id_expediteur,
+                id_destinataire,
+                titre,
+                message,
+                type,
+                entity_id,
+                entity_type,
+                projet_id
+            )
+            VALUES (
+                project_record.id_technicien,
+                project_record.id_technicien,
+                'Jalon réalisé',
+                'Le jalon "' || project_record.nom_jalon || '" a été réalisé.',
+                'info',
+                NEW.id_jalon_agricole::VARCHAR,
+                'jalon',
+                NEW.id_projet
+            );
+        END IF;
+
+        -- Notify all investors
+        FOR investor IN 
+            SELECT DISTINCT id_investisseur 
+            FROM public.investissement 
+            WHERE id_projet = NEW.id_projet
+        LOOP
+            INSERT INTO public.notification (
+                id_expediteur,
+                id_destinataire,
+                titre,
+                message,
+                type,
+                entity_id,
+                entity_type,
+                projet_id
+            )
+            VALUES (
+                project_record.id_technicien,
+                investor.id_investisseur,
+                'Jalon réalisé',
+                'Le jalon "' || project_record.nom_jalon || '" du projet dans lequel vous avez investi a été réalisé.',
+                'info',
+                NEW.id_jalon_agricole::VARCHAR,
+                'jalon',
+                NEW.id_projet
+            );
+        END LOOP;
     END IF;
     
-    -- Notification for intervention report
-    IF OLD.date_reelle_execution IS NULL AND NEW.date_reelle_execution IS NOT NULL THEN
-        -- Notify farmer about the intervention report
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION notify_production_launch()
+RETURNS TRIGGER AS $$
+DECLARE 
+    project_record RECORD;
+    investor RECORD;
+BEGIN
+    -- Only notify if status changed to "en cours"
+    IF OLD.statut != 'en cours' AND NEW.statut = 'en cours' THEN
+        -- Get project information
+        SELECT p.id_tantsaha, t.id_technicien, p.id_superviseur, p.titre
+        INTO project_record
+        FROM public.projet p
+        JOIN public.terrain t ON p.id_terrain = t.id_terrain
+        WHERE p.id_projet = NEW.id_projet;
+
+        -- Notify farmer
         INSERT INTO public.notification (
             id_expediteur,
             id_destinataire,
@@ -448,24 +539,105 @@ BEGIN
         VALUES (
             project_record.id_technicien,
             project_record.id_tantsaha,
-            'Rapport d''intervention',
-            'Un rapport d''intervention a été ajouté pour le jalon "' || project_record.nom || 
-            '" de votre projet "' || COALESCE(project_record.titre, 'Projet #' || NEW.id_projet) || '".',
+            'Production lancée',
+            'La production de votre projet a démarré.',
             'info',
-            NEW.id_projet_jalon::VARCHAR,
-            'jalon',
+            NEW.id_projet::VARCHAR,
+            'projet',
             NEW.id_projet
         );
+
+        -- Notify superviseur if assigned
+        IF project_record.id_superviseur IS NOT NULL THEN
+            INSERT INTO public.notification (
+                id_expediteur,
+                id_destinataire,
+                titre,
+                message,
+                type,
+                entity_id,
+                entity_type,
+                projet_id
+            )
+            VALUES (
+                project_record.id_technicien,
+                project_record.id_superviseur,
+                'Production lancée',
+                'La production du projet ' || project_record.titre || ' a démarré.',
+                'info',
+                NEW.id_projet::VARCHAR,
+                'projet',
+                NEW.id_projet
+            );
+        END IF;
+
+        -- Notify technicien
+        IF project_record.id_technicien IS NOT NULL THEN
+            INSERT INTO public.notification (
+                id_expediteur,
+                id_destinataire,
+                titre,
+                message,
+                type,
+                entity_id,
+                entity_type,
+                projet_id
+            )
+            VALUES (
+                project_record.id_technicien,
+                project_record.id_technicien,
+                'Production lancée',
+                'La production du projet ' || project_record.titre || ' a démarré.',
+                'info',
+                NEW.id_projet::VARCHAR,
+                'projet',
+                NEW.id_projet
+            );
+        END IF;
+
+        -- Notify all investors
+        FOR investor IN 
+            SELECT DISTINCT id_investisseur 
+            FROM public.investissement 
+            WHERE id_projet = NEW.id_projet
+        LOOP
+            INSERT INTO public.notification (
+                id_expediteur,
+                id_destinataire,
+                titre,
+                message,
+                type,
+                entity_id,
+                entity_type,
+                projet_id
+            )
+            VALUES (
+                project_record.id_technicien,
+                investor.id_investisseur,
+                'Production lancée',
+                'La production du projet dans lequel vous avez investi a démarré.',
+                'info',
+                NEW.id_projet::VARCHAR,
+                'projet',
+                NEW.id_projet
+            );
+        END LOOP;
     END IF;
-    
+
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE TRIGGER jalon_update_notification
-AFTER UPDATE ON public.projet_jalon
+-- Create triggers
+CREATE OR REPLACE TRIGGER production_launch_notification
+    AFTER UPDATE ON public.projet
+    FOR EACH ROW
+    EXECUTE FUNCTION notify_production_launch();
+
+CREATE OR REPLACE TRIGGER project_fully_funded_notification
+AFTER UPDATE ON public.projet
 FOR EACH ROW
-EXECUTE PROCEDURE notify_jalon_update();
+EXECUTE PROCEDURE notify_project_fully_funded();
 
 -- 9. Project completion notification
 CREATE OR REPLACE FUNCTION notify_project_completed()
@@ -611,6 +783,21 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER investors_jalon_update_notification
+AFTER UPDATE ON public.projet_jalon
+FOR EACH ROW
+EXECUTE PROCEDURE notify_investors_jalon_update();
+
+CREATE OR REPLACE TRIGGER jalon_update_notification
+AFTER UPDATE ON public.projet_jalon
+FOR EACH ROW
+EXECUTE PROCEDURE notify_jalon_update();
+
+CREATE OR REPLACE TRIGGER project_completed_notification
+AFTER UPDATE ON public.projet
+FOR EACH ROW
+EXECUTE PROCEDURE notify_project_completed();
 
 CREATE OR REPLACE TRIGGER investors_jalon_update_notification
 AFTER UPDATE ON public.projet_jalon
