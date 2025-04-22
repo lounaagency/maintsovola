@@ -276,8 +276,8 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
 
   const handleShowJalonReport = (jalon: any) => {
     setSelectedJalon({
-      id: jalon.id_jalon,
-      name: jalon.jalon?.nom_jalon || '',
+      id: jalon.id_jalon_agricole,
+      name: jalon.jalon_agricole?.nom_jalon || '',
       datePrevue: jalon.date_previsionnelle
     });
   };
@@ -503,7 +503,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
                         <tbody>
                           {jalons.length > 0 ? (
                             jalons.map((jalon) => (
-                              <tr key={`${jalon.id_projet}-${jalon.id_jalon}`} className="border-t">
+                              <tr key={`${jalon.id_projet}-${jalon.id_jalon_agricole}`} className="border-t">
                                 <td className="p-2 text-sm">
                                   {jalon.culture?.id_culture.nom_culture || ''}
                                 </td>

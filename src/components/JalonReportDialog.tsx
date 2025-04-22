@@ -12,7 +12,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, Upload } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import PhotoUploader from "./PhotoUploader";
 
 interface JalonReportDialogProps {
   isOpen: boolean;
@@ -36,8 +37,7 @@ const JalonReportDialog: React.FC<JalonReportDialogProps> = ({
   const [rapport, setRapport] = useState("");
   const [dateReelle, setDateReelle] = useState(datePrevue);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [uploading, setUploading] = useState(false);
+  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,35 +50,8 @@ const JalonReportDialog: React.FC<JalonReportDialogProps> = ({
     try {
       setIsSubmitting(true);
       
-      // Upload photos if selected
-      let photoUrls: string[] = [];
-      
-      if (selectedFiles.length > 0) {
-        setUploading(true);
-        
-        for (const file of selectedFiles) {
-          const fileExt = file.name.split('.').pop();
-          const fileName = `${projectId}-${jalonId}-${Date.now()}.${fileExt}`;
-          const filePath = `project-photos/${fileName}`;
-          
-          const { error: uploadError } = await supabase.storage
-            .from('project-photos')
-            .upload(filePath, file);
-            
-          if (uploadError) throw uploadError;
-          
-          // Get public URL
-          const { data: publicData } = supabase.storage
-            .from('project-photos')
-            .getPublicUrl(filePath);
-            
-          if (publicData) {
-            photoUrls.push(publicData.publicUrl);
-          }
-        }
-        
-        setUploading(false);
-      }
+      // Convert photo URLs array to JSON string
+      const photosString = photoUrls.length > 0 ? JSON.stringify(photoUrls) : null;
       
       // Update jalon with report and photos
       const { error } = await supabase
@@ -86,7 +59,7 @@ const JalonReportDialog: React.FC<JalonReportDialogProps> = ({
         .update({
           date_reelle: dateReelle,
           rapport_jalon: rapport,
-          photos_jalon: photoUrls.length > 0 ? photoUrls : null
+          photos_jalon: photosString
         })
         .eq('id_projet', projectId)
         .eq('id_jalon_agricole', jalonId);
@@ -105,15 +78,44 @@ const JalonReportDialog: React.FC<JalonReportDialogProps> = ({
     }
   };
   
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAddPhotos = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
     
-    const files: File[] = [];
-    for (let i = 0; i < e.target.files.length; i++) {
-      files.push(e.target.files[i]);
-    }
+    // Handle file uploads
+    const handleFileUpload = async (file: File) => {
+      try {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${projectId}-${jalonId}-${Date.now()}.${fileExt}`;
+        const filePath = `project-photos/${fileName}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('project-photos')
+          .upload(filePath, file);
+          
+        if (uploadError) throw uploadError;
+        
+        // Get public URL
+        const { data: publicData } = supabase.storage
+          .from('project-photos')
+          .getPublicUrl(filePath);
+          
+        if (publicData) {
+          setPhotoUrls(prev => [...prev, publicData.publicUrl]);
+        }
+      } catch (error) {
+        console.error('Error uploading file:', error);
+        toast.error("Erreur lors de l'upload d'une photo");
+      }
+    };
     
-    setSelectedFiles(files);
+    // Process each file
+    Array.from(e.target.files).forEach(file => {
+      handleFileUpload(file);
+    });
+  };
+  
+  const handleRemovePhoto = (index: number) => {
+    setPhotoUrls(prev => prev.filter((_, i) => i !== index));
   };
 
   return (
@@ -124,6 +126,18 @@ const JalonReportDialog: React.FC<JalonReportDialogProps> = ({
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="datePrevue">Date prévue</Label>
+            <Input 
+              id="datePrevue" 
+              type="date" 
+              value={datePrevue} 
+              readOnly
+              disabled
+              className="bg-muted"
+            />
+          </div>
+          
           <div className="space-y-2">
             <Label htmlFor="dateReelle">Date d'intervention réelle</Label>
             <Input 
@@ -146,30 +160,19 @@ const JalonReportDialog: React.FC<JalonReportDialogProps> = ({
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="photos">Photos (facultatif)</Label>
-            <div className="flex items-center gap-2">
-              <Input
-                id="photos"
-                type="file"
-                multiple
-                accept="image/*"
-                onChange={handleFileChange}
-                className="file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:font-medium file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
-              />
-              {uploading && <Loader2 className="animate-spin h-4 w-4" />}
-            </div>
-            {selectedFiles.length > 0 && (
-              <p className="text-sm text-muted-foreground">
-                {selectedFiles.length} photo{selectedFiles.length > 1 ? 's' : ''} sélectionnée{selectedFiles.length > 1 ? 's' : ''}
-              </p>
-            )}
+            <PhotoUploader
+              photoUrls={photoUrls}
+              onAddPhotos={handleAddPhotos}
+              onRemovePhoto={handleRemovePhoto}
+              label="Photos du terrain"
+            />
           </div>
           
           <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={onClose}>
               Annuler
             </Button>
-            <Button type="submit" disabled={isSubmitting || uploading}>
+            <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
