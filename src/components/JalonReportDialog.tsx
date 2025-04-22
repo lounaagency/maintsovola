@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import {
   Dialog,
@@ -22,7 +21,13 @@ interface JalonReportDialogProps {
   jalonId: number;
   jalonName: string;
   datePrevue: string;
-  onSubmitSuccess: () => void;
+  onSubmitSuccess?: () => void;
+  readOnly?: boolean;
+  initialData?: {
+    rapport?: string;
+    dateReelle?: string;
+    photos?: string[];
+  };
 }
 
 const JalonReportDialog: React.FC<JalonReportDialogProps> = ({
@@ -32,12 +37,14 @@ const JalonReportDialog: React.FC<JalonReportDialogProps> = ({
   jalonId,
   jalonName,
   datePrevue,
-  onSubmitSuccess
+  onSubmitSuccess,
+  readOnly = false,
+  initialData = {}
 }) => {
-  const [rapport, setRapport] = useState("");
-  const [dateReelle, setDateReelle] = useState(datePrevue);
+  const [rapport, setRapport] = useState(initialData.rapport || "");
+  const [dateReelle, setDateReelle] = useState(initialData.dateReelle || datePrevue);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
+  const [photoUrls, setPhotoUrls] = useState<string[]>(initialData.photos || []);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,7 +75,9 @@ const JalonReportDialog: React.FC<JalonReportDialogProps> = ({
       
       toast.success("Rapport d'intervention enregistré avec succès");
       
-      onSubmitSuccess();
+      if (onSubmitSuccess) {
+        onSubmitSuccess();
+      }
       onClose();
     } catch (error) {
       console.error('Error submitting report:', error);
@@ -122,7 +131,9 @@ const JalonReportDialog: React.FC<JalonReportDialogProps> = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>Rapport d'intervention - {jalonName}</DialogTitle>
+          <DialogTitle>
+            {readOnly ? `Rapport - ${jalonName}` : `Rapport d'intervention - ${jalonName}`}
+          </DialogTitle>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -145,6 +156,9 @@ const JalonReportDialog: React.FC<JalonReportDialogProps> = ({
               type="date" 
               value={dateReelle} 
               onChange={(e) => setDateReelle(e.target.value)}
+              readOnly={readOnly}
+              disabled={readOnly}
+              className={readOnly ? "bg-muted" : ""}
             />
           </div>
           
@@ -156,6 +170,9 @@ const JalonReportDialog: React.FC<JalonReportDialogProps> = ({
               onChange={(e) => setRapport(e.target.value)}
               rows={5}
               placeholder="Décrivez les actions réalisées, les observations, etc."
+              readOnly={readOnly}
+              disabled={readOnly}
+              className={readOnly ? "bg-muted" : ""}
             />
           </div>
           
@@ -165,22 +182,33 @@ const JalonReportDialog: React.FC<JalonReportDialogProps> = ({
               onAddPhotos={handleAddPhotos}
               onRemovePhoto={handleRemovePhoto}
               label="Photos du terrain"
+              disabled={readOnly}
             />
           </div>
           
-          <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={onClose}>
-              Annuler
-            </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Enregistrement...
-                </>
-              ) : "Enregistrer le rapport"}
-            </Button>
-          </div>
+          {!readOnly && (
+            <div className="flex justify-end gap-2 pt-4">
+              <Button type="button" variant="outline" onClick={onClose}>
+                Annuler
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Enregistrement...
+                  </>
+                ) : "Enregistrer le rapport"}
+              </Button>
+            </div>
+          )}
+          
+          {readOnly && (
+            <div className="flex justify-end pt-4">
+              <Button type="button" variant="outline" onClick={onClose}>
+                Fermer
+              </Button>
+            </div>
+          )}
         </form>
       </DialogContent>
     </Dialog>

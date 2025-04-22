@@ -38,6 +38,12 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
     id: number;
     name: string;
     datePrevue: string;
+    readOnly?: boolean;
+    initialData?: {
+      rapport?: string;
+      dateReelle?: string;
+      photos?: string[];
+    };
   } | null>(null);
   
   useEffect(() => {
@@ -274,11 +280,17 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
     });
   };
 
-  const handleShowJalonReport = (jalon: any) => {
+  const handleShowJalonReport = (jalon: any, readOnly: boolean = false) => {
     setSelectedJalon({
       id: jalon.id_jalon_agricole,
       name: jalon.jalon_agricole?.nom_jalon || '',
-      datePrevue: jalon.date_previsionnelle
+      datePrevue: jalon.date_previsionnelle,
+      readOnly,
+      initialData: readOnly ? {
+        rapport: jalon.rapport_jalon,
+        dateReelle: jalon.date_reelle,
+        photos: jalon.photos_jalon ? JSON.parse(jalon.photos_jalon) : []
+      } : undefined
     });
   };
 
@@ -514,11 +526,16 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
                                   {formatDate(jalon.date_previsionnelle)}
                                 </td>
                                 <td className="p-2 text-sm">
-                                  {jalon.date_reelle ? formatDate(jalon.date_reelle) : 'Non réalisé'}
-                                </td>
-                                {userRole === 'technicien' && (
-                                  <td className="p-2 text-right">
-                                    {!jalon.date_reelle && (
+                                  {jalon.date_reelle ? (
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline"
+                                      onClick={() => handleShowJalonReport(jalon, true)}
+                                    >
+                                      Voir le rapport
+                                    </Button>
+                                  ) : (
+                                    userRole === 'technicien' && (
                                       <Button 
                                         size="sm" 
                                         variant="outline"
@@ -526,9 +543,9 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
                                       >
                                         Marquer réalisé
                                       </Button>
-                                    )}
-                                  </td>
-                                )}
+                                    )
+                                  )}
+                                </td>
                               </tr>
                             ))
                           ) : (
@@ -574,6 +591,8 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
           jalonName={selectedJalon.name}
           datePrevue={selectedJalon.datePrevue}
           onSubmitSuccess={handleJalonReportSuccess}
+          readOnly={selectedJalon.readOnly}
+          initialData={selectedJalon.initialData}
         />
       )}
     </>
