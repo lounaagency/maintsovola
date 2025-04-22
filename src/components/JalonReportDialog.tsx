@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 import { Loader2, Upload } from "lucide-react";
 
 interface JalonReportDialogProps {
@@ -20,6 +20,7 @@ interface JalonReportDialogProps {
   projectId: number;
   jalonId: number;
   jalonName: string;
+  datePrevue: string;
   onSubmitSuccess: () => void;
 }
 
@@ -29,11 +30,11 @@ const JalonReportDialog: React.FC<JalonReportDialogProps> = ({
   projectId,
   jalonId,
   jalonName,
+  datePrevue,
   onSubmitSuccess
 }) => {
-  const { toast } = useToast();
   const [rapport, setRapport] = useState("");
-  const [dateReelle, setDateReelle] = useState(new Date().toISOString().split('T')[0]);
+  const [dateReelle, setDateReelle] = useState(datePrevue);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -42,11 +43,7 @@ const JalonReportDialog: React.FC<JalonReportDialogProps> = ({
     e.preventDefault();
     
     if (!rapport.trim()) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez rédiger un rapport d'intervention",
-        variant: "destructive"
-      });
+      toast.error("Veuillez rédiger un rapport d'intervention");
       return;
     }
     
@@ -85,31 +82,24 @@ const JalonReportDialog: React.FC<JalonReportDialogProps> = ({
       
       // Update jalon with report and photos
       const { error } = await supabase
-        .from('projet_jalon')
+        .from('jalon_projet')
         .update({
           date_reelle: dateReelle,
           rapport_terrain: rapport,
-          photos_sur_terrain: photoUrls.length > 0 ? photoUrls.join(',') : null
+          photos_sur_terrain: photoUrls.length > 0 ? photoUrls : null
         })
         .eq('id_projet', projectId)
         .eq('id_jalon', jalonId);
       
       if (error) throw error;
       
-      toast({
-        title: "Succès",
-        description: "Rapport d'intervention enregistré avec succès",
-      });
+      toast.success("Rapport d'intervention enregistré avec succès");
       
       onSubmitSuccess();
       onClose();
     } catch (error) {
       console.error('Error submitting report:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible d'enregistrer le rapport",
-        variant: "destructive"
-      });
+      toast.error("Impossible d'enregistrer le rapport");
     } finally {
       setIsSubmitting(false);
     }

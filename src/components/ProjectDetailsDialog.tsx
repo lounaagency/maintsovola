@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import UserAvatar from './UserAvatar';
+import JalonReportDialog from "./JalonReportDialog";
 
 interface ProjectDetailsDialogProps {
   isOpen: boolean;
@@ -33,6 +34,11 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
   const [investments, setInvestments] = useState<any[]>([]);
   const [jalons, setJalons] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedJalon, setSelectedJalon] = useState<{
+    id: number;
+    name: string;
+    datePrevue: string;
+  } | null>(null);
   
   useEffect(() => {
     if (isOpen && projectId) {
@@ -261,6 +267,19 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
     });
   };
 
+  const handleShowJalonReport = (jalon: any) => {
+    setSelectedJalon({
+      id: jalon.id_jalon,
+      name: jalon.jalon?.nom_jalon || '',
+      datePrevue: jalon.date_previsionnelle
+    });
+  };
+
+  const handleJalonReportSuccess = () => {
+    fetchJalons();
+    setSelectedJalon(null);
+  };
+
   if (loading || !project) {
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
@@ -280,263 +299,277 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
   const isFundingComplete = fundingProgress >= 100;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Détails du projet #{project.id_projet}</DialogTitle>
-        </DialogHeader>
-        
-        <div className="space-y-6">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div  className="text-xs">
-                  <p className="text-muted-foreground">Agriculteur</p>
-                  
-                  <div className="flex items-center">
-                    <UserAvatar 
-                      src={project.tantsaha?.photo_profil} 
-                      alt={typeof project.tantsaha?.nom === 'string' ? project.tantsaha.nom : 'Agriculteur'} 
-                      size="sm" 
-                    />
-                    <div  className="text-xs">
-                      <div className="text-green-900">
-                        {project.tantsaha?.nom} {project.tantsaha?.prenoms || ''}
+    <>
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Détails du projet #{project.id_projet}</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-6">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div  className="text-xs">
+                    <p className="text-muted-foreground">Agriculteur</p>
+                    
+                    <div className="flex items-center">
+                      <UserAvatar 
+                        src={project.tantsaha?.photo_profil} 
+                        alt={typeof project.tantsaha?.nom === 'string' ? project.tantsaha.nom : 'Agriculteur'} 
+                        size="sm" 
+                      />
+                      <div  className="text-xs">
+                        <div className="text-green-900">
+                          {project.tantsaha?.nom} {project.tantsaha?.prenoms || ''}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-                <div  className="text-xs">
-                  <p className="text-muted-foreground">Terrain</p>
-                  <p className="text-green-900">{project.terrain?.nom_terrain} ({project.surface_ha} ha)</p>
-                </div>
-                <div  className="text-xs">
-                  <p className="text-muted-foreground">Localisation</p>
-                  <p className="text-green-900">{project.region?.nom_region}, {project.district?.nom_district}, {project.commune?.nom_commune}</p>
-                </div>
-                <div  className="text-xs">
-                  <p className="text-muted-foreground">Statut</p>
-                  <Badge 
-                    variant={
-                      project.statut === 'en attente' ? 'outline' : 
-                      project.statut === 'validé' ? 'secondary' :
-                      project.statut === 'en cours' ? 'default' :
-                      project.statut === 'terminé' ? 'secondary' : 'outline'
-                    }
-                  >
-                    {project.statut}
-                  </Badge>
-                </div>
-                <div  className="text-xs">
-                  <p className="text-muted-foreground">Cultures</p>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {project.projet_culture.map((pc: any) => (
-                      <Badge key={pc.id_projet_culture} variant="outline">
-                        {pc.culture?.nom_culture}
-                      </Badge>
-                    ))}
+                  <div  className="text-xs">
+                    <p className="text-muted-foreground">Terrain</p>
+                    <p className="text-green-900">{project.terrain?.nom_terrain} ({project.surface_ha} ha)</p>
                   </div>
-                </div>
-                <div  className="text-xs">
-                  <p className="text-muted-foreground">Equipe Maintso Vola</p>                  
-                  {project.superviseur && (
-                    <div className="flex items-center">
-                      <span className="text-green-900">Superviseur : </span>
-                      <UserAvatar 
-                        src={project.superviseur?.photo_profil} 
-                        alt={typeof project.superviseur?.nom === 'string' ? project.superviseur.nom : 'Agriculteur'} 
-                        size="sm" 
-                      />
-                      <div className="font-semibold text-sm text-green-900">
-                        {project.superviseur?.nom} {project.superviseur?.prenoms || ''}
+                  <div  className="text-xs">
+                    <p className="text-muted-foreground">Localisation</p>
+                    <p className="text-green-900">{project.region?.nom_region}, {project.district?.nom_district}, {project.commune?.nom_commune}</p>
+                  </div>
+                  <div  className="text-xs">
+                    <p className="text-muted-foreground">Statut</p>
+                    <Badge 
+                      variant={
+                        project.statut === 'en attente' ? 'outline' : 
+                        project.statut === 'validé' ? 'secondary' :
+                        project.statut === 'en cours' ? 'default' :
+                        project.statut === 'terminé' ? 'secondary' : 'outline'
+                      }
+                    >
+                      {project.statut}
+                    </Badge>
+                  </div>
+                  <div  className="text-xs">
+                    <p className="text-muted-foreground">Cultures</p>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {project.projet_culture.map((pc: any) => (
+                        <Badge key={pc.id_projet_culture} variant="outline">
+                          {pc.culture?.nom_culture}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                  <div  className="text-xs">
+                    <p className="text-muted-foreground">Equipe Maintso Vola</p>                  
+                    {project.superviseur && (
+                      <div className="flex items-center">
+                        <span className="text-green-900">Superviseur : </span>
+                        <UserAvatar 
+                          src={project.superviseur?.photo_profil} 
+                          alt={typeof project.superviseur?.nom === 'string' ? project.superviseur.nom : 'Agriculteur'} 
+                          size="sm" 
+                        />
+                        <div className="font-semibold text-sm text-green-900">
+                          {project.superviseur?.nom} {project.superviseur?.prenoms || ''}
+                        </div>
                       </div>
+                    )}
+                    {project.technicien && (
+                      <div className="flex items-center">
+                      <span className="text-green-900">Technicien : </span>
+                        <UserAvatar 
+                          src={project.technicien?.photo_profil} 
+                          alt={typeof project.technicien?.nom === 'string' ? project.technicien.nom : 'Agriculteur'} 
+                          size="sm" 
+                        />
+                        <div className="text-green-900">
+                          {project.technicien?.nom} {project.technicien?.prenoms || ''}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  {project.date_lancement && (
+                    <div>
+                      <p className="text-muted-foreground">Date de lancement</p>
+                      <p className="text-green-900">{formatDate(project.date_lancement)}</p>
                     </div>
                   )}
-                  {project.technicien && (
-                    <div className="flex items-center">
-                    <span className="text-green-900">Technicien : </span>
-                      <UserAvatar 
-                        src={project.technicien?.photo_profil} 
-                        alt={typeof project.technicien?.nom === 'string' ? project.technicien.nom : 'Agriculteur'} 
-                        size="sm" 
-                      />
-                      <div className="text-green-900">
-                        {project.technicien?.nom} {project.technicien?.prenoms || ''}
-                      </div>
-                    </div>
-                  )}
                 </div>
-                {project.date_lancement && (
-                  <div>
-                    <p className="text-muted-foreground">Date de lancement</p>
-                    <p className="text-green-900">{formatDate(project.date_lancement)}</p>
+                
+                {project.description && (
+                  <div className="mt-4 text-xs">
+                    <p className="text-muted-foreground mb-1">Description</p>
+                    <p  className="text-green-900">{project.description}</p>
                   </div>
                 )}
-              </div>
-              
-              {project.description && (
-                <div className="mt-4 text-xs">
-                  <p className="text-muted-foreground mb-1">Description</p>
-                  <p  className="text-green-900">{project.description}</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          <Tabs defaultValue="finances" className="w-full text-xs">
-            <TabsList className="grid grid-cols-2">
-              <TabsTrigger value="finances">Financement</TabsTrigger>
-              <TabsTrigger value="jalons">Jalons & Production</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="finances" className="space-y-4 mt-4">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium">Progression du financement</p>
-                  <p className="text-sm font-medium">{fundingProgress}%</p>
+            <Tabs defaultValue="finances" className="w-full text-xs">
+              <TabsList className="grid grid-cols-2">
+                <TabsTrigger value="finances">Financement</TabsTrigger>
+                <TabsTrigger value="jalons">Jalons & Production</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="finances" className="space-y-4 mt-4">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium">Progression du financement</p>
+                    <p className="text-sm font-medium">{fundingProgress}%</p>
+                  </div>
+                  <Progress value={fundingProgress} className="h-2" />
                 </div>
-                <Progress value={fundingProgress} className="h-2" />
-              </div>
-              
-              <Separator className="my-4" />
-              
-              <h3 className="text-lg font-medium">Investissements</h3>
-              
-              <div className="border rounded-md">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-muted">
-                      <th className="p-2 text-left text-sm">Investisseur</th>
-                      <th className="p-2 text-right text-sm">Montant</th>
-                      <th className="p-2 text-right text-sm">Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {investments.length > 0 ? (
-                      investments.map((inv) => (
-                        <tr key={inv.id_investissement} className="border-t">
-                          <td className="p-2 text-sm">
-                            {inv.investisseur?.nom} {inv.investisseur?.prenoms || ''}
-                          </td>
-                          <td className="p-2 text-right text-sm">
-                            {inv.montant?.toLocaleString()} Ar
-                          </td>
-                          <td className="p-2 text-right text-sm">
-                            {formatDate(inv.date_paiement)}
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={3} className="p-4 text-center text-sm text-muted-foreground">
-                          Aucun investissement pour le moment
-                        </td>
+                
+                <Separator className="my-4" />
+                
+                <h3 className="text-lg font-medium">Investissements</h3>
+                
+                <div className="border rounded-md">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-muted">
+                        <th className="p-2 text-left text-sm">Investisseur</th>
+                        <th className="p-2 text-right text-sm">Montant</th>
+                        <th className="p-2 text-right text-sm">Date</th>
                       </tr>
-                    )}
-                  </tbody>
-                  {investments.length > 0 && (
-                    <tfoot>
-                      <tr className="border-t bg-muted">
-                        <td className="p-2 font-medium">Total</td>
-                        <td className="p-2 text-right font-medium">
-                          {investments.reduce((sum, inv) => sum + (inv.montant || 0), 0).toLocaleString()} Ar
-                        </td>
-                        <td></td>
-                      </tr>
-                    </tfoot>
-                  )}
-                </table>
-              </div>
-              
-              {userRole === 'technicien' && 
-               project.statut === 'validé' && 
-               isFundingComplete && (
-                <div className="flex justify-end mt-4">
-                  <Button onClick={handleStartProduction}>
-                    Lancer la production
-                  </Button>
-                </div>
-              )}
-            </TabsContent>
-            
-            <TabsContent value="jalons" className="space-y-4 mt-4">
-              {project.statut === 'en cours' ? (
-                <div className="space-y-4">
-                  <div className="border rounded-md">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="bg-muted">
-                          <th className="p-2 text-left text-sm">Jalon</th>
-                          <th className="p-2 text-left text-sm">Culture</th>
-                          <th className="p-2 text-left text-sm">Date prévue</th>
-                          <th className="p-2 text-left text-sm">Date réelle</th>
-                          {userRole === 'technicien' && <th className="p-2 text-sm"></th>}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {jalons.length > 0 ? (
-                          jalons.map((jalon) => (
-                            <tr key={`${jalon.id_projet}-${jalon.id_jalon}`} className="border-t">
-                              <td className="p-2 text-sm">
-                                {jalon.jalon?.nom_jalon}
-                              </td>
-                              <td className="p-2 text-sm">
-                                {jalon.culture?.nom_culture || ''}
-                              </td>
-                              <td className="p-2 text-sm">
-                                {formatDate(jalon.date_previsionnelle)}
-                              </td>
-                              <td className="p-2 text-sm">
-                                {jalon.date_reelle ? formatDate(jalon.date_reelle) : 'Non réalisé'}
-                              </td>
-                              {userRole === 'technicien' && (
-                                <td className="p-2 text-right">
-                                  {!jalon.date_reelle && (
-                                    <Button 
-                                      size="sm" 
-                                      variant="outline"
-                                      onClick={() => handleCompleteJalon(jalon.id_jalon)}
-                                    >
-                                      Marquer réalisé
-                                    </Button>
-                                  )}
-                                </td>
-                              )}
-                            </tr>
-                          ))
-                        ) : (
-                          <tr>
-                            <td colSpan={userRole === 'technicien' ? 5 : 4} className="p-4 text-center text-sm text-muted-foreground">
-                              Aucun jalon défini pour ce projet
+                    </thead>
+                    <tbody>
+                      {investments.length > 0 ? (
+                        investments.map((inv) => (
+                          <tr key={inv.id_investissement} className="border-t">
+                            <td className="p-2 text-sm">
+                              {inv.investisseur?.nom} {inv.investisseur?.prenoms || ''}
+                            </td>
+                            <td className="p-2 text-right text-sm">
+                              {inv.montant?.toLocaleString()} Ar
+                            </td>
+                            <td className="p-2 text-right text-sm">
+                              {formatDate(inv.date_paiement)}
                             </td>
                           </tr>
-                        )}
-                      </tbody>
-                    </table>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={3} className="p-4 text-center text-sm text-muted-foreground">
+                            Aucun investissement pour le moment
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                    {investments.length > 0 && (
+                      <tfoot>
+                        <tr className="border-t bg-muted">
+                          <td className="p-2 font-medium">Total</td>
+                          <td className="p-2 text-right font-medium">
+                            {investments.reduce((sum, inv) => sum + (inv.montant || 0), 0).toLocaleString()} Ar
+                          </td>
+                          <td></td>
+                        </tr>
+                      </tfoot>
+                    )}
+                  </table>
+                </div>
+                
+                {userRole === 'technicien' && 
+                 project.statut === 'validé' && 
+                 isFundingComplete && (
+                  <div className="flex justify-end mt-4">
+                    <Button onClick={handleStartProduction}>
+                      Lancer la production
+                    </Button>
                   </div>
-                  
-                  {userRole === 'technicien' && allJalonsCompleted() && (
-                    <div className="flex justify-end mt-4">
-                      <Button onClick={handleCompleteProject}>
-                        Terminer le projet
-                      </Button>
+                )}
+              </TabsContent>
+              
+              <TabsContent value="jalons" className="space-y-4 mt-4">
+                {project.statut === 'en cours' ? (
+                  <div className="space-y-4">
+                    <div className="border rounded-md">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="bg-muted">
+                            <th className="p-2 text-left text-sm">Jalon</th>
+                            <th className="p-2 text-left text-sm">Culture</th>
+                            <th className="p-2 text-left text-sm">Date prévue</th>
+                            <th className="p-2 text-left text-sm">Date réelle</th>
+                            {userRole === 'technicien' && <th className="p-2 text-sm"></th>}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {jalons.length > 0 ? (
+                            jalons.map((jalon) => (
+                              <tr key={`${jalon.id_projet}-${jalon.id_jalon}`} className="border-t">
+                                <td className="p-2 text-sm">
+                                  {jalon.jalon?.nom_jalon}
+                                </td>
+                                <td className="p-2 text-sm">
+                                  {jalon.culture?.nom_culture || ''}
+                                </td>
+                                <td className="p-2 text-sm">
+                                  {formatDate(jalon.date_previsionnelle)}
+                                </td>
+                                <td className="p-2 text-sm">
+                                  {jalon.date_reelle ? formatDate(jalon.date_reelle) : 'Non réalisé'}
+                                </td>
+                                {userRole === 'technicien' && (
+                                  <td className="p-2 text-right">
+                                    {!jalon.date_reelle && (
+                                      <Button 
+                                        size="sm" 
+                                        variant="outline"
+                                        onClick={() => handleShowJalonReport(jalon)}
+                                      >
+                                        Marquer réalisé
+                                      </Button>
+                                    )}
+                                  </td>
+                                )}
+                              </tr>
+                            ))
+                          ) : (
+                            <tr>
+                              <td colSpan={userRole === 'technicien' ? 5 : 4} className="p-4 text-center text-sm text-muted-foreground">
+                                Aucun jalon défini pour ce projet
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
                     </div>
-                  )}
-                </div>
-              ) : (
-                <div className="p-8 text-center text-muted-foreground">
-                  {project.statut === 'terminé' ? (
-                    <p>Ce projet est terminé.</p>
-                  ) : (
-                    <p>Le projet n'est pas encore en cours de production.</p>
-                  )}
-                </div>
-              )}
-            </TabsContent>
-          </Tabs>
-        </div>
-      </DialogContent>
-    </Dialog>
+                    
+                    {userRole === 'technicien' && allJalonsCompleted() && (
+                      <div className="flex justify-end mt-4">
+                        <Button onClick={handleCompleteProject}>
+                          Terminer le projet
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="p-8 text-center text-muted-foreground">
+                    {project.statut === 'terminé' ? (
+                      <p>Ce projet est terminé.</p>
+                    ) : (
+                      <p>Le projet n'est pas encore en cours de production.</p>
+                    )}
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {selectedJalon && (
+        <JalonReportDialog
+          isOpen={!!selectedJalon}
+          onClose={() => setSelectedJalon(null)}
+          projectId={projectId}
+          jalonId={selectedJalon.id}
+          jalonName={selectedJalon.name}
+          datePrevue={selectedJalon.datePrevue}
+          onSubmitSuccess={handleJalonReportSuccess}
+        />
+      )}
+    </>
   );
 };
 

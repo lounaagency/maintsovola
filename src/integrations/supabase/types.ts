@@ -711,6 +711,7 @@ export type Database = {
       }
       jalon_agricole: {
         Row: {
+          action_a_faire: string | null
           created_at: string | null
           created_by: string | null
           delai_apres_lancement: number
@@ -721,6 +722,7 @@ export type Database = {
           nom_jalon: string
         }
         Insert: {
+          action_a_faire?: string | null
           created_at?: string | null
           created_by?: string | null
           delai_apres_lancement: number
@@ -731,6 +733,7 @@ export type Database = {
           nom_jalon: string
         }
         Update: {
+          action_a_faire?: string | null
           created_at?: string | null
           created_by?: string | null
           delai_apres_lancement?: number
