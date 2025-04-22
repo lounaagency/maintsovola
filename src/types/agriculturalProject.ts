@@ -27,6 +27,7 @@ export interface AgriculturalProject {
   description: string;
   fundingGoal: number;
   currentFunding: number;
+  totalProfit:number;
   likes: number;
   comments: number;
   shares: number;

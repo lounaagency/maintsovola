@@ -14,10 +14,10 @@ import { CalendarIcon, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface JalonData {
-  id_jalon: number;
+  id_jalon_agricole: number;
   nom_jalon: string;
   action_a_faire: string;
-  jours_apres_lancement: number;
+  delai_apres_lancement: number;
   id_culture: number;
   culture: {
     nom_culture: string;
@@ -86,10 +86,10 @@ const ProductionLaunchDialog: React.FC<ProductionLaunchDialogProps> = ({
       const { data, error } = await supabase
         .from('jalon_agricole')
         .select(`
-          id_jalon,
+          id_jalon_agricole,
           nom_jalon,
           action_a_faire,
-          jours_apres_lancement,
+          delai_apres_lancement,
           id_culture,
           culture:id_culture(nom_culture)
         `)
@@ -102,7 +102,7 @@ const ProductionLaunchDialog: React.FC<ProductionLaunchDialogProps> = ({
       if (data) {
         data.forEach(jalon => {
           const datePrevue = new Date(startDate);
-          datePrevue.setDate(datePrevue.getDate() + jalon.jours_apres_lancement);
+          datePrevue.setDate(datePrevue.getDate() + jalon.delai_apres_lancement);
           
           const jalonWithDate = { ...jalon, datePrevue };
           
@@ -114,7 +114,7 @@ const ProductionLaunchDialog: React.FC<ProductionLaunchDialogProps> = ({
         });
         
         for (const cultureId in jalonsByCulture) {
-          jalonsByCulture[cultureId].sort((a, b) => a.jours_apres_lancement - b.jours_apres_lancement);
+          jalonsByCulture[cultureId].sort((a, b) => a.delai_apres_lancement - b.delai_apres_lancement);
         }
       }
       
@@ -133,7 +133,7 @@ const ProductionLaunchDialog: React.FC<ProductionLaunchDialogProps> = ({
     for (const cultureId in jalons) {
       updatedJalons[cultureId] = jalons[cultureId].map(jalon => {
         const datePrevue = new Date(startDate);
-        datePrevue.setDate(datePrevue.getDate() + jalon.jours_apres_lancement);
+        datePrevue.setDate(datePrevue.getDate() + jalon.delai_apres_lancement);
         
         return { ...jalon, datePrevue };
       });
@@ -197,7 +197,7 @@ const ProductionLaunchDialog: React.FC<ProductionLaunchDialogProps> = ({
       
       if (updated[cultureId]) {
         updated[cultureId] = updated[cultureId].map(jalon => 
-          jalon.id_jalon === jalonId ? { ...jalon, datePrevue: newDate } : jalon
+          jalon.id_jalon_agricole === jalonId ? { ...jalon, datePrevue: newDate } : jalon
         );
       }
       
@@ -293,10 +293,10 @@ const ProductionLaunchDialog: React.FC<ProductionLaunchDialogProps> = ({
                             </thead>
                             <tbody>
                               {cultureJalons.map((jalon) => (
-                                <tr key={jalon.id_jalon} className="border-b">
+                                <tr key={jalon.id_jalon_agricole} className="border-b">
                                   <td className="py-2 px-2">{jalon.nom_jalon}</td>
                                   <td className="py-2 px-2">{jalon.action_a_faire}</td>
-                                  <td className="py-2 px-2">{jalon.jours_apres_lancement}</td>
+                                  <td className="py-2 px-2">{jalon.delai_apres_lancement}</td>
                                   <td className="py-2 px-2">
                                     <Popover>
                                       <PopoverTrigger asChild>
@@ -317,7 +317,7 @@ const ProductionLaunchDialog: React.FC<ProductionLaunchDialogProps> = ({
                                           selected={jalon.datePrevue}
                                           onSelect={(date) => {
                                             if (date) {
-                                              updateJalonDate(parseInt(cultureId), jalon.id_jalon, date);
+                                              updateJalonDate(parseInt(cultureId), jalon.id_jalon_agricole, date);
                                             }
                                           }}
                                           initialFocus

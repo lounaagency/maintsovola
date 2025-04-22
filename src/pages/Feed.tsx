@@ -60,7 +60,7 @@ const Feed: React.FC = () => {
           id_culture,
           cout_exploitation_previsionnel,
           rendement_previsionnel,
-          culture(nom_culture, prix_tonne)
+          culture(nom_culture, prix_tonne,rendement_ha)
         `);
       if (culturesError) throw culturesError;
 
@@ -112,8 +112,10 @@ const Feed: React.FC = () => {
         // Génération de l'affichage des rendements prévus pour chaque culture
         const yieldStrings = projetCultures.map(pc => {
           const nom = pc.culture?.nom_culture || "Non spécifié";
-          const tonnage = (pc.rendement_previsionnel || 0) * (projet.surface_ha || 1);
-          return `${tonnage} t de ${nom}`;
+          //const tonnage = (pc.rendement_previsionnel || 0) * (projet.surface_ha || 1);
+          const tonnage = pc.rendement_previsionnel != null ? pc.rendement_previsionnel : (pc.culture?.rendement_ha || 0) * (projet.surface_ha || 1);
+
+          return `${Math.round(tonnage * 100) / 100} t de ${nom}`;
         });
         const expectedYieldLabel = yieldStrings.length > 0 ? yieldStrings.join(", ") : "N/A";
 

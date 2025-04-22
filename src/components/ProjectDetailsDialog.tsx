@@ -127,8 +127,8 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
       if (error) throw error;
       console.log('Fetched jalons:', data);
       data.sort((a, b) =>
-        a.jalon_agricole?.culture?.nom_culture?.localeCompare(
-          b.jalon_agricole?.culture?.nom_culture
+        a.culture.id_culture?.nom_culture?.localeCompare(
+          b.culture.id_culture?.nom_culture
         )
       );
       
@@ -174,13 +174,13 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
         
         for (const jalon of jalons || []) {
           const jalonDate = new Date(startDate);
-          jalonDate.setDate(jalonDate.getDate() + jalon.jours_apres_lancement);
+          jalonDate.setDate(jalonDate.getDate() + jalon.delai_apres_lancement);
           
           const { error: insertError } = await supabase
             .from('jalon_projet')
             .insert({
               id_projet: projectId,
-              id_jalon: jalon.id_jalon,
+              id_jalon_agricole: jalon.id_jalon_agricole,
               date_previsionnelle: jalonDate.toISOString().split('T')[0]
             });
           

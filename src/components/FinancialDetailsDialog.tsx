@@ -71,7 +71,7 @@ const FinancialDetailsDialog: React.FC<FinancialDetailsDialogProps> = ({
                       {formatCurrency(projectCulture.cout_exploitation_previsionnel || projectCulture.culture?.cout_exploitation_ha || 0)}
                     </TableCell>
                     <TableCell className="text-right">
-                      {projectCulture.rendement_previsionnel || projectCulture.culture?.rendement_ha || 0} t/ha
+                      {projectCulture.rendement_previsionnel || projectCulture.culture?.rendement_ha || 0} t
                     </TableCell>
                     <TableCell className="text-right">
                       {formatCurrency(projectCulture.culture?.prix_tonne || 0)}

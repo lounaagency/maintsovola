@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -53,11 +53,7 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
   const isSimpleUser = userRole === 'simple';
   const canInvest = isInvestor || isFarmer || isSimpleUser;
   
-  useEffect(() => {
-    fetchProjectDetails();
-  }, [project.id]);
-  
-  const fetchProjectDetails = async () => {
+  const fetchProjectDetails = useCallback (async () => {
     try {
       const { data: projectData, error: projectError } = await supabase
         .from('projet')
@@ -144,7 +140,7 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
     } catch (error) {
       console.error("Error fetching project details:", error);
     }
-  };
+  }, [project.id, projectPhotos]); 
   
   const fetchCurrentFundingData = async () => {
     try {
@@ -163,6 +159,10 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
       toast.error("Impossible de récupérer les données de financement actuelles");
     }
   };
+  
+  useEffect(() => {
+    fetchProjectDetails();
+  }, [fetchProjectDetails]);
   
   const handleOpenInvestModal = async () => {
     await fetchCurrentFundingData();
@@ -397,14 +397,14 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
             <div className="text-xs">
               <span className="text-gray-500 block">Coût d'exploitation</span>
               <span className="font-medium flex items-center">
-                {formatCurrency(project.farmingCost)} / ha
+                {formatCurrency(project.farmingCost)} 
                 <ExternalLink className="h-3 w-3 ml-1 text-primary" />
               </span>
             </div>
             <div className="text-xs">
               <span className="text-gray-500 block">Rendement prévu</span>
               <span className="font-medium flex items-center">
-                {project.expectedYield} t / ha
+                {project.expectedYield} 
                 <ExternalLink className="h-3 w-3 ml-1 text-primary" />
               </span>
             </div>
