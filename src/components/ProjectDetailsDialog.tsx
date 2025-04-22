@@ -106,13 +106,20 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
         .from('jalon_projet')
         .select(`
           *,
-          jalon:id_jalon(nom_jalon, action_a_faire, id_culture),
-          culture:jalon(id_culture(nom_culture))
+          jalon_agricole:id_jalon_agricole(nom_jalon, action_a_faire, id_culture),
+          culture:jalon_agricole(id_culture(nom_culture))
         `)
         .eq('id_projet', projectId)
         .order('date_previsionnelle', { ascending: true });
       
       if (error) throw error;
+      console.log('Fetched jalons:', data);
+      data.sort((a, b) =>
+        a.jalon_agricole?.culture?.nom_culture?.localeCompare(
+          b.jalon_agricole?.culture?.nom_culture
+        )
+      );
+      
       setJalons(data || []);
     } catch (error) {
       console.error('Error fetching jalons:', error);
@@ -196,7 +203,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
           date_reelle: new Date().toISOString().split('T')[0]
         })
         .eq('id_projet', projectId)
-        .eq('id_jalon', jalonId);
+        .eq('id_jalon_agricole', jalonId);
       
       if (error) throw error;
       
@@ -466,8 +473,8 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
                     <table className="w-full">
                       <thead>
                         <tr className="bg-muted">
-                          <th className="p-2 text-left text-sm">Jalon</th>
                           <th className="p-2 text-left text-sm">Culture</th>
+                          <th className="p-2 text-left text-sm">Jalon</th>
                           <th className="p-2 text-left text-sm">Date prévue</th>
                           <th className="p-2 text-left text-sm">Date réelle</th>
                           {userRole === 'technicien' && <th className="p-2 text-sm"></th>}
@@ -478,10 +485,10 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
                           jalons.map((jalon) => (
                             <tr key={`${jalon.id_projet}-${jalon.id_jalon}`} className="border-t">
                               <td className="p-2 text-sm">
-                                {jalon.jalon?.nom_jalon}
+                                {jalon.culture.id_culture?.nom_culture || ''}
                               </td>
                               <td className="p-2 text-sm">
-                                {jalon.culture?.nom_culture || ''}
+                                {jalon.jalon_agricole?.nom_jalon}
                               </td>
                               <td className="p-2 text-sm">
                                 {formatDate(jalon.date_previsionnelle)}

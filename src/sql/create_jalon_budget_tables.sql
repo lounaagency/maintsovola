@@ -116,7 +116,8 @@ DECLARE
 BEGIN
     -- Vérifier que c'est bien un passage à "en cours"
     IF NEW.statut = 'en cours' AND OLD.statut != 'en cours' THEN
-        date_lancement := COALESCE(NEW.date_lancement, CURRENT_DATE);
+        --date_lancement := COALESCE(NEW.date_lancement, CURRENT_DATE);
+        date_lancement := NEW.date_debut_production
         
         -- Pour chaque culture du projet
         FOR culture_record IN 
@@ -137,7 +138,7 @@ BEGIN
                 INSERT INTO jalon_projet (
                     id_projet, 
                     id_jalon_agricole, 
-                    date_prev_planifiee, 
+                    date_previsionnelle, 
                     statut, 
                     created_by
                 ) VALUES (

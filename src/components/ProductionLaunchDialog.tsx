@@ -84,7 +84,7 @@ const ProductionLaunchDialog: React.FC<ProductionLaunchDialogProps> = ({
       if (!cultureIds.length) return;
       
       const { data, error } = await supabase
-        .from('jalon')
+        .from('jalon_agricole')
         .select(`
           id_jalon,
           nom_jalon,
@@ -158,13 +158,14 @@ const ProductionLaunchDialog: React.FC<ProductionLaunchDialogProps> = ({
       if (projectError) throw projectError;
       
       // 2. Insert all jalons
+/*
       const jalonsToInsert = [];
       
       for (const cultureId in jalons) {
         for (const jalon of jalons[cultureId]) {
           jalonsToInsert.push({
             id_projet: project.id_projet,
-            id_jalon: jalon.id_jalon,
+            id_jalon_agricole: jalon.id_jalon,
             date_previsionnelle: jalon.datePrevue.toISOString().split('T')[0],
             statut: 'Prévu'
           });
@@ -178,7 +179,7 @@ const ProductionLaunchDialog: React.FC<ProductionLaunchDialogProps> = ({
         
         if (jalonsError) throw jalonsError;
       }
-      
+      */
       toast.success("Le projet a été lancé en production");
       onSubmitSuccess();
       onClose();
