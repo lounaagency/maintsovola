@@ -1980,6 +1980,34 @@ export type Database = {
         Args: { "": unknown } | { "": unknown }
         Returns: string
       }
+      check_terrain_overlap: {
+        Args: { geom_input: Json; terrain_to_omit?: number }
+        Returns: {
+          acces_eau: boolean | null
+          acces_route: boolean | null
+          archive: boolean
+          created_at: string | null
+          created_by: string | null
+          date_validation: string | null
+          geom: unknown | null
+          id_commune: number | null
+          id_district: number | null
+          id_region: number | null
+          id_superviseur: string | null
+          id_tantsaha: string | null
+          id_technicien: string | null
+          id_terrain: number
+          modified_at: string | null
+          nom_terrain: string | null
+          photos: string | null
+          photos_validation: string | null
+          rapport_validation: string | null
+          statut: boolean
+          surface_proposee: number
+          surface_validee: number | null
+          validation_decision: string | null
+        }[]
+      }
       create_technicien_assignment_notification: {
         Args: {
           technicien_id: string

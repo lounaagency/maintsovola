@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { 
   FormField, 
@@ -16,12 +15,13 @@ import { Upload, X } from "lucide-react";
 import { UseFormReturn } from "react-hook-form";
 import { TerrainFormData } from "@/types/terrainForm";
 import { supabase } from "@/integrations/supabase/client";
-import { RegionData, DistrictData, CommuneData } from "@/types/terrain";
+import { RegionData, DistrictData, CommuneData, TerrainData } from "@/types/terrain";
 import { MapContainer, TileLayer, FeatureGroup, useMapEvents, useMap } from "react-leaflet";
 import { EditControl } from "react-leaflet-draw";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet-draw/dist/leaflet.draw.css";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 interface TerrainFormFieldsProps {
   form: UseFormReturn<TerrainFormData>;
@@ -35,6 +35,7 @@ interface TerrainFormFieldsProps {
   setPhotos: React.Dispatch<React.SetStateAction<File[]>>;
   polygonCoordinates: number[][];
   setPolygonCoordinates: React.Dispatch<React.SetStateAction<number[][]>>;
+  overlapTerrains?: TerrainData[] | null;
 }
 
 const TerrainFormFields: React.FC<TerrainFormFieldsProps> = ({
@@ -48,7 +49,8 @@ const TerrainFormFields: React.FC<TerrainFormFieldsProps> = ({
   photos,
   setPhotos,
   polygonCoordinates,
-  setPolygonCoordinates
+  setPolygonCoordinates,
+  overlapTerrains
 }) => {
   const [regions, setRegions] = useState<RegionData[]>([]);
   const [districts, setDistricts] = useState<DistrictData[]>([]);
@@ -57,6 +59,8 @@ const TerrainFormFields: React.FC<TerrainFormFieldsProps> = ({
   const [filteredCommunes, setFilteredCommunes] = useState<CommuneData[]>([]);
   const [mapInitialized, setMapInitialized] = useState(false);
   const [shouldUpdateSurface, setShouldUpdateSurface] = useState(false);
+  const [existingTerrains, setExistingTerrains] = useState<TerrainData[]>([]);
+  const [showOverlapDialog, setShowOverlapDialog] = useState(false);
   const featureGroupRef = useRef<L.FeatureGroup | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -64,7 +68,6 @@ const TerrainFormFields: React.FC<TerrainFormFieldsProps> = ({
   const watchRegion = form.watch("id_region");
   const watchDistrict = form.watch("id_district");
 
-  // Custom map component to handle events and map initialization
   const MapInitializer = () => {
     const map = useMap();
     
@@ -72,14 +75,12 @@ const TerrainFormFields: React.FC<TerrainFormFieldsProps> = ({
       mapRef.current = map;
       setMapInitialized(true);
       
-      // Center map on polygon if it exists
       if (polygonCoordinates && polygonCoordinates.length >= 3) {
         try {
           const latLngs = polygonCoordinates.map(coord => [coord[1], coord[0]] as L.LatLngTuple);
           const bounds = new L.LatLngBounds(latLngs);
           map.fitBounds(bounds, { padding: [20, 20] });
           
-          // Add polygon to the map
           if (featureGroupRef.current) {
             featureGroupRef.current.clearLayers();
             const polygon = L.polygon(latLngs, {
@@ -100,7 +101,6 @@ const TerrainFormFields: React.FC<TerrainFormFieldsProps> = ({
     return null;
   };
 
-  // Fetch regions, districts, and communes data
   useEffect(() => {
     const fetchRegions = async () => {
       const { data, error } = await supabase.from("region").select("*").order("nom_region");
@@ -134,7 +134,6 @@ const TerrainFormFields: React.FC<TerrainFormFieldsProps> = ({
     fetchCommunes();
   }, []);
 
-  // Filter districts based on selected region
   useEffect(() => {
     if (watchRegion) {
       const regionId = parseInt(watchRegion);
@@ -150,7 +149,6 @@ const TerrainFormFields: React.FC<TerrainFormFieldsProps> = ({
     }
   }, [watchRegion, districts, form, watchDistrict]);
 
-  // Filter communes based on selected district
   useEffect(() => {
     if (watchDistrict) {
       const districtId = parseInt(watchDistrict);
@@ -166,21 +164,42 @@ const TerrainFormFields: React.FC<TerrainFormFieldsProps> = ({
     }
   }, [watchDistrict, communes, form]);
 
-  // Handle file input for photos
+  useEffect(() => {
+    const fetchExistingTerrains = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('terrain')
+          .select('*')
+          .eq('archive', false);
+          
+        if (error) throw error;
+        setExistingTerrains(data || []);
+      } catch (err) {
+        console.error("Erreur lors du chargement des terrains:", err);
+      }
+    };
+
+    fetchExistingTerrains();
+  }, []);
+
+  useEffect(() => {
+    if (overlapTerrains && overlapTerrains.length > 0) {
+      setShowOverlapDialog(true);
+    }
+  }, [overlapTerrains]);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     
     const selectedFiles = Array.from(e.target.files);
     setPhotos(prevPhotos => [...prevPhotos, ...selectedFiles]);
     
-    // Create preview URLs for the photos
     selectedFiles.forEach(file => {
       const previewUrl = URL.createObjectURL(file);
       setPhotoUrls(prevUrls => [...prevUrls, previewUrl]);
     });
   };
 
-  // Remove photo from the list
   const removePhoto = (index: number) => {
     setPhotos(prevPhotos => {
       const newPhotos = [...prevPhotos];
@@ -200,23 +219,18 @@ const TerrainFormFields: React.FC<TerrainFormFieldsProps> = ({
     });
   };
 
-  // Calculate area in hectares from polygon coordinates
   const calculateAreaInHectares = (coords: number[][]) => {
     if (!coords || coords.length < 3) return 0;
 
-    // Convert to LatLng for Leaflet's area calculation
     const latLngs = coords.map(coord => new L.LatLng(coord[1], coord[0]));
     
     const polygon = new L.Polygon(latLngs);
     
-    // Calculate geodesic area in square meters
     const areaInSquareMeters = L.GeometryUtil.geodesicArea(polygon.getLatLngs()[0] as L.LatLng[]);
     
-    // Convert to hectares (1 hectare = 10000 square meters) and round to 2 decimal places
     return parseFloat((areaInSquareMeters / 10000).toFixed(2));
   };
 
-  // Update surface area when polygon changes, but only if shouldUpdateSurface is true
   useEffect(() => {
     if (shouldUpdateSurface && polygonCoordinates && polygonCoordinates.length >= 3) {
       const area = calculateAreaInHectares(polygonCoordinates);
@@ -225,7 +239,6 @@ const TerrainFormFields: React.FC<TerrainFormFieldsProps> = ({
     }
   }, [polygonCoordinates, form, shouldUpdateSurface]);
 
-  // Handle map drawing events
   const handleCreated = (e: any) => {
     const { layerType, layer } = e;
     
@@ -237,7 +250,6 @@ const TerrainFormFields: React.FC<TerrainFormFieldsProps> = ({
         coords.push([latLng.lng, latLng.lat]);
       });
       
-      // Close the polygon by adding the first point at the end
       coords.push([latLngs[0].lng, latLngs[0].lat]);
       
       setPolygonCoordinates(coords);
@@ -516,6 +528,32 @@ const TerrainFormFields: React.FC<TerrainFormFieldsProps> = ({
         )}
       </div>
       
+      <Dialog open={showOverlapDialog} onOpenChange={setShowOverlapDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Chevauchement de terrains détecté</DialogTitle>
+            <DialogDescription>
+              Le terrain que vous dessinez chevauche les terrains suivants :
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 max-h-[300px] overflow-y-auto">
+            {overlapTerrains?.map((terrain) => (
+              <div key={terrain.id_terrain} className="p-4 border rounded-lg">
+                <h4 className="font-semibold">{terrain.nom_terrain}</h4>
+                <p className="text-sm text-muted-foreground">
+                  Surface: {terrain.surface_proposee} ha
+                </p>
+                {terrain.id_tantsaha && (
+                  <p className="text-sm text-muted-foreground">
+                    Propriétaire: {terrain.tantsahaNom}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <div className="space-y-4">
         <FormLabel>Définir la zone du terrain sur la carte</FormLabel>
         <div className="h-[400px] w-full relative rounded-md overflow-hidden border">
@@ -529,6 +567,44 @@ const TerrainFormFields: React.FC<TerrainFormFieldsProps> = ({
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
+            
+            {existingTerrains.map((terrain) => {
+              if (terrain.geom) {
+                try {
+                  const geomData = typeof terrain.geom === 'string' 
+                    ? JSON.parse(terrain.geom) 
+                    : terrain.geom;
+                    
+                  if (geomData && geomData.coordinates && geomData.coordinates[0]) {
+                    const coords = geomData.coordinates[0].map((coord: number[]) => 
+                      [coord[1], coord[0]] as L.LatLngExpression
+                    );
+                    
+                    return (
+                      <Polygon
+                        key={terrain.id_terrain}
+                        positions={coords}
+                        pathOptions={{ 
+                          color: '#666',
+                          weight: 2,
+                          fillOpacity: 0.2,
+                          fillColor: '#666'
+                        }}
+                      >
+                        <Tooltip>
+                          {terrain.nom_terrain}<br/>
+                          Surface: {terrain.surface_proposee} ha
+                        </Tooltip>
+                      </Polygon>
+                    );
+                  }
+                } catch (error) {
+                  console.error("Error parsing terrain geometry:", error);
+                }
+              }
+              return null;
+            })}
+
             <FeatureGroup ref={featureGroupRef}>
               <EditControl
                 position="topright"
@@ -558,7 +634,7 @@ const TerrainFormFields: React.FC<TerrainFormFieldsProps> = ({
           </MapContainer>
         </div>
         <p className="text-sm text-muted-foreground">
-          Dessinez le contour de votre terrain sur la carte (facultatif). Utilisez les outils de dessin pour créer un polygone représentant votre terrain.
+          Dessinez le contour de votre terrain sur la carte (facultatif). Les terrains existants sont affichés en gris.
         </p>
       </div>
     </>

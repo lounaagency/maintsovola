@@ -410,6 +410,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
             setPhotos={setPhotos}
             polygonCoordinates={polygonCoordinates}
             setPolygonCoordinates={setPolygonCoordinates}
+            overlapTerrains={overlapTerrains}
           />
         )}
         
