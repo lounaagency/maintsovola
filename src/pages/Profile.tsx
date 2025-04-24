@@ -201,6 +201,7 @@ export const Profile = () => {
           description: project.description || "",
           fundingGoal: totalCost,
           currentFunding: calculateCurrentFunding(project),
+          totalProfit: expectedRevenue - totalCost,
           likes: 0,
           comments: 0,
           shares: 0,
@@ -223,81 +224,119 @@ export const Profile = () => {
         .from('investissement')
         .select(`
           *,
-          projet(
+          projet!inner(
             *,
-            tantsaha:id_tantsaha(id_utilisateur, nom, prenoms, photo_profil),
-            projet_culture(*, culture(*)),
-            investissements(montant)
+            tantsaha:id_tantsaha(id_utilisateur, nom, prenoms, photo_profil)
           )
         `)
         .eq('id_investisseur', userId);
       
       if (error) throw error;
+
+      const projectIds = investmentData.map(inv => inv.id_projet).filter(Boolean);
       
-      const processedProjects = investmentData?.map(investment => {
-        const project = investment.projet;
-        if (!project) return null;
+      if (projectIds.length === 0) {
+        setInvestedProjects([]);
+        return;
+      }
+      
+      const { data: projectCultures } = await supabase
+        .from('projet_culture')
+        .select('*, culture(*)')
+        .in('id_projet', projectIds);
+      
+      const projectCultureMap = new Map();
+      if (projectCultures) {
+        projectCultures.forEach((pc: any) => {
+          if (!projectCultureMap.has(pc.id_projet)) {
+            projectCultureMap.set(pc.id_projet, []);
+          }
+          projectCultureMap.get(pc.id_projet).push(pc);
+        });
+      }
+      
+      const { data: totalInvestments } = await supabase
+        .from('investissement')
+        .select('id_projet, montant')
+        .in('id_projet', projectIds);
+      
+      const projectInvestmentMap = new Map();
+      if (totalInvestments) {
+        totalInvestments.forEach((inv: any) => {
+          if (!projectInvestmentMap.has(inv.id_projet)) {
+            projectInvestmentMap.set(inv.id_projet, 0);
+          }
+          projectInvestmentMap.set(inv.id_projet, projectInvestmentMap.get(inv.id_projet) + inv.montant);
+        });
+      }
 
-        const totalCost = (project.projet_culture || []).reduce(
-          (sum: number, pc: any) => sum + (pc.cout_exploitation_previsionnel || 0), 
-          0
-        );
-        
-        const totalYield = (project.projet_culture || []).reduce(
-          (sum: number, pc: any) => sum + (pc.rendement_previsionnel || 0), 
-          0
-        );
-        
-        const expectedRevenue = (project.projet_culture || []).reduce(
-          (sum: number, pc: any) => sum + (pc.rendement_previsionnel * (pc.culture?.prix_tonne || 0)), 
-          0
-        );
+      const processedProjects = investmentData
+        .filter(investment => investment.projet) // Filtrer les investissements sans projet
+        .map(investment => {
+          const project = investment.projet;
+          if (!project) return null;
+          
+          const cultures = projectCultureMap.get(project.id_projet) || [];
+          
+          const totalCost = cultures.reduce(
+            (sum: number, pc: any) => sum + (pc.cout_exploitation_previsionnel || 0), 
+            0
+          );
+          
+          const totalYield = cultures.reduce(
+            (sum: number, pc: any) => sum + (pc.rendement_previsionnel || 0), 
+            0
+          );
+          
+          const expectedRevenue = cultures.reduce(
+            (sum: number, pc: any) => sum + (pc.rendement_previsionnel * (pc.culture?.prix_tonne || 0)), 
+            0
+          );
 
-        const totalInvested = (project.investissements || []).reduce(
-          (sum: number, inv: any) => sum + (inv.montant || 0),
-          0
-        );
-
-        const userInvestment = investment.montant;
-        const investmentShare = userInvestment / totalInvested;
-        const totalProfit = expectedRevenue - totalCost;
-        const userProfit = totalProfit * investmentShare;
-        
-        return {
-          id: project.id_projet.toString(),
-          title: project.titre || `Projet #${project.id_projet}`,
-          farmer: {
-            id: project.tantsaha.id_utilisateur,
-            name: `${project.tantsaha.nom} ${project.tantsaha.prenoms || ""}`.trim(),
-            username: project.tantsaha.nom?.toLowerCase()?.replace(/\s+/g, '') || "",
-            avatar: project.tantsaha.photo_profil,
-          },
-          location: {
-            region: project.terrain?.id_region || "Non spécifié",
-            district: project.terrain?.id_district || "Non spécifié",
-            commune: project.terrain?.id_commune || "Non spécifié",
-          },
-          cultivationArea: project.surface_ha || 0,
-          cultivationType: project.projet_culture[0]?.culture?.nom_culture || "Non spécifié",
-          farmingCost: totalCost,
-          expectedYield: totalYield,
-          expectedRevenue: expectedRevenue,
-          creationDate: project.created_at || new Date().toISOString(),
-          images: [],
-          description: project.description || "",
-          fundingGoal: totalCost,
-          currentFunding: totalInvested,
-          totalProfit: userProfit,
-          likes: 0,
-          comments: 0,
-          shares: 0,
-          status: project.statut,
-        };
-      }).filter(Boolean);
-
+          const totalInvested = projectInvestmentMap.get(project.id_projet) || 0;
+          const userInvestment = investment.montant || 0;
+          
+          const investmentShare = totalInvested > 0 ? userInvestment / totalInvested : 0;
+          const totalProfit = expectedRevenue - totalCost;
+          const userProfit = totalProfit * investmentShare;
+          
+          return {
+            id: project.id_projet.toString(),
+            title: project.titre || `Projet #${project.id_projet}`,
+            farmer: {
+              id: project.tantsaha?.id_utilisateur,
+              name: `${project.tantsaha?.nom || ""} ${project.tantsaha?.prenoms || ""}`.trim(),
+              username: project.tantsaha?.nom?.toLowerCase()?.replace(/\s+/g, '') || "",
+              avatar: project.tantsaha?.photo_profil,
+            },
+            location: {
+              region: project.id_region || "Non spécifié",
+              district: project.id_district || "Non spécifié",
+              commune: project.id_commune || "Non spécifié",
+            },
+            cultivationArea: project.surface_ha || 0,
+            cultivationType: cultures[0]?.culture?.nom_culture || "Non spécifié",
+            farmingCost: totalCost,
+            expectedYield: totalYield,
+            expectedRevenue: expectedRevenue,
+            creationDate: project.created_at || new Date().toISOString(),
+            images: [],
+            description: project.description || "",
+            fundingGoal: totalCost,
+            currentFunding: totalInvested,
+            totalProfit: userProfit,
+            likes: 0,
+            comments: 0,
+            shares: 0,
+            status: project.statut,
+            userInvestment: userInvestment
+          };
+        }).filter(Boolean);
+      
       setInvestedProjects(processedProjects || []);
     } catch (error) {
       console.error('Error fetching invested projects:', error);
+      setInvestedProjects([]);
     }
   };
   
@@ -507,28 +546,32 @@ export const Profile = () => {
         </TabsContent>
         
         <TabsContent value="investments" className="mt-6">
-          {investedProjects.length > 0 ? (
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+            </div>
+          ) : investedProjects.length > 0 ? (
             <div className="space-y-4">
               {investedProjects.map(project => (
-                <div key={project.id_projet} className="border rounded-lg p-4">
+                <div key={project.id} className="border rounded-lg p-4">
                   <div className="flex items-start justify-between">
                     <div>
-                      <h3 className="font-medium">{project.titre || `Projet #${project.id_projet}`}</h3>
+                      <h3 className="font-medium">{project.title}</h3>
                       <p className="text-sm text-muted-foreground mt-1">
-                        Par {project.tantsaha?.nom} {project.tantsaha?.prenoms || ''}
+                        Par {project.farmer.name}
                       </p>
                       <div className="flex gap-2 mt-2">
                         <span className="text-xs bg-muted px-2 py-1 rounded-full">
-                          {project.surface_ha} ha
+                          {project.cultivationArea} ha
                         </span>
                         <span className="text-xs bg-muted px-2 py-1 rounded-full">
-                          {project.statut}
+                          {project.status || "Non défini"}
                         </span>
                       </div>
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-medium">Votre investissement</p>
-                      <p className="text-lg font-bold">{formatCurrency(project.totalInvestment)}</p>
+                      <p className="text-lg font-bold">{formatCurrency(project.userInvestment)}</p>
                     </div>
                   </div>
                   
@@ -536,8 +579,8 @@ export const Profile = () => {
                     <div className="flex justify-between text-sm">
                       <span>Progression</span>
                       <span>
-                        {(project.financement_actuel || 0) > 0 && project.cout_total ? 
-                          `${Math.round((project.financement_actuel / project.cout_total) * 100)}%` : 
+                        {project.fundingGoal > 0 ? 
+                          `${Math.round((project.currentFunding / project.fundingGoal) * 100)}%` : 
                           '0%'
                         }
                       </span>
@@ -546,8 +589,8 @@ export const Profile = () => {
                       <div 
                         className="bg-primary h-2 rounded-full" 
                         style={{ 
-                          width: `${project.cout_total ? 
-                            Math.min(Math.round((project.financement_actuel || 0) / project.cout_total * 100), 100) : 0
+                          width: `${project.fundingGoal > 0 ? 
+                            Math.min(Math.round((project.currentFunding / project.fundingGoal) * 100), 100) : 0
                           }%` 
                         }}
                       ></div>
@@ -555,7 +598,13 @@ export const Profile = () => {
                   </div>
                   
                   <div className="mt-3 flex justify-end">
-                    <Button variant="outline" size="sm">Voir détails</Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => navigate(`/projects/${project.id}`)}
+                    >
+                      Voir détails
+                    </Button>
                   </div>
                 </div>
               ))}
