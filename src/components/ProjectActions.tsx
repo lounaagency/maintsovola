@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { toast } from 'sonner';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ProjectActionsProps {
   projectId: string;
@@ -40,6 +41,7 @@ const ProjectActions: React.FC<ProjectActionsProps> = ({
   onInvest,
   fundingGap = 0
 }) => {
+  const isMobile = useIsMobile();
   const projectUrl = `${window.location.origin}/feed?id_projet=${projectId}`;
   
   const shareHandlers = {
@@ -86,7 +88,7 @@ const ProjectActions: React.FC<ProjectActionsProps> = ({
           size={18}
           className={cn(isLiked && 'fill-red-500')}
         />
-        <span>Jaime{likes > 1 ? 's' : ''}</span>
+        <span className={isMobile ? 'sr-only' : ''}>Jaime{likes > 1 ? 's' : ''}</span>
       </Button>
 
       <Button
@@ -97,7 +99,7 @@ const ProjectActions: React.FC<ProjectActionsProps> = ({
       >
         <span>{comments > 0 ? comments : ''}</span>
         <MessageCircle size={18} />
-        <span>Commentaire{comments > 0 ? 's' : ''}</span>
+        <span className={isMobile ? 'sr-only' : ''}>Commentaire{comments > 0 ? 's' : ''}</span>
       </Button>
 
       <DropdownMenu>
@@ -109,7 +111,7 @@ const ProjectActions: React.FC<ProjectActionsProps> = ({
           >
             <Share2 size={18} />
             <span>{shares > 0 ? shares : ''}</span>
-            <span>Partager</span>
+            <span className={isMobile ? 'sr-only' : ''}>Partager</span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">

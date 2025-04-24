@@ -244,11 +244,14 @@ const Feed: React.FC = () => {
     };
     setActiveFilters(updatedFilters);
     
+    const currentParams = new URLSearchParams(location.search);
+    currentParams.set(filterType, value);
+    
     if (projectId) {
-      const currentParams = new URLSearchParams(location.search);
-      currentParams.set(filterType, value);
-      navigate(`${location.pathname}?${currentParams.toString()}`, { replace: true });
+      currentParams.set('id_projet', projectId);
     }
+    
+    navigate(`${location.pathname}?${currentParams.toString()}`, { replace: true });
   };
   
   const clearFilters = () => {
@@ -294,6 +297,15 @@ const Feed: React.FC = () => {
                 const newFilters = {...activeFilters};
                 delete newFilters[key as keyof typeof activeFilters];
                 setActiveFilters(newFilters);
+                
+                const currentParams = new URLSearchParams(location.search);
+                currentParams.delete(key);
+                
+                if (projectId) {
+                  currentParams.set('id_projet', projectId);
+                }
+                
+                navigate(`${location.pathname}?${currentParams.toString()}`, { replace: true });
               }}
             >
               ×
