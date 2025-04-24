@@ -219,41 +219,83 @@ export const Profile = () => {
   
   const fetchInvestedProjects = async (userId: string) => {
     try {
-      const { data, error } = await supabase
+      const { data: investmentData, error } = await supabase
         .from('investissement')
         .select(`
           *,
           projet(
             *,
             tantsaha:id_tantsaha(id_utilisateur, nom, prenoms, photo_profil),
-            projet_culture(*, culture(*))
+            projet_culture(*, culture(*)),
+            investissements(montant)
           )
         `)
         .eq('id_investisseur', userId);
       
       if (error) throw error;
       
-      const projectsMap = new Map();
-      
-      data?.forEach(investment => {
+      const processedProjects = investmentData?.map(investment => {
         const project = investment.projet;
-        if (!project) return;
+        if (!project) return null;
+
+        const totalCost = (project.projet_culture || []).reduce(
+          (sum: number, pc: any) => sum + (pc.cout_exploitation_previsionnel || 0), 
+          0
+        );
         
-        const projectId = project.id_projet;
+        const totalYield = (project.projet_culture || []).reduce(
+          (sum: number, pc: any) => sum + (pc.rendement_previsionnel || 0), 
+          0
+        );
         
-        if (!projectsMap.has(projectId)) {
-          projectsMap.set(projectId, {
-            ...project,
-            totalInvestment: investment.montant
-          });
-        } else {
-          const existingProject = projectsMap.get(projectId);
-          existingProject.totalInvestment += investment.montant;
-          projectsMap.set(projectId, existingProject);
-        }
-      });
-      
-      setInvestedProjects(Array.from(projectsMap.values()));
+        const expectedRevenue = (project.projet_culture || []).reduce(
+          (sum: number, pc: any) => sum + (pc.rendement_previsionnel * (pc.culture?.prix_tonne || 0)), 
+          0
+        );
+
+        const totalInvested = (project.investissements || []).reduce(
+          (sum: number, inv: any) => sum + (inv.montant || 0),
+          0
+        );
+
+        const userInvestment = investment.montant;
+        const investmentShare = userInvestment / totalInvested;
+        const totalProfit = expectedRevenue - totalCost;
+        const userProfit = totalProfit * investmentShare;
+        
+        return {
+          id: project.id_projet.toString(),
+          title: project.titre || `Projet #${project.id_projet}`,
+          farmer: {
+            id: project.tantsaha.id_utilisateur,
+            name: `${project.tantsaha.nom} ${project.tantsaha.prenoms || ""}`.trim(),
+            username: project.tantsaha.nom?.toLowerCase()?.replace(/\s+/g, '') || "",
+            avatar: project.tantsaha.photo_profil,
+          },
+          location: {
+            region: project.terrain?.id_region || "Non spécifié",
+            district: project.terrain?.id_district || "Non spécifié",
+            commune: project.terrain?.id_commune || "Non spécifié",
+          },
+          cultivationArea: project.surface_ha || 0,
+          cultivationType: project.projet_culture[0]?.culture?.nom_culture || "Non spécifié",
+          farmingCost: totalCost,
+          expectedYield: totalYield,
+          expectedRevenue: expectedRevenue,
+          creationDate: project.created_at || new Date().toISOString(),
+          images: [],
+          description: project.description || "",
+          fundingGoal: totalCost,
+          currentFunding: totalInvested,
+          totalProfit: userProfit,
+          likes: 0,
+          comments: 0,
+          shares: 0,
+          status: project.statut,
+        };
+      }).filter(Boolean);
+
+      setInvestedProjects(processedProjects || []);
     } catch (error) {
       console.error('Error fetching invested projects:', error);
     }

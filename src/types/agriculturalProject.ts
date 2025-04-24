@@ -20,18 +20,18 @@ export interface AgriculturalProject {
   cultivationArea: number; // en hectares
   cultivationType: string | ReactNode;
   farmingCost: number;
-  expectedYield: string | number; // Modifié pour accepter une chaîne (pour les multi-cultures)
+  expectedYield: string | number;
   expectedRevenue: number;
   creationDate: string;
   images: string[];
   description: string;
   fundingGoal: number;
   currentFunding: number;
-  totalProfit:number;
+  totalProfit: number;
   likes: number;
   comments: number;
-  shares: number;
+  shares: number;  
   isLiked?: boolean;
-  technicianId?: string; // ID du technicien responsable du projet
+  technicianId?: string;
   status?: 'en_attente' | 'validé' | 'en_financement' | 'en_cours' | 'en_production' | 'terminé';
 }
