@@ -3,13 +3,13 @@ import { TerrainData } from './terrain';
 export interface TerrainFormData {
   id_terrain?: number;
   nom_terrain?: string;
-  surface_proposee: number;
+  surface_proposee?: number;
   surface_validee?: number;
-  id_region: string; // Form will use string for select inputs
-  id_district: string; // Form will use string for select inputs
-  id_commune: string; // Form will use string for select inputs
-  acces_eau: boolean;
-  acces_route: boolean;
+  id_region?: string; // Form will use string for select inputs
+  id_district?: string; // Form will use string for select inputs
+  id_commune?: string; // Form will use string for select inputs
+  acces_eau?: boolean;
+  acces_route?: boolean;
   id_tantsaha?: string;
   geom?: number[][]; // Coordonnées du polygone [[lng, lat], [lng, lat], ...]
   photos?: string | string[]; // Can be string (comma-separated) or array of strings

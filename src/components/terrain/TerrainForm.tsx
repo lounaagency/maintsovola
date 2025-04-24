@@ -174,7 +174,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     
     try {
       
-      let query = supabase.rpc('check_terrain_overlap', {
+      const query = supabase.rpc('check_terrain_overlap', {
         geom_input: geojson,
         terrain_to_omit: idToOmit || null
       });
@@ -188,7 +188,6 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
         toast.error("Erreur lors de la vérification du chevauchement des terrains.");
         return [];
       }
-      console.log("Terrains chevauchants:", query, data);
       return data || [];
     } catch (err) {
       console.error("Exception lors de la vérification du chevauchement:", err);

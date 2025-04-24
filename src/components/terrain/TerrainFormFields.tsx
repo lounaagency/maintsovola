@@ -16,7 +16,7 @@ import { UseFormReturn } from "react-hook-form";
 import { TerrainFormData } from "@/types/terrainForm";
 import { supabase } from "@/integrations/supabase/client";
 import { RegionData, DistrictData, CommuneData, TerrainData } from "@/types/terrain";
-import { MapContainer, TileLayer, FeatureGroup, useMapEvents, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, FeatureGroup, useMapEvents, useMap, Polygon, Tooltip } from "react-leaflet";
 import { EditControl } from "react-leaflet-draw";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
