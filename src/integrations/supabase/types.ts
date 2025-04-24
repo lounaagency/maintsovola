@@ -1144,13 +1144,6 @@ export type Database = {
             referencedRelation: "terrain"
             referencedColumns: ["id_terrain"]
           },
-          {
-            foreignKeyName: "projet_id_terrain_fkey"
-            columns: ["id_terrain"]
-            isOneToOne: false
-            referencedRelation: "v_terrain_complet"
-            referencedColumns: ["id_terrain"]
-          },
         ]
       }
       projet_culture: {
@@ -1632,13 +1625,6 @@ export type Database = {
             referencedRelation: "terrain"
             referencedColumns: ["id_terrain"]
           },
-          {
-            foreignKeyName: "terrain_culture_id_terrain_fkey"
-            columns: ["id_terrain"]
-            isOneToOne: false
-            referencedRelation: "v_terrain_complet"
-            referencedColumns: ["id_terrain"]
-          },
         ]
       }
       utilisateur: {
@@ -1753,107 +1739,6 @@ export type Database = {
           prenoms: string | null
         }
         Relationships: []
-      }
-      v_terrain_complet: {
-        Row: {
-          acces_eau: boolean | null
-          acces_route: boolean | null
-          archive: boolean | null
-          created_at: string | null
-          created_by: string | null
-          date_validation: string | null
-          geom: unknown | null
-          id_commune: number | null
-          id_district: number | null
-          id_region: number | null
-          id_superviseur: string | null
-          id_tantsaha: string | null
-          id_technicien: string | null
-          id_terrain: number | null
-          modified_at: string | null
-          nom_commune: string | null
-          nom_district: string | null
-          nom_region: string | null
-          nom_terrain: string | null
-          photos: string | null
-          photos_validation: string | null
-          rapport_validation: string | null
-          statut: boolean | null
-          superviseur_nom: string | null
-          superviseur_prenoms: string | null
-          surface_proposee: number | null
-          surface_validee: number | null
-          tantsaha_nom: string | null
-          tantsaha_prenoms: string | null
-          technicien_nom: string | null
-          technicien_prenoms: string | null
-          validation_decision: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "fk_terrain_id_superviseur_utilisateur"
-            columns: ["id_superviseur"]
-            isOneToOne: false
-            referencedRelation: "utilisateur"
-            referencedColumns: ["id_utilisateur"]
-          },
-          {
-            foreignKeyName: "fk_terrain_id_superviseur_utilisateur"
-            columns: ["id_superviseur"]
-            isOneToOne: false
-            referencedRelation: "utilisateurs_par_role"
-            referencedColumns: ["id_utilisateur"]
-          },
-          {
-            foreignKeyName: "fk_terrain_id_tantsaha_utilisateur"
-            columns: ["id_tantsaha"]
-            isOneToOne: false
-            referencedRelation: "utilisateur"
-            referencedColumns: ["id_utilisateur"]
-          },
-          {
-            foreignKeyName: "fk_terrain_id_tantsaha_utilisateur"
-            columns: ["id_tantsaha"]
-            isOneToOne: false
-            referencedRelation: "utilisateurs_par_role"
-            referencedColumns: ["id_utilisateur"]
-          },
-          {
-            foreignKeyName: "fk_terrain_id_technicien_utilisateur"
-            columns: ["id_technicien"]
-            isOneToOne: false
-            referencedRelation: "utilisateur"
-            referencedColumns: ["id_utilisateur"]
-          },
-          {
-            foreignKeyName: "fk_terrain_id_technicien_utilisateur"
-            columns: ["id_technicien"]
-            isOneToOne: false
-            referencedRelation: "utilisateurs_par_role"
-            referencedColumns: ["id_utilisateur"]
-          },
-          {
-            foreignKeyName: "terrain_id_commune_fkey"
-            columns: ["id_commune"]
-            isOneToOne: false
-            referencedRelation: "commune"
-            referencedColumns: ["id_commune"]
-          },
-          {
-            foreignKeyName: "terrain_id_district_fkey"
-            columns: ["id_district"]
-            isOneToOne: false
-            referencedRelation: "district"
-            referencedColumns: ["id_district"]
-          },
-          {
-            foreignKeyName: "terrain_id_region_fkey"
-            columns: ["id_region"]
-            isOneToOne: false
-            referencedRelation: "region"
-            referencedColumns: ["id_region"]
-          },
-        ]
       }
       vue_suivi_financier_projet: {
         Row: {
