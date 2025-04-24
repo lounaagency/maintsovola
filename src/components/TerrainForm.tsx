@@ -83,9 +83,10 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   const form = useForm<TerrainFormData>({
-    resolver: yupResolver(formSchema),
+    resolver: yupResolver(formSchema) as any,
     defaultValues: {
       nom_terrain: initialData?.nom_terrain || '',
       surface_proposee: initialData?.surface_proposee || 0,
@@ -97,50 +98,76 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       id_tantsaha: initialData?.id_tantsaha || userId,
     }
   });
-  console.log('terrain loading data edit 1',initialData);
+
   const { control, handleSubmit, setValue, formState: { errors }, watch } = form;
   const selectedTantsaha = watch('id_tantsaha');
 
+  // Load initial data only once
   useEffect(() => {
-    fetchRegions();
-
-    if (initialData) {
-      setIsEditMode(true);
-      loadTerrainData(initialData);
-    }
-
-    // Initialize with default values for new terrain
-    if (!initialData && userRole && (userRole === 'technicien' || userRole === 'superviseur')) {
-      setValue('id_tantsaha', ''); // Clear default value for technicians/supervisors
-    }
+    const loadInitialData = async () => {
+      await fetchRegions();
+      
+      if (initialData) {
+        setIsEditMode(true);
+        await loadTerrainData(initialData);
+      } else {
+        // Initialize with default values for new terrain
+        if (userRole && (userRole === 'technicien' || userRole === 'superviseur')) {
+          setValue('id_tantsaha', ''); // Clear default value for technicians/supervisors
+        }
+      }
+      
+      setIsInitialized(true);
+    };
+    
+    loadInitialData();
   }, [initialData, userRole]);
 
+  // Handle region change
   useEffect(() => {
     if (selectedRegion) {
       fetchDistricts(selectedRegion);
-      setValue('id_district', '');
-      setCommunes([]);
-      setValue('id_commune', '');
     }
-  }, [selectedRegion, setValue]);
+  }, [selectedRegion]);
 
+  // Handle district change
   useEffect(() => {
     if (selectedDistrict) {
       fetchCommunes(selectedDistrict);
-      setValue('id_commune', '');
     }
-  }, [selectedDistrict, setValue]);
+  }, [selectedDistrict]);
 
-  const loadTerrainData = (data: TerrainData) => {
+  const loadTerrainData = async (data: TerrainData) => {
     console.log('Loading terrain for edit data:', data);
     setTerrain(data);
     setValue('nom_terrain', data.nom_terrain || '');
     setValue('surface_proposee', data.surface_proposee);
-    setValue('id_region', data.id_region?.toString() || '');
-    setSelectedRegion(data.id_region);
-    setValue('id_district', data.id_district?.toString() || '');
-    setSelectedDistrict(data.id_district);
-    setValue('id_commune', data.id_commune?.toString() || '');
+    
+    // First set the region and fetch districts
+    if (data.id_region) {
+      const regionId = data.id_region;
+      setValue('id_region', regionId.toString());
+      setSelectedRegion(regionId);
+      
+      // Wait for districts to load
+      await fetchDistricts(regionId);
+      
+      // Then set the district and fetch communes
+      if (data.id_district) {
+        const districtId = data.id_district;
+        setValue('id_district', districtId.toString());
+        setSelectedDistrict(districtId);
+        
+        // Wait for communes to load
+        await fetchCommunes(districtId);
+        
+        // Finally set the commune
+        if (data.id_commune) {
+          setValue('id_commune', data.id_commune.toString());
+        }
+      }
+    }
+    
     setValue('acces_eau', data.acces_eau || false);
     setValue('acces_route', data.acces_route || false);
     setValue('id_tantsaha', data.id_tantsaha || userId);
@@ -187,9 +214,12 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       if (data) {
         setRegions(data);
       }
+      
+      return data || [];
     } catch (error) {
       console.error("Error fetching regions:", error);
       toast("Failed to load regions.");
+      return [];
     }
   };
 
@@ -208,9 +238,12 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       if (data) {
         setDistricts(data);
       }
+      
+      return data || [];
     } catch (error) {
       console.error("Error fetching districts:", error);
       toast("Failed to load districts.");
+      return [];
     }
   };
 
@@ -229,9 +262,12 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       if (data) {
         setCommunes(data);
       }
+      
+      return data || [];
     } catch (error) {
       console.error("Error fetching communes:", error);
       toast("Failed to load communes.");
+      return [];
     }
   };
 
@@ -381,10 +417,17 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
 
   const handleRegionChange = (selectedValue: string) => {
     setSelectedRegion(Number(selectedValue));
+    // Clear dependent fields
+    setValue('id_district', '');
+    setValue('id_commune', '');
+    setSelectedDistrict(null);
+    setCommunes([]);
   };
 
   const handleDistrictChange = (selectedValue: string) => {
     setSelectedDistrict(Number(selectedValue));
+    // Clear commune field
+    setValue('id_commune', '');
   };
 
   // Custom map component to handle events and polygon editing
