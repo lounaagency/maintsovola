@@ -87,7 +87,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       validation_decision: initialData?.validation_decision || 'valider',
     }
   });
-
+  console.log('default data terrain to load', initialData);
   useEffect(() => {
     if (initialData) {
       if (initialData.geom) {

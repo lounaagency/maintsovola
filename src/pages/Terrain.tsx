@@ -103,6 +103,9 @@ export const Terrain = () => {
         rapport_validation: t.rapport_validation ?? '',
         date_validation: t.date_validation,
         /* libellés déjà disponibles */
+        id_region: t.id_region        ?? null,
+        id_district: t.id_district  ?? null,
+        id_commune: t.id_commune     ?? null,
         region_name: t.nom_region        ?? 'Non spécifié',
         district_name: t.nom_district  ?? 'Non spécifié',
         commune_name: t.nom_commune     ?? 'Non spécifié',      
