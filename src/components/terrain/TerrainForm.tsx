@@ -61,6 +61,9 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
   const [photos, setPhotos] = useState<File[]>([]);
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [overlapTerrains, setOverlapTerrains] = useState<TerrainData[] | null>(null);
+  const [checkingOverlap, setCheckingOverlap] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(!!initialData);
   
   const formSchema = isValidationMode ? validationSchema : terrainSchema;
   
@@ -165,11 +168,71 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       setIsUploading(false);
     }
   };
+  const checkPolygonOverlap = async (geojson: any, idToOmit?: number) => {
+    setCheckingOverlap(true);
+    const geojsonStr = JSON.stringify(geojson);   // ⬅️  chaîne JSON valide
+
+    // 1) requête de base
+    let query = supabase
+      .from("terrain")
+      .select(
+        `
+        id_terrain,
+        nom_terrain,
+        id_region,
+        id_district,
+        id_commune,
+        surface_proposee,
+        region:region(nom_region),
+        district:district(nom_district),
+        commune:commune(nom_commune),
+        id_tantsaha
+      `
+      )
+      .filter("archive", "eq", false)                // terrain non archivé
+      .filter("geom", "st_intersects", geojsonStr);     // opérateur PostGIS ✅
+  
+    // 2) exclure un terrain éventuel
+    if (idToOmit) {
+      query = query.not("id_terrain", "eq", idToOmit);
+    }
+  
+    const { data, error } = await query;
+    setCheckingOverlap(false);
+  
+    if (error) {
+      console.error("Erreur vérification chevauchement :", error);
+      toast.error("Erreur lors de la vérification du chevauchement des terrains.");
+      return [];
+    }
+  
+    return data ?? [];
+  };
+  
+
 
   const onSubmitHandler = async (data: any) => {
     setIsSubmitting(true);
     try {
       if (!isValidationMode) {
+        // Convert polygon coordinates to GeoJSON format
+        const geojson = {
+          type: "Polygon",
+          coordinates: [
+            polygonCoordinates.map(coord => 
+              Array.isArray(coord) ? [coord[1], coord[0]] : [0, 0]
+            )
+          ]
+        };
+
+         // ==== NOUVEAU: contrôle de recouvrement via Supabase ====
+        const overlap = await checkPolygonOverlap(geojson, isEditMode && initialData?.id_terrain ? initialData.id_terrain : undefined);
+        if (overlap && overlap.length > 0) {
+          setOverlapTerrains(overlap);
+          setLoading(false); // Ne pas soumettre, stoppe la progression
+          return;
+        }
+        // ==== FIN NOUVEAU CONTROLE ====
         data.geom = polygonCoordinates;
       }
       
