@@ -97,7 +97,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       id_tantsaha: initialData?.id_tantsaha || userId,
     }
   });
-
+  console.log('terrain loading data edit 1',initialData);
   const { control, handleSubmit, setValue, formState: { errors }, watch } = form;
   const selectedTantsaha = watch('id_tantsaha');
 
@@ -132,6 +132,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
   }, [selectedDistrict, setValue]);
 
   const loadTerrainData = (data: TerrainData) => {
+    console.log('Loading terrain for edit data:', data);
     setTerrain(data);
     setValue('nom_terrain', data.nom_terrain || '');
     setValue('surface_proposee', data.surface_proposee);

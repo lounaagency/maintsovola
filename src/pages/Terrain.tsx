@@ -65,120 +65,69 @@ export const Terrain = () => {
 
   const fetchTerrains = useCallback(async () => {
     if (!user) return;
-
+  
     setLoadingTerrains(true);
     try {
-      let query = supabase
-        .from('terrain')
-        .select(`
-          *,
-          region:id_region(nom_region),
-          district:id_district(nom_district),
-          commune:id_commune(nom_commune)
-        `)
-        .eq('archive', false);
-      
-      if (userRole === 'simple') {
-        query = query.eq('id_tantsaha', user.id);
-      } else if (userRole === 'technicien') {
-        query = query.eq('id_technicien', user.id);
-      }
-      
-      const { data, error } = await query;
+      /**
+       * 1. Prépare le filtre sur le rôle
+       *    (on ne modifie QUE la partie `filter`, pas la requête principale)
+       */
+      const roleFilter: Record<string, unknown> = {};
 
+      if (userRole === 'simple')       roleFilter.id_tantsaha    = user.id;
+      else if (userRole === 'technicien') roleFilter.id_technicien = user.id;
+      /**
+       * 2. Requête unique comprenant :
+       *    - les tables dépendantes (`region`, `district`, `commune`)
+       *    - les trois utilisateurs liés (tech, superviseur, tantsaha)
+       */
+
+      const { data, error } = await supabase
+        .from('v_terrain_complet')
+        .select('*')
+        .match(roleFilter);  // même logique de filtre
+  
       if (error) throw error;
-      
-      if (!data) {
-        setPendingTerrains([]);
-        setValidatedTerrains([]);
-        setLoadingTerrains(false);
-        return;
-      }
-      
-      const terrainData = data.map(terrain => ({
-        id_terrain: terrain.id_terrain,
-        nom_terrain: terrain.nom_terrain || `Terrain #${terrain.id_terrain}`,
-        surface_proposee: terrain.surface_proposee,
-        surface_validee: terrain.surface_validee,
-        acces_eau: terrain.acces_eau,
-        acces_route: terrain.acces_route,
-        id_tantsaha: terrain.id_tantsaha,
-        id_technicien: terrain.id_technicien,
-        id_superviseur: terrain.id_superviseur,
-        id_region: terrain.id_region,
-        id_district: terrain.id_district,
-        id_commune: terrain.id_commune,
-        statut: terrain.statut,
-        archive: terrain.archive,
-        geom: terrain.geom,
-        photos: terrain.photos || '',
-        photos_validation: terrain.photos_validation || '',
-        rapport_validation: terrain.rapport_validation || '',
-        date_validation: terrain.date_validation,
-        region_name: terrain.region?.nom_region || 'Non spécifié',
-        district_name: terrain.district?.nom_district || 'Non spécifié',
-        commune_name: terrain.commune?.nom_commune || 'Non spécifié',
-        techniqueNom: 'Non assigné',
-        superviseurNom: 'Non assigné',
-        tantsahaNom: 'Non spécifié'
+  
+      const terrains = (data ?? []).map(t => ({
+        id_terrain: t.id_terrain,
+        nom_terrain: t.nom_terrain || `Terrain #${t.id_terrain}`,
+        surface_proposee: t.surface_proposee,
+        surface_validee: t.surface_validee,
+        acces_eau: t.acces_eau,
+        acces_route: t.acces_route,
+        statut: t.statut,
+        geom: t.geom,
+        photos: t.photos ?? '',
+        photos_validation: t.photos_validation ?? '',
+        rapport_validation: t.rapport_validation ?? '',
+        date_validation: t.date_validation,
+        /* libellés déjà disponibles */
+        region_name: t.nom_region        ?? 'Non spécifié',
+        district_name: t.nom_district  ?? 'Non spécifié',
+        commune_name: t.nom_commune     ?? 'Non spécifié',      
+        id_technicien: t.id_technicien        ?? null,
+        id_superviseur:t.id_superviseur        ?? null,
+        id_tantsaha: t.id_tantsaha        ?? null, 
+        techniqueNom:   t.technicien_nom ? `${t.technicien_nom} ${t.technicien_prenoms ?? ''}`.trim() : 'Non assigné',
+        superviseurNom: t.superviseur_nom ? `${t.superviseur_nom} ${t.superviseur_prenoms ?? ''}`.trim() : 'Non assigné',
+        tantsahaNom:    t.tantsaha_nom ? `${t.tantsaha_nom} ${t.tantsaha_prenoms ?? ''}`.trim() : 'Non spécifié'
       }));
-      
-      const enhancedTerrainData = await Promise.all(terrainData.map(async (terrain) => {
-        if (terrain.id_technicien) {
-          const { data: techData } = await supabase
-            .from('utilisateurs_par_role')
-            .select('nom, prenoms')
-            .eq('id_utilisateur', terrain.id_technicien)
-            .maybeSingle();
-            
-          if (techData) {
-            terrain.techniqueNom = `${techData.nom} ${techData.prenoms || ''}`.trim();
-          }
-        }
-        
-        if (terrain.id_superviseur) {
-          const { data: supervData } = await supabase
-            .from('utilisateurs_par_role')
-            .select('nom, prenoms')
-            .eq('id_utilisateur', terrain.id_superviseur)
-            .maybeSingle();
-            
-          if (supervData) {
-            terrain.superviseurNom = `${supervData.nom} ${supervData.prenoms || ''}`.trim();
-          }
-        }
-        
-        if (terrain.id_tantsaha) {
-          const { data: ownerData } = await supabase
-            .from('utilisateurs_par_role')
-            .select('nom, prenoms')
-            .eq('id_utilisateur', terrain.id_tantsaha)
-            .maybeSingle();
-            
-          if (ownerData) {
-            terrain.tantsahaNom = `${ownerData.nom} ${ownerData.prenoms || ''}`.trim();
-          }
-        }
-        
-        return terrain;
-      }));
-      
-      const pending = enhancedTerrainData.filter(t => t.statut === false);
-      const validated = enhancedTerrainData.filter(t => t.statut === true);
-      
-      setPendingTerrains(pending);
-      setValidatedTerrains(validated);
-    } catch (error) {
-      console.error('Error fetching terrains:', error);
+  
+      setPendingTerrains(terrains.filter(t => t.statut === false));
+      setValidatedTerrains(terrains.filter(t => t.statut === true));
+    } catch (err) {
+      console.error('Error fetching terrains:', err);
       toast({
-        title: "Erreur",
+        title: 'Erreur',
         description: "Impossible de récupérer les terrains",
-        variant: "destructive"
+        variant: 'destructive'
       });
     } finally {
       setLoadingTerrains(false);
     }
   }, [user, userRole, toast]);
+  
 
   const fetchTechniciens = useCallback(async () => {
     try {
@@ -194,55 +143,16 @@ export const Terrain = () => {
     }
   }, []);
 
-  const fetchProjects = useCallback(async () => {
-    if (!user) return;
-
-    setLoadingProjects(true);
-    try {
-      let query = supabase.from('projet').select(`
-        *,
-        terrain(*),
-        culture:projet_culture(*, culture_details:culture(*))
-      `);
-      
-      if (userRole === 'simple') {
-        query = query.eq('id_tantsaha', user.id);
-      } else if (userRole === 'technicien') {
-        query = query.eq('id_technicien', user.id);
-      } else if (userRole === 'superviseur') {
-        query = query.eq('id_superviseur', user.id);
-      }
-      
-      const { data, error } = await query;
-      
-      if (error) throw error;
-      setProjects(data || []);
-    } catch (error) {
-      console.error('Error fetching projects:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de récupérer les projets",
-        variant: "destructive"
-      });
-    } finally {
-      setLoadingProjects(false);
-    }
-  }, [user, userRole, toast]);
-
   useEffect(() => {
     if (user) {
       fetchTerrains();
-      fetchProjects();
       fetchTechniciens();
       fetchAgriculteurs();
     }
-  }, [user, fetchTerrains, fetchProjects, fetchTechniciens, fetchAgriculteurs]);
+  }, [user, fetchTerrains,  fetchTechniciens, fetchAgriculteurs]);
 
   const handleTerrainUpdate = (updatedTerrain?: TerrainData, action?: 'add' | 'update' | 'delete') => {
     if (!updatedTerrain) return;
-    
-    console.log("Handling terrain update:", { action, terrain: updatedTerrain });
-    
     if (action === 'delete') {
       setPendingTerrains(prev => prev.filter(t => t.id_terrain !== updatedTerrain.id_terrain));
       setValidatedTerrains(prev => prev.filter(t => t.id_terrain !== updatedTerrain.id_terrain));
@@ -303,17 +213,16 @@ export const Terrain = () => {
   };
 
   const handleContactTechnicien = (terrain: TerrainData) => {
+    setSelectedTerrain(terrain);
     if (terrain.id_technicien) {
-      const technicien = techniciens.find(t => t.id_utilisateur === terrain.id_technicien);
-      if (technicien) {
-        setSelectedTechnicien({
-          id: technicien.id_utilisateur,
-          name: `${technicien.nom} ${technicien.prenoms || ''}`.trim()
-        });
-        setIsMessageDialogOpen(true);
-      }
+      setSelectedTechnicien({
+        id: terrain.id_technicien,
+        name: `${terrain.techniqueNom ?? ''}`.trim()
+      });
+      setIsMessageDialogOpen(true);
     }
   };
+  
 
   const handleTerrainSaved = (updatedTerrain: TerrainData) => {
     console.log("Terrain saved:", updatedTerrain);
@@ -338,46 +247,9 @@ export const Terrain = () => {
     setIsTerrainDeleteOpen(false);
   };
 
-  const handleCreateProject = () => {
-    const validTerrains = validatedTerrains.filter(terrain => 
-      terrain.id_tantsaha === user?.id && 
-      !projects.some((project: any) => 
-        project.id_terrain === terrain.id_terrain && 
-        project.statut !== 'terminé'
-      )
-    );
-    
-    if (validTerrains.length === 0) {
-      setIsAlertDialogOpen(true);
-      return;
-    }
-    
-    setSelectedProject(null);
-    setIsProjectDialogOpen(true);
-  };
-  
-  const handleEditProject = (project: any) => {
-    setSelectedProject(project);
-    setIsProjectDialogOpen(true);
-  };
-  
-  const handleViewProjectDetails = (project: any) => {
-    setSelectedProject(project);
-    setIsProjectDetailsOpen(true);
-  };
-
-  const handleProjectSaved = () => {
-    fetchProjects();
-    setIsProjectDialogOpen(false);
-  };
-
   if (!user) {
     return <div>Loading...</div>;
   }
-  
-  const pendingProjects = projects.filter((p) => p.statut === 'en attente');
-  const fundingProjects = projects.filter((p) => p.statut === 'validé' || p.statut === 'en_financement');
-  const activeProjects = projects.filter((p) => p.statut === 'en cours' || p.statut === 'en_production');
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">

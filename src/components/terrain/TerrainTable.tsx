@@ -316,7 +316,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                       <p className="text-sm font-medium">{terrain.id_terrain}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground">Nom</p>
+                      <p className="text-xs text-muted-foreground">Noms</p>
                       <p className="text-sm font-medium">{terrain.nom_terrain}</p>
                     </div>
                     <div>
