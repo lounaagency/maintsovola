@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useSearchParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion } from "framer-motion";
 import { AgriculturalProject } from "@/types/agriculturalProject";
@@ -11,6 +10,8 @@ import { Link } from "react-router-dom";
 import AgriculturalProjectCard from '@/components/AgriculturalProjectCard';
 
 const Feed: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const projectId = searchParams.get('id_projet');
   const [projects, setProjects] = useState<AgriculturalProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeFilters, setActiveFilters] = useState<{
@@ -27,13 +28,13 @@ const Feed: React.FC = () => {
   
   useEffect(() => {
     fetchProjects();
-  }, [activeFilters]);
+  }, [activeFilters, projectId]);
   
   const fetchProjects = async () => {
     try {
       setLoading(true);
       
-      let { data: projetsData, error: projetsError } = await supabase
+      let query = supabase
         .from('projet')
         .select(`
           id_projet,
@@ -50,6 +51,12 @@ const Feed: React.FC = () => {
         `)
         .eq('statut', 'en financement')
         .order('created_at', { ascending: false });
+
+      if (projectId) {
+        query = query.eq('id_projet', projectId);
+      }
+      
+      let { data: projetsData, error: projetsError } = await query;
       
       if (projetsError) throw projetsError;
       
