@@ -173,15 +173,9 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     setCheckingOverlap(true);
     
     try {
-      const geom = {
-        type: "Polygon",
-        coordinates: geojson.coordinates
-      };
-      
-      const geomText = `ST_GeomFromGeoJSON('${JSON.stringify(geom)}')`;
       
       let query = supabase.rpc('check_terrain_overlap', {
-        geom_input: JSON.stringify(geom),
+        geom_input: geojson,
         terrain_to_omit: idToOmit || null
       });
     
@@ -194,7 +188,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
         toast.error("Erreur lors de la vérification du chevauchement des terrains.");
         return [];
       }
-    
+      console.log("Terrains chevauchants:", query, data);
       return data || [];
     } catch (err) {
       console.error("Exception lors de la vérification du chevauchement:", err);
@@ -212,7 +206,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
           type: "Polygon",
           coordinates: [
             polygonCoordinates.map(coord => 
-              Array.isArray(coord) ? [coord[1], coord[0]] : [0, 0]
+              Array.isArray(coord) ? [coord[0], coord[1]] : [0, 0]
             )
           ]
         };
