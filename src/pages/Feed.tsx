@@ -6,7 +6,7 @@ import { AgriculturalProject } from "@/types/agriculturalProject";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import AgriculturalProjectCard from '@/components/AgriculturalProjectCard';
 
 const Feed: React.FC = () => {
@@ -21,9 +21,11 @@ const Feed: React.FC = () => {
     commune?: string;
   }>({});
   const { user } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
   
   if (!user) {
-    return <Navigate to="/auth" replace />;
+    return <Navigate to={`/auth${location.search}`} replace />;
   }
   
   useEffect(() => {
@@ -53,7 +55,7 @@ const Feed: React.FC = () => {
         .order('created_at', { ascending: false });
 
       if (projectId) {
-        query = query.eq('id_projet', projectId);
+        query = query.eq('id_projet', parseInt(projectId));
       }
       
       let { data: projetsData, error: projetsError } = await query;
@@ -112,28 +114,23 @@ const Feed: React.FC = () => {
       const transformedProjects = projetsData.map(projet => {
         const projetCultures = culturesByProjet[projet.id_projet] || [];
 
-        // Calcul du coût total d'exploitation (farmingCost) en tenant compte de la surface
         const totalFarmingCost = projetCultures.reduce((sum, pc) => 
           sum + ((pc.cout_exploitation_previsionnel || 0) * (projet.surface_ha || 1)), 0);
 
-        // Génération de l'affichage des rendements prévus pour chaque culture
         const yieldStrings = projetCultures.map(pc => {
           const nom = pc.culture?.nom_culture || "Non spécifié";
-          //const tonnage = (pc.rendement_previsionnel || 0) * (projet.surface_ha || 1);
           const tonnage = pc.rendement_previsionnel != null ? pc.rendement_previsionnel : (pc.culture?.rendement_ha || 0) * (projet.surface_ha || 1);
 
           return `${Math.round(tonnage * 100) / 100} t de ${nom}`;
         });
         const expectedYieldLabel = yieldStrings.length > 0 ? yieldStrings.join(", ") : "N/A";
 
-        // Calcul du revenu total estimé en tenant compte de la surface
         const totalEstimatedRevenue = projetCultures.reduce((sum, pc) => {
           const rendement = pc.rendement_previsionnel || 0;
           const prixTonne = pc.culture?.prix_tonne || 0;
           return sum + (rendement * (projet.surface_ha || 1) * prixTonne);
         }, 0);
 
-        // Le bénéfice prévu est la différence entre le revenu estimé et le coût d'exploitation
         const totalProfit = totalEstimatedRevenue - totalFarmingCost;
 
         const cultivationTypes = projetCultures.map(pc => pc.culture?.nom_culture || "Non spécifié");
@@ -170,13 +167,13 @@ const Feed: React.FC = () => {
           },
           cultivationArea: projet.surface_ha,
           cultivationType,
-          farmingCost: totalFarmingCost, // Coût total d'exploitation à lever
-          expectedYield: expectedYieldLabel, // Affichage textuel des rendements par culture
-          expectedRevenue: totalEstimatedRevenue, // Revenu total estimé
-          totalProfit : totalProfit, // Benefice total
+          farmingCost: totalFarmingCost,
+          expectedYield: expectedYieldLabel,
+          expectedRevenue: totalEstimatedRevenue,
+          totalProfit : totalProfit,
           creationDate: new Date(projet.created_at).toISOString().split('T')[0],
           images: [],
-          fundingGoal: totalFarmingCost, // Objectif de financement = coût d'exploitation
+          fundingGoal: totalFarmingCost,
           currentFunding: projectCurrentFundings[projet.id_projet] || 0,
           likes,
           comments: commentCount,
@@ -241,14 +238,27 @@ const Feed: React.FC = () => {
   };
   
   const applyFilter = (filterType: string, value: string) => {
-    setActiveFilters(prev => ({
-      ...prev,
+    const updatedFilters = {
+      ...activeFilters,
       [filterType]: value
-    }));
+    };
+    setActiveFilters(updatedFilters);
+    
+    if (projectId) {
+      const currentParams = new URLSearchParams(location.search);
+      currentParams.set(filterType, value);
+      navigate(`${location.pathname}?${currentParams.toString()}`, { replace: true });
+    }
   };
   
   const clearFilters = () => {
     setActiveFilters({});
+    
+    if (projectId) {
+      navigate(`${location.pathname}?id_projet=${projectId}`, { replace: true });
+    } else {
+      navigate(location.pathname, { replace: true });
+    }
   };
   
   const container = {
@@ -335,7 +345,10 @@ const Feed: React.FC = () => {
                         farmer: {
                           ...project.farmer,
                           name: (
-                            <Link to={`/profile/${project.farmer.id}`} className="hover:underline">
+                            <Link 
+                              to={`/profile/${project.farmer.id}${projectId ? `?id_projet=${projectId}` : ''}`} 
+                              className="hover:underline"
+                            >
                               {project.farmer.name}
                             </Link>
                           )

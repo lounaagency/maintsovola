@@ -1,7 +1,8 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Heart, MessageCircle, Facebook, Mail, Share2, Link, whatsapp } from 'lucide-react';
+import { Heart, MessageCircle, Facebook, Mail, Share2, Link2 as LinkIcon, Smartphone } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -117,7 +118,7 @@ const ProjectActions: React.FC<ProjectActionsProps> = ({
             Facebook
           </DropdownMenuItem>
           <DropdownMenuItem onClick={shareHandlers.whatsapp} className="gap-2">
-            <whatsapp size={18} />
+            <Smartphone size={18} />
             WhatsApp
           </DropdownMenuItem>
           <DropdownMenuSeparator />
@@ -126,7 +127,7 @@ const ProjectActions: React.FC<ProjectActionsProps> = ({
             Email
           </DropdownMenuItem>
           <DropdownMenuItem onClick={shareHandlers.copyLink} className="gap-2">
-            <Link size={18} />
+            <LinkIcon size={18} />
             Copier le lien
           </DropdownMenuItem>
         </DropdownMenuContent>
