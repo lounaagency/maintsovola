@@ -168,54 +168,46 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       setIsUploading(false);
     }
   };
+
   const checkPolygonOverlap = async (geojson: any, idToOmit?: number) => {
     setCheckingOverlap(true);
-    const geojsonStr = JSON.stringify(geojson);   // ⬅️  chaîne JSON valide
-
-    // 1) requête de base
-    let query = supabase
-      .from("terrain")
-      .select(
-        `
-        id_terrain,
-        nom_terrain,
-        id_region,
-        id_district,
-        id_commune,
-        surface_proposee,
-        region:region(nom_region),
-        district:district(nom_district),
-        commune:commune(nom_commune),
-        id_tantsaha
-      `
-      )
-      .filter("archive", "eq", false)                // terrain non archivé
-      .filter("geom", "st_intersects", geojsonStr);     // opérateur PostGIS ✅
-  
-    // 2) exclure un terrain éventuel
-    if (idToOmit) {
-      query = query.not("id_terrain", "eq", idToOmit);
-    }
-  
-    const { data, error } = await query;
-    setCheckingOverlap(false);
-  
-    if (error) {
-      console.error("Erreur vérification chevauchement :", error);
-      toast.error("Erreur lors de la vérification du chevauchement des terrains.");
+    
+    try {
+      const geom = {
+        type: "Polygon",
+        coordinates: geojson.coordinates
+      };
+      
+      const geomText = `ST_GeomFromGeoJSON('${JSON.stringify(geom)}')`;
+      
+      let query = supabase.rpc('check_terrain_overlap', {
+        geom_input: JSON.stringify(geom),
+        terrain_to_omit: idToOmit || null
+      });
+    
+      const { data, error } = await query;
+    
+      setCheckingOverlap(false);
+    
+      if (error) {
+        console.error("Erreur vérification chevauchement :", error);
+        toast.error("Erreur lors de la vérification du chevauchement des terrains.");
+        return [];
+      }
+    
+      return data || [];
+    } catch (err) {
+      console.error("Exception lors de la vérification du chevauchement:", err);
+      setCheckingOverlap(false);
+      toast.error("Erreur technique lors de la vérification du chevauchement.");
       return [];
     }
-  
-    return data ?? [];
   };
-  
-
 
   const onSubmitHandler = async (data: any) => {
     setIsSubmitting(true);
     try {
       if (!isValidationMode) {
-        // Convert polygon coordinates to GeoJSON format
         const geojson = {
           type: "Polygon",
           coordinates: [
@@ -225,14 +217,13 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
           ]
         };
 
-         // ==== NOUVEAU: contrôle de recouvrement via Supabase ====
         const overlap = await checkPolygonOverlap(geojson, isEditMode && initialData?.id_terrain ? initialData.id_terrain : undefined);
         if (overlap && overlap.length > 0) {
           setOverlapTerrains(overlap);
-          setLoading(false); // Ne pas soumettre, stoppe la progression
+          setIsSubmitting(false);
           return;
         }
-        // ==== FIN NOUVEAU CONTROLE ====
+        
         data.geom = polygonCoordinates;
       }
       
