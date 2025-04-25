@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -48,6 +49,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
     };
   } | null>(null);
   const [currentFunding, setCurrentFunding] = useState<number>(0);
+  const [fundingProgress, setFundingProgress] = useState<number>(0);
   
   useEffect(() => {
     if (isOpen && projectId) {
@@ -56,6 +58,13 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
       fetchJalons();
     }
   }, [isOpen, projectId]);
+  
+  // Calculate funding progress whenever investments or project changes
+  useEffect(() => {
+    if (project && investments.length >= 0) {
+      calculateFundingProgress();
+    }
+  }, [investments, project]);
   
   const fetchProjectDetails = async () => {
     try {
@@ -149,7 +158,9 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
       sum + (pc.cout_exploitation_previsionnel || 0), 0);
     
     setCurrentFunding(totalInvestment);
-    return totalCost === 0 ? 0 : Math.min(Math.round((totalInvestment / totalCost) * 100), 100);
+    const progress = totalCost === 0 ? 0 : Math.min(Math.round((totalInvestment / totalCost) * 100), 100);
+    setFundingProgress(progress);
+    return progress;
   };
 
   const handleStartProduction = async () => {
@@ -318,7 +329,6 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
     );
   }
 
-  const fundingProgress = calculateFundingProgress();
   const isFundingComplete = fundingProgress >= 100;
 
   return (
