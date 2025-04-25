@@ -178,10 +178,15 @@ const Projects = () => {
           <DialogHeader>
             <DialogTitle>Créer un nouveau projet</DialogTitle>
           </DialogHeader>
-          <NewProject 
-            onProjectCreated={() => {
+          <ProjectEditDialog 
+            isOpen={showNewProjectDialog}
+            onClose={() => setShowNewProjectDialog(false)}
+            onSubmitSuccess={() => {
               setShowNewProjectDialog(false);
-            }} 
+            }}
+            userId={user?.id}
+            userRole={profile?.nom_role}
+            isEdit={false}
           />
         </DialogContent>
       </Dialog>
