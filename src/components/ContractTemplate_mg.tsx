@@ -78,17 +78,17 @@ const ContractTemplate: React.FC<ContractTemplateProps> = ({ project, className 
     y += 10;
 
     addLine("EO ANELANELAN'IRETO :");
-    addLine(`Orinasa MAINTSO VOLA S.A., solontenany ${project.representant_nom}, foibe ao ${project.siege_social}, voasoratra ara-dalàna laharana ${project.rc_numero},`);
+    addLine(`Orinasa MAINTSO VOLA S.A., solontenany ${project.representant_nom || '[À compléter]'}, foibe ao ${project.siege_social || '[À compléter]'}, voasoratra ara-dalàna laharana ${project.rc_numero || '[À compléter]'},`);
     addLine("Antsoina amin'ny manaraka hoe \"Ny Orinasa\"");
 
     y += 5;
     addLine("SY :");
-    addLine(`${project.tantsaha?.nom_complet}, teraka tamin'ny ${project.tantsaha?.date_naissance}, monina ao ${project.tantsaha?.adresse}, CIN laharana ${project.tantsaha?.cin},`);
+    addLine(`${project.tantsaha?.nom_complet || `${project.tantsaha?.nom} ${project.tantsaha?.prenoms || ''}`}, teraka tamin'ny ${project.tantsaha?.date_naissance || '[À compléter]'}, monina ao ${project.tantsaha?.adresse || '[À compléter]'}, CIN laharana ${project.tantsaha?.cin || '[À compléter]'},`);
     addLine("Antsoina amin'ny manaraka hoe \"Ny Tantsaha\"");
 
     y += 10;
     setArticleTitle("ANDININY 1 – TOMBONTSOA");
-    addLine(`Ity fifanekena ity dia mikendry ny hampiasana tanim-bary ${project.terrain?.nom}, any ${project.terrain?.adresse}, mirefy ${project.terrain?.surface} hektara, amin'ny fambolena ${project.cultures?.[0]?.nom}, ao anatin'ny programa Maintso Vola ${campagne}.`);
+    addLine(`Ity fifanekena ity dia mikendry ny hampiasana tanim-bary ${project.terrain?.nom_terrain || `#${project.id_terrain}`}, any ${[project.commune?.nom_commune, project.district?.nom_district, project.region?.nom_region].filter(Boolean).join(', ')}, mirefy ${project.surface_ha} hektara, amin'ny fambolena ${project.projet_culture?.map(pc => pc.culture?.nom_culture).join(', ')}, ao anatin'ny programa Maintso Vola ${campagne}.`);
 
     y += 10;
     setArticleTitle("ANDININY 2 – ADIDIN'NY ORINASA");
@@ -173,7 +173,7 @@ const ContractTemplate: React.FC<ContractTemplateProps> = ({ project, className 
     addLine(`Fitsarana misahana : Fitsarana Ambaratonga Voalohany ao ${project.tribunal_ville}`);
 
     y += 10;
-    addLine(`NATAO TEO ${project.lieu_signature}, NY ${project.date_signature}`);
+    addLine(`NATAO TEO ${project.lieu_signature || '[À compléter]'}, NY ${project.date_signature || new Date().toLocaleDateString()}`);
     addLine("Amin'ny kopia roa mitovy.");
 
     y += 5;
@@ -206,7 +206,7 @@ const ContractTemplate: React.FC<ContractTemplateProps> = ({ project, className 
     const qrImage = await QRCode.toDataURL(qrData);
     doc.addImage(qrImage, 'PNG', pageWidth - 50, pageHeight - 50, 30, 30);
 
-    doc.save(`fifanekena_${project.id_projet}_${project.tantsaha?.nom}.pdf`);
+    doc.save(`fifanekena_${project.id_projet}_${project.tantsaha?.nom || 'tantsaha'}.pdf`);
   };
 
   return (
