@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ProjectData } from "./ProjectTable";
@@ -14,6 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Loader2 } from "lucide-react";
 import ProjectSummary from "./ProjectSummary";
 import PhotoUploader from "./PhotoUploader";
+import ContractTemplate from './ContractTemplate';
 
 interface ProjectValidationDialogProps {
   isOpen: boolean;
@@ -39,6 +39,7 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
   const [validationPhotos, setValidationPhotos] = useState<File[]>([]);
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [showRejectConfirmation, setShowRejectConfirmation] = useState(false);
+  const [signedContract, setSignedContract] = useState<File | null>(null);
   
   const resetForm = () => {
     setValidationDate(format(new Date(), 'yyyy-MM-dd'));
@@ -46,6 +47,7 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
     setValidationDecision("valider");
     setValidationPhotos([]);
     setPhotoUrls([]);
+    setSignedContract(null);
   };
   
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -81,6 +83,11 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
       return;
     }
     
+    if (validationDecision === "valider" && !signedContract) {
+      toast.error("Le contrat signé est requis pour valider le projet");
+      return;
+    }
+    
     if (validationDecision === "rejetter" && !showRejectConfirmation) {
       setShowRejectConfirmation(true);
       return;
@@ -90,6 +97,7 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
     
     try {
       const uploadedPhotoUrls: string[] = [];
+      let signedContractUrl = "";
       
       if (validationPhotos.length > 0) {
         for (const photo of validationPhotos) {
@@ -113,7 +121,26 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
         }
       }
       
-      // Set the exact status values that match tab values in Projects.tsx
+      if (signedContract && validationDecision === "valider") {
+        const fileName = `${project.id_projet}_contrat_signe_${Date.now()}_${signedContract.name}`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('projet-contracts')
+          .upload(fileName, signedContract);
+          
+        if (uploadError) {
+          console.error("Erreur lors de l'upload du contrat:", uploadError);
+          throw uploadError;
+        }
+        
+        const { data } = supabase.storage
+          .from('projet-contracts')
+          .getPublicUrl(fileName);
+          
+        if (data) {
+          signedContractUrl = data.publicUrl;
+        }
+      }
+      
       const newStatus = validationDecision === "valider" ? "en financement" : "rejeté";
       
       console.log("Updating project with status:", newStatus);
@@ -125,6 +152,7 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
           date_validation: validationDate,
           rapport_validation: validationReport || null,
           photos_validation: uploadedPhotoUrls.length > 0 ? uploadedPhotoUrls.join(',') : null,
+          contrat_signe: signedContractUrl || null,
           id_validateur: userId
         })
         .eq('id_projet', project.id_projet);
@@ -243,6 +271,31 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
                 label="Photos de validation (optionnel)"
                 disabled={isSubmitting}
               />
+            </div>
+            
+            <div className="flex justify-between items-center">
+              <div>
+                <ContractTemplate project={project} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="signed-contract">Contrat signé</Label>
+                <Input
+                  id="signed-contract"
+                  type="file"
+                  accept=".pdf"
+                  onChange={(e) => {
+                    if (e.target.files?.[0]) {
+                      setSignedContract(e.target.files[0]);
+                    }
+                  }}
+                  className="mt-1"
+                />
+                {validationDecision === "valider" && (
+                  <p className="text-xs text-muted-foreground">
+                    *Le contrat signé est requis pour valider le projet
+                  </p>
+                )}
+              </div>
             </div>
           </div>
           
