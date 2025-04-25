@@ -11,10 +11,7 @@ import AgriculturalProjectCard from '@/components/AgriculturalProjectCard';
 
 const Feed: React.FC = () => {
   const [searchParams] = useSearchParams();
-  const projectId = searchParams.get('project');
-  const defaultTab = searchParams.get('tab') || 'finances';
-  const [selectedProject, setSelectedProject] = useState<number | null>(projectId ? parseInt(projectId) : null);
-  const [activeTab, setActiveTab] = useState(defaultTab);
+  const projectId = searchParams.get('id_projet');
   const [projects, setProjects] = useState<AgriculturalProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeFilters, setActiveFilters] = useState<{
@@ -31,19 +28,6 @@ const Feed: React.FC = () => {
     return <Navigate to={`/auth${location.search}`} replace />;
   }
   
-  useEffect(() => {
-    if (projectId) {
-      setSelectedProject(parseInt(projectId));
-    }
-  }, [projectId]);
-
-  useEffect(() => {
-    const tab = searchParams.get('tab');
-    if (tab) {
-      setActiveTab(tab);
-    }
-  }, [searchParams]);
-
   useEffect(() => {
     fetchProjects();
   }, [activeFilters, projectId]);
@@ -344,13 +328,13 @@ const Feed: React.FC = () => {
         <h1 className="text-2xl font-bold text-gray-900">Projets en financement</h1>
       </header>
       
-      <Tabs defaultValue={activeTab} className="mb-6">
+      <Tabs defaultValue="for-you" className="mb-6">
         <TabsList className="grid w-full grid-cols-2 bg-muted rounded-lg">
-          <TabsTrigger value="finances" className="rounded-md">Finances</TabsTrigger>
+          <TabsTrigger value="for-you" className="rounded-md">Pour vous</TabsTrigger>
           <TabsTrigger value="following" className="rounded-md">Abonnements</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="finances" className="mt-4">
+        <TabsContent value="for-you" className="mt-4">
           {renderActiveFilters()}
           
           {loading ? (

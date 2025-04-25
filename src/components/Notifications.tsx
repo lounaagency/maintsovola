@@ -9,7 +9,7 @@ import { Bell } from "lucide-react";
 import { Button } from "./ui/button";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -22,19 +22,15 @@ interface NotificationItem {
   timestamp: string;
   read: boolean;
   type: "info" | "success" | "warning" | "error";
+  link?: string;
   entity_id?: string;
   entity_type?: "terrain" | "projet" | "jalon" | "investissement";
-  projet_id?: number;
 }
 
-const NotificationItem: React.FC<{ 
-  notification: NotificationItem; 
-  onRead: (id: string) => void 
-}> = ({ 
+const NotificationItem: React.FC<{ notification: NotificationItem; onRead: (id: string) => void }> = ({ 
   notification,
   onRead 
 }) => {
-  const navigate = useNavigate();
   const typeStyles = {
     info: "bg-blue-50 border-blue-200",
     success: "bg-green-50 border-green-200",
@@ -46,24 +42,27 @@ const NotificationItem: React.FC<{
     if (!notification.read) {
       onRead(notification.id);
     }
-
-    if (notification.entity_type === 'projet') {
-      navigate(`/feed?project=${notification.entity_id}`);
-    } else if (notification.entity_type === 'investissement') {
-      navigate(`/feed?project=${notification.projet_id}&tab=finances`);
-    } else if (notification.entity_type === 'jalon') {
-      navigate(`/feed?project=${notification.projet_id}&tab=jalons`);
-    } else if (notification.entity_type === 'terrain') {
-      navigate(`/terrain?id=${notification.entity_id}`);
-    }
   };
 
-  return (
+  const getNotificationLink = () => {
+    if (notification.entity_type === 'terrain') {
+      return `/terrain?id=${notification.entity_id}`;
+    } else if (notification.entity_type === 'projet') {
+      return `/feed?project=${notification.entity_id}`;
+    } else if (notification.entity_type === 'jalon') {
+      return `/projet?id=${notification.projet_id}#jalons`;
+    } else if (notification.entity_type === 'investissement') {
+      return `/projet?id=${notification.projet_id}#investissements`;
+    }
+    return '';
+  };
+
+  const content = (
     <motion.div
       initial={{ opacity: 0, y: 5 }}
       animate={{ opacity: 1, y: 0 }}
       className={cn(
-        "p-3 border rounded-md mb-2 relative cursor-pointer",
+        "p-3 border rounded-md mb-2 relative",
         notification.read ? "bg-gray-50 border-gray-200" : typeStyles[notification.type],
         !notification.read && "font-medium"
       )}
@@ -78,6 +77,15 @@ const NotificationItem: React.FC<{
         {new Date(notification.timestamp).toLocaleDateString()} • {new Date(notification.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
       </p>
     </motion.div>
+  );
+
+  const link = getNotificationLink();
+  return link ? (
+    <Link to={link} className="block">
+      {content}
+    </Link>
+  ) : (
+    content
   );
 };
 
@@ -132,8 +140,7 @@ const Notifications: React.FC = () => {
           type,
           link,
           entity_id: entityId,
-          entity_type: notification.entity_type as "terrain" | "projet" | "jalon" | "investissement" | undefined,
-          projet_id: notification.projet_id
+          entity_type: notification.entity_type as "terrain" | "projet" | "jalon" | "investissement" | undefined
         };
       });
       
@@ -192,8 +199,7 @@ const Notifications: React.FC = () => {
                 type,
                 link,
                 entity_id: newNotification.entity_id ? String(newNotification.entity_id) : undefined,
-                entity_type: newNotification.entity_type as "terrain" | "projet" | "jalon" | "investissement" | undefined,
-                projet_id: newNotification.projet_id
+                entity_type: newNotification.entity_type as "terrain" | "projet" | "jalon" | "investissement" | undefined
               };
               
               toast(formattedNotification.title, {
