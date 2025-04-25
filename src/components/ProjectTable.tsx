@@ -544,6 +544,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
             onSubmitSuccess={handleProjectUpdated}
             userId={user?.id}
             userRole={userRole}
+            isEdit={true}
           />
           <ProjectValidationDialog
             isOpen={validationOpen}
