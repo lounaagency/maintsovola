@@ -15,6 +15,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import UserAvatar from './UserAvatar';
 import JalonReportDialog from "./JalonReportDialog";
+import { ExternalLink } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
 
 interface ProjectDetailsDialogProps {
   isOpen: boolean;
@@ -45,6 +47,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
       photos?: string[];
     };
   } | null>(null);
+  const [currentFunding, setCurrentFunding] = useState<number>(0);
   
   useEffect(() => {
     if (isOpen && projectId) {
@@ -145,6 +148,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
     const totalCost = project.projet_culture.reduce((sum: number, pc: any) => 
       sum + (pc.cout_exploitation_previsionnel || 0), 0);
     
+    setCurrentFunding(totalInvestment);
     return totalCost === 0 ? 0 : Math.min(Math.round((totalInvestment / totalCost) * 100), 100);
   };
 
@@ -429,10 +433,43 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
               </TabsList>
               
               <TabsContent value="finances" className="space-y-4 mt-4">
+                <div 
+                  className="grid grid-cols-2 gap-3 mb-4 bg-muted/30 p-2 rounded-md cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => {}}
+                >
+                  <div className="text-xs">
+                    <span className="text-gray-500 block">Coût d'exploitation</span>
+                    <span className="font-medium flex items-center">
+                      {formatCurrency(project.cout_exploitation_previsionnel)} 
+                      <ExternalLink className="h-3 w-3 ml-1 text-primary" />
+                    </span>
+                  </div>
+                  <div className="text-xs">
+                    <span className="text-gray-500 block">Rendement prévu</span>
+                    <span className="font-medium flex items-center">
+                      {project.rendement_previsionnel} 
+                      <ExternalLink className="h-3 w-3 ml-1 text-primary" />
+                    </span>
+                  </div>
+                  <div className="text-xs">
+                    <span className="text-gray-500 block">Revenu estimé</span>
+                    <span className="font-medium flex items-center">
+                      {formatCurrency(project.revenu_previsionnel)}
+                      <ExternalLink className="h-3 w-3 ml-1 text-primary" />
+                    </span>
+                  </div>
+                  <div className="text-xs">
+                    <span className="text-gray-500 block">Bénéfice total</span>
+                    <span className="font-medium">{formatCurrency(project.benefice_total)}</span>
+                  </div>
+                </div>
+                
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-medium">Progression du financement</p>
-                    <p className="text-sm font-medium">{fundingProgress}%</p>
+                    <p className="text-sm font-medium">
+                      {formatCurrency(currentFunding)} / {formatCurrency(project.cout_exploitation_previsionnel)}
+                    </p>
                   </div>
                   <Progress value={fundingProgress} className="h-2" />
                 </div>
