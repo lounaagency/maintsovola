@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { FileText } from "lucide-react";
 import { jsPDF } from "jspdf";
 import autoTable from 'jspdf-autotable';
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ContractTemplateProps {
   project: any;
@@ -77,15 +78,22 @@ const ContractTemplate: React.FC<ContractTemplateProps> = ({ project }) => {
   };
   
   return (
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={generatePDF}
-      className="gap-2"
-    >
-      <FileText className="h-4 w-4" />
-      Générer le contrat
-    </Button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={generatePDF}
+          className="gap-2"
+        >
+          <FileText className="h-4 w-4" />
+          Générer le contrat
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>
+        Générer un contrat PDF pour ce projet
+      </TooltipContent>
+    </Tooltip>
   );
 };
 
