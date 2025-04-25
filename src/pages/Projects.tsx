@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Search, Plus } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import ProjectTable from "@/components/ProjectTable";
+import NewProject from "@/components/NewProject";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,7 +14,6 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import ProjectEditDialog from "@/components/ProjectEditDialog";
 
 const Projects = () => {
   const [search, setSearch] = useState("");
@@ -43,6 +43,8 @@ const Projects = () => {
     if (!user) return;
     
     try {
+      // Get ALL projects (including deleted ones) to exclude their terrains
+      // This prevents users from creating projects on terrains that already had projects
       const { data: allProjects, error: projectsError } = await supabase
         .from('projet')
         .select('id_terrain');
@@ -52,13 +54,15 @@ const Projects = () => {
         return;
       }
       
+      // Get the list of terrain IDs that have ever been in projects
       const excludedTerrainIds = allProjects?.map(p => p.id_terrain) || [];
             
+      // Fetch terrains that belong to the user, are validated, and have never been in projects
       let query = supabase
         .from('terrain')
         .select('id_terrain')
         .eq('id_tantsaha', user.id)
-        .eq('statut', true)
+        .eq('statut', true) // Only validated terrains
         .eq('archive', false);
         
       if (excludedTerrainIds.length > 0) {
@@ -174,13 +178,10 @@ const Projects = () => {
           <DialogHeader>
             <DialogTitle>Créer un nouveau projet</DialogTitle>
           </DialogHeader>
-          <ProjectEditDialog 
-            isOpen={true}
-            onClose={() => setShowNewProjectDialog(false)}
-            onSubmitSuccess={() => {
+          <NewProject 
+            onProjectCreated={() => {
               setShowNewProjectDialog(false);
-            }}
-            mode="create"
+            }} 
           />
         </DialogContent>
       </Dialog>
