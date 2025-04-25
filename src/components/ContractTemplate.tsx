@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { FileText } from "lucide-react";
@@ -8,9 +7,10 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 
 interface ContractTemplateProps {
   project: any;
+  className?: string;
 }
 
-const ContractTemplate: React.FC<ContractTemplateProps> = ({ project }) => {
+const ContractTemplate: React.FC<ContractTemplateProps> = ({ project, className }) => {
   const generatePDF = async () => {
     const doc = new jsPDF();
     
@@ -81,13 +81,12 @@ const ContractTemplate: React.FC<ContractTemplateProps> = ({ project }) => {
     <Tooltip>
       <TooltipTrigger asChild>
         <Button
-          variant="outline"
-          size="sm"
+          variant="ghost"
+          size="icon"
           onClick={generatePDF}
-          className="gap-2"
+          className={className}
         >
           <FileText className="h-4 w-4" />
-          Générer le contrat
         </Button>
       </TooltipTrigger>
       <TooltipContent>

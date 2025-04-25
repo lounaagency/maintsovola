@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Card } from "@/components/ui/card";
@@ -15,6 +14,7 @@ import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { canDeleteProject, canEditProject, canValidateProject, renderStatusBadge, calculateProjectFunding, canLaunchProduction } from "@/utils/projectUtils";
 import ProductionLaunchDialog from "./ProductionLaunchDialog";
+import ContractTemplate from "./ContractTemplate";
 
 interface ProjectTableProps {
   filter?: string;
@@ -459,6 +459,11 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
+                            
+                            {project.statut === 'en attente' && (userRole === 'technicien' || userRole === 'superviseur' || project.id_tantsaha === user?.id) && (
+                              <ContractTemplate project={project} />
+                            )}
+                            
                             {canEditProject(project, userRole, user?.id) && (
                               <Button
                                 variant="ghost"
@@ -471,6 +476,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
                                 <FileEdit className="h-4 w-4" />
                               </Button>
                             )}
+                            
                             {showValidateButton && (
                               <Button
                                 variant="ghost"
@@ -484,6 +490,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
                                 <CheckCircle className="h-4 w-4 text-green-500" />
                               </Button>
                             )}
+                            
                             {canLaunch && (
                               <Button
                                 variant="ghost"
@@ -497,6 +504,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
                                 <PlayCircle className="h-4 w-4 text-green-500" />
                               </Button>
                             )}
+                            
                             {canDeleteProject(project, userRole, user?.id) && (
                               <Button
                                 variant="ghost"
