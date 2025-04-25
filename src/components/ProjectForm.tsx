@@ -57,7 +57,7 @@ const formSchema = z.object({
     message: "Veuillez sélectionner au moins une culture.",
   }),
   selectedFarmer: z.string().optional(),
-})
+});
 
 interface ProjectFormProps {
   onSubmit: (data: any) => void;
@@ -99,10 +99,36 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
     mode: "onChange",
   });
 
-  const { handleSubmit, control, setValue, watch, getValues } = form;
+  const { handleSubmit, control, setValue, watch, getValues, reset } = form;
   const watchedCultures = watch("cultures");
   const watchedTerrain = watch("terrain");
   const watchedFarmer = watch("selectedFarmer");
+
+  // Properly load initial form data when editing
+  useEffect(() => {
+    if (isEditing && initialData) {
+      console.log("Loading initial data for editing:", initialData);
+      reset({
+        titre: initialData.titre || "",
+        description: initialData.description || "",
+        terrain: initialData.id_terrain?.toString() || "",
+        statut: initialData.statut || "en attente", 
+        cultures: initialData.projet_culture?.map((pc: ProjetCulture) => pc.id_culture.toString()) || [],
+        selectedFarmer: initialData.id_tantsaha || "",
+      });
+
+      if (initialData.id_tantsaha) {
+        setSelectedFarmerId(initialData.id_tantsaha);
+      }
+
+      if (initialData.photos) {
+        const photos = typeof initialData.photos === 'string' 
+          ? initialData.photos.split(',').filter((url: string) => url.trim() !== '') 
+          : [];
+        setPhotoUrls(photos);
+      }
+    }
+  }, [isEditing, initialData, reset]);
 
   useEffect(() => {
     setSelectedCultures(watchedCultures || []);
@@ -125,7 +151,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
         fetchTerrains(watchedFarmer);
       }
     }
-  }, [watchedFarmer, isSimpleUser]);
+  }, [watchedFarmer, isSimpleUser, selectedFarmerId, setValue]);
 
   const updateFinancialSummary = (selectedCultureIds: string[], terrain: TerrainData | null) => {
     if (!selectedCultureIds || !terrain) return;
@@ -213,7 +239,10 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
 
     setPhotoUrls(prevUrls => {
       const newUrls = [...prevUrls];
-      URL.revokeObjectURL(newUrls[index]);
+      // Only revoke if it's a blob URL (newly added photo)
+      if (newUrls[index].startsWith('blob:')) {
+        URL.revokeObjectURL(newUrls[index]);
+      }
       newUrls.splice(index, 1);
       return newUrls;
     });
@@ -316,7 +345,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
         .eq('statut', true)
         .eq('archive', false);
         
-      if (excludedTerrainIds.length > 0) {
+      if (excludedTerrainIds.length > 0 && excludedTerrainIds.every(id => id !== undefined)) {
         query = query.not('id_terrain', 'in', `(${excludedTerrainIds.join(',')})`);
       }
       
@@ -344,6 +373,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
             filteredTerrains.push(currentTerrain);
           }
           setTerrains(filteredTerrains as TerrainData[]);
+          
+          // Set the selected terrain when editing
+          setSelectedTerrain(currentTerrain);
         } else {
           setTerrains(terrainData as TerrainData[] || []);
         }
@@ -371,7 +403,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
       console.error("Unexpected error fetching terrains:", error);
       toast.error("Erreur inattendue lors du chargement des terrains");
     }
-  }, [user, getValues, setValue, isEditing, initialData, isSimpleUser]);
+  }, [user, getValues, setValue, isEditing, initialData, isSimpleUser, terrains]);
 
   const fetchCultures = useCallback(async () => {
     try {
@@ -387,7 +419,8 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
 
       setCultures(culturesData || []);
       
-      if (isEditing && initialData?.projet_culture && initialData.projet_culture.length > 0) {
+      // Fix: Load cultures when editing
+      if (isEditing && initialData?.projet_culture) {
         const culturesToSelect = initialData.projet_culture.map((pc: ProjetCulture) => 
           pc.id_culture.toString()
         );
@@ -400,21 +433,25 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, disabled, initialDa
     }
   }, [setCultures, isEditing, initialData, setValue]);
 
+  // Load farmers on component mount
   useEffect(() => {
     fetchFarmers();
     fetchCultures();
   }, [fetchFarmers, fetchCultures]);
 
+  // Load terrains based on selected farmer or current user
   useEffect(() => {
-    fetchTerrains(isSimpleUser ? user?.id : selectedFarmerId || undefined);
+    const farmerId = isSimpleUser ? user?.id : (isEditing ? initialData?.id_tantsaha : selectedFarmerId);
+    fetchTerrains(farmerId);
     
     // Set the initial farmer for edit mode (for non-simple users)
     if (isEditing && initialData?.id_tantsaha && !isSimpleUser) {
       setValue("selectedFarmer", initialData.id_tantsaha);
       setSelectedFarmerId(initialData.id_tantsaha);
     }
-  }, [isEditing, initialData, setValue, isSimpleUser, user?.id]);
+  }, [isEditing, initialData, setValue, isSimpleUser, user?.id, fetchTerrains]);
 
+  // Load photos for edit mode
   useEffect(() => {
     if (isEditing && initialData?.photos) {
       const photos = initialData.photos.split(',').filter((p: string) => p);
