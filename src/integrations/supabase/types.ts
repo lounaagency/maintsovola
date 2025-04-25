@@ -2446,6 +2446,15 @@ export type Database = {
         }
         Returns: undefined
       }
+      notify_jalon_completion: {
+        Args: {
+          project_id: number
+          jalon_id: number
+          technicien_id: string
+          jalon_date: string
+        }
+        Returns: undefined
+      }
       path: {
         Args: { "": unknown }
         Returns: unknown

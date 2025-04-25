@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import {
   Popover,
@@ -45,6 +44,19 @@ const NotificationItem: React.FC<{ notification: NotificationItem; onRead: (id: 
     }
   };
 
+  const getNotificationLink = () => {
+    if (notification.entity_type === 'terrain') {
+      return `/terrain?id=${notification.entity_id}`;
+    } else if (notification.entity_type === 'projet') {
+      return `/feed?project=${notification.entity_id}`;
+    } else if (notification.entity_type === 'jalon') {
+      return `/projet?id=${notification.projet_id}#jalons`;
+    } else if (notification.entity_type === 'investissement') {
+      return `/projet?id=${notification.projet_id}#investissements`;
+    }
+    return '';
+  };
+
   const content = (
     <motion.div
       initial={{ opacity: 0, y: 5 }}
@@ -67,8 +79,9 @@ const NotificationItem: React.FC<{ notification: NotificationItem; onRead: (id: 
     </motion.div>
   );
 
-  return notification.link ? (
-    <Link to={notification.link} className="block">
+  const link = getNotificationLink();
+  return link ? (
+    <Link to={link} className="block">
       {content}
     </Link>
   ) : (
@@ -114,13 +127,12 @@ const Notifications: React.FC = () => {
           link = `/projet?id=${notification.projet_id}#investissements`;
         }
         
-        // Convert entity_id to string if it exists
         const entityId = notification.entity_id !== undefined 
           ? String(notification.entity_id) 
           : undefined;
         
         return {
-          id: String(notification.id_notification), // Convert to string
+          id: String(notification.id_notification),
           title: notification.titre,
           description: notification.message,
           timestamp: notification.date_creation,

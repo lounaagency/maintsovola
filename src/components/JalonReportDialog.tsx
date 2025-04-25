@@ -61,7 +61,16 @@ const JalonReportDialog: React.FC<JalonReportDialogProps> = ({
       const photosString = photoUrls.length > 0 ? JSON.stringify(photoUrls) : null;
       
       // Update jalon with report and photos
-      const { error } = await supabase
+      const { error } = await supabase.rpc('notify_jalon_completion', {
+        project_id: projectId,
+        jalon_id: jalonId,
+        technicien_id: (await supabase.auth.getUser()).data.user?.id,
+        jalon_date: dateReelle
+      });
+
+      if (error) throw error;
+
+      const { error: updateError } = await supabase
         .from('jalon_projet')
         .update({
           date_reelle: dateReelle,
@@ -71,7 +80,7 @@ const JalonReportDialog: React.FC<JalonReportDialogProps> = ({
         .eq('id_projet', projectId)
         .eq('id_jalon_agricole', jalonId);
       
-      if (error) throw error;
+      if (updateError) throw updateError;
       
       toast.success("Rapport d'intervention enregistré avec succès");
       
