@@ -21,6 +21,11 @@ import { AgriculturalProject } from '@/types/agriculturalProject';
 import { UserProfile } from '@/types/userProfile';
 import { formatCurrency } from '@/lib/utils';
 
+// Type guard for SelectQueryError
+const isSelectQueryError = (obj: any): boolean => {
+  return obj && typeof obj === 'object' && 'message' in obj && 'details' in obj;
+};
+
 export const Profile = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -91,18 +96,18 @@ export const Profile = () => {
       }));
       
       setProfile({
-        id_utilisateur: data.id_utilisateur,
-        id: data.id_utilisateur,
-        nom: data.nom,
-        prenoms: data.prenoms,
-        email: data.email,
-        photo_profil: data.photo_profil,
-        photo_couverture: data.photo_couverture,
-        telephone: telephones[0]?.numero,
-        adresse: data.adresse || undefined,
-        bio: data.bio || undefined,
-        id_role: data.id_role,
-        nom_role: data.role?.nom_role,
+        id_utilisateur: isSelectQueryError(data) ? '' : data.id_utilisateur,
+        id: isSelectQueryError(data) ? '' : data.id_utilisateur,
+        nom: isSelectQueryError(data) ? '' : data.nom,
+        prenoms: isSelectQueryError(data) ? '' : data.prenoms,
+        email: isSelectQueryError(data) ? '' : data.email,
+        photo_profil: isSelectQueryError(data) ? '' : data.photo_profil,
+        photo_couverture: isSelectQueryError(data) ? '' : data.photo_couverture,
+        telephone: isSelectQueryError(data) ? '' : telephones[0]?.numero,
+        adresse: isSelectQueryError(data) ? '' : data.adresse || undefined,
+        bio: isSelectQueryError(data) ? '' : data.bio || undefined,
+        id_role: isSelectQueryError(data) ? '' : data.id_role,
+        nom_role: isSelectQueryError(data) ? '' : data.role?.nom_role,
         telephones: mappedTelephones
       });
     } catch (error) {

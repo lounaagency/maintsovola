@@ -25,6 +25,7 @@ interface NotificationItem {
   link?: string;
   entity_id?: string;
   entity_type?: "terrain" | "projet" | "jalon" | "investissement";
+  projet_id?: string;
 }
 
 const NotificationItem: React.FC<{ notification: NotificationItem; onRead: (id: string) => void }> = ({ 
@@ -140,7 +141,8 @@ const Notifications: React.FC = () => {
           type,
           link,
           entity_id: entityId,
-          entity_type: notification.entity_type as "terrain" | "projet" | "jalon" | "investissement" | undefined
+          entity_type: notification.entity_type as "terrain" | "projet" | "jalon" | "investissement" | undefined,
+          projet_id: notification.projet_id
         };
       });
       
@@ -199,7 +201,8 @@ const Notifications: React.FC = () => {
                 type,
                 link,
                 entity_id: newNotification.entity_id ? String(newNotification.entity_id) : undefined,
-                entity_type: newNotification.entity_type as "terrain" | "projet" | "jalon" | "investissement" | undefined
+                entity_type: newNotification.entity_type as "terrain" | "projet" | "jalon" | "investissement" | undefined,
+                projet_id: newNotification.projet_id
               };
               
               toast(formattedNotification.title, {

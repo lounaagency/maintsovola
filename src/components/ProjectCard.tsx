@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Eye, FileEdit, CheckCircle, Trash2, Play } from "lucide-react";
 import { ProjectData } from "./ProjectTable";
 import { Progress } from "@/components/ui/progress";
+import ContractTemplate from "./ContractTemplate";
 
 interface ProjectCardProps {
   project: ProjectData;

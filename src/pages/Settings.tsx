@@ -164,7 +164,10 @@ const Settings = () => {
         .single();
         
       if (refreshedProfile) {
-        setUserProfile(refreshedProfile);
+        setUserProfile({
+          ...refreshedProfile,
+          id: refreshedProfile.id_utilisateur
+        });
       }
       
       toast({

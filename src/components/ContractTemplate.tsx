@@ -35,10 +35,8 @@ const ContractTemplate: React.FC<ContractTemplateProps> = ({ project, className 
     };
 
     const addHeader = () => {
-      // Logo plus petit et plus haut
       doc.addImage(logo, 'PNG', 20, 8, 18, 18);
 
-      // Texte à gauche
       doc.setTextColor(76, 175, 80);
       doc.setFontSize(11);
       doc.text("Maintso Vola", 45, 14);
@@ -46,8 +44,6 @@ const ContractTemplate: React.FC<ContractTemplateProps> = ({ project, className 
       doc.setTextColor(0, 0, 0);
       doc.text("Transformons ensemble l'agriculture à Madagascar.", 45, 20);
 
-      // Infos à droite
-      doc.setFontSize(8);
       const rightX = pageWidth - 85;
       const lines = [
         "Adresse : Lot II K 98 Antananarivo 101",
@@ -56,7 +52,6 @@ const ContractTemplate: React.FC<ContractTemplateProps> = ({ project, className 
       ];
       lines.forEach((line, i) => doc.text(line, rightX, 12 + i * 5));
 
-      // Ligne de séparation
       doc.setDrawColor(200);
       doc.line(20, 28, pageWidth - 20, 28);
     };
@@ -146,7 +141,9 @@ const ContractTemplate: React.FC<ContractTemplateProps> = ({ project, className 
       headStyles: { fillColor: [76, 175, 80] },
     });
 
-    y = doc.lastAutoTable.finalY + 10;
+    const firstTableEndY = (doc as any).lastAutoTable.finalY;
+    y = firstTableEndY + 10;
+    
     doc.setFontSize(12);
     doc.text("RÉPARTITION DES BÉNÉFICES PRÉVISIONNELS", 20, y);
 
@@ -163,7 +160,9 @@ const ContractTemplate: React.FC<ContractTemplateProps> = ({ project, className 
       headStyles: { fillColor: [76, 175, 80] },
     });
 
-    y = doc.lastAutoTable.finalY + 10;
+    const secondTableEndY = (doc as any).lastAutoTable.finalY;
+    y = secondTableEndY + 10;
+    
     addLine("ARTICLE 6 – DURÉE", 0, 12);
     addLine(`Durée : du ${project.date_debut} au ${project.date_fin}`);
     addLine("Reconduction possible après évaluation de la performance.");
@@ -198,7 +197,6 @@ const ContractTemplate: React.FC<ContractTemplateProps> = ({ project, className 
       }
     });
 
-    // Ajouter pagination + message bas de page
     const pageCount = doc.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);

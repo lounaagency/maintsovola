@@ -142,7 +142,9 @@ const ContractTemplate: React.FC<ContractTemplateProps> = ({ project, className 
       headStyles: { fillColor: [76, 175, 80] },
     });
 
-    y = doc.lastAutoTable.finalY + 10;
+    const firstTableEndY = (doc as any).lastAutoTable.finalY;
+    y = firstTableEndY + 10;
+    
     doc.setFontSize(12);
     doc.text("FIZARANA TOMBONY VINAVINA", 20, y);
 
@@ -159,7 +161,9 @@ const ContractTemplate: React.FC<ContractTemplateProps> = ({ project, className 
       headStyles: { fillColor: [76, 175, 80] },
     });
 
-    y = doc.lastAutoTable.finalY + 10;
+    const secondTableEndY = (doc as any).lastAutoTable.finalY;
+    y = secondTableEndY + 10;
+    
     addLine("ANDININY 6 – FAHARETAN'NY FIFANEKENA", 0, 12);
     addLine(`Fotoana : manomboka ny ${project.date_debut} ka hatramin'ny ${project.date_fin}`);
     addLine("Azo havaozina raha mahafa-po ny vokatra sy ny fiaraha-miasa.");

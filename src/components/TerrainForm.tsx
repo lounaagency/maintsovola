@@ -1,273 +1,136 @@
-
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { useForm, Controller } from 'react-hook-form';
-import { yupResolver } from '@hookform/resolvers/yup';
-import * as yup from 'yup';
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox"
-import { toast } from 'sonner';
-import {
-  TerrainData,
-  RegionData,
-  DistrictData,
-  CommuneData
-} from '@/types/terrain';
-import { TerrainFormData, convertFormDataToTerrainData } from '@/types/terrainForm';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
-import { MapContainer, TileLayer, Marker, useMapEvents, Polygon, useMap } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-import { Upload, X, Loader2 } from 'lucide-react';
-
-const formSchema = yup.object().shape({
-  nom_terrain: yup.string().required('Le nom du terrain est obligatoire'),
-  surface_proposee: yup.number().required('La surface proposée est obligatoire').positive('La surface doit être positive'),
-  id_region: yup.string().required('La région est obligatoire'),
-  id_district: yup.string().required('Le district est obligatoire'),
-  id_commune: yup.string().required('La commune est obligatoire'),
-  acces_eau: yup.boolean().nullable(),
-  acces_route: yup.boolean().nullable(),
-  id_tantsaha: yup.string().nullable(),
-});
+import React, { useState, useEffect, useRef } from "react";
+import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
+import { Button } from "@/components/ui/button";
+import { Form } from "@/components/ui/form";
+import { supabase } from "@/integrations/supabase/client";
+import { TerrainFormData, convertFormDataToTerrainData } from "@/types/terrainForm";
+import { TerrainData } from "@/types/terrain";
+import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import ValidationForm from "./ValidationForm";
+import TerrainFormFields from "./TerrainFormFields";
+import { sendNotification } from "@/types/notification";
 
 interface TerrainFormProps {
-  initialData?: TerrainData | null;
-  onSubmitSuccess?: () => void;
-  onCancel?: () => void;
+  initialData?: TerrainData;
+  onSubmit: (data: Partial<TerrainData>) => void;
+  onCancel: () => void;
   userId: string;
   userRole?: string;
   agriculteurs?: { id_utilisateur: string; nom: string; prenoms?: string }[];
+  techniciens?: { id_utilisateur: string; nom: string; prenoms?: string }[];
+  isValidationMode?: boolean;
+  onSubmitSuccess?: (terrain: TerrainData) => void;
 }
 
-const TerrainForm: React.FC<TerrainFormProps> = ({ 
-  initialData, 
-  onSubmitSuccess, 
+const terrainSchema = yup.object({
+  nom_terrain: yup.string().required("Le nom du terrain est obligatoire"),
+  surface_proposee: yup.number().required("La surface est obligatoire").positive("La surface doit être positive"),
+  id_region: yup.string().required("La région est obligatoire"),
+  id_district: yup.string().required("Le district est obligatoire"),
+  id_commune: yup.string().required("La commune est obligatoire"),
+  acces_eau: yup.boolean().default(false),
+  acces_route: yup.boolean().default(false),
+  id_tantsaha: yup.string().optional(),
+}).required();
+
+const validationSchema = yup.object({
+  surface_validee: yup.number().required("La surface validée est obligatoire").positive("La surface doit être positive"),
+  date_validation: yup.string().required("La date de validation est obligatoire"),
+  rapport_validation: yup.string().required("Le rapport de validation est obligatoire"),
+  validation_decision: yup.string().required("Une décision est requise").oneOf(['valider', 'rejetter'], "Décision invalide"),
+}).required();
+
+const TerrainForm: React.FC<TerrainFormProps> = ({
+  initialData,
+  onSubmit,
   onCancel,
   userId,
   userRole,
-  agriculteurs = []
+  agriculteurs = [],
+  techniciens = [],
+  isValidationMode = false,
+  onSubmitSuccess
 }) => {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const [regions, setRegions] = useState<RegionData[]>([]);
-  const [districts, setDistricts] = useState<DistrictData[]>([]);
-  const [communes, setCommunes] = useState<CommuneData[]>([]);
-  const [selectedRegion, setSelectedRegion] = useState<number | null>(null);
-  const [selectedDistrict, setSelectedDistrict] = useState<number | null>(null);
-  const [terrain, setTerrain] = useState<TerrainData | null>(initialData || null);
-  const [loading, setLoading] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(!!initialData);
-  const [mapInitialized, setMapInitialized] = useState(false);
-  const [polygonCoordinates, setPolygonCoordinates] = useState<L.LatLngExpression[]>([
-    [-18.913684, 47.536131],
-    [-18.913684, 47.546131],
-    [-18.903684, 47.546131],
-    [-18.903684, 47.536131],
-  ]);
-  const mapRef = useRef<L.Map | null>(null);
-  const polygonRef = useRef<L.Polygon | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [polygonCoordinates, setPolygonCoordinates] = useState<number[][]>([]);
+  const [validationPhotos, setValidationPhotos] = useState<File[]>([]);
+  const [photoValidationUrls, setPhotoValidationUrls] = useState<string[]>([]);
   const [photos, setPhotos] = useState<File[]>([]);
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const form = useForm<TerrainFormData>({
-    resolver: yupResolver(formSchema),
+  const [overlapTerrains, setOverlapTerrains] = useState<TerrainData[] | null>(null);
+  const [checkingOverlap, setCheckingOverlap] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(!!initialData);
+  
+  const formSchema = isValidationMode ? validationSchema : terrainSchema;
+  
+  const form = useForm({
+    resolver: yupResolver(formSchema as any),
     defaultValues: {
-      nom_terrain: initialData?.nom_terrain || '',
-      surface_proposee: initialData?.surface_proposee || 0,
-      id_region: initialData?.id_region?.toString() || '',
-      id_district: initialData?.id_district?.toString() || '',
-      id_commune: initialData?.id_commune?.toString() || '',
+      id_terrain: initialData?.id_terrain,
+      nom_terrain: initialData?.nom_terrain || "",
+      surface_proposee: initialData?.surface_proposee || 1,
+      surface_validee: initialData?.surface_validee || initialData?.surface_proposee || 1,
+      id_region: initialData?.id_region?.toString() || "",
+      id_district: initialData?.id_district?.toString() || "",
+      id_commune: initialData?.id_commune?.toString() || "",
       acces_eau: initialData?.acces_eau || false,
       acces_route: initialData?.acces_route || false,
-      id_tantsaha: initialData?.id_tantsaha || userId,
+      id_tantsaha: userRole === 'simple' ? userId : initialData?.id_tantsaha,
+      photos: initialData?.photos || '',
+      date_validation: initialData?.date_validation || new Date().toISOString().split('T')[0],
+      rapport_validation: initialData?.rapport_validation || '',
+      photos_validation: initialData?.photos_validation || '',
+      validation_decision: initialData?.validation_decision || 'valider',
     }
   });
-  console.log('terrain loading data edit 1',initialData);
-  const { control, handleSubmit, setValue, formState: { errors }, watch } = form;
-  const selectedTantsaha = watch('id_tantsaha');
-
+  console.log('default data terrain to load', initialData);
   useEffect(() => {
-    fetchRegions();
-
     if (initialData) {
-      setIsEditMode(true);
-      loadTerrainData(initialData);
-    }
-
-    // Initialize with default values for new terrain
-    if (!initialData && userRole && (userRole === 'technicien' || userRole === 'superviseur')) {
-      setValue('id_tantsaha', ''); // Clear default value for technicians/supervisors
-    }
-  }, [initialData, userRole]);
-
-  useEffect(() => {
-    if (selectedRegion) {
-      fetchDistricts(selectedRegion);
-      setValue('id_district', '');
-      setCommunes([]);
-      setValue('id_commune', '');
-    }
-  }, [selectedRegion, setValue]);
-
-  useEffect(() => {
-    if (selectedDistrict) {
-      fetchCommunes(selectedDistrict);
-      setValue('id_commune', '');
-    }
-  }, [selectedDistrict, setValue]);
-
-  const loadTerrainData = (data: TerrainData) => {
-    console.log('Loading terrain for edit data:', data);
-    setTerrain(data);
-    setValue('nom_terrain', data.nom_terrain || '');
-    setValue('surface_proposee', data.surface_proposee);
-    setValue('id_region', data.id_region?.toString() || '');
-    setSelectedRegion(data.id_region);
-    setValue('id_district', data.id_district?.toString() || '');
-    setSelectedDistrict(data.id_district);
-    setValue('id_commune', data.id_commune?.toString() || '');
-    setValue('acces_eau', data.acces_eau || false);
-    setValue('acces_route', data.acces_route || false);
-    setValue('id_tantsaha', data.id_tantsaha || userId);
-    
-    // Load polygon coordinates if available
-    if (data.geom) {
-      try {
-        const geomData = typeof data.geom === 'string' 
-          ? JSON.parse(data.geom) 
-          : data.geom;
-          
-        if (geomData && geomData.coordinates && geomData.coordinates[0]) {
-          // Convert GeoJSON format to LatLngExpression[]
-          const coords = geomData.coordinates[0].map((coord: number[]) => 
-            [coord[1], coord[0]] as L.LatLngExpression
-          );
-          setPolygonCoordinates(coords);
+      if (initialData.geom) {
+        try {
+          const geomData = typeof initialData.geom === 'string' 
+            ? JSON.parse(initialData.geom) 
+            : initialData.geom;
+                      
+          if (geomData && geomData.type === 'Polygon' && geomData.coordinates && geomData.coordinates[0]) {
+            setPolygonCoordinates(geomData.coordinates[0]);
+          }
+        } catch (error) {
+          console.error("Error processing polygon geometry:", error);
         }
-      } catch (error) {
-        console.error("Error parsing polygon geometry:", error);
-      }
-    }
-    
-    // Load photos
-    if (data.photos) {
-      const photoArray = typeof data.photos === 'string' 
-        ? data.photos.split(',') 
-        : data.photos;
-      setPhotoUrls(photoArray.filter(Boolean));
-    }
-  };
-
-  const fetchRegions = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('region')
-        .select('*')
-        .order('nom_region', { ascending: true });
-
-      if (error) {
-        throw error;
-      }
-
-      if (data) {
-        setRegions(data);
-      }
-    } catch (error) {
-      console.error("Error fetching regions:", error);
-      toast("Failed to load regions.");
-    }
-  };
-
-  const fetchDistricts = async (regionId: number) => {
-    try {
-      const { data, error } = await supabase
-        .from('district')
-        .select('*')
-        .eq('id_region', regionId)
-        .order('nom_district', { ascending: true });
-
-      if (error) {
-        throw error;
-      }
-
-      if (data) {
-        setDistricts(data);
-      }
-    } catch (error) {
-      console.error("Error fetching districts:", error);
-      toast("Failed to load districts.");
-    }
-  };
-
-  const fetchCommunes = async (districtId: number) => {
-    try {
-      const { data, error } = await supabase
-        .from('commune')
-        .select('*')
-        .eq('id_district', districtId)
-        .order('nom_commune', { ascending: true });
-
-      if (error) {
-        throw error;
-      }
-
-      if (data) {
-        setCommunes(data);
-      }
-    } catch (error) {
-      console.error("Error fetching communes:", error);
-      toast("Failed to load communes.");
-    }
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0) return;
-    
-    const selectedFiles = Array.from(e.target.files);
-    setPhotos(prevPhotos => [...prevPhotos, ...selectedFiles]);
-    
-    selectedFiles.forEach(file => {
-      const previewUrl = URL.createObjectURL(file);
-      setPhotoUrls(prevUrls => [...prevUrls, previewUrl]);
-    });
-  };
-
-  const removePhoto = (index: number) => {
-    setPhotos(prevPhotos => {
-      const newPhotos = [...prevPhotos];
-      newPhotos.splice(index, 1);
-      return newPhotos;
-    });
-
-    setPhotoUrls(prevUrls => {
-      const newUrls = [...prevUrls];
-      
-      // Only revoke if it's a blob URL (newly added photo)
-      if (newUrls[index].startsWith('blob:')) {
-        URL.revokeObjectURL(newUrls[index]);
       }
       
-      newUrls.splice(index, 1);
-      return newUrls;
-    });
-  };
+      if (initialData.photos) {
+        try {
+          const photosArray = typeof initialData.photos === 'string' 
+            ? initialData.photos.split(',').filter(url => url.trim() !== '') 
+            : Array.isArray(initialData.photos) ? initialData.photos.filter(url => url && url.trim() !== '') : [];
+          
+          setPhotoUrls(photosArray);
+        } catch (error) {
+          console.error("Error processing photos:", error);
+        }
+      }
 
-  const uploadPhotos = async (): Promise<string[]> => {
+      if (initialData.photos_validation) {
+        try {
+          const photosArray = typeof initialData.photos_validation === 'string' 
+            ? initialData.photos_validation.split(',').filter(url => url.trim() !== '') 
+            : Array.isArray(initialData.photos_validation) ? initialData.photos_validation.filter(url => url && url.trim() !== '') : [];
+          
+          setPhotoValidationUrls(photosArray);
+        } catch (error) {
+          console.error("Error processing validation photos:", error);
+        }
+      }
+    }
+  }, [initialData]);
+
+  const uploadPhotos = async (photos: File[], folder: string = 'terrain-photos'): Promise<string[]> => {
     if (photos.length === 0) return [];
     
     setIsUploading(true);
@@ -277,7 +140,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       for (const photo of photos) {
         const fileExt = photo.name.split('.').pop();
         const fileName = `terrain-${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
-        const filePath = `terrain-photos/${fileName}`;
+        const filePath = `${folder}/${fileName}`;
         
         const { error: uploadError } = await supabase.storage
           .from('project-photos')
@@ -306,390 +169,262 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
     }
   };
 
-  const onSubmit = async (formData: TerrainFormData) => {
-    setLoading(true);
+  const checkPolygonOverlap = async (geojson: any, idToOmit?: number) => {
+    setCheckingOverlap(true);
+    
     try {
-      if (!user) {
-        throw new Error("User not authenticated.");
-      }
-
-      // Make sure we have a valid id_tantsaha
-      const tantsahaId = userRole && (userRole === 'technicien' || userRole === 'superviseur') 
-        ? formData.id_tantsaha 
-        : userId;
-        
-      if (!tantsahaId) {
-        throw new Error("Un agriculteur doit être sélectionné.");
-      }
-
-      // Upload new photos
-      const uploadedPhotoUrls = await uploadPhotos();
       
-      // Combine existing urls (that aren't blob URLs) with newly uploaded ones
-      const existingUrls = photoUrls.filter(url => !url.startsWith('blob:'));
-      const allPhotoUrls = [...existingUrls, ...uploadedPhotoUrls];
-      
-      // Convert polygon coordinates to GeoJSON format
-      const geojson = {
-        type: "Polygon",
-        coordinates: [
-          polygonCoordinates.map(coord => 
-            Array.isArray(coord) ? [coord[1], coord[0]] : [0, 0]
-          )
-        ]
-      };
-      
-      // Convert form data to the correct types
-      const terrainData = convertFormDataToTerrainData(formData);
-      terrainData.id_tantsaha = tantsahaId;
-      terrainData.photos = allPhotoUrls.join(',');
-      terrainData.geom = geojson;
-
-      console.log("Submitting terrain data:", terrainData);
-
-      let response;
-      if (isEditMode && initialData?.id_terrain) {
-        response = await supabase
-          .from('terrain')
-          .update(terrainData)
-          .eq('id_terrain', initialData.id_terrain);
-      } else {
-        const { id_terrain, ...newTerrainData } = terrainData;
-        response = await supabase
-          .from('terrain')
-          .insert([newTerrainData]);
+      const query = supabase.rpc('check_terrain_overlap', {
+        geom_input: geojson,
+        terrain_to_omit: idToOmit || null
+      });
+    
+      const { data, error } = await query;
+    
+      setCheckingOverlap(false);
+    
+      if (error) {
+        console.error("Erreur vérification chevauchement :", error);
+        toast.error("Erreur lors de la vérification du chevauchement des terrains.");
+        return [];
       }
-
-      if (response.error) {
-        console.error("Supabase error:", response.error);
-        throw response.error;
-      }
-
-      toast(`Terrain ${isEditMode ? 'modifié' : 'créé'} avec succès !`);
-      if (onSubmitSuccess) {
-        onSubmitSuccess();
-      } else {
-        navigate('/terrain');
-      }
-    } catch (error: any) {
-      console.error("Error during form submission:", error);
-      toast.error(error.message || "Une erreur s'est produite lors de l'enregistrement.");
-    } finally {
-      setLoading(false);
+      return data || [];
+    } catch (err) {
+      console.error("Exception lors de la vérification du chevauchement:", err);
+      setCheckingOverlap(false);
+      toast.error("Erreur technique lors de la vérification du chevauchement.");
+      return [];
     }
   };
 
-  const handleRegionChange = (selectedValue: string) => {
-    setSelectedRegion(Number(selectedValue));
-  };
+  const onSubmitHandler = async (data: any) => {
+    setIsSubmitting(true);
+    try {
+      if (!isValidationMode) {
+        const geojson = {
+          type: "Polygon",
+          coordinates: [
+            polygonCoordinates.map(coord => 
+              Array.isArray(coord) ? [coord[0], coord[1]] : [0, 0]
+            )
+          ]
+        };
 
-  const handleDistrictChange = (selectedValue: string) => {
-    setSelectedDistrict(Number(selectedValue));
-  };
-
-  // Custom map component to handle events and polygon editing
-  const MapEvents = () => {
-    const map = useMap();
-
-    useEffect(() => {
-      if (!mapRef.current) {
-        mapRef.current = map;
-        setMapInitialized(true);
-        
-        // Center map on polygon if it exists
-        if (polygonCoordinates.length > 0) {
-          const bounds = L.latLngBounds(polygonCoordinates as L.LatLngExpression[]);
-          map.fitBounds(bounds, { padding: [30, 30] });
+        const overlap = await checkPolygonOverlap(geojson, isEditMode && initialData?.id_terrain ? initialData.id_terrain : undefined);
+        if (overlap && overlap.length > 0) {
+          setOverlapTerrains(overlap);
+          setIsSubmitting(false);
+          return;
         }
-      }
-    }, [map]);
-
-    // Handle map clicks to create/edit polygon
-    useMapEvents({
-      click: (e) => {
-        const { lat, lng } = e.latlng;
-        setPolygonCoordinates(prev => [...prev, [lat, lng]]);
-      },
-      dblclick: (e) => {
-        // Prevent default double-click zoom
-        e.originalEvent.stopPropagation();
         
-        // Close the polygon if we have at least 3 points
-        if (polygonCoordinates.length >= 3) {
-          setPolygonCoordinates(prev => {
-            if (prev[0] !== prev[prev.length - 1]) {
-              return [...prev, prev[0]]; // Close the polygon
-            }
-            return prev;
+        data.geom = polygonCoordinates;
+      }
+      
+      data.surface_proposee = parseFloat(data.surface_proposee.toFixed(2));
+      if (data.surface_validee) {
+        data.surface_validee = parseFloat(data.surface_validee.toFixed(2));
+      }
+      
+      const terrainOwnerId = userRole === 'simple' ? userId :
+                             userRole === 'technicien' || userRole === 'superviseur' ?
+                             (data.id_tantsaha || userId) : userId;
+      
+      const terrainData = convertFormDataToTerrainData({...data} as TerrainFormData);
+      terrainData.id_tantsaha = terrainOwnerId;
+      
+      if (isValidationMode) {
+        const uploadedValidationPhotos = await uploadPhotos(validationPhotos, 'terrain-validation-photos');
+        
+        const existingValidationPhotoUrls = photoValidationUrls.filter(url => !url.startsWith('blob:'));
+        const allValidationPhotoUrls = [...existingValidationPhotoUrls, ...uploadedValidationPhotos];
+        
+        terrainData.photos_validation = allValidationPhotoUrls.join(',');
+        terrainData.statut = data.validation_decision === 'valider';
+        
+        if (terrainData.date_validation && typeof terrainData.date_validation !== 'string') {
+          terrainData.date_validation = String(terrainData.date_validation);
+        }
+        
+        const { error } = await supabase
+          .from('terrain')
+          .update({
+            surface_validee: terrainData.surface_validee,
+            photos_validation: String(terrainData.photos_validation),
+            statut: terrainData.statut,
+            date_validation: terrainData.date_validation,
+            rapport_validation: terrainData.rapport_validation,
+            validation_decision: terrainData.validation_decision
+          })
+          .eq('id_terrain', initialData?.id_terrain);
+          
+        if (error) throw error;
+        
+        if (initialData?.id_tantsaha) {
+          await sendNotification(
+            supabase,
+            userId,
+            [{ id_utilisateur: initialData.id_tantsaha }],
+            data.validation_decision === 'valider' ? "Terrain validé" : "Terrain rejeté",
+            `Votre terrain ${initialData.nom_terrain} a été ${data.validation_decision === 'valider' ? 'validé' : 'rejeté'}`,
+            data.validation_decision === 'valider' ? "success" : "warning",
+            "terrain",
+            initialData.id_terrain
+          );
+        }
+        
+        toast.success(`Terrain ${data.validation_decision === 'valider' ? 'validé' : 'rejeté'} avec succès`);
+        
+        if (onSubmitSuccess) {
+          onSubmitSuccess({
+            ...initialData!,
+            photos_validation: terrainData.photos_validation,
+            statut: terrainData.statut,
+            date_validation: terrainData.date_validation,
+            rapport_validation: terrainData.rapport_validation,
+            validation_decision: terrainData.validation_decision,
+            surface_validee: terrainData.surface_validee
           });
         }
-      }
-    });
+      } else {
+        const uploadedPhotoUrls = await uploadPhotos(photos);
+        
+        const existingPhotoUrls = photoUrls.filter(url => !url.startsWith('blob:'));
+        const allPhotoUrls = [...existingPhotoUrls, ...uploadedPhotoUrls];
+        
+        terrainData.photos = allPhotoUrls.join(',');
+        
+        console.log("Saving terrain data:", terrainData);
+        
+        if (initialData?.id_terrain) {
+          terrainData.statut = initialData.statut;
+          
+          const { data: updatedTerrain, error } = await supabase
+            .from('terrain')
+            .update({
+              id_region: terrainData.id_region,
+              id_district: terrainData.id_district,
+              id_commune: terrainData.id_commune,
+              nom_terrain: terrainData.nom_terrain,
+              surface_proposee: terrainData.surface_proposee,
+              acces_eau: terrainData.acces_eau,
+              acces_route: terrainData.acces_route,
+              id_tantsaha: terrainData.id_tantsaha,
+              photos: String(terrainData.photos),
+              geom: terrainData.geom,
+              statut: terrainData.statut
+            })
+            .eq('id_terrain', initialData.id_terrain)
+            .select('*')
+            .single();
+            
+          if (error) throw error;
+          
+          toast.success("Terrain modifié avec succès");
+          
+          if (onSubmitSuccess) {
+            onSubmitSuccess({
+              ...initialData,
+              ...updatedTerrain
+            });
+          }
+        } else {
+          terrainData.statut = false;
+          const { id_terrain, ...dataSansId } = terrainData;
 
-    return null;
+          const { data: newTerrain, error } = await supabase
+            .from('terrain')
+            .insert([{
+              id_region: dataSansId.id_region,
+              id_district: dataSansId.id_district,
+              id_commune: dataSansId.id_commune,
+              nom_terrain: dataSansId.nom_terrain,
+              surface_proposee: dataSansId.surface_proposee,
+              acces_eau: dataSansId.acces_eau,
+              acces_route: dataSansId.acces_route,
+              id_tantsaha: dataSansId.id_tantsaha,
+              photos: typeof dataSansId.photos === 'string' ? dataSansId.photos : '',
+              geom: dataSansId.geom,
+              statut: dataSansId.statut
+            }])
+            .select('*')
+            .single();
+            
+          if (error) throw error;
+          
+          const { data: supervisors } = await supabase
+            .from('utilisateur')
+            .select('id_utilisateur')
+            .eq('id_role', 3);
+            
+          if (supervisors && supervisors.length > 0 && userId) {
+            await sendNotification(
+              supabase,
+              userId,
+              supervisors,
+              "Nouveau terrain",
+              `Un nouveau terrain '${data.nom_terrain}' a été ajouté en attente de validation`,
+              "info",
+              "terrain",
+              newTerrain.id_terrain
+            );
+          }
+          
+          toast.success("Terrain ajouté avec succès");
+          
+          if (onSubmitSuccess) {
+            onSubmitSuccess(newTerrain);
+          }
+        }
+      }
+    } catch (error: any) {
+      toast.error("Erreur: " + error.message);
+      console.error("Error submitting terrain form:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <div className="container max-w-2xl py-6">
-      <h1 className="text-2xl font-bold mb-4">{isEditMode ? 'Modifier un Terrain' : 'Ajouter un Terrain'}</h1>
-      <Form {...form}>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          {/* Show agriculteur select for technicien/superviseur */}
-          {userRole && (userRole === 'technicien' || userRole === 'superviseur') && (
-            <FormField
-              control={control}
-              name="id_tantsaha"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Agriculteur</FormLabel>
-                  <Select 
-                    onValueChange={field.onChange} 
-                    value={field.value?.toString() || ''}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Sélectionner un agriculteur" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {agriculteurs && agriculteurs.map((agriculteur) => (
-                        <SelectItem
-                          key={agriculteur.id_utilisateur}
-                          value={agriculteur.id_utilisateur}
-                        >
-                          {agriculteur.nom} {agriculteur.prenoms || ''}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage>{errors.id_tantsaha?.message}</FormMessage>
-                </FormItem>
-              )}
-            />
-          )}
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmitHandler)} className="space-y-6">
+        {isValidationMode ? (
+          <ValidationForm 
+            form={form}
+            photoValidationUrls={photoValidationUrls}
+            setPhotoValidationUrls={setPhotoValidationUrls}
+            validationPhotos={validationPhotos}
+            setValidationPhotos={setValidationPhotos}
+            terrain={initialData!}
+          />
+        ) : (
+          <TerrainFormFields 
+            form={form}
+            userRole={userRole}
+            userId={userId}
+            agriculteurs={agriculteurs}
+            techniciens={techniciens}
+            photoUrls={photoUrls}
+            setPhotoUrls={setPhotoUrls}
+            photos={photos}
+            setPhotos={setPhotos}
+            polygonCoordinates={polygonCoordinates}
+            setPolygonCoordinates={setPolygonCoordinates}
+            overlapTerrains={overlapTerrains}
+          />
+        )}
         
-          <FormField
-            control={control}
-            name="nom_terrain"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Nom du terrain</FormLabel>
-                <FormControl>
-                  <Input placeholder="Nom du terrain" {...field} />
-                </FormControl>
-                <FormMessage>{errors.nom_terrain?.message}</FormMessage>
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={control}
-            name="surface_proposee"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Surface proposée (en hectares)</FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    placeholder="Surface proposée en hectares"
-                    {...field}
-                    onChange={(e) => field.onChange(parseFloat(e.target.value))}
-                  />
-                </FormControl>
-                <FormMessage>{errors.surface_proposee?.message}</FormMessage>
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={control}
-            name="id_region"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Région</FormLabel>
-                <Select onValueChange={(value) => {
-                  field.onChange(value);
-                  handleRegionChange(value);
-                }} value={field.value}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Sélectionner une région" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {regions.map((region) => (
-                      <SelectItem key={region.id_region} value={region.id_region.toString()}>
-                        {region.nom_region}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage>{errors.id_region?.message}</FormMessage>
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={control}
-            name="id_district"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>District</FormLabel>
-                <Select onValueChange={(value) => {
-                  field.onChange(value);
-                  handleDistrictChange(value);
-                }} value={field.value}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Sélectionner un district" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {districts.map((district) => (
-                      <SelectItem key={district.id_district} value={district.id_district.toString()}>
-                        {district.nom_district}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage>{errors.id_district?.message}</FormMessage>
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={control}
-            name="id_commune"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Commune</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Sélectionner une commune" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {communes.map((commune) => (
-                      <SelectItem key={commune.id_commune} value={commune.id_commune.toString()}>
-                        {commune.nom_commune}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage>{errors.id_commune?.message}</FormMessage>
-              </FormItem>
-            )}
-          />
-          <div className="flex items-center space-x-2">
-            <FormField
-              control={control}
-              name="acces_eau"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                  <FormLabel className="font-normal">
-                    Accès à l'eau
-                  </FormLabel>
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={control}
-              name="acces_route"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                  <FormLabel className="font-normal">
-                    Accès à la route
-                  </FormLabel>
-                </FormItem>
-              )}
-            />
-          </div>
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <FormLabel>Photos du terrain</FormLabel>
-              <Button 
-                type="button" 
-                variant="outline" 
-                size="sm"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <Upload className="h-4 w-4 mr-2" />
-                Ajouter des photos
-              </Button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                multiple
-                className="hidden"
-                onChange={handleFileChange}
-              />
-            </div>
-            
-            {photoUrls.length > 0 && (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
-                {photoUrls.map((url, index) => (
-                  <div key={index} className="relative group">
-                    <img 
-                      src={url} 
-                      alt={`Terrain photo ${index + 1}`} 
-                      className="w-full h-32 object-cover rounded-md border border-border"
-                    />
-                    <button
-                      type="button"
-                      className="absolute top-1 right-1 bg-black bg-opacity-50 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={() => removePhoto(index)}
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-          <div>
-            <FormLabel>Définir la zone sur la carte</FormLabel>
-            <MapContainer
-              center={[-18.913684, 47.536131]}
-              zoom={13}
-              style={{ height: '400px', width: '100%' }}
-              className="rounded-md"
-              whenReady={() => setMapInitialized(true)}
-              doubleClickZoom={false}
-            >
-              <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              />
-              <Polygon
-                positions={polygonCoordinates}
-                pathOptions={{ color: '#ff4444', weight: 2, fillOpacity: 0.5, fillColor: '#ff4444' }}
-              />
-              <MapEvents />
-            </MapContainer>
-            <div className="text-sm text-muted-foreground mt-2">
-              Cliquez sur la carte pour ajouter des points au polygone. Double-cliquez pour terminer le polygone.
-            </div>
-          </div>
-          <div className="flex gap-3 justify-end">
-            {onCancel && (
-              <Button type="button" variant="outline" onClick={onCancel}>
-                Annuler
-              </Button>
-            )}
-            <Button type="submit" disabled={loading || isUploading} className="flex items-center">
-              {(loading || isUploading) ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {isUploading ? 'Upload en cours...' : 'Enregistrement...'}
-                </>
-              ) : 'Enregistrer'}
-            </Button>
-          </div>
-        </form>
-      </Form>
-    </div>
+        <div className="flex justify-end space-x-4 pt-4">
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Annuler
+          </Button>
+          <Button type="submit" disabled={isSubmitting || isUploading}>
+            {(isSubmitting || isUploading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isValidationMode ? "Valider le terrain" : 
+              initialData?.id_terrain ? "Mettre à jour" : "Ajouter le terrain"}
+          </Button>
+        </div>
+      </form>
+    </Form>
   );
 };
 

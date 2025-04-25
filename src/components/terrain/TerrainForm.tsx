@@ -242,7 +242,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
         terrainData.statut = data.validation_decision === 'valider';
         
         if (terrainData.date_validation && typeof terrainData.date_validation !== 'string') {
-          terrainData.date_validation = terrainData.date_validation.toString();
+          terrainData.date_validation = String(terrainData.date_validation);
         }
         
         const { error } = await supabase
