@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -101,7 +100,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
           )}
         </div>
         
-        <div className="flex justify-end mt-3 gap-1">
+        <div className="flex flex-wrap justify-end mt-3 gap-2">
           <Button 
             variant="ghost" 
             size="sm" 
@@ -109,6 +108,10 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
           >
             <Eye className="h-4 w-4 mr-1" /> Détails
           </Button>
+          
+          {project.statut === 'en attente' && (
+            <ContractTemplate project={project} className="mr-1" />
+          )}
           
           {canEdit && onEdit && (
             <Button 
