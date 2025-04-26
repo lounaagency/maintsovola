@@ -24,7 +24,6 @@ const Feed: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   
-  // Initialize filters from URL parameters
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const newFilters: {
@@ -74,19 +73,6 @@ const Feed: React.FC = () => {
 
       if (projectId) {
         query = query.eq('id_projet', parseInt(projectId));
-      }
-      
-      // Apply filters from activeFilters state
-      if (activeFilters.region) {
-        query = query.filter('commune.district.region.nom_region', 'eq', activeFilters.region);
-      }
-      
-      if (activeFilters.district) {
-        query = query.filter('commune.district.nom_district', 'eq', activeFilters.district);
-      }
-      
-      if (activeFilters.commune) {
-        query = query.filter('commune.nom_commune', 'eq', activeFilters.commune);
       }
       
       let { data: projetsData, error: projetsError } = await query;
@@ -142,7 +128,6 @@ const Feed: React.FC = () => {
         commentsCount[projectId] = (commentsCount[projectId] || 0) + 1;
       });
 
-      // Filter by culture if needed
       let filteredProjects = projetsData || [];
       if (activeFilters.culture && projetsData) {
         filteredProjects = projetsData.filter(projet => {
