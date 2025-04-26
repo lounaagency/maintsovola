@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Navigate, useSearchParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -76,7 +75,7 @@ const Feed: React.FC = () => {
       if (projectId) {
         query = query.eq('id_projet', parseInt(projectId));
       }
-
+      
       // Apply filters from activeFilters state
       if (activeFilters.region) {
         query = query.filter('commune.district.region.nom_region', 'eq', activeFilters.region);

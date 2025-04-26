@@ -89,7 +89,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
             <span className="font-medium">Culture:</span> {project.projet_culture?.map(pc => pc.culture?.nom_culture).join(', ')}
           </div>
           <div className="col-span-2">
-            <span className="font-medium">Localisation:</span> {project.region?.nom_region}, {project.district?.nom_district}
+            <span className="font-medium">Localisation:</span> {project.region?.nom_region || "Non spécifié"}, {project.district?.nom_district || "Non spécifié"}
           </div>
           {showFunding && project.currentFunding !== undefined && project.fundingGoal !== undefined && (
             <div className="col-span-2 mt-2">
