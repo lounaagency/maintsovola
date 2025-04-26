@@ -65,6 +65,22 @@ const ContractTemplate: React.FC<ContractTemplateProps> = ({ project, className 
 
     addHeader();
 
+    const financialData = project.projet_culture?.map(pc => [
+      pc.culture?.nom_culture || 'N/A',
+      project.surface_ha || 0,
+      pc.cout_exploitation_previsionnel || 0,
+      pc.rendement_previsionnel || 0,
+      (pc.rendement_previsionnel || 0) * (project.surface_ha || 0),
+      pc.culture?.prix_tonne || 0,
+      ((pc.rendement_previsionnel || 0) * (project.surface_ha || 0) * (pc.culture?.prix_tonne || 0)),
+      ((pc.rendement_previsionnel || 0) * (project.surface_ha || 0) * (pc.culture?.prix_tonne || 0)) - (pc.cout_exploitation_previsionnel || 0)
+    ]) || [];
+
+    const totalProfit = financialData.reduce((sum, row) => sum + (row[7] as number), 0);
+    const partProducteur = Math.round(totalProfit * 0.4);
+    const partInvestisseurs = Math.round(totalProfit * 0.4);
+    const partMaintso = Math.round(totalProfit * 0.2);
+
     const currentYear = new Date().getFullYear();
     const campagne = project.campagne_annee || currentYear;
 
@@ -78,17 +94,25 @@ const ContractTemplate: React.FC<ContractTemplateProps> = ({ project, className 
     y += 10;
 
     addLine("EO ANELANELAN'IRETO :");
-    addLine(`Orinasa MAINTSO VOLA S.A., solontenany ${project.representant_nom || '[À compléter]'}, foibe ao ${project.siege_social || '[À compléter]'}, voasoratra ara-dalàna laharana ${project.rc_numero || '[À compléter]'},`);
+    addLine(`Orinasa MAINTSO VOLA S.A., solontenany ${project.representant?.nom_complet || 'Tale Jeneraly'}, foibe ao ${project.siege_social || 'Antananarivo'}, voasoratra ara-dalàna laharana ${project.rc_numero || 'RCS TANA 2023 B 00123'},`);
     addLine("Antsoina amin'ny manaraka hoe \"Ny Orinasa\"");
 
     y += 5;
     addLine("SY :");
-    addLine(`${project.tantsaha?.nom_complet || `${project.tantsaha?.nom} ${project.tantsaha?.prenoms || ''}`}, teraka tamin'ny ${project.tantsaha?.date_naissance || '[À compléter]'}, monina ao ${project.tantsaha?.adresse || '[À compléter]'}, CIN laharana ${project.tantsaha?.cin || '[À compléter]'},`);
+    const farmerFullName = project.tantsaha?.nom_complet || `${project.tantsaha?.nom || ''} ${project.tantsaha?.prenoms || ''}`;
+    addLine(`${farmerFullName}, teraka tamin'ny ${project.tantsaha?.date_naissance || 'Tsy voalaza'}, monina ao ${project.tantsaha?.adresse || 'Tsy voalaza'}, CIN laharana ${project.tantsaha?.cin || 'Tsy voalaza'},`);
     addLine("Antsoina amin'ny manaraka hoe \"Ny Tantsaha\"");
 
     y += 10;
     setArticleTitle("ANDININY 1 – TOMBONTSOA");
-    addLine(`Ity fifanekena ity dia mikendry ny hampiasana tanim-bary ${project.terrain?.nom_terrain || `#${project.id_terrain}`}, any ${[project.commune?.nom_commune, project.district?.nom_district, project.region?.nom_region].filter(Boolean).join(', ')}, mirefy ${project.surface_ha} hektara, amin'ny fambolena ${project.projet_culture?.map(pc => pc.culture?.nom_culture).join(', ')}, ao anatin'ny programa Maintso Vola ${campagne}.`);
+    const location = [
+      project.region?.nom_region,
+      project.district?.nom_district,
+      project.commune?.nom_commune
+    ].filter(Boolean).join(', ');
+    const cultures = project.projet_culture?.map(pc => pc.culture?.nom_culture).filter(Boolean).join(', ');
+    
+    addLine(`Ity fifanekena ity dia mikendry ny hampiasana tanim-bary ${project.terrain?.nom_terrain || ''}, any ${location}, mirefy ${project.surface_ha || 0} hektara, amin'ny fambolena ${cultures || 'karazana voly samihafa'}, ao anatin'ny programa Maintso Vola ${campagne}.`);
 
     y += 10;
     setArticleTitle("ANDININY 2 – ADIDIN'NY ORINASA");
@@ -136,13 +160,13 @@ const ContractTemplate: React.FC<ContractTemplateProps> = ({ project, className 
     autoTable(doc, {
       startY: y,
       head: [["Vokatra", "Tany (ha)", "Saran'ny famokarana (Ar)", "Vokatra isaky ny ha", "Vokatra tanteraka", "Vidiny (Ar/kg)", "Vola miditra (Ar)", "Tombony (Ar)"]],
-      body: project.tableau_financier || [],
+      body: financialData,
       theme: "grid",
       styles: { fontSize: 8 },
       headStyles: { fillColor: [76, 175, 80] },
     });
 
-    const firstTableEndY = (doc as any).lastAutoTable.finalY;
+    const firstTableEndY = (doc as any).autoTable.previous.finalY;
     y = firstTableEndY + 10;
     
     doc.setFontSize(12);
@@ -152,21 +176,22 @@ const ContractTemplate: React.FC<ContractTemplateProps> = ({ project, className 
       startY: y + 5,
       head: [["Mahazo", "Isan-jato", "Vola (Ar)"]],
       body: [
-        ["Tantsaha", "40%", project.part_producteur],
-        ["Mpampiasa vola", "40%", project.part_investisseurs],
-        ["Maintso Vola", "20%", project.part_maintso],
+        ["Tantsaha", "40%", partProducteur.toLocaleString()],
+        ["Mpampiasa vola", "40%", partInvestisseurs.toLocaleString()],
+        ["Maintso Vola", "20%", partMaintso.toLocaleString()],
       ],
       theme: "grid",
       styles: { fontSize: 8 },
       headStyles: { fillColor: [76, 175, 80] },
     });
 
-    const secondTableEndY = (doc as any).lastAutoTable.finalY;
+    const secondTableEndY = (doc as any).autoTable.previous.finalY;
     y = secondTableEndY + 10;
     
     addLine("ANDININY 6 – FAHARETAN'NY FIFANEKENA", 0, 12);
-    addLine(`Fotoana : manomboka ny ${project.date_debut} ka hatramin'ny ${project.date_fin}`);
-    addLine("Azo havaozina raha mahafa-po ny vokatra sy ny fiaraha-miasa.");
+    const dateDebut = project.date_debut ? new Date(project.date_debut).toLocaleDateString() : 'Tsy voalaza';
+    const dateFin = project.date_fin ? new Date(project.date_fin).toLocaleDateString() : 'Tsy voalaza';
+    addLine(`Fotoana : manomboka ny ${dateDebut} ka hatramin'ny ${dateFin}`);
 
     y += 10;
     addLine("ANDININY 7 – FANAFOANANA SY FAHATAHORANA", 0, 12);
@@ -210,7 +235,7 @@ const ContractTemplate: React.FC<ContractTemplateProps> = ({ project, className 
     const qrImage = await QRCode.toDataURL(qrData);
     doc.addImage(qrImage, 'PNG', pageWidth - 50, pageHeight - 50, 30, 30);
 
-    doc.save(`fifanekena_${project.id_projet}_${project.tantsaha?.nom || 'tantsaha'}.pdf`);
+    doc.save(`fifanekena_${project.id_projet}_${farmerFullName.replace(/\s+/g, '_')}.pdf`);
   };
 
   return (

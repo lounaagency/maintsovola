@@ -77,17 +77,25 @@ const ContractTemplate: React.FC<ContractTemplateProps> = ({ project, className 
     y += 10;
 
     addLine("ENTRE :");
-    addLine(`La Société MAINTSO VOLA S.A., représentée par ${project.representant_nom}, siège social à ${project.siege_social}, immatriculée sous le n° ${project.rc_numero},`);
+    addLine(`La Société MAINTSO VOLA S.A., représentée par ${project.representant?.nom_complet || 'Direction Générale'}, siège social à ${project.siege_social || 'Antananarivo'}, immatriculée sous le n° ${project.rc_numero || 'RCS TANA 2023 B 00123'},`);
     addLine("Ci-après dénommée \"la Société\"");
 
     y += 5;
     addLine("ET :");
-    addLine(`${project.tantsaha?.nom_complet}, né(e) le ${project.tantsaha?.date_naissance}, domicilié(e) à ${project.tantsaha?.adresse}, CIN n° ${project.tantsaha?.cin},`);
+    const farmerFullName = project.tantsaha?.nom_complet || `${project.tantsaha?.nom || ''} ${project.tantsaha?.prenoms || ''}`;
+    addLine(`${farmerFullName}, né(e) le ${project.tantsaha?.date_naissance || 'Non spécifié'}, domicilié(e) à ${project.tantsaha?.adresse || 'Non spécifié'}, CIN n° ${project.tantsaha?.cin || 'Non spécifié'},`);
     addLine("Ci-après dénommé(e) \"le Producteur\"");
 
     y += 10;
     setArticleTitle("ARTICLE 1 – OBJET");
-    addLine(`Le présent contrat a pour objet la mise en valeur exclusive de la parcelle agricole ${project.terrain?.nom}, sise à ${project.terrain?.adresse}, sur une superficie de ${project.terrain?.surface} hectares, pour la culture de ${project.cultures?.[0]?.nom}, dans le cadre du programme Maintso Vola ${campagne}.`);
+    const location = [
+      project.region?.nom_region,
+      project.district?.nom_district,
+      project.commune?.nom_commune
+    ].filter(Boolean).join(', ');
+    const cultures = project.projet_culture?.map(pc => pc.culture?.nom_culture).filter(Boolean).join(', ');
+    
+    addLine(`Le présent contrat a pour objet la mise en valeur exclusive de la parcelle agricole ${project.terrain?.nom_terrain || ''}, sise à ${location}, sur une superficie de ${project.surface_ha || 0} hectares, pour la culture de ${cultures || 'cultures diverses'}, dans le cadre du programme Maintso Vola ${campagne}.`);
 
     y += 10;
     setArticleTitle("ARTICLE 2 – ENGAGEMENTS DE LA SOCIÉTÉ");
@@ -132,16 +140,33 @@ const ContractTemplate: React.FC<ContractTemplateProps> = ({ project, className 
     doc.text("TABLEAU FINANCIER PRÉVISIONNEL", 20, y);
     y += 5;
 
+    const financialData = project.projet_culture?.map(pc => [
+      pc.culture?.nom_culture || 'N/A',
+      project.surface_ha || 0,
+      pc.cout_exploitation_previsionnel || 0,
+      pc.rendement_previsionnel || 0,
+      (pc.rendement_previsionnel || 0) * (project.surface_ha || 0),
+      pc.culture?.prix_tonne || 0,
+      ((pc.rendement_previsionnel || 0) * (project.surface_ha || 0) * (pc.culture?.prix_tonne || 0)),
+      ((pc.rendement_previsionnel || 0) * (project.surface_ha || 0) * (pc.culture?.prix_tonne || 0)) - (pc.cout_exploitation_previsionnel || 0)
+    ]) || [];
+
+    // Calculate profit shares
+    const totalProfit = financialData.reduce((sum, row) => sum + (row[7] as number), 0);
+    const partProducteur = Math.round(totalProfit * 0.4);
+    const partInvestisseurs = Math.round(totalProfit * 0.4);
+    const partMaintso = Math.round(totalProfit * 0.2);
+
     autoTable(doc, {
       startY: y,
       head: [["Culture", "Surface (ha)", "Coût (Ar)", "Rdt (T/ha)", "Rdt total", "Prix (Ar/kg)", "Revenu (Ar)", "Bénéfice (Ar)"]],
-      body: project.tableau_financier || [],
+      body: financialData,
       theme: "grid",
       styles: { fontSize: 8 },
       headStyles: { fillColor: [76, 175, 80] },
     });
 
-    const firstTableEndY = (doc as any).lastAutoTable.finalY;
+    const firstTableEndY = (doc as any).autoTable.previous.finalY;
     y = firstTableEndY + 10;
     
     doc.setFontSize(12);
@@ -151,20 +176,22 @@ const ContractTemplate: React.FC<ContractTemplateProps> = ({ project, className 
       startY: y + 5,
       head: [["Bénéficiaire", "Pourcentage", "Montant (Ar)"]],
       body: [
-        ["Producteur", "40%", project.part_producteur],
-        ["Investisseurs", "40%", project.part_investisseurs],
-        ["Maintso Vola", "20%", project.part_maintso],
+        ["Producteur", "40%", partProducteur.toLocaleString()],
+        ["Investisseurs", "40%", partInvestisseurs.toLocaleString()],
+        ["Maintso Vola", "20%", partMaintso.toLocaleString()],
       ],
       theme: "grid",
       styles: { fontSize: 8 },
       headStyles: { fillColor: [76, 175, 80] },
     });
 
-    const secondTableEndY = (doc as any).lastAutoTable.finalY;
+    const secondTableEndY = (doc as any).autoTable.previous.finalY;
     y = secondTableEndY + 10;
     
     addLine("ARTICLE 6 – DURÉE", 0, 12);
-    addLine(`Durée : du ${project.date_debut} au ${project.date_fin}`);
+    const dateDebut = project.date_debut ? new Date(project.date_debut).toLocaleDateString() : 'Non spécifié';
+    const dateFin = project.date_fin ? new Date(project.date_fin).toLocaleDateString() : 'Non spécifié';
+    addLine(`Durée : du ${dateDebut} au ${dateFin}`);
     addLine("Reconduction possible après évaluation de la performance.");
 
     y += 10;
@@ -210,7 +237,7 @@ const ContractTemplate: React.FC<ContractTemplateProps> = ({ project, className 
     const qrImage = await QRCode.toDataURL(qrData);
     doc.addImage(qrImage, 'PNG', pageWidth - 50, pageHeight - 50, 30, 30);
 
-    doc.save(`contrat_${project.id_projet}_${project.tantsaha?.nom}.pdf`);
+    doc.save(`contrat_${project.id_projet}_${farmerFullName.replace(/\s+/g, '_')}.pdf`);
   };
 
   return (
