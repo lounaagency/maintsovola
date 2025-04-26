@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Navigate, useSearchParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -23,6 +24,24 @@ const Feed: React.FC = () => {
   const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  
+  // Initialize filters from URL parameters
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const newFilters: {
+      culture?: string;
+      region?: string;
+      district?: string;
+      commune?: string;
+    } = {};
+
+    if (params.has('culture')) newFilters.culture = params.get('culture') || undefined;
+    if (params.has('region')) newFilters.region = params.get('region') || undefined;
+    if (params.has('district')) newFilters.district = params.get('district') || undefined;
+    if (params.has('commune')) newFilters.commune = params.get('commune') || undefined;
+
+    setActiveFilters(newFilters);
+  }, [location.search]);
   
   if (!user) {
     return <Navigate to={`/auth${location.search}`} replace />;
@@ -56,6 +75,19 @@ const Feed: React.FC = () => {
 
       if (projectId) {
         query = query.eq('id_projet', parseInt(projectId));
+      }
+
+      // Apply filters from activeFilters state
+      if (activeFilters.region) {
+        query = query.filter('commune.district.region.nom_region', 'eq', activeFilters.region);
+      }
+      
+      if (activeFilters.district) {
+        query = query.filter('commune.district.nom_district', 'eq', activeFilters.district);
+      }
+      
+      if (activeFilters.commune) {
+        query = query.filter('commune.nom_commune', 'eq', activeFilters.commune);
       }
       
       let { data: projetsData, error: projetsError } = await query;
@@ -111,7 +143,18 @@ const Feed: React.FC = () => {
         commentsCount[projectId] = (commentsCount[projectId] || 0) + 1;
       });
 
-      const transformedProjects = projetsData.map(projet => {
+      // Filter by culture if needed
+      let filteredProjects = projetsData || [];
+      if (activeFilters.culture && projetsData) {
+        filteredProjects = projetsData.filter(projet => {
+          const projetCultures = culturesByProjet[projet.id_projet] || [];
+          return projetCultures.some(pc => 
+            pc.culture?.nom_culture === activeFilters.culture
+          );
+        });
+      }
+
+      const transformedProjects = filteredProjects.map(projet => {
         const projetCultures = culturesByProjet[projet.id_projet] || [];
 
         const totalFarmingCost = projetCultures.reduce((sum, pc) => 
