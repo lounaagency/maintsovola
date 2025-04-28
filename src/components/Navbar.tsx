@@ -35,7 +35,7 @@ const Navbar: React.FC = () => {
           <Logo 
             size={isMobile ? "sm" : "sm"} 
             showText={!isMobile} 
-            imageClassName="h-6 w-auto" 
+            imageClassName="h-12 w-auto" 
           />
         </div>
         
