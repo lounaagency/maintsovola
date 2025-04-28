@@ -5,12 +5,14 @@ import { motion } from "framer-motion";
 import { AgriculturalProject } from "@/types/agriculturalProject";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import AgriculturalProjectCard from '@/components/AgriculturalProjectCard';
 
 const Feed: React.FC = () => {
   const [searchParams] = useSearchParams();
+  const isMobile = useIsMobile();
   const projectId = searchParams.get('id_projet');
   const [projects, setProjects] = useState<AgriculturalProject[]>([]);
   const [loading, setLoading] = useState(true);
@@ -568,7 +570,7 @@ const Feed: React.FC = () => {
   };
 
   return (
-    <div className="max-w-md mx-auto px-4 py-4">
+    <div className={`${isMobile ? 'w-full' : 'max-w-md'} mx-auto px-4 py-4`}>
       <header className="mb-4">
         <h1 className="text-2xl font-bold text-gray-900">Projets en financement</h1>
       </header>
