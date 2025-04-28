@@ -288,7 +288,7 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({ proje
           </div>
           
           <div className="mb-3">
-            <h3 className="font-semibold text-base mb-1">{displayTitle}</h3>
+            <h3 className="font-semibold text-base mb-1 text-maintso-500">{displayTitle}</h3>
             <p className="text-sm text-gray-700">{displayDescription}</p>
           </div>
           
