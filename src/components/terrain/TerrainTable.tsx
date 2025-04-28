@@ -267,7 +267,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                         
                       </Button>}
                     
-                    {onContactTechnicien && terrain.id_technicien && <Button variant="outline" size="sm" onClick={() => onContactTechnicien(terrain)}>
+                    {onContactTechnicien && terrain.id_technicien && <Button variant="outline" size="sm" onClick={() => onContactTechnicien(terrain)} className="bg-yellow-400 hover:bg-yellow-300">
                         <MessageSquare className="h-4 w-4 mr-1" />
                         Contacter
                       </Button>}
