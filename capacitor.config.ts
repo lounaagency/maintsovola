@@ -1,9 +1,9 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.maintsovola.app',
+  appId: 'com.maintsovola.myapp',
   appName: 'Maintsovola',
-  webDir: 'dist'
+  webDir: 'build'
 };
 
 export default config;

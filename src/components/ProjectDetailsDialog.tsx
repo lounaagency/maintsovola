@@ -49,6 +49,10 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
     };
   } | null>(null);
   const [currentFunding, setCurrentFunding] = useState<number>(0);
+  const [totalCost, setTotalCost] = useState<number>(0);
+  const [totalRendement, setTotalRendement] = useState<number>(0);
+  const [rendementProduits, setRendementProduits] = useState<string>('');
+  const [totalProfit, setTotalProfit] = useState<number>(0);
   const [fundingProgress, setFundingProgress] = useState<number>(0);
   
   useEffect(() => {
@@ -86,12 +90,11 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
             cout_exploitation_previsionnel,
             rendement_previsionnel,
             date_debut_previsionnelle,
-            culture:id_culture(nom_culture)
+            culture:id_culture(nom_culture,prix_tonne,rendement_ha)
           )
         `)
         .eq('id_projet', projectId)
         .single();
-      
       if (error) throw error;
       setProject(data);
     } catch (error) {
@@ -137,7 +140,6 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
         .order('date_previsionnelle', { ascending: true });
       
       if (error) throw error;
-      console.log('Fetched jalons:', data);
       data.sort((a, b) =>
         a.culture.id_culture?.nom_culture?.localeCompare(
           b.culture.id_culture?.nom_culture
@@ -152,11 +154,32 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
   
   const calculateFundingProgress = () => {
     if (!project) return 0;
-    
+    const projetCultures = project.projet_culture || [];
+
+      const totalFarmingCost = projetCultures.reduce((sum, pc) => 
+        sum + ((pc.cout_exploitation_previsionnel || 0) ), 0);
+
+      const totalEstimatedRevenue = projetCultures.reduce((sum, pc) => {
+        const rendement = pc.rendement_previsionnel || 0;
+        const prixTonne = pc.culture?.prix_tonne || 0;
+        return sum + (rendement * prixTonne);
+      }, 0);
+
+
+      const yieldStrings = projetCultures.map(pc => {
+        const nom = pc.culture?.nom_culture || "Non spécifié";
+        const tonnage = pc.rendement_previsionnel != null ? pc.rendement_previsionnel : (pc.culture?.rendement_ha || 0) * (project.surface_ha || 1);
+        
+        return `${Math.round(tonnage * 100) / 100} t de ${nom}`;
+      });
+      const expectedYieldLabel = yieldStrings.length > 0 ? yieldStrings.join(", ") : "N/A";
+      const totalProfit = totalEstimatedRevenue - totalFarmingCost;
+      
     const totalInvestment = investments.reduce((sum, inv) => sum + (inv.montant || 0), 0);
-    const totalCost = project.projet_culture.reduce((sum: number, pc: any) => 
-      sum + (pc.cout_exploitation_previsionnel || 0), 0);
-    
+    setTotalCost(totalFarmingCost);
+    setTotalRendement(totalEstimatedRevenue);
+    setRendementProduits(expectedYieldLabel);
+    setTotalProfit(totalProfit);
     setCurrentFunding(totalInvestment);
     const progress = totalCost === 0 ? 0 : Math.min(Math.round((totalInvestment / totalCost) * 100), 100);
     setFundingProgress(progress);
@@ -450,27 +473,27 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
                   <div className="text-xs">
                     <span className="text-gray-500 block">Coût d'exploitation</span>
                     <span className="font-medium flex items-center">
-                      {formatCurrency(project.cout_exploitation_previsionnel)} 
+                      {formatCurrency(totalCost)} 
                       <ExternalLink className="h-3 w-3 ml-1 text-primary" />
                     </span>
                   </div>
                   <div className="text-xs">
                     <span className="text-gray-500 block">Rendement prévu</span>
                     <span className="font-medium flex items-center">
-                      {project.rendement_previsionnel} 
+                      {rendementProduits} 
                       <ExternalLink className="h-3 w-3 ml-1 text-primary" />
                     </span>
                   </div>
                   <div className="text-xs">
                     <span className="text-gray-500 block">Revenu estimé</span>
                     <span className="font-medium flex items-center">
-                      {formatCurrency(project.revenu_previsionnel)}
+                      {formatCurrency(totalRendement)}
                       <ExternalLink className="h-3 w-3 ml-1 text-primary" />
                     </span>
                   </div>
                   <div className="text-xs">
                     <span className="text-gray-500 block">Bénéfice total</span>
-                    <span className="font-medium">{formatCurrency(project.benefice_total)}</span>
+                    <span className="font-medium">{formatCurrency(totalProfit)}</span>
                   </div>
                 </div>
                 
@@ -478,7 +501,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-medium">Progression du financement</p>
                     <p className="text-sm font-medium">
-                      {formatCurrency(currentFunding)} / {formatCurrency(project.cout_exploitation_previsionnel)}
+                      {formatCurrency(currentFunding)} / {formatCurrency(totalCost)}
                     </p>
                   </div>
                   <Progress value={fundingProgress} className="h-2" />

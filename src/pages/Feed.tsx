@@ -115,7 +115,7 @@ const Feed: React.FC = () => {
         const projetCultures = culturesByProjet[projet.id_projet] || [];
 
         const totalFarmingCost = projetCultures.reduce((sum, pc) => 
-          sum + ((pc.cout_exploitation_previsionnel || 0) * (projet.surface_ha || 1)), 0);
+          sum + ((pc.cout_exploitation_previsionnel || 0)), 0);
 
         const yieldStrings = projetCultures.map(pc => {
           const nom = pc.culture?.nom_culture || "Non spécifié";
@@ -128,7 +128,7 @@ const Feed: React.FC = () => {
         const totalEstimatedRevenue = projetCultures.reduce((sum, pc) => {
           const rendement = pc.rendement_previsionnel || 0;
           const prixTonne = pc.culture?.prix_tonne || 0;
-          return sum + (rendement * (projet.surface_ha || 1) * prixTonne);
+          return sum + (rendement *  prixTonne);
         }, 0);
 
         const totalProfit = totalEstimatedRevenue - totalFarmingCost;
