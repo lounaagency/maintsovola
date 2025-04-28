@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Navigate, useSearchParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -23,6 +24,23 @@ const Feed: React.FC = () => {
   const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const newFilters: {
+      culture?: string;
+      region?: string;
+      district?: string;
+      commune?: string;
+    } = {};
+
+    if (params.has('culture')) newFilters.culture = params.get('culture') || undefined;
+    if (params.has('region')) newFilters.region = params.get('region') || undefined;
+    if (params.has('district')) newFilters.district = params.get('district') || undefined;
+    if (params.has('commune')) newFilters.commune = params.get('commune') || undefined;
+
+    setActiveFilters(newFilters);
+  }, [location.search]);
   
   if (!user) {
     return <Navigate to={`/auth${location.search}`} replace />;
@@ -56,6 +74,19 @@ const Feed: React.FC = () => {
 
       if (projectId) {
         query = query.eq('id_projet', parseInt(projectId));
+      }
+      
+      // Apply filters directly in the query if they exist
+      if (activeFilters.region) {
+        query = query.eq('commune.district.region.nom_region', activeFilters.region);
+      }
+      
+      if (activeFilters.district) {
+        query = query.eq('commune.district.nom_district', activeFilters.district);
+      }
+      
+      if (activeFilters.commune) {
+        query = query.eq('commune.nom_commune', activeFilters.commune);
       }
       
       let { data: projetsData, error: projetsError } = await query;
@@ -111,7 +142,18 @@ const Feed: React.FC = () => {
         commentsCount[projectId] = (commentsCount[projectId] || 0) + 1;
       });
 
-      const transformedProjects = projetsData.map(projet => {
+      // Apply culture filter separately if needed
+      let filteredProjects = projetsData || [];
+      if (activeFilters.culture && projetsData) {
+        filteredProjects = projetsData.filter(projet => {
+          const projetCultures = culturesByProjet[projet.id_projet] || [];
+          return projetCultures.some(pc => 
+            pc.culture?.nom_culture === activeFilters.culture
+          );
+        });
+      }
+
+      const transformedProjects = filteredProjects.map(projet => {
         const projetCultures = culturesByProjet[projet.id_projet] || [];
 
         const totalFarmingCost = projetCultures.reduce((sum, pc) => 
@@ -155,15 +197,19 @@ const Feed: React.FC = () => {
           false;
         const commentCount = commentsCount[projet.id_projet.toString()] || 0;
 
+        const locationRegion = projet.commune?.district?.region?.nom_region || "Non spécifié";
+        const locationDistrict = projet.commune?.district?.nom_district || "Non spécifié";
+        const locationCommune = projet.commune?.nom_commune || "Non spécifié";
+
         return {
           id: projet.id_projet.toString(),
           title: projet.titre || `Projet de culture de ${cultivationType}`,
           description: projet.description || `Projet de culture de ${cultivationType} sur un terrain de ${projet.surface_ha} hectares.`,
           farmer,
           location: {
-            region: projet.commune?.district?.region?.nom_region || "Non spécifié",
-            district: projet.commune?.district?.nom_district || "Non spécifié",
-            commune: projet.commune?.nom_commune || "Non spécifié"
+            region: locationRegion,
+            district: locationDistrict,
+            commune: locationCommune
           },
           cultivationArea: projet.surface_ha,
           cultivationType,
