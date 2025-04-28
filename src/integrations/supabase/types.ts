@@ -985,6 +985,7 @@ export type Database = {
       }
       projet: {
         Row: {
+          contrat_signe: string | null
           created_at: string | null
           created_by: string | null
           date_debut_production: string | null
@@ -1010,6 +1011,7 @@ export type Database = {
           titre: string | null
         }
         Insert: {
+          contrat_signe?: string | null
           created_at?: string | null
           created_by?: string | null
           date_debut_production?: string | null
@@ -1035,6 +1037,7 @@ export type Database = {
           titre?: string | null
         }
         Update: {
+          contrat_signe?: string | null
           created_at?: string | null
           created_by?: string | null
           date_debut_production?: string | null
