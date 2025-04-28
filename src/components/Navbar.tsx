@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Home, MapPin, LogOut, Settings, Bell, User, FileText } from "lucide-react";
@@ -33,7 +32,11 @@ const Navbar: React.FC = () => {
       <div className="h-full max-w-6xl mx-auto px-6 lg:space-x-6 md:px-4 flex items-center justify-between">
         {/* Logo */}
         <div className="flex items-center">
-          <Logo size={isMobile ? "sm" : "md"} showText={!isMobile} />
+          <Logo 
+            size={isMobile ? "sm" : "sm"} 
+            showText={!isMobile} 
+            imageClassName="h-6 w-auto" 
+          />
         </div>
         
         {/* Central Navigation Icons */}
