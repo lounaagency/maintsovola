@@ -384,9 +384,9 @@ const Feed: React.FC = () => {
       
       // First, get the list of users that the current user follows
       const { data: followedUsers, error: followedError } = await supabase
-        .from('suivre')
-        .select('id_utilisateur_suivi')
-        .eq('id_utilisateur_suiveur', user.id);
+        .from('abonnement')
+        .select('id_suivi')
+        .eq('id_abonne', user.id);
         
       if (followedError) throw followedError;
       
@@ -395,7 +395,7 @@ const Feed: React.FC = () => {
         return;
       }
       
-      const followedIds = followedUsers.map(f => f.id_utilisateur_suivi);
+      const followedIds = followedUsers.map(f => f.id_suivi);
       
       // Then get the projects from these users
       let query = supabase
@@ -566,8 +566,6 @@ const Feed: React.FC = () => {
       setLoadingFollowed(false);
     }
   };
-
-  
 
   return (
     <div className="max-w-md mx-auto px-4 py-4">
