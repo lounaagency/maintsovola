@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Navigate, useSearchParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -367,6 +366,208 @@ const Feed: React.FC = () => {
       </div>
     );
   };
+  
+  const [followedProjects, setFollowedProjects] = useState<AgriculturalProject[]>([]);
+  const [loadingFollowed, setLoadingFollowed] = useState(true);
+  
+  useEffect(() => {
+    if (user) {
+      fetchFollowedProjects();
+    }
+  }, [user]);
+  
+  const fetchFollowedProjects = async () => {
+    if (!user) return;
+    
+    try {
+      setLoadingFollowed(true);
+      
+      // First, get the list of users that the current user follows
+      const { data: followedUsers, error: followedError } = await supabase
+        .from('suivre')
+        .select('id_utilisateur_suivi')
+        .eq('id_utilisateur_suiveur', user.id);
+        
+      if (followedError) throw followedError;
+      
+      if (!followedUsers || followedUsers.length === 0) {
+        setFollowedProjects([]);
+        return;
+      }
+      
+      const followedIds = followedUsers.map(f => f.id_utilisateur_suivi);
+      
+      // Then get the projects from these users
+      let query = supabase
+        .from('projet')
+        .select(`
+          id_projet,
+          surface_ha,
+          statut,
+          created_at,
+          id_tantsaha,
+          id_commune,
+          id_technicien,
+          titre,
+          description,
+          utilisateur!id_tantsaha(id_utilisateur, nom, prenoms, photo_profil),
+          commune(nom_commune, district(nom_district, region(nom_region)))
+        `)
+        .eq('statut', 'en financement')
+        .in('id_tantsaha', followedIds)
+        .order('created_at', { ascending: false });
+      
+      let { data: projetsData, error: projetsError } = await query;
+      
+      if (projetsError) throw projetsError;
+      
+      const { data: culturesData, error: culturesError } = await supabase
+        .from('projet_culture')
+        .select(`
+          id_projet,
+          id_culture,
+          cout_exploitation_previsionnel,
+          rendement_previsionnel,
+          culture(nom_culture, prix_tonne,rendement_ha)
+        `);
+      if (culturesError) throw culturesError;
+
+      const culturesByProjet: Record<number, typeof culturesData> = {};
+      culturesData.forEach(pc => {
+        if (!culturesByProjet[pc.id_projet]) culturesByProjet[pc.id_projet] = [];
+        culturesByProjet[pc.id_projet].push(pc);
+      });
+
+      const { data: investissementsData, error: investissementsError } = await supabase
+        .from('investissement')
+        .select(`
+          id_projet,
+          montant
+        `);
+      if (investissementsError) throw investissementsError;
+
+      const projectCurrentFundings: Record<number, number> = {};
+      investissementsData.forEach(inv => {
+        if (!projectCurrentFundings[inv.id_projet]) projectCurrentFundings[inv.id_projet] = 0;
+        projectCurrentFundings[inv.id_projet] += inv.montant;
+      });
+
+      const { data: likesData, error: likesError } = await supabase
+        .from('aimer_projet')
+        .select(`
+          id_projet,
+          id_utilisateur
+        `);
+      if (likesError) throw likesError;
+
+      const { data: commentsCountData, error: commentsError } = await supabase
+        .from('commentaire')
+        .select('id_projet');
+      if (commentsError) throw commentsError;
+      const commentsCount: Record<string, number> = {};
+      commentsCountData.forEach(comment => {
+        const projectId = comment.id_projet.toString();
+        commentsCount[projectId] = (commentsCount[projectId] || 0) + 1;
+      });
+
+      // Apply culture filter separately if needed
+      let filteredProjects = projetsData || [];
+      if (activeFilters.culture && projetsData) {
+        filteredProjects = projetsData.filter(projet => {
+          const projetCultures = culturesByProjet[projet.id_projet] || [];
+          return projetCultures.some(pc => 
+            pc.culture?.nom_culture === activeFilters.culture
+          );
+        });
+      }
+
+      const transformedProjects = filteredProjects.map(projet => {
+        const projetCultures = culturesByProjet[projet.id_projet] || [];
+
+        const totalFarmingCost = projetCultures.reduce((sum, pc) => 
+          sum + ((pc.cout_exploitation_previsionnel || 0)), 0);
+
+        const yieldStrings = projetCultures.map(pc => {
+          const nom = pc.culture?.nom_culture || "Non spécifié";
+          const tonnage = pc.rendement_previsionnel != null ? pc.rendement_previsionnel : (pc.culture?.rendement_ha || 0) * (projet.surface_ha || 1);
+
+          return `${Math.round(tonnage * 100) / 100} t de ${nom}`;
+        });
+        const expectedYieldLabel = yieldStrings.length > 0 ? yieldStrings.join(", ") : "N/A";
+
+        const totalEstimatedRevenue = projetCultures.reduce((sum, pc) => {
+          const rendement = pc.rendement_previsionnel || 0;
+          const prixTonne = pc.culture?.prix_tonne || 0;
+          return sum + (rendement *  prixTonne);
+        }, 0);
+
+        const totalProfit = totalEstimatedRevenue - totalFarmingCost;
+
+        const cultivationTypes = projetCultures.map(pc => pc.culture?.nom_culture || "Non spécifié");
+        const cultivationType = cultivationTypes.length > 0 ? cultivationTypes.join(", ") : "Non spécifié";
+        
+        const tantsaha = projet.utilisateur;
+        const farmer = tantsaha ? {
+          id: tantsaha.id_utilisateur,
+          name: `${tantsaha.nom} ${tantsaha.prenoms || ''}`.trim(),
+          username: tantsaha.nom.toLowerCase().replace(/\s+/g, ''),
+          avatar: tantsaha.photo_profil,
+        } : {
+          id: "",
+          name: "Utilisateur inconnu",
+          username: "inconnu",
+          avatar: undefined,
+        };
+
+        const likes = likesData.filter(like => like.id_projet === projet.id_projet).length;
+        const isLiked = user ? 
+          likesData.some(like => like.id_projet === projet.id_projet && like.id_utilisateur === user.id) : 
+          false;
+        const commentCount = commentsCount[projet.id_projet.toString()] || 0;
+
+        const locationRegion = projet.commune?.district?.region?.nom_region || "Non spécifié";
+        const locationDistrict = projet.commune?.district?.nom_district || "Non spécifié";
+        const locationCommune = projet.commune?.nom_commune || "Non spécifié";
+
+        return {
+          id: projet.id_projet.toString(),
+          title: projet.titre || `Projet de culture de ${cultivationType}`,
+          description: projet.description || `Projet de culture de ${cultivationType} sur un terrain de ${projet.surface_ha} hectares.`,
+          farmer,
+          location: {
+            region: locationRegion,
+            district: locationDistrict,
+            commune: locationCommune
+          },
+          cultivationArea: projet.surface_ha,
+          cultivationType,
+          farmingCost: totalFarmingCost,
+          expectedYield: expectedYieldLabel,
+          expectedRevenue: totalEstimatedRevenue,
+          totalProfit : totalProfit,
+          creationDate: new Date(projet.created_at).toISOString().split('T')[0],
+          images: [],
+          fundingGoal: totalFarmingCost,
+          currentFunding: projectCurrentFundings[projet.id_projet] || 0,
+          likes,
+          comments: commentCount,
+          shares: 0,
+          isLiked,
+          technicianId: projet.id_technicien,
+          _multiCultures: projetCultures,
+        };
+      });
+      
+      setFollowedProjects(transformedProjects);
+    } catch (error) {
+      console.error("Erreur lors de la récupération des projets suivis:", error);
+      toast.error("Erreur lors du chargement des projets suivis");
+    } finally {
+      setLoadingFollowed(false);
+    }
+  };
+
+  
 
   return (
     <div className="max-w-md mx-auto px-4 py-4">
@@ -478,9 +679,96 @@ const Feed: React.FC = () => {
         </TabsContent>
         
         <TabsContent value="following" className="mt-4">
-          <div className="flex items-center justify-center h-40 border rounded-lg border-dashed text-gray-500">
-            Suivez des agriculteurs pour voir leurs projets
-          </div>
+          {loadingFollowed ? (
+            <div className="flex items-center justify-center h-40">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : (
+            followedProjects.length > 0 ? (
+              <motion.div
+                className="space-y-4"
+                variants={container}
+                initial="hidden"
+                animate="show"
+              >
+                {followedProjects.map((project) => (
+                  <motion.div key={project.id} variants={item}>
+                    <AgriculturalProjectCard 
+                      project={{
+                        ...project,
+                        farmer: {
+                          ...project.farmer,
+                          name: (
+                            <Link 
+                              to={`/profile/${project.farmer.id}${projectId ? `?id_projet=${projectId}` : ''}`} 
+                              className="hover:underline"
+                            >
+                              {project.farmer.name}
+                            </Link>
+                          )
+                        },
+                        cultivationType: (
+                          <button 
+                            className="text-primary hover:underline" 
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              applyFilter('culture', project.cultivationType as string);
+                            }}
+                          >
+                            {project.cultivationType}
+                          </button>
+                        ),
+                        location: {
+                          region: (
+                            <button 
+                              className="text-primary hover:underline" 
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                applyFilter('region', project.location.region as string);
+                              }}
+                            >
+                              {project.location.region}
+                            </button>
+                          ),
+                          district: (
+                            <button 
+                              className="text-primary hover:underline" 
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                applyFilter('district', project.location.district as string);
+                              }}
+                            >
+                              {project.location.district}
+                            </button>
+                          ),
+                          commune: (
+                            <button 
+                              className="text-primary hover:underline" 
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                applyFilter('commune', project.location.commune as string);
+                              }}
+                            >
+                              {project.location.commune}
+                            </button>
+                          )
+                        }
+                      }}
+                      onLikeToggle={(isLiked) => handleToggleLike(project.id, isLiked)}
+                    />
+                  </motion.div>
+                ))}
+              </motion.div>
+            ) : (
+              <div className="flex items-center justify-center h-40 border rounded-lg border-dashed text-gray-500">
+                Suivez des agriculteurs pour voir leurs projets
+              </div>
+            )
+          )}
         </TabsContent>
       </Tabs>
     </div>
