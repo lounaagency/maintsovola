@@ -1,29 +1,136 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, X, ArrowRight, TrendingUp, Users, FileText } from "lucide-react";
 import Logo from "./Logo";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 interface LandingPagesProps {
   onSkip: () => void;
 }
 
+interface StatsData {
+  totalUsers: number;
+  totalProjects: number;
+  totalHectares: number;
+  totalInvestment: number;
+}
+
 const LandingPages: React.FC<LandingPagesProps> = ({ onSkip }) => {
   const [currentPage, setCurrentPage] = useState(0);
+  const [stats, setStats] = useState<StatsData>({
+    totalUsers: 0,
+    totalProjects: 0,
+    totalHectares: 0,
+    totalInvestment: 0
+  });
+  const [featuredProjects, setFeaturedProjects] = useState([]);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Fetching stats from database
+    const fetchStats = async () => {
+      try {
+        // Count total users
+        const { count: userCount, error: userError } = await supabase
+          .from('utilisateur')
+          .select('id_utilisateur', { count: 'exact', head: true });
+
+        // Count projects in financing
+        const { count: projectCount, error: projectError } = await supabase
+          .from('projet')
+          .select('id_projet', { count: 'exact', head: true });
+
+        // Sum of cultivated hectares
+        const { data: hectares, error: hectaresError } = await supabase
+          .from('projet')
+          .select('surface_ha')
+          .eq('statut', 'en_production');
+
+        // Sum of investments
+        const { data: investments, error: investmentsError } = await supabase
+          .from('investissement')
+          .select('montant');
+
+        if (!userError && !projectError && !hectaresError && !investmentsError) {
+          const totalHectares = hectares?.reduce((sum, project) => sum + (project.surface_ha || 0), 0) || 0;
+          const totalInvestment = investments?.reduce((sum, inv) => sum + (inv.montant || 0), 0) || 0;
+
+          setStats({
+            totalUsers: userCount || 0,
+            totalProjects: projectCount || 0,
+            totalHectares: parseFloat(totalHectares.toFixed(2)),
+            totalInvestment: totalInvestment
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching stats:", error);
+      }
+    };
+
+    // Fetching featured projects
+    const fetchFeaturedProjects = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('projet')
+          .select(`
+            id_projet, 
+            titre,
+            cout_total,
+            statut,
+            culture:projet_culture(culture(nom_culture))
+          `)
+          .eq('statut', 'en_financement')
+          .limit(3);
+
+        if (!error && data) {
+          // Also fetch current funding for each project
+          const projectsWithFunding = await Promise.all(
+            data.map(async (project) => {
+              const { data: investments, error: invError } = await supabase
+                .from('investissement')
+                .select('montant')
+                .eq('id_projet', project.id_projet);
+
+              const currentFunding = investments?.reduce((sum, inv) => sum + (inv.montant || 0), 0) || 0;
+              
+              return {
+                ...project,
+                currentFunding,
+                buttonColor: project.id_projet % 3 === 0 ? "bg-maintso text-white" : 
+                             project.id_projet % 3 === 1 ? "bg-amber-400 text-white" : "bg-blue-400 text-white",
+                subtitle: project.culture?.[0]?.culture?.nom_culture || "Projet agricole"
+              };
+            })
+          );
+
+          setFeaturedProjects(projectsWithFunding);
+        }
+      } catch (error) {
+        console.error("Error fetching projects:", error);
+      }
+    };
+
+    fetchStats();
+    fetchFeaturedProjects();
+  }, []);
 
   const slides = [
     {
       title: "Bienvenue sur Maintso Vola",
       description: "La première plateforme de financement participatif agricole à Madagascar. Nous connectons agriculteurs, investisseurs, techniciens et superviseurs pour développer l'agriculture malgache.",
-      image: "/lovable-uploads/804a44d2-41b4-4ad8-92c8-51f27bd6b598.png"
+      image: "/lovable-uploads/804a44d2-41b4-4ad8-92c8-51f27bd6b598.png",
+      cta: {
+        text: "Découvrir l'application",
+        action: () => navigate("/feed")
+      }
     },
     {
       title: "Pour les investisseurs",
       description: "Investissez dans des projets agricoles validés par des experts et suivez leur progression en temps réel. Participez au développement de l'agriculture malgache tout en générant des revenus.",
-      image: "/placeholder.svg", // À remplacer par une image réelle
+      image: "/lovable-uploads/804a44d2-41b4-4ad8-92c8-51f27bd6b598.png",
       cta: {
         text: "Découvrir les projets",
         action: () => navigate("/feed")
@@ -32,7 +139,7 @@ const LandingPages: React.FC<LandingPagesProps> = ({ onSkip }) => {
     {
       title: "Pour les agriculteurs",
       description: "Faites valider vos terrains, créez des projets agricoles et trouvez des financements pour les réaliser. Bénéficiez de l'accompagnement de techniciens qualifiés.",
-      image: "/placeholder.svg", // À remplacer par une image réelle
+      image: "/lovable-uploads/804a44d2-41b4-4ad8-92c8-51f27bd6b598.png",
       cta: [
         {
           text: "Ajouter un terrain",
@@ -46,8 +153,8 @@ const LandingPages: React.FC<LandingPagesProps> = ({ onSkip }) => {
     },
     {
       title: "Semez aujourd'hui, récoltez demain avec Maintso Vola",
-      description: "Déjà 120 investisseurs nous font confiance. 30 hectares financés.",
-      image: "/placeholder.svg", // À remplacer par une image réelle
+      description: `Déjà ${stats.totalUsers} investisseurs nous font confiance. ${stats.totalHectares} hectares financés.`,
+      image: "/lovable-uploads/804a44d2-41b4-4ad8-92c8-51f27bd6b598.png",
       showcaseProjects: true
     }
   ];
@@ -65,31 +172,6 @@ const LandingPages: React.FC<LandingPagesProps> = ({ onSkip }) => {
       setCurrentPage(currentPage - 1);
     }
   };
-
-  // Projets fictifs pour la démonstration (à la slide 4)
-  const showcaseProjects = [
-    {
-      id: 1,
-      title: "Nouveaux projet",
-      subtitle: "Champion Rouge",
-      image: "/lovable-uploads/804a44d2-41b4-4ad8-92c8-51f27bd6b598.png",
-      buttonColor: "bg-maintso text-white"
-    },
-    {
-      id: 2,
-      title: "Récolte proche",
-      subtitle: "Ananas Mireille",
-      image: "/lovable-uploads/804a44d2-41b4-4ad8-92c8-51f27bd6b598.png",
-      buttonColor: "bg-amber-400 text-white"
-    },
-    {
-      id: 3,
-      title: "Rendement record",
-      subtitle: "Légumes mixtes",
-      image: "/lovable-uploads/804a44d2-41b4-4ad8-92c8-51f27bd6b598.png",
-      buttonColor: "bg-blue-400 text-white"
-    }
-  ];
 
   // Navigation rapide pour la quatrième slide
   const quickNavItems = [
@@ -140,34 +222,54 @@ const LandingPages: React.FC<LandingPagesProps> = ({ onSkip }) => {
 
                 {/* Showcase projects */}
                 <div className="space-y-4 flex-1">
-                  {showcaseProjects.map((project) => (
-                    <div key={project.id} className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <img 
-                          src={project.image} 
-                          alt={project.title} 
-                          className="w-12 h-12 rounded-full object-cover mr-3"
-                        />
-                        <div>
-                          <h3 className="font-medium">{project.title}</h3>
-                          <p className="text-sm text-gray-600">{project.subtitle}</p>
+                  {featuredProjects.length > 0 ? (
+                    featuredProjects.map((project: any) => (
+                      <div key={project.id_projet} className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <img 
+                            src="/lovable-uploads/804a44d2-41b4-4ad8-92c8-51f27bd6b598.png" 
+                            alt={project.titre} 
+                            className="w-12 h-12 rounded-full object-cover mr-3"
+                          />
+                          <div>
+                            <h3 className="font-medium">{project.titre || `Projet #${project.id_projet}`}</h3>
+                            <p className="text-sm text-gray-600">{project.subtitle}</p>
+                          </div>
                         </div>
+                        <Button 
+                          className={`${project.buttonColor} rounded-full px-6`}
+                          onClick={() => navigate(`/feed?project=${project.id_projet}`)}
+                        >
+                          Voir
+                        </Button>
                       </div>
-                      <Button 
-                        className={`${project.buttonColor} rounded-full px-6`}
-                        onClick={() => navigate("/feed")}
-                      >
-                        Voir
-                      </Button>
-                    </div>
-                  ))}
+                    ))
+                  ) : (
+                    // Fallback si aucun projet n'est chargé
+                    [1, 2, 3].map((id) => (
+                      <div key={id} className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <div className="w-12 h-12 rounded-full bg-gray-200 mr-3"></div>
+                          <div>
+                            <h3 className="font-medium">Chargement...</h3>
+                            <p className="text-sm text-gray-600">Projet agricole</p>
+                          </div>
+                        </div>
+                        <Button 
+                          className="bg-gray-300 text-white rounded-full px-6"
+                        >
+                          Voir
+                        </Button>
+                      </div>
+                    ))
+                  )}
                 </div>
 
                 {/* Quick navigation */}
                 <div className="flex justify-around mt-8 mb-4">
                   {quickNavItems.map((item, idx) => (
-                    <div key={idx} className="flex flex-col items-center" onClick={item.action}>
-                      <div className={`${item.color} rounded-full w-16 h-16 flex items-center justify-center mb-2 cursor-pointer`}>
+                    <div key={idx} className="flex flex-col items-center cursor-pointer" onClick={item.action}>
+                      <div className={`${item.color} rounded-full w-16 h-16 flex items-center justify-center mb-2`}>
                         {item.icon}
                       </div>
                       <span className="text-sm font-medium">{item.label}</span>
@@ -177,8 +279,8 @@ const LandingPages: React.FC<LandingPagesProps> = ({ onSkip }) => {
 
                 {/* Stats */}
                 <div className="bg-amber-50 rounded-lg p-4 text-center mt-4">
-                  <p className="text-lg font-medium">Déjà 120 investisseurs nous font confiance</p>
-                  <p className="text-lg font-medium">30 hectares financés</p>
+                  <p className="text-lg font-medium">Déjà {stats.totalUsers} investisseurs nous font confiance</p>
+                  <p className="text-lg font-medium">{stats.totalHectares} hectares financés</p>
                 </div>
 
                 {/* Footer links - small */}
