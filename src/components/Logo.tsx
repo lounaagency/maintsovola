@@ -7,13 +7,15 @@ interface LogoProps {
   className?: string;
   showText?: boolean;
   imageClassName?: string;
+  to?: string;
 }
 
 const Logo: React.FC<LogoProps> = ({
   size = 'md',
   className = '',
   showText = true,
-  imageClassName = ''
+  imageClassName = '',
+  to = '/'
 }) => {
   const sizeClasses = {
     sm: 'h-8',
@@ -22,7 +24,7 @@ const Logo: React.FC<LogoProps> = ({
   };
 
   return (
-    <Link to="/feed" className={`font-bold flex items-center justify-center hover:opacity-90 ${className}`}>
+    <Link to={to} className={`font-bold flex items-center justify-center hover:opacity-90 ${className}`}>
       <img 
         alt="Maintso Vola" 
         src="/lovable-uploads/688ca551-6007-4d27-88bf-1e822c10f2d7.png" 

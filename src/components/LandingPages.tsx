@@ -202,7 +202,7 @@ const LandingPages: React.FC<LandingPagesProps> = ({ onSkip }) => {
                   <h2 className="text-2xl font-bold mb-4 text-maintso">{slides[currentPage].title}</h2>
                   <p className="text-lg text-gray-600 mb-8">{slides[currentPage].description}</p>
                   
-                  {slides[currentPage].cta && typeof slides[currentPage].cta !== 'array' && (
+                  {slides[currentPage].cta && !Array.isArray(slides[currentPage].cta) && (
                     <Button 
                       onClick={slides[currentPage].cta.action}
                       className="bg-maintso hover:bg-maintso-600 text-white w-full"

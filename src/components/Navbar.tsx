@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Home, MapPin, LogOut, Settings, Bell, User, FileText } from "lucide-react";
@@ -14,7 +15,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
 
 const Navbar: React.FC = () => {
   const location = useLocation();
@@ -30,19 +30,20 @@ const Navbar: React.FC = () => {
   return (
     <nav className="fixed top-0 left-0 right-0 bg-white border-b border-border shadow-sm h-14 md:h-16 z-50">
       <div className="h-full max-w-6xl mx-auto px-6 lg:space-x-6 md:px-4 flex items-center justify-between">
-        {/* Logo */}
+        {/* Logo - now links to home (/) instead of feed */}
         <div className="flex items-center">
           <Logo 
             size={isMobile ? "sm" : "sm"} 
             showText={!isMobile} 
-            imageClassName="h-12 w-auto" 
+            imageClassName="h-12 w-auto"
+            to="/"
           />
         </div>
         
         {/* Central Navigation Icons */}
           <Link 
             to="/feed" 
-            className={`p-2 rounded-md ${isActive("/") || isActive("/feed") ? "text-green-600 bg-gray-100" : "text-gray-700 hover:bg-gray-100"}`}
+            className={`p-2 rounded-md ${isActive("/feed") ? "text-green-600 bg-gray-100" : "text-gray-700 hover:bg-gray-100"}`}
             title="Accueil"
           >
             <Home size={22} />
