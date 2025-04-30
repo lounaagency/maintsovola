@@ -1,13 +1,14 @@
 
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Home, MapPin, LogOut, Settings, Bell, User, FileText } from "lucide-react";
+import { Home, MapPin, LogOut, Settings, Bell, User, FileText, Wifi, WifiOff } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import UserAvatar from "./UserAvatar";
 import Notifications from "./Notifications";
 import { useIsMobile } from "@/hooks/use-mobile";
 import Logo from "./Logo";
 import MessageBadge from "./MessageBadge";
+import { useOffline } from "@/hooks/use-offline";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +21,7 @@ const Navbar: React.FC = () => {
   const location = useLocation();
   const { user, profile, signOut } = useAuth();
   const isMobile = useIsMobile();
+  const { isOnline } = useOffline();
   
   const isActive = (path: string) => {
     return location.pathname === path;
@@ -38,6 +40,21 @@ const Navbar: React.FC = () => {
             imageClassName="h-12 w-auto"
             to="/"
           />
+          
+          {/* Network status indicator */}
+          <div className="ml-2">
+            {isOnline ? (
+              <div className="flex items-center text-green-600 text-xs">
+                <Wifi size={14} className="mr-1" />
+                {!isMobile && <span>En ligne</span>}
+              </div>
+            ) : (
+              <div className="flex items-center text-amber-600 text-xs">
+                <WifiOff size={14} className="mr-1" />
+                {!isMobile && <span>Hors ligne</span>}
+              </div>
+            )}
+          </div>
         </div>
         
         {/* Central Navigation Icons */}
