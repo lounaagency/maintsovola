@@ -6,6 +6,8 @@ import { motion } from "framer-motion";
 import { ChevronRight, TrendingUp, Users, MapPin, FileText, ArrowRight } from "lucide-react";
 import Logo from "@/components/Logo";
 import LandingPages from "@/components/LandingPages";
+import { supabase } from "@/integrations/supabase/client";
+import { formatCurrency } from "@/lib/utils";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -13,13 +15,207 @@ const Index = () => {
   const [hasSeenLandingPages, setHasSeenLandingPages] = useState(() => {
     return localStorage.getItem("hasSeenLandingPages") === "true";
   });
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    totalProjects: 0,
+    totalHectares: 0,
+    totalInvestment: 0
+  });
+  const [featuredProjects, setFeaturedProjects] = useState([]);
+  const [popularCultures, setPopularCultures] = useState([]);
+  const [recentProjects, setRecentProjects] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Si l'utilisateur a déjà vu les landing pages, ne pas les afficher
+    // If the user has already seen the landing pages, don't display them
     if (hasSeenLandingPages) {
       setShowLandingPages(false);
     }
+    
+    // Fetch data for the dashboard
+    fetchDashboardData();
   }, [hasSeenLandingPages]);
+
+  const fetchDashboardData = async () => {
+    setIsLoading(true);
+    try {
+      // Fetch statistics
+      await fetchStats();
+      
+      // Fetch featured projects
+      await fetchFeaturedProjects();
+      
+      // Fetch popular cultures
+      await fetchPopularCultures();
+      
+      // Fetch recent projects/activities
+      await fetchRecentProjects();
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchStats = async () => {
+    try {
+      // Count total users
+      const { count: userCount, error: userError } = await supabase
+        .from('utilisateur')
+        .select('id_utilisateur', { count: 'exact', head: true });
+
+      // Count projects in financing
+      const { count: projectCount, error: projectError } = await supabase
+        .from('projet')
+        .select('id_projet', { count: 'exact', head: true });
+
+      // Sum of cultivated hectares
+      const { data: hectares, error: hectaresError } = await supabase
+        .from('projet')
+        .select('surface_ha')
+        .eq('statut', 'en_production');
+
+      // Sum of investments
+      const { data: investments, error: investmentsError } = await supabase
+        .from('investissement')
+        .select('montant');
+
+      if (!userError && !projectError && !hectaresError && !investmentsError) {
+        const totalHectares = hectares?.reduce((sum, project) => sum + (project.surface_ha || 0), 0) || 0;
+        const totalInvestment = investments?.reduce((sum, inv) => sum + (inv.montant || 0), 0) || 0;
+
+        setStats({
+          totalUsers: userCount || 0,
+          totalProjects: projectCount || 0,
+          totalHectares: parseFloat(totalHectares.toFixed(2)),
+          totalInvestment: totalInvestment
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching stats:", error);
+    }
+  };
+
+  const fetchFeaturedProjects = async () => {
+    try {
+      // Fetch projects in financing status
+      const { data, error } = await supabase
+        .from('projet')
+        .select(`
+          id_projet, 
+          titre,
+          statut,
+          surface_ha,
+          cout_total,
+          projet_culture(culture(nom_culture))
+        `)
+        .eq('statut', 'en_financement')
+        .limit(3);
+
+      if (!error && data) {
+        // Fetch current funding for each project
+        const projectsWithFunding = await Promise.all(
+          data.map(async (project) => {
+            const { data: investments, error: invError } = await supabase
+              .from('investissement')
+              .select('montant')
+              .eq('id_projet', project.id_projet);
+
+            const currentFunding = investments?.reduce((sum, inv) => sum + (inv.montant || 0), 0) || 0;
+            const progress = project.cout_total ? Math.min(Math.round((currentFunding / project.cout_total) * 100), 100) : 0;
+            
+            return {
+              id: project.id_projet,
+              title: project.titre || `Projet #${project.id_projet}`,
+              description: `Culture de ${project.projet_culture?.[0]?.culture?.nom_culture || 'divers produits'} sur ${project.surface_ha} hectares`,
+              image: "/lovable-uploads/804a44d2-41b4-4ad8-92c8-51f27bd6b598.png",
+              progress: progress,
+              amount: formatCurrency(currentFunding),
+              target: formatCurrency(project.cout_total || 0),
+            };
+          })
+        );
+
+        setFeaturedProjects(projectsWithFunding);
+      }
+    } catch (error) {
+      console.error("Error fetching featured projects:", error);
+    }
+  };
+
+  const fetchPopularCultures = async () => {
+    try {
+      // Count projects by culture
+      const { data, error } = await supabase
+        .from('projet_culture')
+        .select(`
+          culture!inner(
+            id_culture,
+            nom_culture
+          ),
+          count
+        `, { count: 'exact' })
+        .group('culture')
+        .order('count', { ascending: false })
+        .limit(4);
+
+      if (!error && data) {
+        const cultures = data.map((item) => ({
+          id: item.culture.id_culture,
+          name: item.culture.nom_culture,
+          count: item.count,
+          image: "/lovable-uploads/804a44d2-41b4-4ad8-92c8-51f27bd6b598.png" // Default image for now
+        }));
+
+        setPopularCultures(cultures);
+      }
+    } catch (error) {
+      console.error("Error fetching popular cultures:", error);
+    }
+  };
+
+  const fetchRecentProjects = async () => {
+    try {
+      // Fetch recently created or updated projects
+      const { data, error } = await supabase
+        .from('projet')
+        .select('id_projet, titre, statut, created_at')
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+      if (!error && data) {
+        const projects = data.map(project => {
+          let type = 'Nouveau projet';
+          if (project.statut === 'en_financement') type = 'En financement';
+          if (project.statut === 'en_production') type = 'En production';
+          if (project.statut === 'terminé') type = 'Projet terminé';
+
+          // Calculate relative time
+          const createdDate = new Date(project.created_at);
+          const now = new Date();
+          const diffDays = Math.floor((now - createdDate) / (1000 * 60 * 60 * 24));
+          
+          let date;
+          if (diffDays === 0) date = 'Aujourd\'hui';
+          else if (diffDays === 1) date = 'Hier';
+          else if (diffDays < 7) date = `Il y a ${diffDays} jours`;
+          else if (diffDays < 30) date = `Il y a ${Math.floor(diffDays/7)} semaines`;
+          else date = `Il y a ${Math.floor(diffDays/30)} mois`;
+
+          return {
+            id: project.id_projet,
+            title: project.titre || `Projet #${project.id_projet}`,
+            date: date,
+            type: type,
+          };
+        });
+
+        setRecentProjects(projects);
+      }
+    } catch (error) {
+      console.error("Error fetching recent projects:", error);
+    }
+  };
 
   const handleSkipLandingPages = () => {
     setShowLandingPages(false);
@@ -27,51 +223,7 @@ const Index = () => {
     setHasSeenLandingPages(true);
   };
   
-  // Mock data for the dashboard (replace with real data from your database later)
-  const stats = [
-    { label: "Utilisateurs actifs", value: "14", icon: <Users className="text-blue-500" size={24} /> },
-    { label: "Projets en financement", value: "12", icon: <FileText className="text-amber-500" size={24} /> },
-    { label: "Hectares cultivés", value: "1347,53", icon: <MapPin className="text-green-600" size={24} /> },
-    { label: "Total investissement (Ar)", value: "681 916 000", icon: <TrendingUp className="text-purple-500" size={24} /> },
-  ];
-
-  const featuredProjects = [
-    {
-      id: 1,
-      title: "Champion Rouge",
-      description: "Culture de tomates en plein champ avec irrigation moderne",
-      image: "/lovable-uploads/804a44d2-41b4-4ad8-92c8-51f27bd6b598.png",
-      progress: 75,
-      amount: "12 500 000 Ar",
-      target: "16 000 000 Ar",
-    },
-    {
-      id: 2,
-      title: "Ananas Mireille",
-      description: "Plantation d'ananas à grande échelle dans la région d'Alaotra",
-      image: "/lovable-uploads/804a44d2-41b4-4ad8-92c8-51f27bd6b598.png",
-      progress: 90,
-      amount: "22 000 000 Ar",
-      target: "24 500 000 Ar",
-    },
-    {
-      id: 3,
-      title: "Légumes mixtes",
-      description: "Culture biologique de légumes variés pour le marché local",
-      image: "/lovable-uploads/804a44d2-41b4-4ad8-92c8-51f27bd6b598.png",
-      progress: 50,
-      amount: "7 500 000 Ar",
-      target: "15 000 000 Ar",
-    },
-  ];
-
-  const popularCultures = [
-    { id: 1, name: "Manioc", count: 15, image: "/lovable-uploads/804a44d2-41b4-4ad8-92c8-51f27bd6b598.png" },
-    { id: 2, name: "Haricot Blanc", count: 12, image: "/lovable-uploads/804a44d2-41b4-4ad8-92c8-51f27bd6b598.png" },
-    { id: 3, name: "Arachide", count: 9, image: "/lovable-uploads/804a44d2-41b4-4ad8-92c8-51f27bd6b598.png" },
-    { id: 4, name: "Maïs", count: 7, image: "/lovable-uploads/804a44d2-41b4-4ad8-92c8-51f27bd6b598.png" },
-  ];
-  
+  // Quick navigation items
   const quickNavigations = [
     { 
       title: "Investir", 
@@ -93,27 +245,6 @@ const Index = () => {
       icon: <FileText className="text-white" size={24} />, 
       color: "bg-amber-500", 
       path: "/projects" 
-    },
-  ];
-
-  const recentProjects = [
-    {
-      id: 1,
-      title: "Plantation de Manioc",
-      date: "Il y a 2 jours",
-      type: "Nouveau projet",
-    },
-    {
-      id: 2,
-      title: "Récolte de Haricots",
-      date: "Il y a 5 jours",
-      type: "Jalon terminé",
-    },
-    {
-      id: 3,
-      title: "Culture de Maïs Bioéthanol",
-      date: "Il y a 1 semaine",
-      type: "Nouvel investissement",
     },
   ];
 
@@ -150,17 +281,45 @@ const Index = () => {
               
               {/* Stats Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                {stats.map((stat, index) => (
-                  <div key={index} className="bg-white/10 backdrop-blur-sm rounded-lg p-4 flex items-center space-x-4">
-                    <div className="bg-white/20 p-3 rounded-full">
-                      {stat.icon}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-white/80">{stat.label}</p>
-                      <p className="text-2xl font-bold">{stat.value}</p>
-                    </div>
+                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 flex items-center space-x-4">
+                  <div className="bg-white/20 p-3 rounded-full">
+                    <Users className="text-blue-500" size={24} />
                   </div>
-                ))}
+                  <div>
+                    <p className="text-sm font-medium text-white/80">Utilisateurs actifs</p>
+                    <p className="text-2xl font-bold">{stats.totalUsers}</p>
+                  </div>
+                </div>
+                
+                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 flex items-center space-x-4">
+                  <div className="bg-white/20 p-3 rounded-full">
+                    <FileText className="text-amber-500" size={24} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-white/80">Projets en financement</p>
+                    <p className="text-2xl font-bold">{stats.totalProjects}</p>
+                  </div>
+                </div>
+                
+                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 flex items-center space-x-4">
+                  <div className="bg-white/20 p-3 rounded-full">
+                    <MapPin className="text-green-600" size={24} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-white/80">Hectares cultivés</p>
+                    <p className="text-2xl font-bold">{stats.totalHectares.toLocaleString('fr-MG')}</p>
+                  </div>
+                </div>
+                
+                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 flex items-center space-x-4">
+                  <div className="bg-white/20 p-3 rounded-full">
+                    <TrendingUp className="text-purple-500" size={24} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-white/80">Total investissement (Ar)</p>
+                    <p className="text-2xl font-bold">{stats.totalInvestment.toLocaleString('fr-MG')}</p>
+                  </div>
+                </div>
               </div>
 
               <div className="flex justify-center mt-4">
@@ -188,42 +347,65 @@ const Index = () => {
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {featuredProjects.map((project) => (
-                  <div key={project.id} className="border border-border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                    <img 
-                      src={project.image} 
-                      alt={project.title} 
-                      className="w-full h-40 object-cover"
-                    />
-                    <div className="p-4">
-                      <h3 className="text-lg font-semibold mb-2">{project.title}</h3>
-                      <p className="text-gray-600 text-sm mb-3">{project.description}</p>
-                      
-                      <div className="mb-2">
+                {isLoading ? (
+                  // Show skeleton loaders while loading
+                  Array(3).fill(null).map((_, index) => (
+                    <div key={index} className="border border-border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow animate-pulse">
+                      <div className="w-full h-40 bg-gray-200"></div>
+                      <div className="p-4">
+                        <div className="h-6 bg-gray-200 rounded w-3/4 mb-2"></div>
+                        <div className="h-4 bg-gray-200 rounded w-full mb-3"></div>
                         <div className="flex justify-between text-sm mb-1">
-                          <span>{project.amount}</span>
-                          <span className="text-gray-500">{project.target}</span>
+                          <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+                          <div className="h-4 bg-gray-200 rounded w-1/4"></div>
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2.5">
-                          <div 
-                            className="bg-maintso h-2.5 rounded-full" 
-                            style={{ width: `${project.progress}%` }}
-                          ></div>
-                        </div>
-                        <div className="mt-1 text-xs text-right text-gray-500">
-                          {project.progress}% financé
-                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2.5 mb-2"></div>
+                        <div className="h-10 bg-gray-200 rounded w-full mt-2"></div>
                       </div>
-                      
-                      <Button 
-                        onClick={() => navigate(`/projects/${project.id}`)} 
-                        className="w-full bg-maintso hover:bg-maintso-600 mt-2"
-                      >
-                        Voir le projet
-                      </Button>
                     </div>
-                  </div>
-                ))}
+                  ))
+                ) : featuredProjects.length > 0 ? (
+                  featuredProjects.map((project) => (
+                    <div key={project.id} className="border border-border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                      <img 
+                        src={project.image} 
+                        alt={project.title} 
+                        className="w-full h-40 object-cover"
+                      />
+                      <div className="p-4">
+                        <h3 className="text-lg font-semibold mb-2">{project.title}</h3>
+                        <p className="text-gray-600 text-sm mb-3">{project.description}</p>
+                        
+                        <div className="mb-2">
+                          <div className="flex justify-between text-sm mb-1">
+                            <span>{project.amount}</span>
+                            <span className="text-gray-500">{project.target}</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2.5">
+                            <div 
+                              className="bg-maintso h-2.5 rounded-full" 
+                              style={{ width: `${project.progress}%` }}
+                            ></div>
+                          </div>
+                          <div className="mt-1 text-xs text-right text-gray-500">
+                            {project.progress}% financé
+                          </div>
+                        </div>
+                        
+                        <Button 
+                          onClick={() => navigate(`/projects/${project.id}`)} 
+                          className="w-full bg-maintso hover:bg-maintso-600 mt-2"
+                        >
+                          Voir le projet
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="col-span-3 text-center text-gray-500 py-6">
+                    Aucun projet vedette disponible pour le moment
+                  </p>
+                )}
               </div>
             </section>
             
@@ -231,23 +413,38 @@ const Index = () => {
             <section>
               <h2 className="text-2xl font-bold text-gray-800 mb-6">Cultures Populaires</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                {popularCultures.map((culture) => (
-                  <div 
-                    key={culture.id}
-                    onClick={() => navigate(`/feed?culture=${culture.name}`)}
-                    className="bg-gray-50 border border-gray-100 rounded-lg p-4 flex flex-col items-center cursor-pointer hover:bg-gray-100 transition-colors"
-                  >
-                    <div className="w-16 h-16 rounded-full overflow-hidden mb-3">
-                      <img 
-                        src={culture.image} 
-                        alt={culture.name}
-                        className="w-full h-full object-cover" 
-                      />
+                {isLoading ? (
+                  // Show skeleton loaders while loading
+                  Array(4).fill(null).map((_, index) => (
+                    <div key={index} className="bg-gray-50 animate-pulse border border-gray-100 rounded-lg p-4 flex flex-col items-center">
+                      <div className="w-16 h-16 rounded-full bg-gray-200 mb-3"></div>
+                      <div className="h-5 bg-gray-200 rounded w-3/4 mb-2"></div>
+                      <div className="h-4 bg-gray-200 rounded w-1/2"></div>
                     </div>
-                    <h3 className="font-medium text-center">{culture.name}</h3>
-                    <p className="text-sm text-gray-500">{culture.count} projets</p>
-                  </div>
-                ))}
+                  ))
+                ) : popularCultures.length > 0 ? (
+                  popularCultures.map((culture) => (
+                    <div 
+                      key={culture.id}
+                      onClick={() => navigate(`/feed?culture=${culture.name}`)}
+                      className="bg-gray-50 border border-gray-100 rounded-lg p-4 flex flex-col items-center cursor-pointer hover:bg-gray-100 transition-colors"
+                    >
+                      <div className="w-16 h-16 rounded-full overflow-hidden mb-3">
+                        <img 
+                          src={culture.image} 
+                          alt={culture.name}
+                          className="w-full h-full object-cover" 
+                        />
+                      </div>
+                      <h3 className="font-medium text-center">{culture.name}</h3>
+                      <p className="text-sm text-gray-500">{culture.count} projets</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="col-span-4 text-center text-gray-500 py-6">
+                    Aucune culture populaire disponible pour le moment
+                  </p>
+                )}
               </div>
             </section>
             
@@ -278,21 +475,40 @@ const Index = () => {
             <section>
               <h2 className="text-2xl font-bold text-gray-800 mb-6">Actualités Récentes</h2>
               <div className="space-y-4">
-                {recentProjects.map((item) => (
-                  <div 
-                    key={item.id}
-                    className="border-l-4 border-maintso pl-4 py-2 hover:bg-gray-50 cursor-pointer"
-                    onClick={() => navigate(`/projects/${item.id}`)}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-medium">{item.title}</h3>
-                        <p className="text-sm text-gray-600">{item.type}</p>
+                {isLoading ? (
+                  // Show skeleton loaders while loading
+                  Array(3).fill(null).map((_, index) => (
+                    <div key={index} className="border-l-4 border-maintso pl-4 py-2 animate-pulse">
+                      <div className="flex justify-between items-start">
+                        <div className="w-full">
+                          <div className="h-5 bg-gray-200 rounded w-3/4 mb-2"></div>
+                          <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                        </div>
+                        <div className="h-4 bg-gray-200 rounded w-16"></div>
                       </div>
-                      <span className="text-xs text-gray-500">{item.date}</span>
                     </div>
-                  </div>
-                ))}
+                  ))
+                ) : recentProjects.length > 0 ? (
+                  recentProjects.map((item) => (
+                    <div 
+                      key={item.id}
+                      className="border-l-4 border-maintso pl-4 py-2 hover:bg-gray-50 cursor-pointer"
+                      onClick={() => navigate(`/projects/${item.id}`)}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-medium">{item.title}</h3>
+                          <p className="text-sm text-gray-600">{item.type}</p>
+                        </div>
+                        <span className="text-xs text-gray-500">{item.date}</span>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-center text-gray-500 py-6">
+                    Aucune actualité récente disponible pour le moment
+                  </p>
+                )}
               </div>
             </section>
             
