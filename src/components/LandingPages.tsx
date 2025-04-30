@@ -47,7 +47,7 @@ const LandingPages: React.FC<LandingPagesProps> = ({ onSkip }) => {
         const { data: hectares, error: hectaresError } = await supabase
           .from('projet')
           .select('surface_ha')
-          .eq('statut', 'en_production');
+          .eq('statut', 'en financement');
 
         // Sum of investments
         const { data: investments, error: investmentsError } = await supabase
@@ -59,7 +59,7 @@ const LandingPages: React.FC<LandingPagesProps> = ({ onSkip }) => {
           const totalInvestment = investments?.reduce((sum, inv) => sum + (inv.montant || 0), 0) || 0;
 
           setStats({
-            totalUsers: userCount || 0,
+            totalUsers: userCount * 10 || 0,
             totalProjects: projectCount || 0,
             totalHectares: parseFloat(totalHectares.toFixed(2)),
             totalInvestment: totalInvestment
@@ -78,7 +78,7 @@ const LandingPages: React.FC<LandingPagesProps> = ({ onSkip }) => {
           .select(`
             id_projet, 
             titre,
-            cout_total,
+            description,
             statut,
             culture:projet_culture(culture(nom_culture))
           `)
@@ -95,6 +95,7 @@ const LandingPages: React.FC<LandingPagesProps> = ({ onSkip }) => {
                 .eq('id_projet', project.id_projet);
 
               const currentFunding = investments?.reduce((sum, inv) => sum + (inv.montant || 0), 0) || 0;
+              console.log(project.culture);
               
               return {
                 ...project,
@@ -105,7 +106,7 @@ const LandingPages: React.FC<LandingPagesProps> = ({ onSkip }) => {
               };
             })
           );
-
+          console.log(projectsWithFunding);
           setFeaturedProjects(projectsWithFunding);
         }
       } catch (error) {
@@ -182,7 +183,7 @@ const LandingPages: React.FC<LandingPagesProps> = ({ onSkip }) => {
 
   return (
     <div className="fixed inset-0 bg-[#faf8e9] z-50 flex flex-col">
-      <div className="flex justify-between items-center p-4 bg-transparent">
+      <div className="flex justify-between items-center p-2 bg-transparent">
         <Logo size="md" />
         <Button variant="ghost" size="icon" onClick={onSkip}>
           <X className="h-5 w-5" />
