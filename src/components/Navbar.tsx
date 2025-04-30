@@ -8,6 +8,7 @@ import Notifications from "./Notifications";
 import { useIsMobile } from "@/hooks/use-mobile";
 import Logo from "./Logo";
 import MessageBadge from "./MessageBadge";
+import NetworkStatus from "./NetworkStatus";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -69,6 +70,11 @@ const Navbar: React.FC = () => {
           
           <Notifications />
         
+        {/* Network Status */}
+        <div className="hidden md:flex">
+          <NetworkStatus />
+        </div>
+        
         {/* User profile dropdown menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -99,6 +105,14 @@ const Navbar: React.FC = () => {
                 <span>Réglages</span>
               </Link>
             </DropdownMenuItem>
+            {isMobile && (
+              <>
+                <DropdownMenuSeparator />
+                <div className="px-2 py-1.5">
+                  <NetworkStatus showSyncButton={true} />
+                </div>
+              </>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={signOut} className="flex items-center space-x-2 cursor-pointer">
               <LogOut size={16} />
