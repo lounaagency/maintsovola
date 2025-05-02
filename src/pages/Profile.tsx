@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -12,13 +13,35 @@ import {
   User2,
   Edit, 
   PenSquare,
-  Users
+  Users,
+  TrendingUp,
+  Calendar,
+  Landmark,
+  Clock,
+  ChartLine,
+  ChartBar
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { UserProfile } from '@/types/userProfile';
 import { formatCurrency } from '@/lib/utils';
 import ProjectFeed from '@/components/ProjectFeed';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { 
+  ChartContainer, 
+  ChartTooltip,
+  ChartTooltipContent
+} from '@/components/ui/chart';
+import {
+  BarChart,
+  Bar,
+  Cell,
+  XAxis,
+  YAxis,
+  Tooltip
+} from 'recharts';
 
 // Type guard for SelectQueryError
 const isSelectQueryError = (obj: any): boolean => {
@@ -37,6 +60,7 @@ export const Profile = () => {
   const [investedProjects, setInvestedProjects] = useState<any[]>([]);
   const [projectsCount, setProjectsCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [projectJalons, setProjectJalons] = useState<{[key: number]: any[]}>({});
   
   if (!user) {
     return <Navigate to="/auth" replace />;
@@ -218,6 +242,28 @@ export const Profile = () => {
         });
       }
 
+      // Fetch jalons for each project
+      const { data: jalonsData } = await supabase
+        .from('jalon_projet')
+        .select(`
+          *,
+          jalon_agricole:id_jalon_agricole(nom_jalon)
+        `)
+        .in('id_projet', projectIds);
+      
+      // Group jalons by project
+      const jalonsMap: {[key: number]: any[]} = {};
+      if (jalonsData) {
+        jalonsData.forEach((jalon: any) => {
+          if (!jalonsMap[jalon.id_projet]) {
+            jalonsMap[jalon.id_projet] = [];
+          }
+          jalonsMap[jalon.id_projet].push(jalon);
+        });
+      }
+      
+      setProjectJalons(jalonsMap);
+
       const processedProjects = investmentData
         .filter(investment => investment.projet) // Filtrer les investissements sans projet
         .map(investment => {
@@ -250,6 +296,11 @@ export const Profile = () => {
           const investmentShare = totalInvested > 0 ? userInvestment / totalInvested : 0;
           const totalProfit = expectedRevenue - totalCost;
           const userProfit = totalProfit * investmentShare;
+          const roi = userInvestment > 0 ? (userProfit / userInvestment) * 100 : 0;
+          
+          const projectJalons = jalonsMap[project.id_projet] || [];
+          const completedJalons = projectJalons.filter(j => j.date_reelle).length;
+          const jalonProgress = projectJalons.length > 0 ? (completedJalons / projectJalons.length) * 100 : 0;
           
           const id_tantsaha = typeof tantsaha === 'object' ? tantsaha.id_utilisateur : null;
           const nom = typeof tantsaha === 'object' ? tantsaha.nom : null;
@@ -280,12 +331,32 @@ export const Profile = () => {
             description: project.description || "",
             fundingGoal: totalCost,
             currentFunding: totalInvested,
-            totalProfit: userProfit,
+            totalProfit: totalProfit,
+            userProfit: userProfit,
+            roi: roi,
+            investmentShare: investmentShare,
+            jalonProgress: jalonProgress,
+            completedJalons: completedJalons,
+            totalJalons: projectJalons.length,
+            jalons: projectJalons,
             likes: 0,
             comments: 0,
             shares: 0,
             status: project.statut,
-            userInvestment: userInvestment
+            dateLancement: project.date_lancement,
+            userInvestment: userInvestment,
+            chartData: [
+              {
+                name: 'Investissement',
+                value: userInvestment,
+                fill: '#94a3b8'
+              },
+              {
+                name: 'Bénéfice estimé',
+                value: userProfit > 0 ? userProfit : 0,
+                fill: userProfit > 0 ? '#10b981' : '#f43f5e'
+              }
+            ]
           };
         }).filter(Boolean);
       
@@ -330,6 +401,27 @@ export const Profile = () => {
       console.error('Error updating follow status:', error);
       toast.error("Une erreur est survenue");
     }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch(status) {
+      case 'en cours': return 'bg-blue-500';
+      case 'terminé': return 'bg-green-500';
+      case 'en attente': return 'bg-yellow-500';
+      case 'en financement': return 'bg-purple-500';
+      case 'validé': return 'bg-teal-500';
+      default: return 'bg-gray-500';
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return "Non défini";
+    const date = new Date(dateString);
+    return date.toLocaleDateString('fr-FR', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
   };
   
   if (!profile) {
@@ -455,7 +547,7 @@ export const Profile = () => {
             Projets
           </TabsTrigger>
           <TabsTrigger value="investments" className="flex items-center">
-            <Users size={16} className="mr-2" />
+            <Landmark size={16} className="mr-2" />
             Investissements
           </TabsTrigger>
         </TabsList>
@@ -488,65 +580,175 @@ export const Profile = () => {
           ) : investedProjects.length > 0 ? (
             <div className="max-w-md mx-auto space-y-4">
               {investedProjects.map(project => (
-                <div key={project.id} className="border rounded-lg p-4">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="font-medium">{project.title}</h3>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Par {project.farmer.name}
-                      </p>
-                      <div className="flex gap-2 mt-2">
-                        <span className="text-xs bg-muted px-2 py-1 rounded-full">
-                          {project.cultivationArea} ha
-                        </span>
-                        <span className="text-xs bg-muted px-2 py-1 rounded-full">
-                          {project.status || "Non défini"}
-                        </span>
+                <Card key={project.id} className="overflow-hidden border border-muted">
+                  <CardHeader className="p-4 pb-2 space-y-1">
+                    <div className="flex justify-between items-start">
+                      <div className="space-y-1">
+                        <CardTitle className="text-base font-medium">{project.title}</CardTitle>
+                        <div className="flex items-center text-sm text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <User2 size={12} />
+                            <span>{project.farmer.name}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <Badge variant={project.status === 'terminé' ? 'secondary' : 'default'}>
+                        {project.status || "Non défini"}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+
+                  <CardContent className="p-4 pt-2 space-y-4">
+                    {/* Financial Summary Section */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <div className="flex items-center text-xs text-muted-foreground">
+                          <Landmark size={12} className="mr-1" />
+                          <span>Votre investissement</span>
+                        </div>
+                        <div className="text-base font-bold">{formatCurrency(project.userInvestment)}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {Math.round(project.investmentShare * 100)}% du total
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <div className="flex items-center text-xs text-muted-foreground">
+                          <TrendingUp size={12} className="mr-1" />
+                          <span>Bénéfice estimé</span>
+                        </div>
+                        <div className={`text-base font-bold ${project.userProfit > 0 ? 'text-green-600' : 'text-red-500'}`}>
+                          {formatCurrency(project.userProfit)}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          ROI: {project.roi > 0 ? '+' : ''}{Math.round(project.roi)}%
+                        </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-medium">Votre investissement</p>
-                      <p className="text-lg font-bold">{formatCurrency(project.userInvestment)}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="mt-3">
-                    <div className="flex justify-between text-sm">
-                      <span>Progression</span>
-                      <span>
-                        {project.fundingGoal > 0 ? 
-                          `${Math.round((project.currentFunding / project.fundingGoal) * 100)}%` : 
-                          '0%'
-                        }
-                      </span>
-                    </div>
-                    <div className="w-full bg-muted rounded-full h-2 mt-1">
-                      <div 
-                        className="bg-primary h-2 rounded-full" 
-                        style={{ 
-                          width: `${project.fundingGoal > 0 ? 
-                            Math.min(Math.round((project.currentFunding / project.fundingGoal) * 100), 100) : 0
-                          }%` 
+
+                    {/* Chart showing investment vs expected return */}
+                    <div className="h-[100px] -mx-2">
+                      <ChartContainer 
+                        config={{
+                          investment: { color: '#94a3b8' },
+                          profit: { color: project.userProfit > 0 ? '#10b981' : '#f43f5e' }
                         }}
-                      ></div>
+                      >
+                        <BarChart 
+                          width={300} 
+                          height={100} 
+                          data={project.chartData}
+                          margin={{ top: 5, right: 5, bottom: 5, left: 5 }}
+                          barSize={40}
+                        >
+                          <XAxis 
+                            dataKey="name" 
+                            axisLine={false} 
+                            tickLine={false}
+                            tick={{ fontSize: 10 }}
+                          />
+                          <YAxis hide />
+                          <ChartTooltip 
+                            cursor={false}
+                            content={<ChartTooltipContent />}
+                          />
+                          <Bar 
+                            dataKey="value" 
+                            radius={[4, 4, 0, 0]} 
+                          >
+                            {project.chartData.map((entry: any, index: number) => (
+                              <Cell key={`cell-${index}`} fill={entry.fill} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ChartContainer>
                     </div>
-                  </div>
-                  
-                  <div className="mt-3 flex justify-end">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => navigate(`/projects/${project.id}`)}
-                    >
-                      Voir détails
-                    </Button>
-                  </div>
-                </div>
+
+                    {/* Project Progress Section */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-1 text-muted-foreground">
+                          <Clock size={12} className="mr-1" />
+                          <span>Progrès du projet</span>
+                        </div>
+                        {project.dateLancement && (
+                          <span className="text-xs">
+                            Lancé le {formatDate(project.dateLancement)}
+                          </span>
+                        )}
+                      </div>
+
+                      {project.totalJalons > 0 ? (
+                        <div>
+                          <div className="flex justify-between text-xs mb-1">
+                            <span>{project.completedJalons}/{project.totalJalons} jalons complétés</span>
+                            <span>{Math.round(project.jalonProgress)}%</span>
+                          </div>
+                          <Progress value={project.jalonProgress} className="h-1.5" />
+                          
+                          {/* Jalons Preview - first 2 jalons */}
+                          {project.jalons && project.jalons.length > 0 && (
+                            <div className="mt-2 space-y-1">
+                              {project.jalons.slice(0, 2).map((jalon: any, index: number) => (
+                                <div key={`${project.id}-jalon-${index}`} className="flex items-center justify-between text-xs">
+                                  <div className="flex items-center gap-1">
+                                    <div className={`w-2 h-2 rounded-full ${jalon.date_reelle ? 'bg-green-500' : 'bg-gray-300'}`} />
+                                    <span className={jalon.date_reelle ? 'text-green-700' : ''}>
+                                      {jalon.jalon_agricole?.nom_jalon || `Jalon ${index + 1}`}
+                                    </span>
+                                  </div>
+                                  <span className={`text-xs ${jalon.date_reelle ? 'text-green-700' : 'text-muted-foreground'}`}>
+                                    {jalon.date_reelle ? formatDate(jalon.date_reelle) : formatDate(jalon.date_previsionnelle)}
+                                  </span>
+                                </div>
+                              ))}
+                              
+                              {project.jalons.length > 2 && (
+                                <div className="text-xs text-muted-foreground text-center mt-1">
+                                  +{project.jalons.length - 2} autres jalons
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="text-xs text-center text-muted-foreground py-2">
+                          Aucun jalon défini pour ce projet
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Project Funding Progress Section */}
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Financement</span>
+                        <span>
+                          {formatCurrency(project.currentFunding)} / {formatCurrency(project.fundingGoal)}
+                        </span>
+                      </div>
+                      <Progress 
+                        value={project.fundingGoal > 0 ? Math.min(Math.round((project.currentFunding / project.fundingGoal) * 100), 100) : 0} 
+                        className="h-1.5" 
+                      />
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex justify-end pt-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => navigate(`/projects/${project.id}`)}
+                      >
+                        Voir détails
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
               ))}
             </div>
           ) : (
             <div className="text-center py-12 border border-dashed rounded-lg">
-              <Users size={40} className="mx-auto text-muted-foreground" />
+              <Landmark size={40} className="mx-auto text-muted-foreground" />
               <h3 className="mt-4 text-lg font-medium">Aucun investissement</h3>
               <p className="text-muted-foreground">
                 {isCurrentUser 
