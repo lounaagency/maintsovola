@@ -1,47 +1,13 @@
-import React, { useState, useEffect, useCallback } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Avatar } from '@/components/ui/avatar';
-import { 
-  Mail, 
-  MapPin, 
-  Phone, 
-  User2,
-  Edit, 
-  PenSquare,
-  Users,
-  TrendingUp,
-  Calendar,
-  Landmark,
-  Clock,
-  ChartLine,
-  ChartBar,
-  Eye
-} from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { UserProfile } from '@/types/userProfile';
-import { formatCurrency } from '@/lib/utils';
-import ProjectFeed from '@/components/ProjectFeed';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { 
-  ChartContainer, 
-  ChartTooltip,
-  ChartTooltipContent
-} from '@/components/ui/chart';
-import {
-  BarChart,
-  Bar,
-  Cell,
-  XAxis,
-  YAxis,
-  Tooltip
-} from 'recharts';
+import ProfileHeader from '@/components/profile/ProfileHeader';
+import ProfileTabs from '@/components/profile/ProfileTabs';
 import ProjectDetailsDialog from '@/components/ProjectDetailsDialog';
 
 // Type guard for SelectQueryError
@@ -52,7 +18,7 @@ const isSelectQueryError = (obj: any): boolean => {
 export const Profile = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user, profile: currentUserProfile, refreshProfile } = useAuth();
+  const { user, profile: currentUserProfile } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isCurrentUser, setIsCurrentUser] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -338,19 +304,16 @@ export const Profile = () => {
           const completedJalons = projectJalons.filter(j => j.date_reelle).length;
           const jalonProgress = projectJalons.length > 0 ? (completedJalons / projectJalons.length) * 100 : 0;
           
-          const id_tantsaha = typeof tantsaha === 'object' ? tantsaha.id_utilisateur : null;
-          const nom = typeof tantsaha === 'object' ? tantsaha.nom : null;
-          const prenoms = typeof tantsaha === 'object' ? tantsaha.prenoms : null;
-          const photo_profil = typeof tantsaha === 'object' ? tantsaha.photo_profil : null;
-
+          const tantsahaObject = typeof tantsaha === 'object' ? tantsaha : {};
+          
           return {
             id: project.id_projet.toString(),
             title: project.titre || `Projet #${project.id_projet}`,
             farmer: {
-              id: id_tantsaha,
-              name: `${nom || ""} ${prenoms || ""}`.trim(),
-              username: nom?.toLowerCase()?.replace(/\s+/g, '') || "",
-              avatar: photo_profil,
+              id: tantsahaObject.id_utilisateur,
+              name: `${tantsahaObject.nom || ""} ${tantsahaObject.prenoms || ""}`.trim(),
+              username: tantsahaObject.nom?.toLowerCase()?.replace(/\s+/g, '') || "",
+              avatar: tantsahaObject.photo_profil,
             },
             location: {
               region: project.id_region || "Non spécifié",
@@ -439,27 +402,6 @@ export const Profile = () => {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch(status) {
-      case 'en cours': return 'bg-blue-500';
-      case 'terminé': return 'bg-green-500';
-      case 'en attente': return 'bg-yellow-500';
-      case 'en financement': return 'bg-purple-500';
-      case 'validé': return 'bg-teal-500';
-      default: return 'bg-gray-500';
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    if (!dateString) return "Non défini";
-    const date = new Date(dateString);
-    return date.toLocaleDateString('fr-FR', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
-  
   if (!profile) {
     return (
       <div className="flex justify-center items-center min-h-[50vh]">
@@ -470,327 +412,24 @@ export const Profile = () => {
 
   return (
     <div className="container max-w-4xl py-6 space-y-6">
-      <div className="flex flex-col md:flex-row gap-6 items-start">
-        <Avatar className="h-24 w-24 rounded-full border-4 border-background">
-          {profile.photo_profil ? (
-            <img 
-              src={profile.photo_profil} 
-              alt={profile.nom} 
-              className="aspect-square h-full w-full object-cover"
-            />
-          ) : (
-            <User2 className="h-12 w-12" />
-          )}
-        </Avatar>
-        
-        <div className="flex-1">
-          <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
-            <h1 className="text-2xl font-bold">
-              {`${profile.nom} ${profile.prenoms || ''}`}
-            </h1>
-            
-            <div className="flex items-center">
-              <span className="text-sm px-2 py-0.5 bg-muted rounded-full">
-                {profile.nom_role?.charAt(0).toUpperCase() + profile.nom_role?.slice(1)}
-              </span>
-            </div>
-          </div>
-          
-          {profile.bio && (
-            <p className="mt-2 text-muted-foreground">{profile.bio}</p>
-          )}
-          
-          <div className="flex flex-wrap gap-4 mt-3">
-            <div className="flex items-center text-sm text-muted-foreground">
-              <MapPin size={16} className="mr-1" />
-              <span>{profile.adresse || 'Aucune adresse'}</span>
-            </div>
-            
-            {profile.telephone && (
-              <div className="flex items-center text-sm text-muted-foreground">
-                <Phone size={16} className="mr-1" />
-                <span>{profile.telephone}</span>
-              </div>
-            )}
-            
-            <div className="flex items-center text-sm text-muted-foreground">
-              <Mail size={16} className="mr-1" />
-              <span>{profile.email}</span>
-            </div>
-          </div>
-          
-          <div className="flex flex-wrap items-center gap-4 mt-4">
-            <div className="flex items-center gap-1">
-              <span className="font-semibold">{projectsCount}</span>
-              <span className="text-muted-foreground text-sm">projets</span>
-            </div>
-            
-            <div className="flex items-center gap-1">
-              <span className="font-semibold">{followersCount}</span>
-              <span className="text-muted-foreground text-sm">abonnés</span>
-            </div>
-            
-            <div className="flex items-center gap-1">
-              <span className="font-semibold">{followingCount}</span>
-              <span className="text-muted-foreground text-sm">abonnements</span>
-            </div>
-          </div>
-        </div>
-        
-        <div className="flex flex-col gap-2">
-          {isCurrentUser ? (
-            <Button 
-              variant="outline" 
-              onClick={() => navigate('/settings')}
-              className="flex items-center"
-            >
-              <Edit size={16} className="mr-2" />
-              Modifier profil
-            </Button>
-          ) : (
-            <>
-              <Button 
-                variant={isFollowing ? "outline" : "default"}
-                onClick={handleFollow}
-              >
-                {isFollowing ? (
-                  <>
-                    <Users size={16} className="mr-2" />
-                    Abonné
-                  </>
-                ) : (
-                  <>
-                    <Users size={16} className="mr-2" />
-                    Suivre
-                  </>
-                )}
-              </Button>
-              <Button variant="outline">
-                <Mail size={16} className="mr-2" />
-                Message
-              </Button>
-            </>
-          )}
-        </div>
-      </div>
+      <ProfileHeader 
+        profile={profile}
+        isCurrentUser={isCurrentUser}
+        isFollowing={isFollowing}
+        followersCount={followersCount}
+        followingCount={followingCount}
+        projectsCount={projectsCount}
+        onFollowToggle={handleFollow}
+      />
       
       <Separator />
       
-      <Tabs defaultValue="projects">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="projects" className="flex items-center">
-            <PenSquare size={16} className="mr-2" />
-            Projets
-          </TabsTrigger>
-          <TabsTrigger value="investments" className="flex items-center">
-            <Landmark size={16} className="mr-2" />
-            Investissements
-          </TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="projects" className="mt-6">
-          {loading ? (
-            <div className="flex justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
-            </div>
-          ) : (
-            <div className="max-w-md mx-auto">
-              <ProjectFeed 
-                filters={{ 
-                  userId: profile.id_utilisateur 
-                }}
-                showFilters={false}
-                showFollowingTab={false}
-                title=""
-                className="mt-0"
-              />
-            </div>
-          )}
-        </TabsContent>
-        
-        <TabsContent value="investments" className="mt-6">
-          {loading ? (
-            <div className="flex justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
-            </div>
-          ) : investedProjects.length > 0 ? (
-            <div className="max-w-md mx-auto space-y-4">
-              {investedProjects.map(project => (
-                <Card key={project.id} className="overflow-hidden border border-muted">
-                  <CardHeader className="p-4 pb-2 space-y-1">
-                    <div className="flex justify-between items-start">
-                      <div className="space-y-1">
-                        <CardTitle className="text-base font-medium">{project.title}</CardTitle>
-                        <div className="flex items-center text-sm text-muted-foreground">
-                          <div className="flex items-center gap-1">
-                            <User2 size={12} />
-                            <span>{project.farmer.name}</span>
-                          </div>
-                        </div>
-                      </div>
-                      <Badge variant={project.status === 'terminé' ? 'secondary' : 'default'}>
-                        {project.status || "Non défini"}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-
-                  <CardContent className="p-4 pt-2 space-y-4">
-                    {/* Financial Summary Section */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <div className="flex items-center text-xs text-muted-foreground">
-                          <Landmark size={12} className="mr-1" />
-                          <span>Votre investissement</span>
-                        </div>
-                        <div className="text-base font-bold">{formatCurrency(project.userInvestment)}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {Math.round(project.investmentShare * 100)}% du total
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-1">
-                        <div className="flex items-center text-xs text-muted-foreground">
-                          <TrendingUp size={12} className="mr-1" />
-                          <span>Bénéfice estimé</span>
-                        </div>
-                        <div className={`text-base font-bold ${project.userProfit > 0 ? 'text-green-600' : 'text-red-500'}`}>
-                          {formatCurrency(project.userProfit)}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          ROI: {project.roi > 0 ? '+' : ''}{Math.round(project.roi)}%
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Chart showing investment vs expected return */}
-                    <div className="h-[100px] -mx-2">
-                      <ChartContainer 
-                        config={{
-                          investment: { color: '#94a3b8' },
-                          profit: { color: project.userProfit > 0 ? '#10b981' : '#f43f5e' }
-                        }}
-                      >
-                        <BarChart 
-                          width={300} 
-                          height={100} 
-                          data={project.chartData}
-                          margin={{ top: 5, right: 5, bottom: 5, left: 5 }}
-                          barSize={40}
-                        >
-                          <XAxis 
-                            dataKey="name" 
-                            axisLine={false} 
-                            tickLine={false}
-                            tick={{ fontSize: 10 }}
-                          />
-                          <YAxis hide />
-                          <ChartTooltip 
-                            cursor={false}
-                            content={<ChartTooltipContent />}
-                          />
-                          <Bar 
-                            dataKey="value" 
-                            radius={[4, 4, 0, 0]} 
-                          >
-                            {project.chartData.map((entry: any, index: number) => (
-                              <Cell key={`cell-${index}`} fill={entry.fill} />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      </ChartContainer>
-                    </div>
-
-                    {/* Project Progress Section */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-1 text-muted-foreground">
-                          <Clock size={12} className="mr-1" />
-                          <span>Progrès du projet</span>
-                        </div>
-                        {project.dateLancement && (
-                          <span className="text-xs">
-                            Lancé le {formatDate(project.dateLancement)}
-                          </span>
-                        )}
-                      </div>
-
-                      {project.totalJalons > 0 ? (
-                        <div>
-                          <div className="flex justify-between text-xs mb-1">
-                            <span>{project.completedJalons}/{project.totalJalons} jalons complétés</span>
-                            <span>{Math.round(project.jalonProgress)}%</span>
-                          </div>
-                          <Progress value={project.jalonProgress} className="h-1.5" />
-                          
-                          {/* Jalons Preview - first 2 jalons */}
-                          {project.jalons && project.jalons.length > 0 && (
-                            <div className="mt-2 space-y-1">
-                              {project.jalons.slice(0, 2).map((jalon: any, index: number) => (
-                                <div key={`${project.id}-jalon-${index}`} className="flex items-center justify-between text-xs">
-                                  <div className="flex items-center gap-1">
-                                    <div className={`w-2 h-2 rounded-full ${jalon.date_reelle ? 'bg-green-500' : 'bg-gray-300'}`} />
-                                    <span className={jalon.date_reelle ? 'text-green-700' : ''}>
-                                      {jalon.jalon_agricole?.nom_jalon || `Jalon ${index + 1}`}
-                                    </span>
-                                  </div>
-                                  <span className={`text-xs ${jalon.date_reelle ? 'text-green-700' : 'text-muted-foreground'}`}>
-                                    {jalon.date_reelle ? formatDate(jalon.date_reelle) : formatDate(jalon.date_previsionnelle)}
-                                  </span>
-                                </div>
-                              ))}
-                              
-                              {project.jalons.length > 2 && (
-                                <div className="text-xs text-muted-foreground text-center mt-1">
-                                  +{project.jalons.length - 2} autres jalons
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="text-xs text-center text-muted-foreground py-2">
-                          Aucun jalon défini pour ce projet
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Project Funding Progress Section */}
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-muted-foreground">Financement</span>
-                        <span>
-                          {formatCurrency(project.currentFunding)} / {formatCurrency(project.fundingGoal)}
-                        </span>
-                      </div>
-                      <Progress 
-                        value={project.fundingGoal > 0 ? Math.min(Math.round((project.currentFunding / project.fundingGoal) * 100), 100) : 0} 
-                        className="h-1.5" 
-                      />
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex justify-end pt-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => handleOpenDetails(Number(project.id))}
-                        className="flex items-center gap-1"
-                      >
-                        <Eye size={16} />
-                        Voir détails
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <p>Aucun investissement trouvé</p>
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+      <ProfileTabs 
+        userId={profile.id_utilisateur}
+        investedProjects={investedProjects}
+        loading={loading}
+        onViewDetails={handleOpenDetails}
+      />
       
       {/* Add ProjectDetailsDialog */}
       {selectedProjectId && (

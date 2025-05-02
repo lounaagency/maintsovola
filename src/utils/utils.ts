@@ -1,4 +1,5 @@
 
+// This is a new file that will extend the existing utils.ts with the new formatDate function
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 
