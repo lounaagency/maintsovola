@@ -189,7 +189,7 @@ const Index = () => {
         .from('projet')
         .select('id_projet, titre, statut, created_at')
         .order('created_at', { ascending: false })
-        .limit(3);
+        .limit(4);
 
       if (!error && data) {
         const projects = data.map(project => {
