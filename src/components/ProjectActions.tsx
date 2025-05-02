@@ -70,7 +70,7 @@ const ProjectActions: React.FC<ProjectActionsProps> = ({
           onClick={onInvest}
           disabled={fundingGap === 0}
         >
-          {fundingGap > 0 ? "S'investir" : "Financé"}
+          {fundingGap > 0 ? "Investir" : "Financé"}
         </Button>
       )}
       

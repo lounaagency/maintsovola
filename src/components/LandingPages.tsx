@@ -122,7 +122,7 @@ const LandingPages: React.FC<LandingPagesProps> = ({ onSkip }) => {
     {
       title: "Bienvenue sur Maintso Vola",
       description: "La première plateforme de financement participatif agricole à Madagascar. Nous connectons agriculteurs, investisseurs, techniciens et superviseurs pour développer l'agriculture malgache.",
-      image: "/lovable-uploads/804a44d2-41b4-4ad8-92c8-51f27bd6b598.png",
+      image: "/lovable-uploads/invest_is_better.png",
       cta: {
         text: "Découvrir l'application",
         action: () => navigate("/feed")
@@ -131,7 +131,7 @@ const LandingPages: React.FC<LandingPagesProps> = ({ onSkip }) => {
     {
       title: "Pour les investisseurs",
       description: "Investissez dans des projets agricoles validés par des experts et suivez leur progression en temps réel. Participez au développement de l'agriculture malgache tout en générant des revenus.",
-      image: "/lovable-uploads/804a44d2-41b4-4ad8-92c8-51f27bd6b598.png",
+      image: "/lovable-uploads/invest_is_better.png",
       cta: {
         text: "Découvrir les projets",
         action: () => navigate("/feed")
@@ -140,7 +140,7 @@ const LandingPages: React.FC<LandingPagesProps> = ({ onSkip }) => {
     {
       title: "Pour les agriculteurs",
       description: "Faites valider vos terrains, créez des projets agricoles et trouvez des financements pour les réaliser. Bénéficiez de l'accompagnement de techniciens qualifiés.",
-      image: "/lovable-uploads/804a44d2-41b4-4ad8-92c8-51f27bd6b598.png",
+      image: "/lovable-uploads/invest_is_better.png",
       cta: [
         {
           text: "Ajouter un terrain",
@@ -155,7 +155,7 @@ const LandingPages: React.FC<LandingPagesProps> = ({ onSkip }) => {
     {
       title: "Semez aujourd'hui, récoltez demain avec Maintso Vola",
       description: `Déjà ${stats.totalUsers} investisseurs nous font confiance. ${stats.totalHectares} hectares financés.`,
-      image: "/lovable-uploads/804a44d2-41b4-4ad8-92c8-51f27bd6b598.png",
+      image: "/lovable-uploads/invest_is_better.png",
       showcaseProjects: true
     }
   ];
@@ -206,7 +206,7 @@ const LandingPages: React.FC<LandingPagesProps> = ({ onSkip }) => {
                 {/* Hero section */}
                 <div className="relative rounded-lg overflow-hidden mb-6">
                   <img 
-                    src="/lovable-uploads/804a44d2-41b4-4ad8-92c8-51f27bd6b598.png" 
+                    src="/lovable-uploads/invest_is_better.png" 
                     alt="Champ agricole" 
                     className="w-full h-48 object-cover"
                   />
@@ -228,7 +228,7 @@ const LandingPages: React.FC<LandingPagesProps> = ({ onSkip }) => {
                       <div key={project.id_projet} className="flex items-center justify-between">
                         <div className="flex items-center">
                           <img 
-                            src="/lovable-uploads/804a44d2-41b4-4ad8-92c8-51f27bd6b598.png" 
+                            src="/lovable-uploads/invest_is_better.png" 
                             alt={project.titre} 
                             className="w-12 h-12 rounded-full object-cover mr-3"
                           />
