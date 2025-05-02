@@ -61,8 +61,9 @@ const Index = () => {
     try {
       // Count total users
       const {
-        count: userCount,
-        error: userError
+        data: userData,
+        error: userError,
+        count: userCount
       } = await supabase.from('utilisateur').select('id_utilisateur', {
         count: 'exact',
         head: true
@@ -70,8 +71,9 @@ const Index = () => {
 
       // Count projects in financing
       const {
-        count: projectCount,
-        error: projectError
+        data: projectData,
+        error: projectError,
+        count: projectCount
       } = await supabase.from('projet').select('id_projet', {
         count: 'exact',
         head: true

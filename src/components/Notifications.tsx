@@ -1,226 +1,104 @@
-import React, { useState, useEffect } from "react";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Bell } from "lucide-react";
-import { Button } from "./ui/button";
-import { motion } from "framer-motion";
-import { cn } from "@/lib/utils";
-import { Link } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-import { Notification, DatabaseNotification } from "@/types/notification";
 
+import React, { useState, useEffect } from 'react';
+import { Bell } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { Button } from './ui/button';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { formatRelativeTime } from '@/lib/utils';
+import { Notification } from '@/types/notification';
+
+// Define a type specifically for our notification items
 interface NotificationItem {
   id: string;
   title: string;
   description: string;
   timestamp: string;
   read: boolean;
-  type: "info" | "success" | "warning" | "error";
-  link?: string;
-  entity_id?: string;
-  entity_type?: "terrain" | "projet" | "jalon" | "investissement";
-  projet_id?: string;
+  type: 'info' | 'error' | 'success' | 'warning';
+  link: string;
+  entity_id: string | null;
+  entity_type: 'terrain' | 'projet' | 'jalon' | 'investissement' | undefined;
+  projet_id: string | null;
 }
 
-const NotificationItem: React.FC<{ notification: NotificationItem; onRead: (id: string) => void }> = ({ 
-  notification,
-  onRead 
-}) => {
-  const typeStyles = {
-    info: "bg-blue-50 border-blue-200",
-    success: "bg-green-50 border-green-200",
-    warning: "bg-amber-50 border-amber-200",
-    error: "bg-red-50 border-red-200",
-  };
-
-  const handleClick = () => {
-    if (!notification.read) {
-      onRead(notification.id);
-    }
-  };
-
-  const getNotificationLink = () => {
-    if (notification.entity_type === 'terrain') {
-      return `/terrain?id=${notification.entity_id}`;
-    } else if (notification.entity_type === 'projet') {
-      return `/feed?project=${notification.entity_id}`;
-    } else if (notification.entity_type === 'jalon') {
-      return `/projet?id=${notification.projet_id}#jalons`;
-    } else if (notification.entity_type === 'investissement') {
-      return `/projet?id=${notification.projet_id}#investissements`;
-    }
-    return '';
-  };
-
-  const content = (
-    <motion.div
-      initial={{ opacity: 0, y: 5 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={cn(
-        "p-3 border rounded-md mb-2 relative",
-        notification.read ? "bg-gray-50 border-gray-200" : typeStyles[notification.type],
-        !notification.read && "font-medium"
-      )}
-      onClick={handleClick}
-    >
-      {!notification.read && (
-        <span className="absolute top-3 right-3 w-2 h-2 rounded-full bg-blue-500"></span>
-      )}
-      <h4 className="font-medium">{notification.title}</h4>
-      <p className="text-sm text-gray-600 mt-1">{notification.description}</p>
-      <p className="text-xs text-gray-500 mt-2">
-        {new Date(notification.timestamp).toLocaleDateString()} • {new Date(notification.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-      </p>
-    </motion.div>
-  );
-
-  const link = getNotificationLink();
-  return link ? (
-    <Link to={link} className="block">
-      {content}
-    </Link>
-  ) : (
-    content
-  );
-};
-
 const Notifications: React.FC = () => {
-  const { user, profile } = useAuth();
+  const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const unreadCount = notifications.filter((n) => !n.read).length;
-
+  const [unreadCount, setUnreadCount] = useState(0);
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  
+  useEffect(() => {
+    if (user) {
+      fetchNotifications();
+    }
+  }, [user]);
+  
   const fetchNotifications = async () => {
     if (!user) return;
     
     try {
-      setLoading(true);
-      
       const { data, error } = await supabase
         .from('notification')
         .select('*')
         .eq('id_destinataire', user.id)
         .order('date_creation', { ascending: false })
-        .limit(20);
+        .limit(10);
         
       if (error) throw error;
       
-      const transformedNotifications: NotificationItem[] = (data as unknown as DatabaseNotification[]).map((notification) => {
-        let type: "info" | "success" | "warning" | "error" = "info";
-        if (notification.type === "validation" || notification.type === "success") type = "success";
-        if (notification.type === "alerte") type = "warning";
-        if (notification.type === "erreur") type = "error";
-        
-        let link = "";
-        if (notification.entity_type === "terrain") {
-          link = `/terrain?id=${notification.entity_id}`;
-        } else if (notification.entity_type === "projet") {
-          link = `/feed?project=${notification.entity_id}`;
-        } else if (notification.entity_type === "jalon") {
-          link = `/projet?id=${notification.projet_id}#jalons`;
-        } else if (notification.entity_type === "investissement") {
-          link = `/projet?id=${notification.projet_id}#investissements`;
+      const formattedNotifications = (data || []).map(notification => {
+        // Map notification type to UI variant
+        let notifType: 'info' | 'error' | 'success' | 'warning' = 'info';
+        switch (notification.type) {
+          case 'validation':
+            notifType = 'success';
+            break;
+          case 'alerte':
+            notifType = 'warning';
+            break;
+          case 'erreur':
+            notifType = 'error';
+            break;
+          case 'assignment':
+            notifType = 'info';
+            break;
         }
         
-        const entityId = notification.entity_id !== undefined 
-          ? String(notification.entity_id) 
-          : undefined;
+        // Determine link based on entity type
+        let link = '';
+        if (notification.entity_type === 'projet' || notification.projet_id) {
+          link = `/projects/${notification.entity_id || notification.projet_id}`;
+        } else if (notification.entity_type === 'terrain') {
+          link = `/terrain?id=${notification.entity_id}`;
+        } else if (notification.entity_type === 'jalon') {
+          link = `/projects/${notification.projet_id}?jalon=${notification.entity_id}`;
+        }
         
         return {
-          id: String(notification.id_notification),
+          id: notification.id_notification.toString(),
           title: notification.titre,
           description: notification.message,
           timestamp: notification.date_creation,
           read: notification.lu,
-          type,
-          link,
-          entity_id: entityId,
-          entity_type: notification.entity_type as "terrain" | "projet" | "jalon" | "investissement" | undefined,
-          projet_id: notification.projet_id
+          type: notifType,
+          link: link,
+          entity_id: notification.entity_id?.toString() || null,
+          entity_type: notification.entity_type,
+          projet_id: notification.projet_id?.toString() || null
         };
       });
       
-      setNotifications(transformedNotifications);
+      setNotifications(formattedNotifications);
+      const unread = (data || []).filter(notif => !notif.lu).length;
+      setUnreadCount(unread);
     } catch (error) {
-      console.error("Error fetching notifications:", error);
-      toast.error("Impossible de charger les notifications");
-    } finally {
-      setLoading(false);
+      console.error('Error fetching notifications:', error);
     }
   };
   
-  useEffect(() => {
-    fetchNotifications();
-    
-    if (user) {
-      const channel = supabase
-        .channel('notification-changes')
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'notification',
-            filter: `id_destinataire=eq.${user.id}`
-          },
-          (payload) => {
-            const newNotification = payload.new as DatabaseNotification;
-            
-            setNotifications(prev => {
-              const exists = prev.some(n => n.id === String(newNotification.id_notification));
-              if (exists) return prev;
-              
-              let type: "info" | "success" | "warning" | "error" = "info";
-              if (newNotification.type === "validation") type = "success";
-              if (newNotification.type === "alerte") type = "warning";
-              if (newNotification.type === "erreur") type = "error";
-              
-              let link = "";
-              if (newNotification.entity_type === "terrain") {
-                link = `/terrain?id=${newNotification.entity_id}`;
-              } else if (newNotification.entity_type === "projet") {
-                link = `/feed?project=${newNotification.entity_id}`;
-              } else if (newNotification.entity_type === "jalon") {
-                link = `/projet?id=${newNotification.projet_id}#jalons`;
-              } else if (newNotification.entity_type === "investissement") {
-                link = `/projet?id=${newNotification.projet_id}#investissements`;
-              }
-              
-              const formattedNotification: NotificationItem = {
-                id: String(newNotification.id_notification),
-                title: newNotification.titre,
-                description: newNotification.message,
-                timestamp: newNotification.date_creation,
-                read: newNotification.lu,
-                type,
-                link,
-                entity_id: newNotification.entity_id ? String(newNotification.entity_id) : undefined,
-                entity_type: newNotification.entity_type as "terrain" | "projet" | "jalon" | "investissement" | undefined,
-                projet_id: newNotification.projet_id
-              };
-              
-              toast(formattedNotification.title, {
-                description: formattedNotification.description,
-              });
-              
-              return [formattedNotification, ...prev];
-            });
-          }
-        )
-        .subscribe();
-        
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    }
-  }, [user]);
-
   const markAsRead = async (notificationId: string) => {
     try {
       const { error } = await supabase
@@ -230,20 +108,22 @@ const Notifications: React.FC = () => {
         
       if (error) throw error;
       
-      setNotifications(prevNotifications => 
-        prevNotifications.map(notification => 
-          notification.id === notificationId 
-            ? { ...notification, read: true }
-            : notification
-        )
+      // Update local state
+      const updatedNotifications = notifications.map(n => 
+        n.id === notificationId ? { ...n, read: true } : n
       );
+      setNotifications(updatedNotifications);
+      
+      // Update unread count
+      const unread = updatedNotifications.filter(n => !n.read).length;
+      setUnreadCount(unread);
     } catch (error) {
-      console.error("Error marking notification as read:", error);
+      console.error('Error marking notification as read:', error);
     }
   };
-
+  
   const markAllAsRead = async () => {
-    if (!user) return;
+    if (notifications.length === 0 || !user) return;
     
     try {
       const { error } = await supabase
@@ -254,62 +134,102 @@ const Notifications: React.FC = () => {
         
       if (error) throw error;
       
-      setNotifications(prevNotifications => 
-        prevNotifications.map(notification => ({ ...notification, read: true }))
-      );
-      
-      toast.success("Toutes les notifications ont été marquées comme lues");
+      // Update local state
+      const updatedNotifications = notifications.map(n => ({ ...n, read: true }));
+      setNotifications(updatedNotifications);
+      setUnreadCount(0);
     } catch (error) {
-      console.error("Error marking all notifications as read:", error);
-      toast.error("Une erreur s'est produite");
+      console.error('Error marking all notifications as read:', error);
+    }
+  };
+  
+  const handleNotificationClick = (notification: NotificationItem) => {
+    if (!notification.read) {
+      markAsRead(notification.id);
+    }
+    
+    if (notification.link) {
+      navigate(notification.link);
+      setIsOpen(false);
+    }
+  };
+  
+  const getTimeAgo = (timestamp: string) => {
+    return formatRelativeTime(new Date(timestamp).getTime());
+  };
+  
+  const getNotificationIcon = (type: 'info' | 'error' | 'success' | 'warning') => {
+    switch (type) {
+      case 'info':
+        return <div className="w-2 h-2 bg-blue-500 rounded-full"></div>;
+      case 'success':
+        return <div className="w-2 h-2 bg-green-500 rounded-full"></div>;
+      case 'warning':
+        return <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>;
+      case 'error':
+        return <div className="w-2 h-2 bg-red-500 rounded-full"></div>;
     }
   };
 
   return (
-    <Popover>
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell size={20} />
+        <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
+          <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
-              {unreadCount}
+            <span className="absolute top-1 right-1 h-4 w-4 text-[10px] font-bold flex items-center justify-center bg-red-500 text-white rounded-full">
+              {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-80 p-0" align="end">
-        <div className="flex items-center justify-between p-4 border-b">
-          <h3 className="font-semibold">Notifications</h3>
+        <div className="p-4 border-b border-border flex justify-between items-center">
+          <h3 className="font-medium">Notifications</h3>
           {unreadCount > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
+            <Button 
+              variant="ghost" 
+              size="sm" 
               onClick={markAllAsRead}
-              className="text-xs h-8"
+              className="text-xs h-7 px-2"
             >
               Tout marquer comme lu
             </Button>
           )}
         </div>
-        <ScrollArea className="h-[300px] p-4">
-          {loading ? (
-            <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-primary"></div>
-            </div>
-          ) : notifications.length > 0 ? (
-            notifications.map((notification) => (
-              <NotificationItem 
-                key={notification.id} 
-                notification={notification} 
-                onRead={markAsRead}
-              />
+        <div className="max-h-72 overflow-y-auto">
+          {notifications.length > 0 ? (
+            notifications.map(notification => (
+              <div 
+                key={notification.id}
+                className={`
+                  p-3 border-b border-border flex gap-3 cursor-pointer hover:bg-accent
+                  ${!notification.read ? 'bg-muted/40' : ''}
+                `}
+                onClick={() => handleNotificationClick(notification)}
+              >
+                <div className="pt-0.5">
+                  {getNotificationIcon(notification.type)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm font-medium ${!notification.read ? 'text-foreground' : 'text-muted-foreground'}`}>
+                    {notification.title}
+                  </p>
+                  <p className="text-xs text-muted-foreground line-clamp-2 mb-1">
+                    {notification.description}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {getTimeAgo(notification.timestamp)}
+                  </p>
+                </div>
+              </div>
             ))
           ) : (
-            <div className="text-center py-8 text-gray-500">
-              Aucune notification
+            <div className="p-6 text-center text-muted-foreground">
+              <p>Aucune notification</p>
             </div>
           )}
-        </ScrollArea>
+        </div>
       </PopoverContent>
     </Popover>
   );

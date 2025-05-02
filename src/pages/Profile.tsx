@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,10 +17,9 @@ import {
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import AgriculturalProjectCard from '@/components/AgriculturalProjectCard';
-import { AgriculturalProject } from '@/types/agriculturalProject';
 import { UserProfile } from '@/types/userProfile';
 import { formatCurrency } from '@/lib/utils';
+import ProjectFeed from '@/components/ProjectFeed';
 
 // Type guard for SelectQueryError
 const isSelectQueryError = (obj: any): boolean => {
@@ -35,7 +35,6 @@ export const Profile = () => {
   const [isFollowing, setIsFollowing] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
-  const [projects, setProjects] = useState<AgriculturalProject[]>([]);
   const [investedProjects, setInvestedProjects] = useState<any[]>([]);
   const [projectsCount, setProjectsCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -61,7 +60,7 @@ export const Profile = () => {
       }
       
       await fetchFollowStatus(userId);
-      await fetchUserProjects(userId);
+      await fetchProjectsCount(userId);
       await fetchInvestedProjects(userId);
       setLoading(false);
     };
@@ -150,76 +149,18 @@ export const Profile = () => {
     }
   };
   
-  const fetchUserProjects = async (userId: string) => {
+  const fetchProjectsCount = async (userId: string) => {
     try {
-      setLoading(true);
-      
-      const { data, error, count } = await supabase
+      const { count, error } = await supabase
         .from('projet')
-        .select(`
-          *,
-          terrain(*),
-          projet_culture!inner(*, culture(*))
-        `, { count: 'exact' })
-        .eq('id_tantsaha', userId)
-        .order('created_at', { ascending: false });
+        .select('id_projet', { count: 'exact', head: true })
+        .eq('id_tantsaha', userId);
       
       if (error) throw error;
       
-      const formattedProjects: AgriculturalProject[] = (data || []).map(project => {
-        const totalCost = project.projet_culture.reduce(
-          (sum: number, pc: any) => sum + (pc.cout_exploitation_previsionnel || 0), 
-          0
-        );
-        
-        const totalYield = project.projet_culture.reduce(
-          (sum: number, pc: any) => sum + (pc.rendement_previsionnel || 0), 
-          0
-        );
-        
-        const expectedRevenue = project.projet_culture.reduce(
-          (sum: number, pc: any) => sum + (pc.rendement_previsionnel * (pc.culture?.prix_tonne || 0)), 
-          0
-        );
-        
-        return {
-          id: project.id_projet.toString(),
-          title: project.titre || `Projet #${project.id_projet}`,
-          farmer: {
-            id: userId,
-            name: `${profile?.nom || ""} ${profile?.prenoms || ""}`.trim(),
-            username: profile?.nom?.toLowerCase()?.replace(/\s+/g, '') || "",
-            avatar: profile?.photo_profil,
-          },
-          location: {
-            region: project.terrain?.id_region || "Non spécifié",
-            district: project.terrain?.id_district || "Non spécifié",
-            commune: project.terrain?.id_commune || "Non spécifié",
-          },
-          cultivationArea: project.surface_ha || 0,
-          cultivationType: project.projet_culture[0]?.culture?.nom_culture || "Non spécifié",
-          farmingCost: totalCost,
-          expectedYield: totalYield,
-          expectedRevenue: expectedRevenue,
-          creationDate: project.created_at || new Date().toISOString(),
-          images: [],
-          description: project.description || "",
-          fundingGoal: totalCost,
-          currentFunding: calculateCurrentFunding(project),
-          totalProfit: expectedRevenue - totalCost,
-          likes: 0,
-          comments: 0,
-          shares: 0,
-        };
-      });
-      
-      setProjects(formattedProjects);
       setProjectsCount(count || 0);
     } catch (error) {
-      console.error('Error fetching user projects:', error);
-      toast.error("Impossible de charger les projets");
-    } finally {
-      setLoading(false);
+      console.error('Error fetching projects count:', error);
     }
   };
   
@@ -345,11 +286,6 @@ export const Profile = () => {
     }
   };
   
-  const calculateCurrentFunding = (project: any) => {
-    if (!project.investissements) return 0;
-    return project.investissements.reduce((sum: number, inv: any) => sum + (inv.montant || 0), 0);
-  };
-  
   const handleFollow = async () => {
     if (!user || !profile) return;
     
@@ -384,9 +320,6 @@ export const Profile = () => {
       console.error('Error updating follow status:', error);
       toast.error("Une erreur est survenue");
     }
-  };
-  
-  const handleLikeToggle = async (projectId: string) => {
   };
   
   if (!profile) {
@@ -522,31 +455,16 @@ export const Profile = () => {
             <div className="flex justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
             </div>
-          ) : projects.length > 0 ? (
-            <div className="grid grid-cols-1 gap-6">
-              {projects.map(project => (
-                <AgriculturalProjectCard
-                  key={project.id}
-                  project={project}
-                  onLikeToggle={() => handleLikeToggle(project.id)}
-                />
-              ))}
-            </div>
           ) : (
-            <div className="text-center py-12 border border-dashed rounded-lg">
-              <PenSquare size={40} className="mx-auto text-muted-foreground" />
-              <h3 className="mt-4 text-lg font-medium">Aucun projet</h3>
-              <p className="text-muted-foreground">
-                {isCurrentUser 
-                  ? "Vous n'avez pas encore créé de projet agricole."
-                  : "Cet utilisateur n'a pas encore créé de projet agricole."}
-              </p>
-              {isCurrentUser && profile.nom_role === 'agriculteur' && (
-                <Button className="mt-4" onClick={() => navigate('/terrain')}>
-                  Créer un projet
-                </Button>
-              )}
-            </div>
+            <ProjectFeed 
+              filters={{ 
+                userId: profile.id_utilisateur 
+              }}
+              showFilters={false}
+              showFollowingTab={false}
+              title=""
+              className="mt-0"
+            />
           )}
         </TabsContent>
         

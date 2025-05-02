@@ -119,6 +119,13 @@ export type Database = {
             foreignKeyName: "aimer_projet_id_projet_fkey"
             columns: ["id_projet"]
             isOneToOne: false
+            referencedRelation: "vue_projet_detaille"
+            referencedColumns: ["id_projet"]
+          },
+          {
+            foreignKeyName: "aimer_projet_id_projet_fkey"
+            columns: ["id_projet"]
+            isOneToOne: false
             referencedRelation: "vue_suivi_financier_projet"
             referencedColumns: ["id_projet"]
           },
@@ -192,6 +199,13 @@ export type Database = {
             columns: ["id_projet"]
             isOneToOne: false
             referencedRelation: "projet"
+            referencedColumns: ["id_projet"]
+          },
+          {
+            foreignKeyName: "commentaire_id_projet_fkey"
+            columns: ["id_projet"]
+            isOneToOne: false
+            referencedRelation: "vue_projet_detaille"
             referencedColumns: ["id_projet"]
           },
           {
@@ -378,6 +392,13 @@ export type Database = {
             foreignKeyName: "cout_jalon_projet_id_projet_fkey"
             columns: ["id_projet"]
             isOneToOne: false
+            referencedRelation: "vue_projet_detaille"
+            referencedColumns: ["id_projet"]
+          },
+          {
+            foreignKeyName: "cout_jalon_projet_id_projet_fkey"
+            columns: ["id_projet"]
+            isOneToOne: false
             referencedRelation: "vue_suivi_financier_projet"
             referencedColumns: ["id_projet"]
           },
@@ -457,6 +478,7 @@ export type Database = {
           id_culture: number
           modified_at: string | null
           nom_culture: string
+          photos: string | null
           prix_tonne: number | null
           rendement_ha: number | null
         }
@@ -468,6 +490,7 @@ export type Database = {
           id_culture?: number
           modified_at?: string | null
           nom_culture: string
+          photos?: string | null
           prix_tonne?: number | null
           rendement_ha?: number | null
         }
@@ -479,6 +502,7 @@ export type Database = {
           id_culture?: number
           modified_at?: string | null
           nom_culture?: string
+          photos?: string | null
           prix_tonne?: number | null
           rendement_ha?: number | null
         }
@@ -581,6 +605,13 @@ export type Database = {
             foreignKeyName: "historique_paiement_id_projet_fkey"
             columns: ["id_projet"]
             isOneToOne: false
+            referencedRelation: "vue_projet_detaille"
+            referencedColumns: ["id_projet"]
+          },
+          {
+            foreignKeyName: "historique_paiement_id_projet_fkey"
+            columns: ["id_projet"]
+            isOneToOne: false
             referencedRelation: "vue_suivi_financier_projet"
             referencedColumns: ["id_projet"]
           },
@@ -650,6 +681,13 @@ export type Database = {
             columns: ["id_projet"]
             isOneToOne: false
             referencedRelation: "projet"
+            referencedColumns: ["id_projet"]
+          },
+          {
+            foreignKeyName: "investissement_id_projet_fkey"
+            columns: ["id_projet"]
+            isOneToOne: false
+            referencedRelation: "vue_projet_detaille"
             referencedColumns: ["id_projet"]
           },
           {
@@ -816,6 +854,13 @@ export type Database = {
             columns: ["id_projet"]
             isOneToOne: false
             referencedRelation: "projet"
+            referencedColumns: ["id_projet"]
+          },
+          {
+            foreignKeyName: "jalon_projet_id_projet_fkey"
+            columns: ["id_projet"]
+            isOneToOne: false
+            referencedRelation: "vue_projet_detaille"
             referencedColumns: ["id_projet"]
           },
           {
@@ -1221,6 +1266,13 @@ export type Database = {
             foreignKeyName: "projet_culture_id_projet_fkey"
             columns: ["id_projet"]
             isOneToOne: false
+            referencedRelation: "vue_projet_detaille"
+            referencedColumns: ["id_projet"]
+          },
+          {
+            foreignKeyName: "projet_culture_id_projet_fkey"
+            columns: ["id_projet"]
+            isOneToOne: false
             referencedRelation: "vue_suivi_financier_projet"
             referencedColumns: ["id_projet"]
           },
@@ -1280,6 +1332,13 @@ export type Database = {
             columns: ["id_projet"]
             isOneToOne: false
             referencedRelation: "projet"
+            referencedColumns: ["id_projet"]
+          },
+          {
+            foreignKeyName: "projet_jalon_id_projet_fkey"
+            columns: ["id_projet"]
+            isOneToOne: false
+            referencedRelation: "vue_projet_detaille"
             referencedColumns: ["id_projet"]
           },
           {
@@ -1745,6 +1804,23 @@ export type Database = {
         }
         Relationships: []
       }
+      popular_cultures: {
+        Row: {
+          count: number | null
+          id_culture: number | null
+          nom_culture: string | null
+          photos: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projet_culture_id_culture_fkey"
+            columns: ["id_culture"]
+            isOneToOne: false
+            referencedRelation: "culture"
+            referencedColumns: ["id_culture"]
+          },
+        ]
+      }
       utilisateurs_par_role: {
         Row: {
           email: string | null
@@ -1851,6 +1927,88 @@ export type Database = {
           },
           {
             foreignKeyName: "terrain_id_region_fkey"
+            columns: ["id_region"]
+            isOneToOne: false
+            referencedRelation: "region"
+            referencedColumns: ["id_region"]
+          },
+        ]
+      }
+      vue_projet_detaille: {
+        Row: {
+          cout_total: number | null
+          created_at: string | null
+          cultures: string | null
+          description: string | null
+          est_finance_completement: boolean | null
+          gap_a_financer: number | null
+          id_commune: number | null
+          id_district: number | null
+          id_projet: number | null
+          id_region: number | null
+          id_tantsaha: string | null
+          id_technicien: string | null
+          montant_investi: number | null
+          nom_commune: string | null
+          nom_district: string | null
+          nom_region: string | null
+          nom_tantsaha: string | null
+          nombre_commentaires: number | null
+          nombre_likes: number | null
+          photo_profil: string | null
+          prenoms_tantsaha: string | null
+          rendement_total: number | null
+          rendements_detail: string | null
+          revenu_total: number | null
+          statut: string | null
+          surface_ha: number | null
+          titre: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_projet_id_tantsaha_utilisateur"
+            columns: ["id_tantsaha"]
+            isOneToOne: false
+            referencedRelation: "utilisateur"
+            referencedColumns: ["id_utilisateur"]
+          },
+          {
+            foreignKeyName: "fk_projet_id_tantsaha_utilisateur"
+            columns: ["id_tantsaha"]
+            isOneToOne: false
+            referencedRelation: "utilisateurs_par_role"
+            referencedColumns: ["id_utilisateur"]
+          },
+          {
+            foreignKeyName: "fk_projet_id_technicien_utilisateur"
+            columns: ["id_technicien"]
+            isOneToOne: false
+            referencedRelation: "utilisateur"
+            referencedColumns: ["id_utilisateur"]
+          },
+          {
+            foreignKeyName: "fk_projet_id_technicien_utilisateur"
+            columns: ["id_technicien"]
+            isOneToOne: false
+            referencedRelation: "utilisateurs_par_role"
+            referencedColumns: ["id_utilisateur"]
+          },
+          {
+            foreignKeyName: "projet_id_commune_fkey"
+            columns: ["id_commune"]
+            isOneToOne: false
+            referencedRelation: "commune"
+            referencedColumns: ["id_commune"]
+          },
+          {
+            foreignKeyName: "projet_id_district_fkey"
+            columns: ["id_district"]
+            isOneToOne: false
+            referencedRelation: "district"
+            referencedColumns: ["id_district"]
+          },
+          {
+            foreignKeyName: "projet_id_region_fkey"
             columns: ["id_region"]
             isOneToOne: false
             referencedRelation: "region"
