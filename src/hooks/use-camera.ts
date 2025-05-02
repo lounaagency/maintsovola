@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { cameraService } from '@/services/CameraService';
-import { Photo } from '@capacitor/camera';
+import type { Photo } from '@capacitor/camera';
 
 export function useCamera() {
   const [isCapturing, setIsCapturing] = useState(false);
@@ -19,11 +19,13 @@ export function useCamera() {
     }
   };
 
+  // Update this function to adapt the return type
   const selectFromGallery = async (multiple = true): Promise<Photo[]> => {
     try {
       setIsCapturing(true);
       const photos = await cameraService.selectFromGallery(multiple);
-      return photos;
+      // Convert GalleryPhotos to Photos by adding the saved property
+      return photos.map(photo => ({ ...photo, saved: false }));
     } catch (error) {
       console.error('Error selecting from gallery:', error);
       return [];
