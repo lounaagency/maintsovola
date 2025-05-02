@@ -10,7 +10,7 @@ export interface Notification {
   type: 'info' | 'success' | 'warning' | 'error' | 'alerte' | 'validation' | 'assignment';
   date_creation: string;
   lu: boolean;
-  entity_type?: 'terrain' | 'projet' | 'jalon' | 'investissement' | undefined;
+  entity_type?: 'terrain' | 'projet' | 'jalon' | 'investissement' | string;
   entity_id?: number | null;
   projet_id?: number | null;
 }

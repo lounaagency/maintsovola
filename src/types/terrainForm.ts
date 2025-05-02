@@ -21,8 +21,6 @@ export interface TerrainFormData {
   statut?: boolean;
 }
 
-export type TerrainForm = TerrainFormData;
-
 export function convertFormDataToTerrainData(formData: TerrainFormData): Partial<TerrainData> {
   return {
     id_terrain: formData.id_terrain,
@@ -47,3 +45,6 @@ export function convertFormDataToTerrainData(formData: TerrainFormData): Partial
     statut: formData.statut
   };
 }
+
+// Alias type for backward compatibility
+export type TerrainForm = TerrainFormData;

@@ -43,7 +43,6 @@ export const generateProjectDescription = (
   return `Projet de culture de ${cultures.join(', ')} sur un terrain de ${surface} hectares dans la commune ${commune}, district de ${district} de la région ${region} pour une production de ${rendement} Tonnes estimée à ${formatPrice(ca)}.`;
 };
 
-
 export function formatCurrency(value: number): string {
   return new Intl.NumberFormat("fr-FR", {
       style: "currency",

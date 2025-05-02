@@ -157,8 +157,10 @@ export const useProjectData = (filters: ProjectFilter = {}) => {
 
       // Apply culture filter if specified
       if (filters.culture && projetsData) {
+        const cultureFilter = filters.culture.toLowerCase();
         projetsData = projetsData.filter(projet => 
-          projet.cultures.split(', ').includes(filters.culture as string)
+          projet.cultures && 
+          projet.cultures.toLowerCase().includes(cultureFilter)
         );
       }
 

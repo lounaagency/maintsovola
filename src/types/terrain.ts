@@ -22,4 +22,27 @@ export interface TerrainData {
   rapport_validation?: string | null;
   photos_validation?: string | null;
   validation_decision?: string;
+  
+  // Extended properties for views
+  region_name?: string;
+  district_name?: string;
+  commune_name?: string;
+  tantsahaNom?: string;
+  techniqueNom?: string;
+  superviseurNom?: string;
+}
+
+export interface TerrainSortOptions {
+  field: keyof TerrainData;
+  direction: 'asc' | 'desc';
+}
+
+export interface TerrainFilters {
+  region?: string;
+  district?: string;
+  commune?: string;
+  farmer?: string;
+  technician?: string;
+  status?: string;
+  search?: string;
 }
