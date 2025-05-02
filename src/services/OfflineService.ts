@@ -1,7 +1,24 @@
-
-import { Storage } from '@capacitor/storage';
-import { Network } from '@capacitor/network';
+import { Capacitor } from '@capacitor/core';
 import { supabase } from "@/integrations/supabase/client";
+
+// Capacitor-safe fallback
+const isNative = Capacitor.isNativePlatform();
+
+const Storage = isNative
+  ? require('@capacitor/storage').Storage
+  : {
+      get: async () => ({ value: null }),
+      set: async () => {},
+      remove: async () => {},
+      keys: async () => ({ keys: [] })
+    };
+
+const Network = isNative
+  ? require('@capacitor/network').Network
+  : {
+      getStatus: async () => ({ connected: true }),
+      addListener: async (_event: string, _callback: any) => {}
+    };
 
 interface SyncQueueItem {
   id: string;
@@ -34,22 +51,15 @@ export class OfflineService {
   }
 
   async initialize() {
-    // Load any existing sync queue from storage
     await this.loadSyncQueue();
 
-    // Check initial network status
     const status = await Network.getStatus();
     this.networkStatus = status.connected;
 
-    // Listen for network status changes
     Network.addListener('networkStatusChange', (status) => {
       const wasOffline = !this.networkStatus;
       this.networkStatus = status.connected;
-      
-      // Notify listeners
       this.notifyListeners();
-      
-      // Try to sync if we're back online
       if (wasOffline && status.connected) {
         this.synchronize();
       }
@@ -58,9 +68,7 @@ export class OfflineService {
 
   addNetworkStatusListener(listener: (status: boolean) => void) {
     this.listeners.push(listener);
-    // Immediately call with current status
     listener(this.networkStatus);
-    // Return a function to remove the listener
     return () => {
       this.listeners = this.listeners.filter(l => l !== listener);
     };
@@ -87,7 +95,6 @@ export class OfflineService {
     this.syncQueue.push(item);
     await this.saveSyncQueue();
 
-    // If online, try to sync immediately
     if (this.networkStatus) {
       this.synchronize();
     }
@@ -139,14 +146,12 @@ export class OfflineService {
             await supabase.from(item.table as any).delete().eq('id', item.data.id);
             break;
         }
-        // Mark as successfully synced
         successfulSyncs.push(item.id);
       } catch (error) {
         console.error(`Error syncing item ${item.id}:`, error);
       }
     }
 
-    // Remove successful syncs from the queue
     if (successfulSyncs.length > 0) {
       this.syncQueue = this.syncQueue.filter(item => !successfulSyncs.includes(item.id));
       await this.saveSyncQueue();
@@ -159,10 +164,7 @@ export class OfflineService {
     try {
       await Storage.set({
         key: `cache_${key}`,
-        value: JSON.stringify({
-          data,
-          timestamp: Date.now()
-        })
+        value: JSON.stringify({ data, timestamp: Date.now() })
       });
     } catch (error) {
       console.error('Error caching data:', error);
@@ -172,15 +174,14 @@ export class OfflineService {
   async getCachedData(key: string, maxAge?: number) {
     try {
       const { value } = await Storage.get({ key: `cache_${key}` });
-      
       if (!value) {
         return { data: null, isFresh: false };
       }
-      
+
       const cachedItem = JSON.parse(value) as CachedItem;
       const now = Date.now();
       const isFresh = !maxAge || (now - cachedItem.timestamp < maxAge);
-      
+
       return {
         data: cachedItem.data,
         isFresh
@@ -195,7 +196,6 @@ export class OfflineService {
     try {
       const { keys } = await Storage.keys();
       const cacheKeys = keys.filter(key => key.startsWith('cache_'));
-      
       for (const key of cacheKeys) {
         await Storage.remove({ key });
       }

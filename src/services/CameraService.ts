@@ -1,5 +1,15 @@
+import { Capacitor } from '@capacitor/core';
 
-import { Camera, CameraResultType, CameraSource, Photo } from '@capacitor/camera';
+let Camera: any = null;
+let CameraResultType: any = null;
+let CameraSource: any = null;
+
+if (Capacitor.isNativePlatform()) {
+  const cameraModule = require('@capacitor/camera');
+  Camera = cameraModule.Camera;
+  CameraResultType = cameraModule.CameraResultType;
+  CameraSource = cameraModule.CameraSource;
+}
 
 export class CameraService {
   private static instance: CameraService;
@@ -14,14 +24,21 @@ export class CameraService {
   }
 
   async checkPermissions() {
+    if (!Camera) return { camera: 'denied' };
     return await Camera.checkPermissions();
   }
 
   async requestPermissions() {
+    if (!Camera) return { camera: 'denied' };
     return await Camera.requestPermissions();
   }
 
   async takePicture() {
+    if (!Camera || !CameraResultType || !CameraSource) {
+      console.warn("Camera plugin not available in web environment.");
+      throw new Error("Camera not available in web.");
+    }
+
     try {
       const image = await Camera.getPhoto({
         quality: 90,
@@ -29,7 +46,6 @@ export class CameraService {
         resultType: CameraResultType.Uri,
         source: CameraSource.Camera
       });
-      
       return image;
     } catch (error) {
       console.error('Error taking picture:', error);
@@ -38,12 +54,16 @@ export class CameraService {
   }
 
   async selectFromGallery(multiple: boolean = true) {
+    if (!Camera) {
+      console.warn("Camera plugin not available in web environment.");
+      throw new Error("Gallery access not available in web.");
+    }
+
     try {
       const images = await Camera.pickImages({
         quality: 90,
         limit: multiple ? 10 : 1,
       });
-      
       return images.photos;
     } catch (error) {
       console.error('Error selecting images:', error);
@@ -51,8 +71,8 @@ export class CameraService {
     }
   }
 
-  async getPhotoUrl(photo: Photo): Promise<string> {
-    return photo.webPath || '';
+  async getPhotoUrl(photo: any): Promise<string> {
+    return photo?.webPath || '';
   }
 
   async convertBlobToBase64(blob: Blob): Promise<string> {
