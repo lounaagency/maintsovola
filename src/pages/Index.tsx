@@ -73,12 +73,12 @@ const Index = () => {
       const { data: hectares, error: hectaresError } = await supabase
         .from('projet')
         .select('surface_ha')
-        .eq('statut', 'en_production');
+        .in('statut', ['en cours','en financement']);
 
       // Sum of investments
       const { data: investments, error: investmentsError } = await supabase
         .from('investissement')
-        .select('montant');
+        .select("montant");
 
       if (!userError && !projectError && !hectaresError && !investmentsError) {
         const totalHectares = hectares?.reduce((sum, project) => sum + (project.surface_ha || 0), 0) || 0;
@@ -106,12 +106,14 @@ const Index = () => {
           titre,
           statut,
           surface_ha,
-          cout_total,
-          projet_culture(culture(nom_culture))
+          description,
+          photos,
+          projet_culture(culture(nom_culture),cout_exploitation_previsionnel,rendement_previsionnel)
         `)
-        .eq('statut', 'en_financement')
+       .eq('statut', 'en financement')
         .limit(3);
 
+      console.log("project to show",data);
       if (!error && data) {
         // Fetch current funding for each project
         const projectsWithFunding = await Promise.all(
@@ -122,16 +124,17 @@ const Index = () => {
               .eq('id_projet', project.id_projet);
 
             const currentFunding = investments?.reduce((sum, inv) => sum + (inv.montant || 0), 0) || 0;
-            const progress = project.cout_total ? Math.min(Math.round((currentFunding / project.cout_total) * 100), 100) : 0;
+            const cout_total = project.projet_culture?.reduce((sum, pc) => sum + (pc.cout_exploitation_previsionnel || 0), 0) || 0;
+            const progress = cout_total  ? Math.min(Math.round((currentFunding / cout_total) * 100), 100) : 0;
             
             return {
               id: project.id_projet,
               title: project.titre || `Projet #${project.id_projet}`,
-              description: `Culture de ${project.projet_culture?.[0]?.culture?.nom_culture || 'divers produits'} sur ${project.surface_ha} hectares`,
-              image: "/lovable-uploads/804a44d2-41b4-4ad8-92c8-51f27bd6b598.png",
+              description: project.description || `Culture de ${project.projet_culture?.[0]?.culture?.nom_culture || 'divers produits'} sur ${project.surface_ha} hectares`,
+              image: project.photos?.split(',')[0].trim()  || "/lovable-uploads/804a44d2-41b4-4ad8-92c8-51f27bd6b598.png",
               progress: progress,
               amount: formatCurrency(currentFunding),
-              target: formatCurrency(project.cout_total || 0),
+              target: formatCurrency(cout_total || 0)
             };
           })
         );
@@ -145,34 +148,26 @@ const Index = () => {
 
   const fetchPopularCultures = async () => {
     try {
-      // Count projects by culture
       const { data, error } = await supabase
-        .from('projet_culture')
-        .select(`
-          culture!inner(
-            id_culture,
-            nom_culture
-          ),
-          count
-        `, { count: 'exact' })
-        .group('culture')
-        .order('count', { ascending: false })
+        .from('popular_cultures')
+        .select('*')
         .limit(4);
-
+  
       if (!error && data) {
         const cultures = data.map((item) => ({
-          id: item.culture.id_culture,
-          name: item.culture.nom_culture,
+          id: item.id_culture,
+          name: item.nom_culture,
           count: item.count,
-          image: "/lovable-uploads/804a44d2-41b4-4ad8-92c8-51f27bd6b598.png" // Default image for now
+          image: "/lovable-uploads/804a44d2-41b4-4ad8-92c8-51f27bd6b598.png"
         }));
-
+  
         setPopularCultures(cultures);
       }
     } catch (error) {
       console.error("Error fetching popular cultures:", error);
     }
   };
+  
 
   const fetchRecentProjects = async () => {
     try {
@@ -186,8 +181,8 @@ const Index = () => {
       if (!error && data) {
         const projects = data.map(project => {
           let type = 'Nouveau projet';
-          if (project.statut === 'en_financement') type = 'En financement';
-          if (project.statut === 'en_production') type = 'En production';
+          if (project.statut === 'en financement') type = 'En financement';
+          if (project.statut === 'en cours') type = 'En production';
           if (project.statut === 'terminé') type = 'Projet terminé';
 
           // Calculate relative time
@@ -271,7 +266,7 @@ const Index = () => {
                   to="/"
                 />
                 <h1 className="text-3xl md:text-4xl font-bold mb-4">
-                  Ensemble, transformons l'agriculture malagasy
+                  Ensemble, transformons l'agriculture malagasy.
                 </h1>
                 <p className="text-lg md:text-xl max-w-2xl opacity-90">
                   Connecter agriculteurs, investisseurs, techniciens et superviseurs
