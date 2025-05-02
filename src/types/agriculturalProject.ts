@@ -34,4 +34,7 @@ export interface AgriculturalProject {
   isLiked?: boolean;
   technicianId?: string;
   status?: 'en_attente' | 'validé' | 'en_financement' | 'en_cours' | 'en_production' | 'terminé';
+  cultures?: string;
+  gapToFinance?: number;
+  isFullyFunded?: boolean;
 }

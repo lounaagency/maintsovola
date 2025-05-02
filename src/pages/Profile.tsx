@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -179,7 +178,10 @@ export const Profile = () => {
       
       if (error) throw error;
 
-      const projectIds = investmentData.map(inv => inv.id_projet).filter(Boolean);
+      const projectIds = investmentData
+        .map(inv => inv.id_projet)
+        .filter(id => id !== null && id !== undefined)
+        .map(id => Number(id));
       
       if (projectIds.length === 0) {
         setInvestedProjects([]);
@@ -222,6 +224,9 @@ export const Profile = () => {
           const project = investment.projet;
           if (!project) return null;
           
+          const projectObj = project;
+          const tantsaha = projectObj.tantsaha || {};
+          
           const cultures = projectCultureMap.get(project.id_projet) || [];
           
           const totalCost = cultures.reduce(
@@ -246,14 +251,19 @@ export const Profile = () => {
           const totalProfit = expectedRevenue - totalCost;
           const userProfit = totalProfit * investmentShare;
           
+          const id_tantsaha = typeof tantsaha === 'object' ? tantsaha.id_utilisateur : null;
+          const nom = typeof tantsaha === 'object' ? tantsaha.nom : null;
+          const prenoms = typeof tantsaha === 'object' ? tantsaha.prenoms : null;
+          const photo_profil = typeof tantsaha === 'object' ? tantsaha.photo_profil : null;
+
           return {
             id: project.id_projet.toString(),
             title: project.titre || `Projet #${project.id_projet}`,
             farmer: {
-              id: project.tantsaha?.id_utilisateur,
-              name: `${project.tantsaha?.nom || ""} ${project.tantsaha?.prenoms || ""}`.trim(),
-              username: project.tantsaha?.nom?.toLowerCase()?.replace(/\s+/g, '') || "",
-              avatar: project.tantsaha?.photo_profil,
+              id: id_tantsaha,
+              name: `${nom || ""} ${prenoms || ""}`.trim(),
+              username: nom?.toLowerCase()?.replace(/\s+/g, '') || "",
+              avatar: photo_profil,
             },
             location: {
               region: project.id_region || "Non spécifié",

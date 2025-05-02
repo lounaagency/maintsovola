@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { useFormContext } from 'react-hook-form';
+import { UseFormReturn } from 'react-hook-form';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { 
@@ -20,21 +20,32 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { TerrainForm } from '@/types/terrainForm';
 
-interface TerrainFormFieldsProps {
+export interface TerrainFormFieldsProps {
   regions: { id_region: number; nom_region: string }[];
   districts: { id_district: number; nom_district: string }[];
   communes: { id_commune: number; nom_commune: string }[];
   isLoading: boolean;
+  form: UseFormReturn<TerrainForm>;
+  userRole?: string;
+  userId: string;
+  agriculteurs?: { id_utilisateur: string; nom: string; prenoms?: string }[];
+  techniciens?: { id_utilisateur: string; nom: string; prenoms?: string }[];
+  photoUrls: string[];
+  setPhotoUrls: React.Dispatch<React.SetStateAction<string[]>>;
+  photos: File[];
+  setPhotos: React.Dispatch<React.SetStateAction<File[]>>;
+  polygonCoordinates: number[][];
+  setPolygonCoordinates: React.Dispatch<React.SetStateAction<number[][]>>;
+  overlapTerrains: any[] | null;
 }
 
 const TerrainFormFields: React.FC<TerrainFormFieldsProps> = ({
   regions,
   districts,
   communes,
-  isLoading
+  isLoading,
+  form,
 }) => {
-  const form = useFormContext<TerrainForm>();
-  
   return (
     <>
       <FormField

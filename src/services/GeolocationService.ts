@@ -17,8 +17,9 @@ export interface Position {
 
 export interface GeolocationPosition extends Position {}
 
+// This defines our expected permission states
 export interface PermissionStatus {
-  location: 'granted' | 'denied' | 'prompt';
+  location: 'granted' | 'denied' | 'prompt' | 'prompt-with-rationale';
 }
 
 export class GeolocationService {
@@ -98,62 +99,73 @@ export class GeolocationService {
       } else {
         // Web fallback
         const id = navigator.geolocation.watchPosition(
-          position => callback({
-            coords: {
-              latitude: position.coords.latitude,
-              longitude: position.coords.longitude,
-              accuracy: position.coords.accuracy,
-              altitude: position.coords.altitude,
-              altitudeAccuracy: position.coords.altitudeAccuracy,
-              heading: position.coords.heading,
-              speed: position.coords.speed
-            },
-            timestamp: position.timestamp
-          }),
-          error => {
-            console.error('Error watching position:', error);
+          (position) => {
+            callback({
+              coords: {
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+                accuracy: position.coords.accuracy,
+                altitude: position.coords.altitude,
+                altitudeAccuracy: position.coords.altitudeAccuracy,
+                heading: position.coords.heading,
+                speed: position.coords.speed,
+              },
+              timestamp: position.timestamp,
+            });
           },
-          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+          (error) => console.error('Geolocation watch error:', error),
+          { enableHighAccuracy: true, maximumAge: 0 }
         );
-        
+
         return {
-          clear: () => navigator.geolocation.clearWatch(id),
+          clear: () => {
+            navigator.geolocation.clearWatch(id);
+          },
         };
       }
     } catch (error) {
-      console.error('Error watching position:', error);
+      console.error('Error setting up watch position:', error);
       throw new Error('Unable to watch position');
     }
   }
 
   async checkPermissions(): Promise<PermissionStatus> {
-    if (Capacitor.isNativePlatform()) {
-      const { Geolocation } = await import('@capacitor/geolocation');
-      return await Geolocation.checkPermissions();
-    } else {
-      // Web fallback - permissions are not exactly the same in the web
-      return { location: navigator.permissions ? 'prompt' : 'granted' };
+    try {
+      if (Capacitor.isNativePlatform()) {
+        const { Geolocation } = await import('@capacitor/geolocation');
+        const status = await Geolocation.checkPermissions();
+        return status as PermissionStatus;
+      } else {
+        // Web permissions are granted only when requested
+        if (navigator.permissions && navigator.permissions.query) {
+          const result = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
+          return {
+            location: result.state as 'granted' | 'denied' | 'prompt',
+          };
+        }
+        // If permissions API is not available, assume prompt
+        return { location: 'prompt' };
+      }
+    } catch (error) {
+      console.error('Error checking geolocation permissions:', error);
+      return { location: 'prompt' };
     }
   }
 
   async requestPermissions(): Promise<PermissionStatus> {
-    if (Capacitor.isNativePlatform()) {
-      const { Geolocation } = await import('@capacitor/geolocation');
-      return await Geolocation.requestPermissions();
-    } else {
-      // Web fallback
-      return new Promise((resolve) => {
-        if (!navigator.geolocation) {
-          resolve({ location: 'denied' });
-          return;
-        }
-        
-        navigator.geolocation.getCurrentPosition(
-          () => resolve({ location: 'granted' }),
-          () => resolve({ location: 'denied' }),
-          { enableHighAccuracy: true, timeout: 5000 }
-        );
-      });
+    try {
+      if (Capacitor.isNativePlatform()) {
+        const { Geolocation } = await import('@capacitor/geolocation');
+        const status = await Geolocation.requestPermissions();
+        return status as PermissionStatus;
+      } else {
+        // On web, requesting permissions happens when getCurrentPosition is called
+        await this.getCurrentPosition().catch(() => {});
+        return this.checkPermissions();
+      }
+    } catch (error) {
+      console.error('Error requesting geolocation permissions:', error);
+      return { location: 'denied' };
     }
   }
 }

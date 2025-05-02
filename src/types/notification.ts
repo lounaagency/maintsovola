@@ -1,44 +1,53 @@
+
+import { supabase } from '@/integrations/supabase/client';
+
 export interface Notification {
   id_notification: number;
   id_expediteur?: string;
   id_destinataire: string;
   titre: string;
   message: string;
-  lu: boolean;
+  type: 'info' | 'success' | 'warning' | 'error' | 'alerte' | 'validation' | 'assignment';
   date_creation: string;
-  type: 'info' | 'validation' | 'alerte' | 'erreur' | 'assignment';
-  entity_id?: number;
-  entity_type?: 'terrain' | 'projet' | 'jalon' | 'investissement';
-  projet_id?: number;
+  lu: boolean;
+  entity_type?: 'terrain' | 'projet' | 'jalon' | 'investissement' | undefined;
+  entity_id?: number | null;
+  projet_id?: number | null;
 }
 
-export interface DatabaseNotification {
-  id_notification: number;
-  id_expediteur?: string;
-  id_destinataire: string;
-  titre: string;
-  message: string;
-  lu: boolean;
-  date_creation: string;
-  type: string;
-  entity_id?: string | number;
-  entity_type?: string;
-  projet_id?: number;
-}
-
-export async function sendNotification(supabase, userId, recipients, title, message, type = "info", entityType = null, entityId = null) {
-  const notifications = recipients.map(recipient => ({
-      id_expediteur: userId,
+export async function sendNotification(
+  supabaseClient: typeof supabase,
+  senderId: string,
+  recipients: { id_utilisateur: string }[],
+  title: string,
+  message: string,
+  type: 'info' | 'success' | 'warning' | 'error' | 'alerte' | 'validation' | 'assignment' = 'info',
+  entityType?: 'terrain' | 'projet' | 'jalon' | 'investissement',
+  entityId?: number | string | null,
+  projetId?: number | string | null
+) {
+  try {
+    const notifications = recipients.map(recipient => ({
+      id_expediteur: senderId,
       id_destinataire: recipient.id_utilisateur,
       titre: title,
       message: message,
       type: type,
+      lu: false,
       entity_type: entityType,
-      entity_id: entityId
-  }));
+      entity_id: entityId ? Number(entityId) : null,
+      projet_id: projetId ? Number(projetId) : null
+    }));
 
-  const { error } = await supabase.from('notification').insert(notifications);
-  if (error) {
-      console.error("Erreur lors de l'envoi de la notification:", error.message);
+    const { error } = await supabaseClient
+      .from('notification')
+      .insert(notifications);
+
+    if (error) throw error;
+    
+    return { success: true, count: notifications.length };
+  } catch (err) {
+    console.error('Error sending notifications:', err);
+    return { success: false, error: err };
   }
 }

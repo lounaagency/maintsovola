@@ -163,7 +163,7 @@ export const useProjectData = (filters: ProjectFilter = {}) => {
       }
 
       // Transform projects to match our application's AgriculturalProject interface
-      const transformedProjects = (projetsData || []).map(projet => {
+      const transformedProjects: AgriculturalProject[] = (projetsData || []).map(projet => {
         const totalFarmingCost = projet.cout_total;
         const expectedYieldLabel = projet.rendements_detail || "N/A";
         const totalEstimatedRevenue = projet.revenu_total;
@@ -210,8 +210,9 @@ export const useProjectData = (filters: ProjectFilter = {}) => {
           shares: 0,
           images: [], // Default empty array for images
           isLiked: false, // Default value, will be updated if needed
-          status: projet.statut,
+          status: projet.statut as AgriculturalProject['status'],
           technicianId: projet.id_technicien,
+          cultures: projet.cultures,
         };
       });
   

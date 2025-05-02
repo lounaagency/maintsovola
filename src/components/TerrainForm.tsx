@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -10,7 +11,7 @@ import { TerrainData } from "@/types/terrain";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import ValidationForm from "./ValidationForm";
-import TerrainFormFields from "./TerrainFormFields";
+import TerrainFormFields from "./terrain/TerrainFormFields";
 import { sendNotification } from "@/types/notification";
 
 interface TerrainFormProps {

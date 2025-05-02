@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Bell } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
@@ -49,7 +48,7 @@ const Notifications: React.FC = () => {
         
       if (error) throw error;
       
-      const formattedNotifications = (data || []).map(notification => {
+      const formattedNotifications: NotificationItem[] = (data || []).map(notification => {
         // Map notification type to UI variant
         let notifType: 'info' | 'error' | 'success' | 'warning' = 'info';
         switch (notification.type) {
@@ -69,11 +68,13 @@ const Notifications: React.FC = () => {
         
         // Determine link based on entity type
         let link = '';
-        if (notification.entity_type === 'projet' || notification.projet_id) {
+        const entityType = notification.entity_type as 'terrain' | 'projet' | 'jalon' | 'investissement' | undefined;
+        
+        if (entityType === 'projet' || notification.projet_id) {
           link = `/projects/${notification.entity_id || notification.projet_id}`;
-        } else if (notification.entity_type === 'terrain') {
+        } else if (entityType === 'terrain') {
           link = `/terrain?id=${notification.entity_id}`;
-        } else if (notification.entity_type === 'jalon') {
+        } else if (entityType === 'jalon') {
           link = `/projects/${notification.projet_id}?jalon=${notification.entity_id}`;
         }
         
@@ -86,7 +87,7 @@ const Notifications: React.FC = () => {
           type: notifType,
           link: link,
           entity_id: notification.entity_id?.toString() || null,
-          entity_type: notification.entity_type,
+          entity_type: entityType,
           projet_id: notification.projet_id?.toString() || null
         };
       });
