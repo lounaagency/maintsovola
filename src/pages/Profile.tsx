@@ -72,6 +72,12 @@ export const Profile = () => {
     return <Navigate to="/auth" replace />;
   }
   
+  // Add the handleOpenDetails function
+  const handleOpenDetails = (projectId: number) => {
+    setSelectedProjectId(projectId);
+    setDetailsOpen(true);
+  };
+  
   useEffect(() => {
     const fetchUserRole = async () => {
       if (user) {
