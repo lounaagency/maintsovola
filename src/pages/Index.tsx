@@ -31,7 +31,7 @@ const Index = () => {
     if (hasSeenLandingPages) {
       setShowLandingPages(false);
     }
-    
+
     // Fetch data for the dashboard
     fetchDashboardData();
   }, [hasSeenLandingPages]);
@@ -41,13 +41,13 @@ const Index = () => {
     try {
       // Fetch statistics
       await fetchStats();
-      
+
       // Fetch featured projects
       await fetchFeaturedProjects();
-      
+
       // Fetch popular cultures
       await fetchPopularCultures();
-      
+
       // Fetch recent projects/activities
       await fetchRecentProjects();
     } catch (error) {
@@ -60,14 +60,22 @@ const Index = () => {
   const fetchStats = async () => {
     try {
       // Count total users
-      const { count: userCount, error: userError } = await supabase
-        .from('utilisateur')
-        .select('id_utilisateur', { count: 'exact', head: true });
+      const {
+        count: userCount,
+        error: userError
+      } = await supabase.from('utilisateur').select('id_utilisateur', {
+        count: 'exact',
+        head: true
+      });
 
       // Count projects in financing
-      const { count: projectCount, error: projectError } = await supabase
-        .from('projet')
-        .select('id_projet', { count: 'exact', head: true });
+      const {
+        count: projectCount,
+        error: projectError
+      } = await supabase.from('projet').select('id_projet', {
+        count: 'exact',
+        head: true
+      });
 
       // Sum of cultivated hectares
       const { data: hectares, error: hectaresError } = await supabase
@@ -83,7 +91,7 @@ const Index = () => {
       if (!userError && !projectError && !hectaresError && !investmentsError) {
         const totalHectares = hectares?.reduce((sum, project) => sum + (project.surface_ha || 0), 0) || 0;
         const totalInvestment = investments?.reduce((sum, inv) => sum + (inv.montant || 0), 0) || 0;
-
+        
         setStats({
           totalUsers: userCount || 0,
           totalProjects: projectCount || 0,
@@ -99,7 +107,10 @@ const Index = () => {
   const fetchFeaturedProjects = async () => {
     try {
       // Fetch projects in financing status
-      const { data, error } = await supabase
+      const {
+        data,
+        error
+      } = await supabase
         .from('projet')
         .select(`
           id_projet, 
@@ -172,7 +183,10 @@ const Index = () => {
   const fetchRecentProjects = async () => {
     try {
       // Fetch recently created or updated projects
-      const { data, error } = await supabase
+      const {
+        data,
+        error
+      } = await supabase
         .from('projet')
         .select('id_projet, titre, statut, created_at')
         .order('created_at', { ascending: false })
@@ -188,20 +202,20 @@ const Index = () => {
           // Calculate relative time
           const createdDate = new Date(project.created_at);
           const now = new Date();
-          const diffDays = Math.floor((now - createdDate) / (1000 * 60 * 60 * 24));
+          const diffDays = Math.floor((now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
           
           let date;
           if (diffDays === 0) date = 'Aujourd\'hui';
           else if (diffDays === 1) date = 'Hier';
           else if (diffDays < 7) date = `Il y a ${diffDays} jours`;
-          else if (diffDays < 30) date = `Il y a ${Math.floor(diffDays/7)} semaines`;
-          else date = `Il y a ${Math.floor(diffDays/30)} mois`;
+          else if (diffDays < 30) date = `Il y a ${Math.floor(diffDays / 7)} semaines`;
+          else date = `Il y a ${Math.floor(diffDays / 30)} mois`;
 
           return {
             id: project.id_projet,
             title: project.titre || `Projet #${project.id_projet}`,
             date: date,
-            type: type,
+            type: type
           };
         });
 
@@ -217,30 +231,30 @@ const Index = () => {
     localStorage.setItem("hasSeenLandingPages", "true");
     setHasSeenLandingPages(true);
   };
-  
+
   // Quick navigation items
   const quickNavigations = [
-    { 
-      title: "Investir", 
-      description: "Découvrez les projets disponibles pour vos investissements", 
-      icon: <TrendingUp className="text-white" size={24} />, 
-      color: "bg-maintso", 
-      path: "/feed" 
+    {
+      title: "Investir",
+      description: "Découvrez les projets disponibles pour vos investissements",
+      icon: <TrendingUp className="text-white" size={24} />,
+      color: "bg-maintso",
+      path: "/feed"
     },
-    { 
-      title: "Terrains", 
-      description: "Consultez et ajoutez des terrains agricoles", 
-      icon: <MapPin className="text-white" size={24} />, 
-      color: "bg-blue-500", 
-      path: "/terrain" 
+    {
+      title: "Terrains",
+      description: "Consultez et ajoutez des terrains agricoles",
+      icon: <MapPin className="text-white" size={24} />,
+      color: "bg-blue-500",
+      path: "/terrain"
     },
-    { 
-      title: "Projets", 
-      description: "Gérez vos projets agricoles", 
-      icon: <FileText className="text-white" size={24} />, 
-      color: "bg-amber-500", 
-      path: "/projects" 
-    },
+    {
+      title: "Projets",
+      description: "Gérez vos projets agricoles",
+      icon: <FileText className="text-white" size={24} />,
+      color: "bg-amber-500",
+      path: "/projects"
+    }
   ];
 
   return (
@@ -248,30 +262,22 @@ const Index = () => {
       {showLandingPages ? (
         <LandingPages onSkip={handleSkipLandingPages} />
       ) : (
-        <motion.div 
-          initial={{ opacity: 0 }} 
-          animate={{ opacity: 1 }} 
-          transition={{ duration: 0.5 }} 
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5 }}
           className="flex-1"
         >
           {/* Hero Section */}
           <div className="bg-gradient-to-r from-maintso to-green-700 text-white py-10 md:py-16">
             <div className="container mx-auto px-4">
               <div className="flex flex-col items-center text-center mb-8">
-                <Logo 
-                  size="lg"
-                  showText={true}
-                  className="mb-6"
-                  imageClassName="h-16 md:h-20 w-auto"
-                  to="/"
-                />
-                <h1 className="text-3xl md:text-4xl font-bold mb-4">
-                  Ensemble, transformons l'agriculture malagasy.
-                </h1>
-                <p className="text-lg md:text-xl max-w-2xl opacity-90">
-                  Connecter agriculteurs, investisseurs, techniciens et superviseurs
-                  pour développer l'agriculture moderne à Madagascar.
-                </p>
+                <Logo size="lg" showText={true} className="mb-6" imageClassName="h-16 md:h-20 w-auto" to="/" />
+                <h1 className="text-3xl md:text-4xl font-bold mb-4">🚀 L'agritech intelligente au service de la rentabilité durable</h1>
+                <p className="text-lg md:text-xl max-w-2xl opacity-90">Chez Maintso Vola, nous connectons la finance et la technologie pour révolutionner l'agriculture.
+Grâce à la data, à des outils de suivi en temps réel et à une infrastructure optimisée, chaque investissement devient traçable, performant et à fort impact.
+
+📊 Investissez dans une nouvelle génération de projets agricoles pilotés par la tech.</p>
               </div>
               
               {/* Stats Cards */}
@@ -318,11 +324,7 @@ const Index = () => {
               </div>
 
               <div className="flex justify-center mt-4">
-                <Button 
-                  onClick={() => navigate("/feed")} 
-                  className="bg-white text-maintso hover:bg-gray-100"
-                  size="lg"
-                >
+                <Button onClick={() => navigate("/feed")} className="bg-white text-maintso hover:bg-gray-100" size="lg">
                   Découvrir les projets
                   <ChevronRight className="h-5 w-5" />
                 </Button>
@@ -342,7 +344,7 @@ const Index = () => {
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {isLoading ? (
+                {isLoading ?
                   // Show skeleton loaders while loading
                   Array(3).fill(null).map((_, index) => (
                     <div key={index} className="border border-border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow animate-pulse">
@@ -358,15 +360,9 @@ const Index = () => {
                         <div className="h-10 bg-gray-200 rounded w-full mt-2"></div>
                       </div>
                     </div>
-                  ))
-                ) : featuredProjects.length > 0 ? (
-                  featuredProjects.map((project) => (
+                  )) : featuredProjects.length > 0 ? featuredProjects.map(project => (
                     <div key={project.id} className="border border-border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                      <img 
-                        src={project.image} 
-                        alt={project.title} 
-                        className="w-full h-40 object-cover"
-                      />
+                      <img src={project.image} alt={project.title} className="w-full h-40 object-cover" />
                       <div className="p-4">
                         <h3 className="text-lg font-semibold mb-2">{project.title}</h3>
                         <p className="text-gray-600 text-sm mb-3">{project.description}</p>
@@ -377,26 +373,21 @@ const Index = () => {
                             <span className="text-gray-500">{project.target}</span>
                           </div>
                           <div className="w-full bg-gray-200 rounded-full h-2.5">
-                            <div 
-                              className="bg-maintso h-2.5 rounded-full" 
-                              style={{ width: `${project.progress}%` }}
-                            ></div>
+                            <div className="bg-maintso h-2.5 rounded-full" style={{
+                              width: `${project.progress}%`
+                            }}></div>
                           </div>
                           <div className="mt-1 text-xs text-right text-gray-500">
                             {project.progress}% financé
                           </div>
                         </div>
                         
-                        <Button 
-                          onClick={() => navigate(`/projects/${project.id}`)} 
-                          className="w-full bg-maintso hover:bg-maintso-600 mt-2"
-                        >
+                        <Button onClick={() => navigate(`/projects/${project.id}`)} className="w-full bg-maintso hover:bg-maintso-600 mt-2">
                           Voir le projet
                         </Button>
                       </div>
                     </div>
-                  ))
-                ) : (
+                  )) : (
                   <p className="col-span-3 text-center text-gray-500 py-6">
                     Aucun projet vedette disponible pour le moment
                   </p>
@@ -408,7 +399,7 @@ const Index = () => {
             <section>
               <h2 className="text-2xl font-bold text-gray-800 mb-6">Cultures Populaires</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                {isLoading ? (
+                {isLoading ?
                   // Show skeleton loaders while loading
                   Array(4).fill(null).map((_, index) => (
                     <div key={index} className="bg-gray-50 animate-pulse border border-gray-100 rounded-lg p-4 flex flex-col items-center">
@@ -416,26 +407,15 @@ const Index = () => {
                       <div className="h-5 bg-gray-200 rounded w-3/4 mb-2"></div>
                       <div className="h-4 bg-gray-200 rounded w-1/2"></div>
                     </div>
-                  ))
-                ) : popularCultures.length > 0 ? (
-                  popularCultures.map((culture) => (
-                    <div 
-                      key={culture.id}
-                      onClick={() => navigate(`/feed?culture=${culture.name}`)}
-                      className="bg-gray-50 border border-gray-100 rounded-lg p-4 flex flex-col items-center cursor-pointer hover:bg-gray-100 transition-colors"
-                    >
+                  )) : popularCultures.length > 0 ? popularCultures.map(culture => (
+                    <div key={culture.id} onClick={() => navigate(`/feed?culture=${culture.name}`)} className="bg-gray-50 border border-gray-100 rounded-lg p-4 flex flex-col items-center cursor-pointer hover:bg-gray-100 transition-colors">
                       <div className="w-16 h-16 rounded-full overflow-hidden mb-3">
-                        <img 
-                          src={culture.image} 
-                          alt={culture.name}
-                          className="w-full h-full object-cover" 
-                        />
+                        <img src={culture.image} alt={culture.name} className="w-full h-full object-cover" />
                       </div>
                       <h3 className="font-medium text-center">{culture.name}</h3>
                       <p className="text-sm text-gray-500">{culture.count} projets</p>
                     </div>
-                  ))
-                ) : (
+                  )) : (
                   <p className="col-span-4 text-center text-gray-500 py-6">
                     Aucune culture populaire disponible pour le moment
                   </p>
@@ -448,17 +428,13 @@ const Index = () => {
               <h2 className="text-2xl font-bold text-gray-800 mb-6">Explorer par Catégorie</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {quickNavigations.map((item, index) => (
-                  <div
-                    key={index}
-                    className={`${item.color} rounded-lg p-6 text-white hover:opacity-95 transition-opacity cursor-pointer`}
-                    onClick={() => navigate(item.path)}
-                  >
+                  <div key={index} className={`${item.color} rounded-lg p-6 text-white hover:opacity-95 transition-opacity cursor-pointer`} onClick={() => navigate(item.path)}>
                     <div className="bg-white/20 p-3 rounded-full inline-block mb-4">
                       {item.icon}
                     </div>
                     <h3 className="text-xl font-bold mb-2">{item.title}</h3>
                     <p className="opacity-90 mb-4">{item.description}</p>
-                    <Button variant="outline" className="text-white border-white hover:bg-white/20">
+                    <Button variant="outline" className="border-white hover:bg-white/20 text-green-800">
                       Accéder <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
                   </div>
@@ -470,7 +446,7 @@ const Index = () => {
             <section>
               <h2 className="text-2xl font-bold text-gray-800 mb-6">Actualités Récentes</h2>
               <div className="space-y-4">
-                {isLoading ? (
+                {isLoading ?
                   // Show skeleton loaders while loading
                   Array(3).fill(null).map((_, index) => (
                     <div key={index} className="border-l-4 border-maintso pl-4 py-2 animate-pulse">
@@ -482,14 +458,8 @@ const Index = () => {
                         <div className="h-4 bg-gray-200 rounded w-16"></div>
                       </div>
                     </div>
-                  ))
-                ) : recentProjects.length > 0 ? (
-                  recentProjects.map((item) => (
-                    <div 
-                      key={item.id}
-                      className="border-l-4 border-maintso pl-4 py-2 hover:bg-gray-50 cursor-pointer"
-                      onClick={() => navigate(`/projects/${item.id}`)}
-                    >
+                  )) : recentProjects.length > 0 ? recentProjects.map(item => (
+                    <div key={item.id} className="border-l-4 border-maintso pl-4 py-2 hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/projects/${item.id}`)}>
                       <div className="flex justify-between items-start">
                         <div>
                           <h3 className="font-medium">{item.title}</h3>
@@ -498,8 +468,7 @@ const Index = () => {
                         <span className="text-xs text-gray-500">{item.date}</span>
                       </div>
                     </div>
-                  ))
-                ) : (
+                  )) : (
                   <p className="text-center text-gray-500 py-6">
                     Aucune actualité récente disponible pour le moment
                   </p>
@@ -515,19 +484,10 @@ const Index = () => {
                   Que vous soyez investisseur ou agriculteur, Maintso Vola vous offre les outils nécessaires pour réussir dans le secteur agricole à Madagascar.
                 </p>
                 <div className="flex flex-col sm:flex-row justify-center gap-4">
-                  <Button 
-                    onClick={() => navigate("/auth")} 
-                    className="bg-maintso hover:bg-maintso-600"
-                    size="lg"
-                  >
+                  <Button onClick={() => navigate("/auth")} className="bg-maintso hover:bg-maintso-600" size="lg">
                     Créer un compte
                   </Button>
-                  <Button 
-                    onClick={() => setShowLandingPages(true)} 
-                    variant="outline"
-                    className="border-maintso text-maintso hover:bg-maintso-50"
-                    size="lg"
-                  >
+                  <Button onClick={() => setShowLandingPages(true)} variant="outline" className="border-maintso text-maintso hover:bg-maintso-50" size="lg">
                     En savoir plus
                   </Button>
                 </div>
@@ -539,11 +499,7 @@ const Index = () => {
           <footer className="bg-gray-100 py-8 mt-8">
             <div className="container mx-auto px-4">
               <div className="flex flex-col md:flex-row justify-between items-center">
-                <Logo 
-                  size="sm"
-                  showText={true}
-                  to="/"
-                />
+                <Logo size="sm" showText={true} to="/" />
                 <div className="flex mt-4 md:mt-0 space-x-6">
                   <a href="#" className="text-gray-600 hover:text-maintso">Mentions légales</a>
                   <a href="#" className="text-gray-600 hover:text-maintso">Contact</a>
