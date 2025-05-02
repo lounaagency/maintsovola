@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,7 +18,8 @@ import {
   Landmark,
   Clock,
   ChartLine,
-  ChartBar
+  ChartBar,
+  Eye
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
@@ -42,6 +42,7 @@ import {
   YAxis,
   Tooltip
 } from 'recharts';
+import ProjectDetailsDialog from '@/components/ProjectDetailsDialog';
 
 // Type guard for SelectQueryError
 const isSelectQueryError = (obj: any): boolean => {
@@ -61,10 +62,39 @@ export const Profile = () => {
   const [projectsCount, setProjectsCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [projectJalons, setProjectJalons] = useState<{[key: number]: any[]}>({});
+  const [userRole, setUserRole] = useState<string | null>(null);
+  
+  // Add state for project details dialog
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   
   if (!user) {
     return <Navigate to="/auth" replace />;
   }
+  
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      if (user) {
+        try {
+          const { data, error } = await supabase
+            .from('utilisateurs_par_role')
+            .select('nom_role')
+            .eq('id_utilisateur', user.id)
+            .single();
+            
+          if (error) throw error;
+          
+          if (data) {
+            setUserRole(data.nom_role);
+          }
+        } catch (error) {
+          console.error("Erreur lors de la récupération du rôle de l'utilisateur:", error);
+        }
+      }
+    };
+    
+    fetchUserRole();
+  }, [user]);
   
   useEffect(() => {
     const loadProfileData = async () => {
@@ -324,7 +354,7 @@ export const Profile = () => {
             cultivationArea: project.surface_ha || 0,
             cultivationType: cultures[0]?.culture?.nom_culture || "Non spécifié",
             farmingCost: totalCost,
-            expectedYield: totalYield,
+            expectedYield: expectedRevenue,
             expectedRevenue: expectedRevenue,
             creationDate: project.created_at || new Date().toISOString(),
             images: [],
@@ -736,9 +766,11 @@ export const Profile = () => {
                     <div className="flex justify-end pt-2">
                       <Button 
                         variant="outline" 
-                        size="sm"
-                        onClick={() => navigate(`/projects/${project.id}`)}
+                        size="sm" 
+                        onClick={() => handleOpenDetails(Number(project.id))}
+                        className="flex items-center gap-1"
                       >
+                        <Eye size={16} />
                         Voir détails
                       </Button>
                     </div>
@@ -747,23 +779,22 @@ export const Profile = () => {
               ))}
             </div>
           ) : (
-            <div className="text-center py-12 border border-dashed rounded-lg">
-              <Landmark size={40} className="mx-auto text-muted-foreground" />
-              <h3 className="mt-4 text-lg font-medium">Aucun investissement</h3>
-              <p className="text-muted-foreground">
-                {isCurrentUser 
-                  ? "Vous n'avez pas encore investi dans des projets agricoles."
-                  : "Cet utilisateur n'a pas encore investi dans des projets agricoles."}
-              </p>
-              {isCurrentUser && (
-                <Button className="mt-4" onClick={() => navigate('/')}>
-                  Explorer les projets
-                </Button>
-              )}
+            <div className="text-center py-8 text-muted-foreground">
+              <p>Aucun investissement trouvé</p>
             </div>
           )}
         </TabsContent>
       </Tabs>
+      
+      {/* Add ProjectDetailsDialog */}
+      {selectedProjectId && (
+        <ProjectDetailsDialog
+          isOpen={detailsOpen}
+          onClose={() => setDetailsOpen(false)}
+          projectId={selectedProjectId}
+          userRole={userRole || undefined}
+        />
+      )}
     </div>
   );
 };
