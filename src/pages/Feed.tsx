@@ -51,6 +51,7 @@ const Feed: React.FC = () => {
     fetchProjects();
   }, [activeFilters, projectId]);
   
+  /*
   const fetchProjects = async () => {
     try {
       setLoading(true);
@@ -239,7 +240,131 @@ const Feed: React.FC = () => {
       setLoading(false);
     }
   };
+  */
+  const fetchProjects = async () => {
+    try {
+      setLoading(true);
   
+      let query = supabase
+        .from('vue_projet_detaille')
+        .select(`
+          id_projet,
+          titre,
+          description,
+          surface_ha,
+          statut,
+          created_at,
+          id_tantsaha,
+          id_commune,
+          id_technicien,
+          nom_tantsaha,
+          prenoms_tantsaha,
+          photo_profil,
+          nom_commune,
+          nom_district,
+          nom_region,
+          cultures,
+          cout_total,
+          revenu_total,
+          rendement_total,
+          rendements_detail,
+          montant_investi,
+          gap_a_financer,
+          est_finance_completement,
+          nombre_likes,
+          nombre_commentaires
+        `)
+        .eq('statut', 'en financement')
+        .order('created_at', { ascending: false });
+  
+      if (projectId) {
+        query = query.eq('id_projet', parseInt(projectId));
+      }
+  
+      // Apply filters directly in the query if they exist
+      if (activeFilters.region) {
+        query = query.eq('nom_region', activeFilters.region);
+      }
+  
+      if (activeFilters.district) {
+        query = query.eq('nom_district', activeFilters.district);
+      }
+  
+      if (activeFilters.commune) {
+        query = query.eq('nom_commune', activeFilters.commune);
+      }
+  
+      let { data: projetsData, error: projetsError } = await query;
+  
+      if (projetsError) throw projetsError;
+  
+      // Apply culture filter separately if needed
+      let filteredProjects = projetsData || [];
+      if (activeFilters.culture && projetsData) {
+        filteredProjects = projetsData.filter(projet => 
+          projet.cultures.split(', ').includes(activeFilters.culture)
+        );
+      }
+  
+      const transformedProjects = filteredProjects.map(projet => {
+        const totalFarmingCost = projet.cout_total;
+        const expectedYieldLabel = projet.rendements_detail || "N/A";
+        const totalEstimatedRevenue = projet.revenu_total;
+        const totalProfit = totalEstimatedRevenue - totalFarmingCost;
+  
+        const farmer = {
+          id: projet.id_tantsaha,
+          name: `${projet.nom_tantsaha} ${projet.prenoms_tantsaha || ''}`.trim(),
+          avatar: projet.photo_profil,
+        };
+  
+        const likes = projet.nombre_likes || 0;
+        const commentCount = projet.nombre_commentaires || 0;
+  
+        const locationRegion = projet.nom_region || "Non spécifié";
+        const locationDistrict = projet.nom_district || "Non spécifié";
+        const locationCommune = projet.nom_commune || "Non spécifié";
+        const cultivationType = projet.cultures || "Non spécifié";
+
+        return {
+          id: projet.id_projet.toString(),
+          title: projet.titre || `Projet de culture de ${projet.cultures}`,
+          description: projet.description || `Projet de culture de ${projet.cultures} sur un terrain de ${projet.surface_ha} hectares.`,
+          farmer,
+          location: {
+            region: locationRegion,
+            district: locationDistrict,
+            commune: locationCommune,
+          },
+          cultivationArea: projet.surface_ha,
+          farmingCost: totalFarmingCost,
+          expectedYield: expectedYieldLabel,
+          expectedRevenue: totalEstimatedRevenue,
+          cultivationType: cultivationType,
+          totalProfit: totalProfit,
+          creationDate: new Date(projet.created_at).toISOString().split('T')[0],
+          fundingGoal: totalFarmingCost,
+          currentFunding: projet.montant_investi || 0,
+          gapToFinance: projet.gap_a_financer || 0,
+          isFullyFunded: projet.est_finance_completement || false,
+          likes,
+          comments: commentCount,
+          shares: 0, // Assuming there's a separate field or functionality for this
+          isLiked: user ? likes > 0 : false,
+        };
+      });
+  
+      setProjects(transformedProjects);
+    } catch (error) {
+      console.error("Erreur lors de la récupération des projets:", error);
+      toast.error("Erreur lors du chargement des projets");
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+
+
   const handleToggleLike = async (projectId: string, isCurrentlyLiked: boolean) => {
     if (!user) {
       toast.error("Vous devez être connecté pour aimer un projet");
@@ -398,165 +523,113 @@ const Feed: React.FC = () => {
       }
       
       const followedIds = followedUsers.map(f => f.id_suivi);
-      
-      // Then get the projects from these users
       let query = supabase
-        .from('projet')
+        .from('vue_projet_detaille')
         .select(`
           id_projet,
+          titre,
+          description,
           surface_ha,
           statut,
           created_at,
           id_tantsaha,
           id_commune,
           id_technicien,
-          titre,
-          description,
-          utilisateur!id_tantsaha(id_utilisateur, nom, prenoms, photo_profil),
-          commune(nom_commune, district(nom_district, region(nom_region)))
+          nom_tantsaha,
+          prenoms_tantsaha,
+          photo_profil,
+          nom_commune,
+          nom_district,
+          nom_region,
+          cultures,
+          cout_total,
+          revenu_total,
+          rendement_total,
+          rendements_detail,
+          montant_investi,
+          gap_a_financer,
+          est_finance_completement,
+          nombre_likes,
+          nombre_commentaires
         `)
         .eq('statut', 'en financement')
         .in('id_tantsaha', followedIds)
         .order('created_at', { ascending: false });
-      
+  
+      if (projectId) {
+        query = query.eq('id_projet', parseInt(projectId));
+      }
+  
+      // Apply filters directly in the query if they exist
+      if (activeFilters.region) {
+        query = query.eq('nom_region', activeFilters.region);
+      }
+  
+      if (activeFilters.district) {
+        query = query.eq('nom_district', activeFilters.district);
+      }
+  
+      if (activeFilters.commune) {
+        query = query.eq('nom_commune', activeFilters.commune);
+      }
+  
       let { data: projetsData, error: projetsError } = await query;
-      
+  
       if (projetsError) throw projetsError;
-      
-      const { data: culturesData, error: culturesError } = await supabase
-        .from('projet_culture')
-        .select(`
-          id_projet,
-          id_culture,
-          cout_exploitation_previsionnel,
-          rendement_previsionnel,
-          culture(nom_culture, prix_tonne,rendement_ha)
-        `);
-      if (culturesError) throw culturesError;
-
-      const culturesByProjet: Record<number, typeof culturesData> = {};
-      culturesData.forEach(pc => {
-        if (!culturesByProjet[pc.id_projet]) culturesByProjet[pc.id_projet] = [];
-        culturesByProjet[pc.id_projet].push(pc);
-      });
-
-      const { data: investissementsData, error: investissementsError } = await supabase
-        .from('investissement')
-        .select(`
-          id_projet,
-          montant
-        `);
-      if (investissementsError) throw investissementsError;
-
-      const projectCurrentFundings: Record<number, number> = {};
-      investissementsData.forEach(inv => {
-        if (!projectCurrentFundings[inv.id_projet]) projectCurrentFundings[inv.id_projet] = 0;
-        projectCurrentFundings[inv.id_projet] += inv.montant;
-      });
-
-      const { data: likesData, error: likesError } = await supabase
-        .from('aimer_projet')
-        .select(`
-          id_projet,
-          id_utilisateur
-        `);
-      if (likesError) throw likesError;
-
-      const { data: commentsCountData, error: commentsError } = await supabase
-        .from('commentaire')
-        .select('id_projet');
-      if (commentsError) throw commentsError;
-      const commentsCount: Record<string, number> = {};
-      commentsCountData.forEach(comment => {
-        const projectId = comment.id_projet.toString();
-        commentsCount[projectId] = (commentsCount[projectId] || 0) + 1;
-      });
-
+  
       // Apply culture filter separately if needed
       let filteredProjects = projetsData || [];
       if (activeFilters.culture && projetsData) {
-        filteredProjects = projetsData.filter(projet => {
-          const projetCultures = culturesByProjet[projet.id_projet] || [];
-          return projetCultures.some(pc => 
-            pc.culture?.nom_culture === activeFilters.culture
-          );
-        });
+        filteredProjects = projetsData.filter(projet => 
+          projet.cultures.split(', ').includes(activeFilters.culture)
+        );
       }
-
+  
       const transformedProjects = filteredProjects.map(projet => {
-        const projetCultures = culturesByProjet[projet.id_projet] || [];
-
-        const totalFarmingCost = projetCultures.reduce((sum, pc) => 
-          sum + ((pc.cout_exploitation_previsionnel || 0)), 0);
-
-        const yieldStrings = projetCultures.map(pc => {
-          const nom = pc.culture?.nom_culture || "Non spécifié";
-          const tonnage = pc.rendement_previsionnel != null ? pc.rendement_previsionnel : (pc.culture?.rendement_ha || 0) * (projet.surface_ha || 1);
-
-          return `${Math.round(tonnage * 100) / 100} t de ${nom}`;
-        });
-        const expectedYieldLabel = yieldStrings.length > 0 ? yieldStrings.join(", ") : "N/A";
-
-        const totalEstimatedRevenue = projetCultures.reduce((sum, pc) => {
-          const rendement = pc.rendement_previsionnel || 0;
-          const prixTonne = pc.culture?.prix_tonne || 0;
-          return sum + (rendement *  prixTonne);
-        }, 0);
-
+        const totalFarmingCost = projet.cout_total;
+        const expectedYieldLabel = projet.rendements_detail || "N/A";
+        const totalEstimatedRevenue = projet.revenu_total;
         const totalProfit = totalEstimatedRevenue - totalFarmingCost;
-
-        const cultivationTypes = projetCultures.map(pc => pc.culture?.nom_culture || "Non spécifié");
-        const cultivationType = cultivationTypes.length > 0 ? cultivationTypes.join(", ") : "Non spécifié";
-        
-        const tantsaha = projet.utilisateur;
-        const farmer = tantsaha ? {
-          id: tantsaha.id_utilisateur,
-          name: `${tantsaha.nom} ${tantsaha.prenoms || ''}`.trim(),
-          username: tantsaha.nom.toLowerCase().replace(/\s+/g, ''),
-          avatar: tantsaha.photo_profil,
-        } : {
-          id: "",
-          name: "Utilisateur inconnu",
-          username: "inconnu",
-          avatar: undefined,
+  
+        const farmer = {
+          id: projet.id_tantsaha,
+          name: `${projet.nom_tantsaha} ${projet.prenoms_tantsaha || ''}`.trim(),
+          avatar: projet.photo_profil,
         };
-
-        const likes = likesData.filter(like => like.id_projet === projet.id_projet).length;
-        const isLiked = user ? 
-          likesData.some(like => like.id_projet === projet.id_projet && like.id_utilisateur === user.id) : 
-          false;
-        const commentCount = commentsCount[projet.id_projet.toString()] || 0;
-
-        const locationRegion = projet.commune?.district?.region?.nom_region || "Non spécifié";
-        const locationDistrict = projet.commune?.district?.nom_district || "Non spécifié";
-        const locationCommune = projet.commune?.nom_commune || "Non spécifié";
+  
+        const likes = projet.nombre_likes || 0;
+        const commentCount = projet.nombre_commentaires || 0;
+  
+        const locationRegion = projet.nom_region || "Non spécifié";
+        const locationDistrict = projet.nom_district || "Non spécifié";
+        const locationCommune = projet.nom_commune || "Non spécifié";
+        const cultivationType = projet.cultures || "Non spécifié";
 
         return {
           id: projet.id_projet.toString(),
-          title: projet.titre || `Projet de culture de ${cultivationType}`,
-          description: projet.description || `Projet de culture de ${cultivationType} sur un terrain de ${projet.surface_ha} hectares.`,
+          title: projet.titre || `Projet de culture de ${projet.cultures}`,
+          description: projet.description || `Projet de culture de ${projet.cultures} sur un terrain de ${projet.surface_ha} hectares.`,
           farmer,
           location: {
             region: locationRegion,
             district: locationDistrict,
-            commune: locationCommune
+            commune: locationCommune,
           },
           cultivationArea: projet.surface_ha,
-          cultivationType,
           farmingCost: totalFarmingCost,
           expectedYield: expectedYieldLabel,
           expectedRevenue: totalEstimatedRevenue,
-          totalProfit : totalProfit,
+          cultivationType: cultivationType,
+          totalProfit: totalProfit,
           creationDate: new Date(projet.created_at).toISOString().split('T')[0],
-          images: [],
           fundingGoal: totalFarmingCost,
-          currentFunding: projectCurrentFundings[projet.id_projet] || 0,
+          currentFunding: projet.montant_investi || 0,
+          gapToFinance: projet.gap_a_financer || 0,
+          isFullyFunded: projet.est_finance_completement || false,
           likes,
           comments: commentCount,
-          shares: 0,
-          isLiked,
-          technicianId: projet.id_technicien,
-          _multiCultures: projetCultures,
+          shares: 0, // Assuming there's a separate field or functionality for this
+          isLiked: user ? likes > 0 : false,
         };
       });
       

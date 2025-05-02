@@ -168,7 +168,7 @@ const Index = () => {
           id: item.id_culture,
           name: item.nom_culture,
           count: item.count,
-          image: item.image ? `/assets/cultures/${item.image}` : "/lovable-uploads/804a44d2-41b4-4ad8-92c8-51f27bd6b598.png"
+          image: item.photos ? `/cultures/${item.photos}` : "/lovable-uploads/804a44d2-41b4-4ad8-92c8-51f27bd6b598.png"
         }));
   
         setPopularCultures(cultures);

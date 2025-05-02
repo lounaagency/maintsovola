@@ -222,8 +222,8 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({
   };
   const hasPhotos = displayedPhotos.length > 0;
   const hasMap = terrainCoordinates.length >= 3;
-  const displayTitle = projectDetails.title || `Projet de culture de ${project.cultivationType}`;
-  const displayDescription = projectDetails.description || `Projet de culture de ${typeof project.cultivationType === 'string' ? project.cultivationType : 'cultures'} sur un terrain de ${project.cultivationArea} hectares.`;
+  const displayTitle = projectDetails.title || `Projet de culture de ${project.cultures}`;
+  const displayDescription = projectDetails.description || `Projet de culture de ${typeof project.cultures === 'string' ? project.cultures : 'cultures'} sur un terrain de ${project.cultures} hectares.`;
   return <>
       <Card className="overflow-hidden mb-4">
         <div className="p-4">
