@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -92,8 +91,8 @@ const InvestmentCard: React.FC<InvestmentCardProps> = ({ project, onViewDetails 
           </div>
         </div>
 
-        {/* Chart showing investment vs expected return - HAUTEUR RÉDUITE */}
-        <div className="h-[80px] -mx-2">
+        {/* Chart showing investment vs expected return - HAUTEUR ENCORE PLUS RÉDUITE */}
+        <div className="h-[70px] -mx-2">
           <ChartContainer 
             config={{
               investment: { color: '#94a3b8' },
@@ -102,7 +101,7 @@ const InvestmentCard: React.FC<InvestmentCardProps> = ({ project, onViewDetails 
           >
             <BarChart 
               width={300} 
-              height={80}
+              height={70}
               data={project.chartData}
               margin={{ top: 5, right: 5, bottom: 5, left: 5 }}
               barSize={40}
@@ -130,10 +129,10 @@ const InvestmentCard: React.FC<InvestmentCardProps> = ({ project, onViewDetails 
           </ChartContainer>
         </div>
 
-        {/* Séparateur visuel pour mieux séparer les sections */}
-        <div className="border-t border-gray-100 pt-2"></div>
+        {/* Séparateur visuel plus prononcé pour mieux séparer les sections */}
+        <div className="border-t border-gray-100 pt-2 mt-2"></div>
 
-        {/* Project Progress Section - DÉPLACÉ APRÈS LE GRAPHIQUE */}
+        {/* Project Progress Section - BIEN SÉPARÉ DU GRAPHIQUE */}
         <div className="space-y-2">
           <div className="flex items-center justify-between text-xs">
             <div className="flex items-center gap-1 text-muted-foreground">
