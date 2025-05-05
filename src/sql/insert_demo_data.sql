@@ -1,4 +1,5 @@
 
+
 -- Script de génération de données de démonstration pour Maintsovola
 -- 100 projets agricoles avec données complètes
 -- Mot de passe uniforme: test$619
@@ -825,3 +826,4 @@ SELECT setval('investissement_id_investissement_seq', (SELECT MAX(id_investissem
 SELECT setval('commentaire_id_commentaire_seq', (SELECT MAX(id_commentaire) FROM commentaire), true);
 SELECT setval('conversation_id_conversation_seq', (SELECT MAX(id_conversation) FROM conversation), true);
 SELECT setval('message_id_message_seq', (SELECT MAX(id_message) FROM message), true);
+
