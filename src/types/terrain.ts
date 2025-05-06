@@ -16,11 +16,11 @@ export interface TerrainData {
   id_tantsaha?: string;
   id_superviseur?: string;
   id_technicien?: string;
-  photos?: string;
+  photos?: string | string[];
   archive?: boolean;
   date_validation?: string | null;
   rapport_validation?: string | null;
-  photos_validation?: string | null;
+  photos_validation?: string | string[] | null;
   validation_decision?: string;
   
   // Extended properties for views
@@ -45,4 +45,6 @@ export interface TerrainFilters {
   technician?: string;
   status?: string;
   search?: string;
+  hasWater?: boolean;
+  hasRoad?: boolean;
 }

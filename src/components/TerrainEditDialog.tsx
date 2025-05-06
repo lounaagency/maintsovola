@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -243,20 +244,15 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
     }
   };
 
-  // Improved focus management
-  const handleOpenChange = (open: boolean) => {
-    if (!open) {
-      // Allow proper focus return before closing
-      setTimeout(() => {
-        onClose();
-      }, 0);
-    }
-  };
-
   return (
     <Dialog 
       open={isOpen} 
-      onOpenChange={handleOpenChange}
+      onOpenChange={(open) => {
+        if (!open) {
+          // Pour éviter les problèmes de focus, utiliser un délai minimal
+          setTimeout(() => onClose(), 10);
+        }
+      }}
     >
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>

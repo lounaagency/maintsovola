@@ -91,16 +91,16 @@ const TerrainCard: React.FC<TerrainCardProps> = ({
     if (!terrain.photos) return [];
     
     return typeof terrain.photos === 'string'
-      ? terrain.photos.split(',').filter(p => p.trim() !== '')
-      : terrain.photos.filter(p => p);
+      ? terrain.photos.split(',').filter((p: string) => p.trim() !== '')
+      : Array.isArray(terrain.photos) ? terrain.photos.filter(p => p) : [];
   };
   
   const getValidationPhotos = () => {
     if (!terrain.photos_validation) return [];
     
     return typeof terrain.photos_validation === 'string'
-      ? terrain.photos_validation.split(',').filter(p => p.trim() !== '')
-      : terrain.photos_validation.filter(p => p);
+      ? terrain.photos_validation.split(',').filter((p: string) => p.trim() !== '')
+      : Array.isArray(terrain.photos_validation) ? terrain.photos_validation.filter(p => p) : [];
   };
   
   const photos = getPhotos();
@@ -133,21 +133,16 @@ const TerrainCard: React.FC<TerrainCardProps> = ({
     }
   };
 
-  // Improved focus management for modal
-  const handleOpenChange = (open: boolean) => {
-    if (!open) {
-      // Allow proper focus return before closing
-      setTimeout(() => {
-        onClose();
-      }, 0);
-    }
-  };
-
   if (isDeleteMode) {
     return (
       <AlertDialog 
         open={isOpen} 
-        onOpenChange={handleOpenChange}
+        onOpenChange={(open) => {
+          if (!open) {
+            // Pour éviter les problèmes de focus, utiliser un délai minimal
+            setTimeout(() => onClose(), 10);
+          }
+        }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -176,7 +171,15 @@ const TerrainCard: React.FC<TerrainCardProps> = ({
 
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      <Dialog 
+        open={isOpen} 
+        onOpenChange={(open) => {
+          if (!open) {
+            // Pour éviter les problèmes de focus, utiliser un délai minimal
+            setTimeout(() => onClose(), 10);
+          }
+        }}
+      >
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-green-600">
@@ -470,7 +473,15 @@ const TerrainCard: React.FC<TerrainCardProps> = ({
       </Dialog>
       
       {/* Delete confirmation */}
-      <AlertDialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
+      <AlertDialog 
+        open={isDeleteConfirmOpen} 
+        onOpenChange={(open) => {
+          if (!open) {
+            // Pour éviter les problèmes de focus, utiliser un délai minimal
+            setTimeout(() => setIsDeleteConfirmOpen(false), 10);
+          }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Supprimer le terrain</AlertDialogTitle>
