@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import {
   Dialog,
@@ -358,6 +359,24 @@ const TerrainCard: React.FC<TerrainCardProps> = ({
                       <div className="space-y-2">
                         <div className="flex justify-between">
                           <div className="text-sm text-muted-foreground">
+                            Surface validée
+                          </div>
+                          <div className="font-medium">
+                            {terrain.surface_validee || terrain.surface_proposee} hectares
+                          </div>
+                        </div>
+                        
+                        <div className="flex justify-between">
+                          <div className="text-sm text-muted-foreground">
+                            Date de validation
+                          </div>
+                          <div className="font-medium">
+                            {terrain.date_validation ? new Date(terrain.date_validation).toLocaleDateString() : 'Non spécifiée'}
+                          </div>
+                        </div>
+                        
+                        <div className="flex justify-between">
+                          <div className="text-sm text-muted-foreground">
                             Validé par
                           </div>
                           <div className="font-medium flex items-center">
@@ -369,118 +388,126 @@ const TerrainCard: React.FC<TerrainCardProps> = ({
                             <span className="ml-2">{terrain.superviseurNom || 'Non spécifié'}</span>
                           </div>
                         </div>
-                        
-                        <div className="flex justify-between">
-                          <div className="text-sm text-muted-foreground">
-                            Date de validation
-                          </div>
-                          <div className="font-medium">
-                            {terrain.date_validation ? new Date(terrain.date_validation).toLocaleDateString() : 'N/A'}
-                          </div>
-                        </div>
-                        
-                        <div className="flex justify-between">
-                          <div className="text-sm text-muted-foreground">
-                            Surface validée
-                          </div>
-                          <div className="font-medium">
-                            {terrain.surface_validee || terrain.surface_proposee} hectares
-                          </div>
-                        </div>
                       </div>
                     </CardContent>
                   </Card>
                   
-                  <div className="space-y-4">
-                    {/* Validation Report */}
+                  {validationPhotos.length > 0 && (
                     <Card>
                       <CardContent className="pt-6">
                         <div className="space-y-2">
-                          <div className="font-medium mb-2">Rapport de validation</div>
-                          <p className="text-muted-foreground">
-                            {terrain.rapport_validation || 'Aucun rapport fourni'}
-                          </p>
+                          <div className="flex justify-between mb-3">
+                            <div className="font-medium">Photos de validation</div>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => setValidationPhotoGalleryOpen(true)}
+                            >
+                              Voir toutes
+                            </Button>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2">
+                            {validationPhotos.slice(0, 3).map((photo, index) => (
+                              <div key={index} className="aspect-square rounded-md overflow-hidden">
+                                <img 
+                                  src={photo} 
+                                  alt={`Validation photo ${index + 1}`} 
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                            ))}
+                            {validationPhotos.length > 3 && (
+                              <div className="aspect-square rounded-md overflow-hidden bg-muted flex items-center justify-center text-muted-foreground">
+                                +{validationPhotos.length - 3}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
-                    
-                    {/* Validation Photos */}
-                    {validationPhotos.length > 0 && (
-                      <Card>
-                        <CardContent className="pt-6">
-                          <div className="space-y-2">
-                            <div className="flex justify-between mb-3">
-                              <div className="font-medium">Photos de validation</div>
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => setValidationPhotoGalleryOpen(true)}
-                              >
-                                Voir toutes
-                              </Button>
-                            </div>
-                            <div className="grid grid-cols-3 gap-2">
-                              {validationPhotos.slice(0, 3).map((photo, index) => (
-                                <div key={index} className="aspect-square rounded-md overflow-hidden">
-                                  <img 
-                                    src={photo} 
-                                    alt={`Validation photo ${index + 1}`} 
-                                    className="w-full h-full object-cover"
-                                  />
-                                </div>
-                              ))}
-                              {validationPhotos.length > 3 && (
-                                <div className="aspect-square rounded-md overflow-hidden bg-muted flex items-center justify-center text-muted-foreground">
-                                  +{validationPhotos.length - 3}
-                                </div>
-                              )}
-                            </div>
+                  )}
+                  
+                  {terrain.rapport_validation && (
+                    <Card className="md:col-span-2">
+                      <CardContent className="pt-6">
+                        <div className="space-y-2">
+                          <div className="font-medium mb-2">Rapport de validation</div>
+                          <div className="text-sm bg-muted p-3 rounded-md whitespace-pre-line">
+                            {terrain.rapport_validation}
                           </div>
-                        </CardContent>
-                      </Card>
-                    )}
-                  </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
                 </div>
               ) : (
-                <div className="text-center py-8">
+                <div className="flex flex-col items-center justify-center py-6">
                   <p className="text-muted-foreground">Ce terrain n'a pas encore été validé</p>
                 </div>
               )}
             </TabsContent>
           </Tabs>
           
-          <DialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-between sm:space-x-2">
-            {canDelete && (
-              <Button 
-                variant="destructive" 
-                onClick={() => setIsDeleteConfirmOpen(true)}
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Supprimer
-              </Button>
-            )}
-            <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2">
-              <Button 
-                variant="outline" 
-                onClick={onClose}
-              >
-                Fermer
-              </Button>
+          <DialogFooter>
+            <div className="flex justify-between w-full">
+              {canDelete && (
+                <Button 
+                  variant="destructive"
+                  onClick={() => setIsDeleteConfirmOpen(true)}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Supprimer
+                </Button>
+              )}
+              
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline"
+                  onClick={onClose}
+                >
+                  Fermer
+                </Button>
+                
+                {canModify && !terrain.statut && (
+                  <Button
+                    variant="default"
+                    onClick={() => {
+                      onClose();
+                      // Navigation logic or edit modal would go here
+                    }}
+                  >
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Modifier
+                  </Button>
+                )}
+              </div>
             </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
       
-      {/* Delete confirmation */}
-      <AlertDialog 
-        open={isDeleteConfirmOpen} 
-        onOpenChange={(open) => {
-          if (!open) {
-            // Fix focus management with proper unmount timing
-            setTimeout(() => setIsDeleteConfirmOpen(false), 0);
-          }
-        }}
-      >
+      {/* Photo Gallery Modal */}
+      {photoGalleryOpen && (
+        <ProjectPhotosGallery
+          isOpen={photoGalleryOpen}
+          onClose={() => setPhotoGalleryOpen(false)}
+          photos={photos}
+          title={`Photos du terrain ${terrain.nom_terrain}`}
+        />
+      )}
+      
+      {/* Validation Photo Gallery Modal */}
+      {validationPhotoGalleryOpen && (
+        <ProjectPhotosGallery
+          isOpen={validationPhotoGalleryOpen}
+          onClose={() => setValidationPhotoGalleryOpen(false)}
+          photos={validationPhotos}
+          title={`Photos de validation du terrain ${terrain.nom_terrain}`}
+        />
+      )}
+      
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Supprimer le terrain</AlertDialogTitle>
@@ -503,22 +530,6 @@ const TerrainCard: React.FC<TerrainCardProps> = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      
-      {/* Photo galleries */}
-      <ProjectPhotosGallery
-        isOpen={photoGalleryOpen}
-        onClose={() => setPhotoGalleryOpen(false)}
-        photos={photos}
-        title={`Photos: ${terrain.nom_terrain}`}
-        terrainCoordinates={polygonCoordinates}
-      />
-      
-      <ProjectPhotosGallery
-        isOpen={validationPhotoGalleryOpen}
-        onClose={() => setValidationPhotoGalleryOpen(false)}
-        photos={validationPhotos}
-        title={`Photos de validation: ${terrain.nom_terrain}`}
-      />
     </>
   );
 };

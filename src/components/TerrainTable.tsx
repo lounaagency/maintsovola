@@ -1,3 +1,4 @@
+
 import React from "react";
 import { TerrainData } from "@/types/terrain";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,9 @@ interface TerrainTableProps {
   onTerrainUpdate?: () => void;
   techniciens?: { id_utilisateur: string; nom: string; prenoms?: string }[];
   onEdit?: (terrain: TerrainData) => void;
+  onViewDetails?: (terrain: TerrainData) => void;
+  onValidate?: (terrain: TerrainData) => void;
+  onDelete?: (terrain: TerrainData) => void;
   onContactTechnicien?: (terrain: TerrainData) => void;
 }
 
@@ -33,6 +37,9 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
   onTerrainUpdate,
   techniciens,
   onEdit,
+  onViewDetails,
+  onValidate,
+  onDelete,
   onContactTechnicien
 }) => {
   const { user } = useAuth();
@@ -222,6 +229,24 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
     }
   };
 
+  const handleViewDetails = (terrain: TerrainData) => {
+    if (onViewDetails) {
+      onViewDetails(terrain);
+    }
+  };
+
+  const handleValidateTerrain = (terrain: TerrainData) => {
+    if (onValidate) {
+      onValidate(terrain);
+    }
+  };
+
+  const handleDeleteClick = (terrain: TerrainData) => {
+    if (onDelete) {
+      onDelete(terrain);
+    }
+  };
+
   const handleContactTechnicien = (terrain: TerrainData) => {
     if (onContactTechnicien) {
       onContactTechnicien(terrain);
@@ -315,15 +340,24 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
               )}
               
               <div className="h-full max-w-3xl mx-auto px-3 lg:space-x-3 md:px-3 flex items-center justify-between">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleViewDetails(terrain)}
+                >
+                  <Eye className="h-4 w-4 mr-1" />
+                  Détails
+                </Button>
+                
                 {type === 'pending' && (userRole === 'technicien' || userRole === 'superviseur') && (
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handleValidate(terrain.id_terrain || 0)}
+                    onClick={() => handleValidateTerrain(terrain)}
                     disabled={userRole === 'technicien' && terrain.id_technicien !== user?.id}
                   >
                     <Check className="h-4 w-4 mr-1" />
-                    
+                    Valider
                   </Button>
                 )}
                 {canEdit(terrain) && (
@@ -333,7 +367,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                     onClick={() => handleEdit(terrain)}
                   >
                     <Edit className="h-4 w-4 mr-1" />
-                    
+                    Modifier
                   </Button>
                 )}
                 {canDelete(terrain) && (
@@ -341,10 +375,10 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                     variant="outline" 
                     size="sm"
                     className="text-red-500 hover:text-red-700"
-                    onClick={() => handleDeleteTerrain(terrain.id_terrain || 0)}
+                    onClick={() => handleDeleteClick(terrain)}
                   >
                     <Trash className="h-4 w-4 mr-1" />
-                    
+                    Supprimer
                   </Button>
                 )}
                 {canContactTechnicien(terrain) && (
@@ -355,7 +389,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                     aria-label="Contacter le technicien"
                   >
                     <MessageSquare className="h-4 w-4 mr-1" />
-                    
+                    Contacter
                   </Button>
                 )}
               </div>
@@ -375,8 +409,8 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>ID {user.id ? user.id : ''}</TableHead>
-            <TableHead>Nom </TableHead>
+            <TableHead>ID</TableHead>
+            <TableHead>Nom</TableHead>
             <TableHead>Surface</TableHead>
             <TableHead>Zone géographique</TableHead>
             <TableHead>Accès eau</TableHead>
@@ -394,8 +428,8 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
           {filteredTerrains.length > 0 ? (
             filteredTerrains.map((terrain) => (
               <TableRow key={terrain.id_terrain}>
-                <TableCell>{terrain.id_terrain} id_technicien {terrain.id_technicien}</TableCell>
-                <TableCell>{terrain.nom_terrain} </TableCell>
+                <TableCell>{terrain.id_terrain}</TableCell>
+                <TableCell>{terrain.nom_terrain}</TableCell>
                 <TableCell>{terrain.surface_proposee} ha</TableCell>
                 <TableCell>
                   {terrain.region_name || 'N/A'}, 
@@ -428,15 +462,25 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                 )}
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleViewDetails(terrain)}
+                      aria-label="Voir les détails"
+                    >
+                      <Eye className="h-4 w-4 mr-1" />
+                      Détails
+                    </Button>
+                    
                     {type === 'pending' && (userRole === 'technicien' || userRole === 'superviseur') && (
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleValidate(terrain.id_terrain || 0)}
+                        onClick={() => handleValidateTerrain(terrain)}
                         disabled={userRole === 'technicien' && terrain.id_technicien !== user?.id}
                       >
                         <Check className="h-4 w-4 mr-1" />
-                        
+                        Valider
                       </Button>
                     )}
                     {canEdit(terrain) && (
@@ -446,7 +490,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                         onClick={() => handleEdit(terrain)}
                       >
                         <Edit className="h-4 w-4 mr-1" />
-                        
+                        Modifier
                       </Button>
                     )}
                     {canDelete(terrain) && (
@@ -454,10 +498,10 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                         variant="outline" 
                         size="sm"
                         className="text-red-500 hover:text-red-700"
-                        onClick={() => handleDeleteTerrain(terrain.id_terrain || 0)}
+                        onClick={() => handleDeleteClick(terrain)}
                       >
                         <Trash className="h-4 w-4 mr-1" />
-                        
+                        Supprimer
                       </Button>
                     )}
                     {canContactTechnicien(terrain) && (
@@ -467,7 +511,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                         onClick={() => handleContactTechnicien(terrain)}
                       >
                         <MessageSquare className="h-4 w-4 mr-1" />
-                        
+                        Contacter
                       </Button>
                     )}
                   </div>
