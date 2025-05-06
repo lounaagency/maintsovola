@@ -18,14 +18,14 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { TerrainForm } from '@/types/terrainForm';
+import { TerrainFormData } from '@/types/terrainForm';
 
 export interface TerrainFormFieldsProps {
   regions: { id_region: number; nom_region: string }[];
   districts: { id_district: number; nom_district: string }[];
   communes: { id_commune: number; nom_commune: string }[];
   isLoading: boolean;
-  form: UseFormReturn<TerrainForm>;
+  form: UseFormReturn<any>;
   userRole?: string;
   userId: string;
   agriculteurs?: { id_utilisateur: string; nom: string; prenoms?: string }[];
@@ -40,10 +40,10 @@ export interface TerrainFormFieldsProps {
 }
 
 const TerrainFormFields: React.FC<TerrainFormFieldsProps> = ({
-  regions,
-  districts,
-  communes,
-  isLoading,
+  regions = [],
+  districts = [],
+  communes = [],
+  isLoading = false,
   form,
 }) => {
   return (
@@ -71,7 +71,7 @@ const TerrainFormFields: React.FC<TerrainFormFieldsProps> = ({
             <Select
               disabled={isLoading || regions.length === 0}
               onValueChange={(value) => {
-                field.onChange(Number(value));
+                field.onChange(value);
                 form.setValue('id_district', undefined);
                 form.setValue('id_commune', undefined);
               }}
@@ -107,7 +107,7 @@ const TerrainFormFields: React.FC<TerrainFormFieldsProps> = ({
             <Select
               disabled={isLoading || districts.length === 0 || !form.getValues('id_region')}
               onValueChange={(value) => {
-                field.onChange(Number(value));
+                field.onChange(value);
                 form.setValue('id_commune', undefined);
               }}
               value={field.value?.toString()}
@@ -145,7 +145,7 @@ const TerrainFormFields: React.FC<TerrainFormFieldsProps> = ({
             <FormLabel>Commune</FormLabel>
             <Select
               disabled={isLoading || communes.length === 0 || !form.getValues('id_district')}
-              onValueChange={(value) => field.onChange(Number(value))}
+              onValueChange={(value) => field.onChange(value)}
               value={field.value?.toString()}
             >
               <FormControl>

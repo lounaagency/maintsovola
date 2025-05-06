@@ -45,3 +45,6 @@ export const convertFormDataToTerrainData = (formData: TerrainFormData): Partial
       : undefined
   };
 };
+
+// Type alias for backward compatibility 
+export type TerrainForm = TerrainFormData;

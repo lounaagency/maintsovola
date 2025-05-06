@@ -1,4 +1,3 @@
-
 import React from "react";
 import { TerrainData } from "@/types/terrain";
 import { Button } from "@/components/ui/button";
@@ -249,7 +248,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
     }
     // Supervisor sees all terrains, so no additional filtering for them
     
-    console.log('Filtered terrains:', filtered, userRole, user.id);
+    console.log('Filtered terrains:', filtered, userRole, user?.id);
     return filtered;
   };
 

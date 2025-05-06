@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -65,6 +64,10 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
   const [overlapTerrains, setOverlapTerrains] = useState<TerrainData[] | null>(null);
   const [checkingOverlap, setCheckingOverlap] = useState(false);
   const [isEditMode, setIsEditMode] = useState(!!initialData);
+  const [regions, setRegions] = useState<{id_region: number; nom_region: string}[]>([]);
+  const [districts, setDistricts] = useState<{id_district: number; nom_district: string}[]>([]);
+  const [communes, setCommunes] = useState<{id_commune: number; nom_commune: string}[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   
   const formSchema = isValidationMode ? validationSchema : terrainSchema;
   
@@ -130,6 +133,77 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
       }
     }
   }, [initialData]);
+
+  useEffect(() => {
+    // Fetch regions data
+    const fetchRegions = async () => {
+      try {
+        const { data, error } = await supabase.from('region').select('*').order('nom_region');
+        if (error) throw error;
+        setRegions(data || []);
+      } catch (error) {
+        console.error('Error fetching regions:', error);
+        toast.error("Erreur lors du chargement des régions");
+      }
+    };
+    
+    fetchRegions();
+  }, []);
+
+  useEffect(() => {
+    // Fetch districts when region changes
+    const fetchDistricts = async () => {
+      const regionId = form.getValues('id_region');
+      if (!regionId) {
+        setDistricts([]);
+        return;
+      }
+      
+      try {
+        const { data, error } = await supabase
+          .from('district')
+          .select('*')
+          .eq('id_region', regionId)
+          .order('nom_district');
+        if (error) throw error;
+        setDistricts(data || []);
+      } catch (error) {
+        console.error('Error fetching districts:', error);
+      }
+    };
+    
+    fetchDistricts();
+    
+    // Reset commune when region changes
+    form.setValue('id_commune', undefined);
+  }, [form.watch('id_region')]);
+
+  useEffect(() => {
+    // Fetch communes when district changes
+    const fetchCommunes = async () => {
+      const districtId = form.getValues('id_district');
+      if (!districtId) {
+        setCommunes([]);
+        return;
+      }
+      
+      try {
+        const { data, error } = await supabase
+          .from('commune')
+          .select('*')
+          .eq('id_district', districtId)
+          .order('nom_commune');
+        if (error) throw error;
+        setCommunes(data || []);
+      } catch (error) {
+        console.error('Error fetching communes:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchCommunes();
+  }, [form.watch('id_district')]);
 
   const uploadPhotos = async (photos: File[], folder: string = 'terrain-photos'): Promise<string[]> => {
     if (photos.length === 0) return [];
@@ -411,6 +485,10 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
             polygonCoordinates={polygonCoordinates}
             setPolygonCoordinates={setPolygonCoordinates}
             overlapTerrains={overlapTerrains}
+            regions={regions}
+            districts={districts}
+            communes={communes}
+            isLoading={isLoading}
           />
         )}
         
