@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import {
   Dialog,
@@ -139,8 +138,8 @@ const TerrainCard: React.FC<TerrainCardProps> = ({
         open={isOpen} 
         onOpenChange={(open) => {
           if (!open) {
-            // Pour éviter les problèmes de focus, utiliser un délai minimal
-            setTimeout(() => onClose(), 10);
+            // Fix focus management with proper unmount timing
+            setTimeout(() => onClose(), 50);
           }
         }}
       >
@@ -175,8 +174,8 @@ const TerrainCard: React.FC<TerrainCardProps> = ({
         open={isOpen} 
         onOpenChange={(open) => {
           if (!open) {
-            // Pour éviter les problèmes de focus, utiliser un délai minimal
-            setTimeout(() => onClose(), 10);
+            // Fix focus management with proper unmount timing
+            setTimeout(() => onClose(), 50);
           }
         }}
       >
@@ -477,8 +476,8 @@ const TerrainCard: React.FC<TerrainCardProps> = ({
         open={isDeleteConfirmOpen} 
         onOpenChange={(open) => {
           if (!open) {
-            // Pour éviter les problèmes de focus, utiliser un délai minimal
-            setTimeout(() => setIsDeleteConfirmOpen(false), 10);
+            // Fix focus management with proper unmount timing
+            setTimeout(() => setIsDeleteConfirmOpen(false), 50);
           }
         }}
       >
@@ -511,7 +510,7 @@ const TerrainCard: React.FC<TerrainCardProps> = ({
         onClose={() => setPhotoGalleryOpen(false)}
         photos={photos}
         title={`Photos: ${terrain.nom_terrain}`}
-        terrainCoordinates={getPolygonCoordinates()}
+        terrainCoordinates={polygonCoordinates}
       />
       
       <ProjectPhotosGallery

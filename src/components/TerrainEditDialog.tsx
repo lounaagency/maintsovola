@@ -249,8 +249,8 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
       open={isOpen} 
       onOpenChange={(open) => {
         if (!open) {
-          // Pour éviter les problèmes de focus, utiliser un délai minimal
-          setTimeout(() => onClose(), 10);
+          // Fix focus management with proper unmount timing
+          setTimeout(() => onClose(), 50);
         }
       }}
     >
