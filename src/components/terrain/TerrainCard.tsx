@@ -139,7 +139,7 @@ const TerrainCard: React.FC<TerrainCardProps> = ({
         onOpenChange={(open) => {
           if (!open) {
             // Fix focus management with proper unmount timing
-            setTimeout(() => onClose(), 50);
+            setTimeout(() => onClose(), 0);
           }
         }}
       >
@@ -175,7 +175,7 @@ const TerrainCard: React.FC<TerrainCardProps> = ({
         onOpenChange={(open) => {
           if (!open) {
             // Fix focus management with proper unmount timing
-            setTimeout(() => onClose(), 50);
+            setTimeout(() => onClose(), 0);
           }
         }}
       >
@@ -477,7 +477,7 @@ const TerrainCard: React.FC<TerrainCardProps> = ({
         onOpenChange={(open) => {
           if (!open) {
             // Fix focus management with proper unmount timing
-            setTimeout(() => setIsDeleteConfirmOpen(false), 50);
+            setTimeout(() => setIsDeleteConfirmOpen(false), 0);
           }
         }}
       >
