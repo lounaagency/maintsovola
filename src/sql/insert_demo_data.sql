@@ -17,169 +17,185 @@ ALTER SEQUENCE conversation_id_conversation_seq RESTART WITH 1000;
 -- 50 agriculteurs (id_role = 1)
 INSERT INTO utilisateur (id_utilisateur, nom, prenoms, email, id_role, photo_profil, photo_couverture)
 VALUES
-  ('farmer1', 'Rakoto', 'Jean', 'rakoto.jean@example.com', 1, 'https://i.pravatar.cc/150?img=1', 'https://picsum.photos/800/200?random=1'),
-  ('farmer2', 'Rabe', 'Marie', 'rabe.marie@example.com', 1, 'https://i.pravatar.cc/150?img=2', 'https://picsum.photos/800/200?random=2'),
-  ('farmer3', 'Rabemananjara', 'Hery', 'rabemananjara.hery@example.com', 1, 'https://i.pravatar.cc/150?img=3', 'https://picsum.photos/800/200?random=3'),
-  ('farmer4', 'Razanadrakoto', 'Soa', 'razanadrakoto.soa@example.com', 1, 'https://i.pravatar.cc/150?img=4', 'https://picsum.photos/800/200?random=4'),
-  ('farmer5', 'Rafaralahy', 'Patrick', 'rafaralahy.patrick@example.com', 1, 'https://i.pravatar.cc/150?img=5', 'https://picsum.photos/800/200?random=5'),
-  ('farmer6', 'Rakotonirina', 'Hanitra', 'rakotonirina.hanitra@example.com', 1, 'https://i.pravatar.cc/150?img=6', 'https://picsum.photos/800/200?random=6'),
-  ('farmer7', 'Andrianaivo', 'Michel', 'andrianaivo.michel@example.com', 1, 'https://i.pravatar.cc/150?img=7', 'https://picsum.photos/800/200?random=7'),
-  ('farmer8', 'Rasoamanarivo', 'Lalao', 'rasoamanarivo.lalao@example.com', 1, 'https://i.pravatar.cc/150?img=8', 'https://picsum.photos/800/200?random=8'),
-  ('farmer9', 'Razafindrakoto', 'Mamy', 'razafindrakoto.mamy@example.com', 1, 'https://i.pravatar.cc/150?img=9', 'https://picsum.photos/800/200?random=9'),
-  ('farmer10', 'Andriamahefa', 'Paul', 'andriamahefa.paul@example.com', 1, 'https://i.pravatar.cc/150?img=10', 'https://picsum.photos/800/200?random=10'),
-  ('farmer11', 'Rakotondrabe', 'Aimé', 'rakotondrabe.aime@example.com', 1, 'https://i.pravatar.cc/150?img=11', 'https://picsum.photos/800/200?random=11'),
-  ('farmer12', 'Randriamanana', 'Voahangy', 'randriamanana.voahangy@example.com', 1, 'https://i.pravatar.cc/150?img=12', 'https://picsum.photos/800/200?random=12'),
-  ('farmer13', 'Razafindratsima', 'Toky', 'razafindratsima.toky@example.com', 1, 'https://i.pravatar.cc/150?img=13', 'https://picsum.photos/800/200?random=13'),
-  ('farmer14', 'Rakotoarison', 'Hanta', 'rakotoarison.hanta@example.com', 1, 'https://i.pravatar.cc/150?img=14', 'https://picsum.photos/800/200?random=14'),
-  ('farmer15', 'Raharison', 'Misa', 'raharison.misa@example.com', 1, 'https://i.pravatar.cc/150?img=15', 'https://picsum.photos/800/200?random=15'),
-  ('farmer16', 'Andriantsoa', 'Diary', 'andriantsoa.diary@example.com', 1, 'https://i.pravatar.cc/150?img=16', 'https://picsum.photos/800/200?random=16'),
-  ('farmer17', 'Rajaonarison', 'Liva', 'rajaonarison.liva@example.com', 1, 'https://i.pravatar.cc/150?img=17', 'https://picsum.photos/800/200?random=17'),
-  ('farmer18', 'Rasoanirina', 'Fanja', 'rasoanirina.fanja@example.com', 1, 'https://i.pravatar.cc/150?img=18', 'https://picsum.photos/800/200?random=18'),
-  ('farmer19', 'Rakotomalala', 'Njaka', 'rakotomalala.njaka@example.com', 1, 'https://i.pravatar.cc/150?img=19', 'https://picsum.photos/800/200?random=19'),
-  ('farmer20', 'Randrianarivony', 'Sahondra', 'randrianarivony.sahondra@example.com', 1, 'https://i.pravatar.cc/150?img=20', 'https://picsum.photos/800/200?random=20'),
-  ('farmer21', 'Ranaivo', 'Zo', 'ranaivo.zo@example.com', 1, 'https://i.pravatar.cc/150?img=21', 'https://picsum.photos/800/200?random=21'),
-  ('farmer22', 'Andriamampionona', 'Tiana', 'andriamampionona.tiana@example.com', 1, 'https://i.pravatar.cc/150?img=22', 'https://picsum.photos/800/200?random=22'),
-  ('farmer23', 'Rafanomezana', 'Mamitiana', 'rafanomezana.mamitiana@example.com', 1, 'https://i.pravatar.cc/150?img=23', 'https://picsum.photos/800/200?random=23'),
-  ('farmer24', 'Andriamaro', 'Fetra', 'andriamaro.fetra@example.com', 1, 'https://i.pravatar.cc/150?img=24', 'https://picsum.photos/800/200?random=24'),
-  ('farmer25', 'Randriamihaingo', 'Nirina', 'randriamihaingo.nirina@example.com', 1, 'https://i.pravatar.cc/150?img=25', 'https://picsum.photos/800/200?random=25'),
-  ('farmer26', 'Ramaroson', 'Mialy', 'ramaroson.mialy@example.com', 1, 'https://i.pravatar.cc/150?img=26', 'https://picsum.photos/800/200?random=26'),
-  ('farmer27', 'Razafimahatratra', 'Olivier', 'razafimahatratra.olivier@example.com', 1, 'https://i.pravatar.cc/150?img=27', 'https://picsum.photos/800/200?random=27'),
-  ('farmer28', 'Rasolonjatovo', 'Andry', 'rasolonjatovo.andry@example.com', 1, 'https://i.pravatar.cc/150?img=28', 'https://picsum.photos/800/200?random=28'),
-  ('farmer29', 'Rakotovao', 'Haingotiana', 'rakotovao.haingotiana@example.com', 1, 'https://i.pravatar.cc/150?img=29', 'https://picsum.photos/800/200?random=29'),
-  ('farmer30', 'Rabarison', 'Manitra', 'rabarison.manitra@example.com', 1, 'https://i.pravatar.cc/150?img=30', 'https://picsum.photos/800/200?random=30'),
-  ('farmer31', 'Andrianjaka', 'Henintsoa', 'andrianjaka.henintsoa@example.com', 1, 'https://i.pravatar.cc/150?img=31', 'https://picsum.photos/800/200?random=31'),
-  ('farmer32', 'Rakotonomenjanahary', 'Feno', 'rakotonomenjanahary.feno@example.com', 1, 'https://i.pravatar.cc/150?img=32', 'https://picsum.photos/800/200?random=32'),
-  ('farmer33', 'Ravoajanahary', 'Rado', 'ravoajanahary.rado@example.com', 1, 'https://i.pravatar.cc/150?img=33', 'https://picsum.photos/800/200?random=33'),
-  ('farmer34', 'Randrianirina', 'Hasina', 'randrianirina.hasina@example.com', 1, 'https://i.pravatar.cc/150?img=34', 'https://picsum.photos/800/200?random=34'),
-  ('farmer35', 'Ravololona', 'Lalatiana', 'ravololona.lalatiana@example.com', 1, 'https://i.pravatar.cc/150?img=35', 'https://picsum.photos/800/200?random=35'),
-  ('farmer36', 'Rafidinarivo', 'Seheno', 'rafidinarivo.seheno@example.com', 1, 'https://i.pravatar.cc/150?img=36', 'https://picsum.photos/800/200?random=36'),
-  ('farmer37', 'Ramarson', 'Lanto', 'ramarson.lanto@example.com', 1, 'https://i.pravatar.cc/150?img=37', 'https://picsum.photos/800/200?random=37'),
-  ('farmer38', 'Randriambololona', 'Ny Aina', 'randriambololona.nyaina@example.com', 1, 'https://i.pravatar.cc/150?img=38', 'https://picsum.photos/800/200?random=38'),
-  ('farmer39', 'Rakotondrasoa', 'Tahina', 'rakotondrasoa.tahina@example.com', 1, 'https://i.pravatar.cc/150?img=39', 'https://picsum.photos/800/200?random=39'),
-  ('farmer40', 'Ramanantsoa', 'Mino', 'ramanantsoa.mino@example.com', 1, 'https://i.pravatar.cc/150?img=40', 'https://picsum.photos/800/200?random=40'),
-  ('farmer41', 'Randrianasolo', 'Naly', 'randrianasolo.naly@example.com', 1, 'https://i.pravatar.cc/150?img=41', 'https://picsum.photos/800/200?random=41'),
-  ('farmer42', 'Andriamihaja', 'Dina', 'andriamihaja.dina@example.com', 1, 'https://i.pravatar.cc/150?img=42', 'https://picsum.photos/800/200?random=42'),
-  ('farmer43', 'Raharisoa', 'Mihaja', 'raharisoa.mihaja@example.com', 1, 'https://i.pravatar.cc/150?img=43', 'https://picsum.photos/800/200?random=43'),
-  ('farmer44', 'Randriamanantena', 'Rojo', 'randriamanantena.rojo@example.com', 1, 'https://i.pravatar.cc/150?img=44', 'https://picsum.photos/800/200?random=44'),
-  ('farmer45', 'Rajaonarivelo', 'Noro', 'rajaonarivelo.noro@example.com', 1, 'https://i.pravatar.cc/150?img=45', 'https://picsum.photos/800/200?random=45'),
-  ('farmer46', 'Rakotoarimanana', 'Tantely', 'rakotoarimanana.tantely@example.com', 1, 'https://i.pravatar.cc/150?img=46', 'https://picsum.photos/800/200?random=46'),
-  ('farmer47', 'Ravonimanantsoa', 'Tsilavina', 'ravonimanantsoa.tsilavina@example.com', 1, 'https://i.pravatar.cc/150?img=47', 'https://picsum.photos/800/200?random=47'),
-  ('farmer48', 'Razafimbelo', 'Nomena', 'razafimbelo.nomena@example.com', 1, 'https://i.pravatar.cc/150?img=48', 'https://picsum.photos/800/200?random=48'),
-  ('farmer49', 'Andrianjafy', 'Solo', 'andrianjafy.solo@example.com', 1, 'https://i.pravatar.cc/150?img=49', 'https://picsum.photos/800/200?random=49'),
-  ('farmer50', 'Rakotomanana', 'Haja', 'rakotomanana.haja@example.com', 1, 'https://i.pravatar.cc/150?img=50', 'https://picsum.photos/800/200?random=50');
+  ('f0cb5f25-f3e3-4d24-b4ea-89f1c9a3aa10', 'Rakoto', 'Jean', 'rakoto.jean@example.com', 1, 'https://i.pravatar.cc/150?img=1', 'https://picsum.photos/800/200?random=1'),
+  ('64b5f6e6-d85e-4f9c-8b33-d3551c3ea3c3', 'Rabe', 'Marie', 'rabe.marie@example.com', 1, 'https://i.pravatar.cc/150?img=2', 'https://picsum.photos/800/200?random=2'),
+  ('5afaa6b3-19c5-4d01-8ac6-3b0a237c2c9c', 'Rabemananjara', 'Hery', 'rabemananjara.hery@example.com', 1, 'https://i.pravatar.cc/150?img=3', 'https://picsum.photos/800/200?random=3'),
+  ('c2c15518-6b0e-499f-b632-7ef4b8983f4a', 'Razanadrakoto', 'Soa', 'razanadrakoto.soa@example.com', 1, 'https://i.pravatar.cc/150?img=4', 'https://picsum.photos/800/200?random=4'),
+  ('5b022dab-e7a1-45b6-a3b2-24a432936522', 'Rafaralahy', 'Patrick', 'rafaralahy.patrick@example.com', 1, 'https://i.pravatar.cc/150?img=5', 'https://picsum.photos/800/200?random=5'),
+  ('2ed7c3f3-2c1f-4499-95e1-a5fe5584ba1a', 'Rakotonirina', 'Hanitra', 'rakotonirina.hanitra@example.com', 1, 'https://i.pravatar.cc/150?img=6', 'https://picsum.photos/800/200?random=6'),
+  ('b3a010e6-c893-4f09-8bbe-0ddeaacbdba6', 'Andrianaivo', 'Michel', 'andrianaivo.michel@example.com', 1, 'https://i.pravatar.cc/150?img=7', 'https://picsum.photos/800/200?random=7'),
+  ('5d9cd3c5-b83b-4489-8365-542689358d52', 'Rasoamanarivo', 'Lalao', 'rasoamanarivo.lalao@example.com', 1, 'https://i.pravatar.cc/150?img=8', 'https://picsum.photos/800/200?random=8'),
+  ('4b26fa71-aadf-4e36-a8d2-7bbc3dbe63e5', 'Razafindrakoto', 'Mamy', 'razafindrakoto.mamy@example.com', 1, 'https://i.pravatar.cc/150?img=9', 'https://picsum.photos/800/200?random=9'),
+  ('d8d7fbd6-5a85-4658-925d-2adb9d13cbbc', 'Andriamahefa', 'Paul', 'andriamahefa.paul@example.com', 1, 'https://i.pravatar.cc/150?img=10', 'https://picsum.photos/800/200?random=10'),
+  ('c7510729-2193-4615-ba0e-e9ecb7c956f1', 'Rakotondrabe', 'Aimé', 'rakotondrabe.aime@example.com', 1, 'https://i.pravatar.cc/150?img=11', 'https://picsum.photos/800/200?random=11'),
+  ('9d6b1ac9-4069-4f32-a365-9c5e73ff5938', 'Randriamanana', 'Voahangy', 'randriamanana.voahangy@example.com', 1, 'https://i.pravatar.cc/150?img=12', 'https://picsum.photos/800/200?random=12'),
+  ('0a08b07e-7c5a-45e4-99db-2d4c76736798', 'Razafindratsima', 'Toky', 'razafindratsima.toky@example.com', 1, 'https://i.pravatar.cc/150?img=13', 'https://picsum.photos/800/200?random=13'),
+  ('6b3aaad6-71e3-437a-ac22-e7b0fbc12312', 'Rakotoarison', 'Hanta', 'rakotoarison.hanta@example.com', 1, 'https://i.pravatar.cc/150?img=14', 'https://picsum.photos/800/200?random=14'),
+  ('8ea3b3f5-1e4e-46ed-9e10-3fcd6493f384', 'Raharison', 'Misa', 'raharison.misa@example.com', 1, 'https://i.pravatar.cc/150?img=15', 'https://picsum.photos/800/200?random=15'),
+  ('3ac18e53-126a-49ff-91ba-8a63123f8c2a', 'Andriantsoa', 'Diary', 'andriantsoa.diary@example.com', 1, 'https://i.pravatar.cc/150?img=16', 'https://picsum.photos/800/200?random=16'),
+  ('c45f1d3a-01b1-4d8c-8a9d-1eadcb15c5e5', 'Rajaonarison', 'Liva', 'rajaonarison.liva@example.com', 1, 'https://i.pravatar.cc/150?img=17', 'https://picsum.photos/800/200?random=17'),
+  ('8b4d70c9-c2c6-4537-904e-d33b8f8c1a54', 'Rasoanirina', 'Fanja', 'rasoanirina.fanja@example.com', 1, 'https://i.pravatar.cc/150?img=18', 'https://picsum.photos/800/200?random=18'),
+  ('e1bf3d1c-6b27-4470-981e-cae8f168f5f7', 'Rakotomalala', 'Njaka', 'rakotomalala.njaka@example.com', 1, 'https://i.pravatar.cc/150?img=19', 'https://picsum.photos/800/200?random=19'),
+  ('d6a9f0f1-7a74-4e1c-a2c8-4ca99f927e3b', 'Randrianarivony', 'Sahondra', 'randrianarivony.sahondra@example.com', 1, 'https://i.pravatar.cc/150?img=20', 'https://picsum.photos/800/200?random=20'),
+  ('f8fc2e05-7c21-4da9-95d0-3c72f5e1e5a8', 'Ranaivo', 'Zo', 'ranaivo.zo@example.com', 1, 'https://i.pravatar.cc/150?img=21', 'https://picsum.photos/800/200?random=21'),
+  ('84f5d3d9-6293-4f25-b5f3-2c80c7f3301e', 'Andriamampionona', 'Tiana', 'andriamampionona.tiana@example.com', 1, 'https://i.pravatar.cc/150?img=22', 'https://picsum.photos/800/200?random=22'),
+  ('3a3bc3c0-3ff1-47a2-bbf6-2fdd4ef07d19', 'Rafanomezana', 'Mamitiana', 'rafanomezana.mamitiana@example.com', 1, 'https://i.pravatar.cc/150?img=23', 'https://picsum.photos/800/200?random=23'),
+  ('17c8f192-8ac1-4dd0-a5ae-4c83ee9c3b50', 'Andriamaro', 'Fetra', 'andriamaro.fetra@example.com', 1, 'https://i.pravatar.cc/150?img=24', 'https://picsum.photos/800/200?random=24'),
+  ('e2a2b9a0-1a79-41b6-b1a2-d05af928d1b2', 'Randriamihaingo', 'Nirina', 'randriamihaingo.nirina@example.com', 1, 'https://i.pravatar.cc/150?img=25', 'https://picsum.photos/800/200?random=25'),
+  ('2cc7a05a-d0a1-4e8c-8f8b-0cd0b3cf8287', 'Ramaroson', 'Mialy', 'ramaroson.mialy@example.com', 1, 'https://i.pravatar.cc/150?img=26', 'https://picsum.photos/800/200?random=26'),
+  ('7f0a1e4c-6b4a-4f67-a31a-1e8ceaa28d3c', 'Razafimahatratra', 'Olivier', 'razafimahatratra.olivier@example.com', 1, 'https://i.pravatar.cc/150?img=27', 'https://picsum.photos/800/200?random=27'),
+  ('6a9c5f71-1e4e-4f3d-b8a2-6e050cbc0c5d', 'Rasolonjatovo', 'Andry', 'rasolonjatovo.andry@example.com', 1, 'https://i.pravatar.cc/150?img=28', 'https://picsum.photos/800/200?random=28'),
+  ('d1f4c9a9-6b31-4f7c-95b3-2e6a7d8c5f3b', 'Rakotovao', 'Haingotiana', 'rakotovao.haingotiana@example.com', 1, 'https://i.pravatar.cc/150?img=29', 'https://picsum.photos/800/200?random=29'),
+  ('b9e1d8a0-7c5b-4e2a-9b8c-5f3e6d4c2a1b', 'Rabarison', 'Manitra', 'rabarison.manitra@example.com', 1, 'https://i.pravatar.cc/150?img=30', 'https://picsum.photos/800/200?random=30'),
+  ('a8f7e6d5-c4b3-2a1d-0b9e-8f7d6c5b4a3c', 'Andrianjaka', 'Henintsoa', 'andrianjaka.henintsoa@example.com', 1, 'https://i.pravatar.cc/150?img=31', 'https://picsum.photos/800/200?random=31'),
+  ('7d6e5f4c-3b2a-1d0e-9f8d-7e6f5d4c3b2a', 'Rakotonomenjanahary', 'Feno', 'rakotonomenjanahary.feno@example.com', 1, 'https://i.pravatar.cc/150?img=32', 'https://picsum.photos/800/200?random=32'),
+  ('6c5b4a3d-2e1f-0a9b-8d7c-6b5a4d3c2b1a', 'Ravoajanahary', 'Rado', 'ravoajanahary.rado@example.com', 1, 'https://i.pravatar.cc/150?img=33', 'https://picsum.photos/800/200?random=33'),
+  ('5b4a3c2d-1e0f-9a8b-7c6d-5b4a3c2d1e0f', 'Randrianirina', 'Hasina', 'randrianirina.hasina@example.com', 1, 'https://i.pravatar.cc/150?img=34', 'https://picsum.photos/800/200?random=34'),
+  ('4a3b2c1d-0e9f-8a7b-6c5d-4a3b2c1d0e9f', 'Ravololona', 'Lalatiana', 'ravololona.lalatiana@example.com', 1, 'https://i.pravatar.cc/150?img=35', 'https://picsum.photos/800/200?random=35'),
+  ('3b2a1c0d-9e8f-7a6b-5c4d-3b2a1c0d9e8f', 'Rafidinarivo', 'Seheno', 'rafidinarivo.seheno@example.com', 1, 'https://i.pravatar.cc/150?img=36', 'https://picsum.photos/800/200?random=36'),
+  ('2a1b0c9d-8e7f-6a5b-4c3d-2a1b0c9d8e7f', 'Ramarson', 'Lanto', 'ramarson.lanto@example.com', 1, 'https://i.pravatar.cc/150?img=37', 'https://picsum.photos/800/200?random=37'),
+  ('1a0b9c8d-7e6f-5a4b-3c2d-1a0b9c8d7e6f', 'Randriambololona', 'Ny Aina', 'randriambololona.nyaina@example.com', 1, 'https://i.pravatar.cc/150?img=38', 'https://picsum.photos/800/200?random=38'),
+  ('0a9b8c7d-6e5f-4a3b-2c1d-0a9b8c7d6e5f', 'Rakotondrasoa', 'Tahina', 'rakotondrasoa.tahina@example.com', 1, 'https://i.pravatar.cc/150?img=39', 'https://picsum.photos/800/200?random=39'),
+  ('a8b7c6d5-e4f3-2a1b-0c9d-8a7b6c5d4e3f', 'Ramanantsoa', 'Mino', 'ramanantsoa.mino@example.com', 1, 'https://i.pravatar.cc/150?img=40', 'https://picsum.photos/800/200?random=40'),
+  ('b7a6c5d4-e3f2-1a0b-9c8d-7a6b5c4d3e2f', 'Randrianasolo', 'Naly', 'randrianasolo.naly@example.com', 1, 'https://i.pravatar.cc/150?img=41', 'https://picsum.photos/800/200?random=41'),
+  ('c6b5a4d3-e2f1-0a9b-8c7d-6a5b4c3d2e1f', 'Andriamihaja', 'Dina', 'andriamihaja.dina@example.com', 1, 'https://i.pravatar.cc/150?img=42', 'https://picsum.photos/800/200?random=42'),
+  ('d5c4b3a2-e1f0-9a8b-7c6d-5a4b3c2d1e0f', 'Raharisoa', 'Mihaja', 'raharisoa.mihaja@example.com', 1, 'https://i.pravatar.cc/150?img=43', 'https://picsum.photos/800/200?random=43'),
+  ('e4d3c2b1-f0e9-8a7b-6c5d-4a3b2c1d0e9f', 'Randriamanantena', 'Rojo', 'randriamanantena.rojo@example.com', 1, 'https://i.pravatar.cc/150?img=44', 'https://picsum.photos/800/200?random=44'),
+  ('f3e2d1c0-b9a8-7a6b-5c4d-3b2a1c0d9e8f', 'Rajaonarivelo', 'Noro', 'rajaonarivelo.noro@example.com', 1, 'https://i.pravatar.cc/150?img=45', 'https://picsum.photos/800/200?random=45'),
+  ('0f1e2d3c-4b5a-6a7b-8c9d-0a1b2c3d4e5f', 'Rakotoarimanana', 'Tantely', 'rakotoarimanana.tantely@example.com', 1, 'https://i.pravatar.cc/150?img=46', 'https://picsum.photos/800/200?random=46'),
+  ('9e8d7c6b-5a4f-3e2d-1c0b-9a8b7c6d5e4f', 'Ravonimanantsoa', 'Tsilavina', 'ravonimanantsoa.tsilavina@example.com', 1, 'https://i.pravatar.cc/150?img=47', 'https://picsum.photos/800/200?random=47'),
+  ('8d7c6b5a-4f3e-2d1c-0b9a-8b7c6d5e4f3e', 'Razafimbelo', 'Nomena', 'razafimbelo.nomena@example.com', 1, 'https://i.pravatar.cc/150?img=48', 'https://picsum.photos/800/200?random=48'),
+  ('7c6b5a4f-3e2d-1c0b-9a8b-7c6d5e4f3e2d', 'Andrianjafy', 'Solo', 'andrianjafy.solo@example.com', 1, 'https://i.pravatar.cc/150?img=49', 'https://picsum.photos/800/200?random=49'),
+  ('6b5a4f3e-2d1c-0b9a-8b7c-6d5e4f3e2d1c', 'Rakotomanana', 'Haja', 'rakotomanana.haja@example.com', 1, 'https://i.pravatar.cc/150?img=50', 'https://picsum.photos/800/200?random=50');
 
 -- 15 techniciens (id_role = 2)  
 INSERT INTO utilisateur (id_utilisateur, nom, prenoms, email, id_role, photo_profil, photo_couverture)
 VALUES
-  ('tech1', 'Rasolofo', 'Eric', 'rasolofo.eric@example.com', 2, 'https://i.pravatar.cc/150?img=51', 'https://picsum.photos/800/200?random=51'),
-  ('tech2', 'Razafimaharo', 'Julie', 'razafimaharo.julie@example.com', 2, 'https://i.pravatar.cc/150?img=52', 'https://picsum.photos/800/200?random=52'),
-  ('tech3', 'Randriatiana', 'Fidy', 'randriatiana.fidy@example.com', 2, 'https://i.pravatar.cc/150?img=53', 'https://picsum.photos/800/200?random=53'),
-  ('tech4', 'Rakotozafy', 'Miarisoa', 'rakotozafy.miarisoa@example.com', 2, 'https://i.pravatar.cc/150?img=54', 'https://picsum.photos/800/200?random=54'),
-  ('tech5', 'Rasoanandrasana', 'Thierry', 'rasoanandrasana.thierry@example.com', 2, 'https://i.pravatar.cc/150?img=55', 'https://picsum.photos/800/200?random=55'),
-  ('tech6', 'Ranaivoson', 'Volatiana', 'ranaivoson.volatiana@example.com', 2, 'https://i.pravatar.cc/150?img=56', 'https://picsum.photos/800/200?random=56'),
-  ('tech7', 'Rakotonanahary', 'Justin', 'rakotonanahary.justin@example.com', 2, 'https://i.pravatar.cc/150?img=57', 'https://picsum.photos/800/200?random=57'),
-  ('tech8', 'Rabeharisoa', 'Jenny', 'rabeharisoa.jenny@example.com', 2, 'https://i.pravatar.cc/150?img=58', 'https://picsum.photos/800/200?random=58'),
-  ('tech9', 'Andriatsiferana', 'Manda', 'andriatsiferana.manda@example.com', 2, 'https://i.pravatar.cc/150?img=59', 'https://picsum.photos/800/200?random=59'),
-  ('tech10', 'Ranaivomanana', 'Prisca', 'ranaivomanana.prisca@example.com', 2, 'https://i.pravatar.cc/150?img=60', 'https://picsum.photos/800/200?random=60'),
-  ('tech11', 'Ranaivosoa', 'Ando', 'ranaivosoa.ando@example.com', 2, 'https://i.pravatar.cc/150?img=61', 'https://picsum.photos/800/200?random=61'),
-  ('tech12', 'Razakamahefa', 'Onja', 'razakamahefa.onja@example.com', 2, 'https://i.pravatar.cc/150?img=62', 'https://picsum.photos/800/200?random=62'),
-  ('tech13', 'Ralambomanana', 'Tojo', 'ralambomanana.tojo@example.com', 2, 'https://i.pravatar.cc/150?img=63', 'https://picsum.photos/800/200?random=63'),
-  ('tech14', 'Rambeloson', 'Mahery', 'rambeloson.mahery@example.com', 2, 'https://i.pravatar.cc/150?img=64', 'https://picsum.photos/800/200?random=64'),
-  ('tech15', 'Randrianarisoa', 'Naivo', 'randrianarisoa.naivo@example.com', 2, 'https://i.pravatar.cc/150?img=65', 'https://picsum.photos/800/200?random=65');
+  ('5a4f3e2d-1c0b-9a8b-7c6d-5e4f3e2d1c0b', 'Rasolofo', 'Eric', 'rasolofo.eric@example.com', 2, 'https://i.pravatar.cc/150?img=51', 'https://picsum.photos/800/200?random=51'),
+  ('4f3e2d1c-0b9a-8b7c-6d5e-4f3e2d1c0b9a', 'Razafimaharo', 'Julie', 'razafimaharo.julie@example.com', 2, 'https://i.pravatar.cc/150?img=52', 'https://picsum.photos/800/200?random=52'),
+  ('3e2d1c0b-9a8b-7c6d-5e4f-3e2d1c0b9a8b', 'Randriatiana', 'Fidy', 'randriatiana.fidy@example.com', 2, 'https://i.pravatar.cc/150?img=53', 'https://picsum.photos/800/200?random=53'),
+  ('2d1c0b9a-8b7c-6d5e-4f3e-2d1c0b9a8b7c', 'Rakotozafy', 'Miarisoa', 'rakotozafy.miarisoa@example.com', 2, 'https://i.pravatar.cc/150?img=54', 'https://picsum.photos/800/200?random=54'),
+  ('1c0b9a8b-7c6d-5e4f-3e2d-1c0b9a8b7c6d', 'Rasoanandrasana', 'Thierry', 'rasoanandrasana.thierry@example.com', 2, 'https://i.pravatar.cc/150?img=55', 'https://picsum.photos/800/200?random=55'),
+  ('0b9a8b7c-6d5e-4f3e-2d1c-0b9a8b7c6d5e', 'Ranaivoson', 'Volatiana', 'ranaivoson.volatiana@example.com', 2, 'https://i.pravatar.cc/150?img=56', 'https://picsum.photos/800/200?random=56'),
+  ('9a8b7c6d-5e4f-3e2d-1c0b-9a8b7c6d5e4f', 'Rakotonanahary', 'Justin', 'rakotonanahary.justin@example.com', 2, 'https://i.pravatar.cc/150?img=57', 'https://picsum.photos/800/200?random=57'),
+  ('8b7c6d5e-4f3e-2d1c-0b9a-8b7c6d5e4f3e', 'Rabeharisoa', 'Jenny', 'rabeharisoa.jenny@example.com', 2, 'https://i.pravatar.cc/150?img=58', 'https://picsum.photos/800/200?random=58'),
+  ('7c6d5e4f-3e2d-1c0b-9a8b-7c6d5e4f3e2d', 'Andriatsiferana', 'Manda', 'andriatsiferana.manda@example.com', 2, 'https://i.pravatar.cc/150?img=59', 'https://picsum.photos/800/200?random=59'),
+  ('6d5e4f3e-2d1c-0b9a-8b7c-6d5e4f3e2d1c', 'Ranaivomanana', 'Prisca', 'ranaivomanana.prisca@example.com', 2, 'https://i.pravatar.cc/150?img=60', 'https://picsum.photos/800/200?random=60'),
+  ('5e4f3e2d-1c0b-9a8b-7c6d-5e4f3e2d1c0b', 'Ranaivosoa', 'Ando', 'ranaivosoa.ando@example.com', 2, 'https://i.pravatar.cc/150?img=61', 'https://picsum.photos/800/200?random=61'),
+  ('4e3d2c1b-0a9b-8c7d-6e5f-4e3d2c1b0a9b', 'Razakamahefa', 'Onja', 'razakamahefa.onja@example.com', 2, 'https://i.pravatar.cc/150?img=62', 'https://picsum.photos/800/200?random=62'),
+  ('3d2c1b0a-9b8c-7d6e-5f4e-3d2c1b0a9b8c', 'Ralambomanana', 'Tojo', 'ralambomanana.tojo@example.com', 2, 'https://i.pravatar.cc/150?img=63', 'https://picsum.photos/800/200?random=63'),
+  ('2c1b0a9b-8c7d-6e5f-4e3d-2c1b0a9b8c7d', 'Rambeloson', 'Mahery', 'rambeloson.mahery@example.com', 2, 'https://i.pravatar.cc/150?img=64', 'https://picsum.photos/800/200?random=64'),
+  ('1b0a9b8c-7d6e-5f4e-3d2c-1b0a9b8c7d6e', 'Randrianarisoa', 'Naivo', 'randrianarisoa.naivo@example.com', 2, 'https://i.pravatar.cc/150?img=65', 'https://picsum.photos/800/200?random=65');
 
 -- 10 superviseurs (id_role = 3)
 INSERT INTO utilisateur (id_utilisateur, nom, prenoms, email, id_role, photo_profil, photo_couverture)
 VALUES
-  ('sup1', 'Rakotomanga', 'Andry', 'rakotomanga.andry@example.com', 3, 'https://i.pravatar.cc/150?img=66', 'https://picsum.photos/800/200?random=66'),
-  ('sup2', 'Andrianomenjanahary', 'Clara', 'andrianomenjanahary.clara@example.com', 3, 'https://i.pravatar.cc/150?img=67', 'https://picsum.photos/800/200?random=67'),
-  ('sup3', 'Randriamampianina', 'Bruno', 'randriamampianina.bruno@example.com', 3, 'https://i.pravatar.cc/150?img=68', 'https://picsum.photos/800/200?random=68'),
-  ('sup4', 'Razafimandimby', 'Vonjy', 'razafimandimby.vonjy@example.com', 3, 'https://i.pravatar.cc/150?img=69', 'https://picsum.photos/800/200?random=69'),
-  ('sup5', 'Raharimanana', 'Tovo', 'raharimanana.tovo@example.com', 3, 'https://i.pravatar.cc/150?img=70', 'https://picsum.photos/800/200?random=70'),
-  ('sup6', 'Rabenantenaina', 'Vero', 'rabenantenaina.vero@example.com', 3, 'https://i.pravatar.cc/150?img=71', 'https://picsum.photos/800/200?random=71'),
-  ('sup7', 'Rakotovao', 'Diamondra', 'rakotovao.diamondra@example.com', 3, 'https://i.pravatar.cc/150?img=72', 'https://picsum.photos/800/200?random=72'),
-  ('sup8', 'Andrianiaina', 'José', 'andrianiaina.jose@example.com', 3, 'https://i.pravatar.cc/150?img=73', 'https://picsum.photos/800/200?random=73'),
-  ('sup9', 'Rahantanirina', 'Ony', 'rahantanirina.ony@example.com', 3, 'https://i.pravatar.cc/150?img=74', 'https://picsum.photos/800/200?random=74'),
-  ('sup10', 'Rajaonarivony', 'Hary', 'rajaonarivony.hary@example.com', 3, 'https://i.pravatar.cc/150?img=75', 'https://picsum.photos/800/200?random=75');
+  ('0a9b8c7d-6e5f-4e3d-2c1b-0a9b8c7d6e5f', 'Rakotomanga', 'Andry', 'rakotomanga.andry@example.com', 3, 'https://i.pravatar.cc/150?img=66', 'https://picsum.photos/800/200?random=66'),
+  ('a9b8c7d6-e5f4-e3d2-c1b0-a9b8c7d6e5f4', 'Andrianomenjanahary', 'Clara', 'andrianomenjanahary.clara@example.com', 3, 'https://i.pravatar.cc/150?img=67', 'https://picsum.photos/800/200?random=67'),
+  ('b8c7d6e5-f4e3-d2c1-b0a9-b8c7d6e5f4e3', 'Randriamampianina', 'Bruno', 'randriamampianina.bruno@example.com', 3, 'https://i.pravatar.cc/150?img=68', 'https://picsum.photos/800/200?random=68'),
+  ('c7d6e5f4-e3d2-c1b0-a9b8-c7d6e5f4e3d2', 'Razafimandimby', 'Vonjy', 'razafimandimby.vonjy@example.com', 3, 'https://i.pravatar.cc/150?img=69', 'https://picsum.photos/800/200?random=69'),
+  ('d6e5f4e3-d2c1-b0a9-b8c7-d6e5f4e3d2c1', 'Raharimanana', 'Tovo', 'raharimanana.tovo@example.com', 3, 'https://i.pravatar.cc/150?img=70', 'https://picsum.photos/800/200?random=70'),
+  ('e5f4e3d2-c1b0-a9b8-c7d6-e5f4e3d2c1b0', 'Rabenantenaina', 'Vero', 'rabenantenaina.vero@example.com', 3, 'https://i.pravatar.cc/150?img=71', 'https://picsum.photos/800/200?random=71'),
+  ('f4e3d2c1-b0a9-b8c7-d6e5-f4e3d2c1b0a9', 'Rakotovao', 'Diamondra', 'rakotovao.diamondra@example.com', 3, 'https://i.pravatar.cc/150?img=72', 'https://picsum.photos/800/200?random=72'),
+  ('0e1d2c3b-4a5f-6e7d-8c9b-0e1d2c3b4a5f', 'Andrianiaina', 'José', 'andrianiaina.jose@example.com', 3, 'https://i.pravatar.cc/150?img=73', 'https://picsum.photos/800/200?random=73'),
+  ('1d2c3b4a-5f6e-7d8c-9b0e-1d2c3b4a5f6e', 'Rahantanirina', 'Ony', 'rahantanirina.ony@example.com', 3, 'https://i.pravatar.cc/150?img=74', 'https://picsum.photos/800/200?random=74'),
+  ('2c3b4a5f-6e7d-8c9b-0e1d-2c3b4a5f6e7d', 'Rajaonarivony', 'Hary', 'rajaonarivony.hary@example.com', 3, 'https://i.pravatar.cc/150?img=75', 'https://picsum.photos/800/200?random=75');
 
 -- 20 investisseurs (id_role = 4) 
 INSERT INTO utilisateur (id_utilisateur, nom, prenoms, email, id_role, photo_profil, photo_couverture)
 VALUES
-  ('inv1', 'Andriamanantsoa', 'Georges', 'andriamanantsoa.georges@example.com', 4, 'https://i.pravatar.cc/150?img=76', 'https://picsum.photos/800/200?random=76'),
-  ('inv2', 'Razakamanana', 'Soafara', 'razakamanana.soafara@example.com', 4, 'https://i.pravatar.cc/150?img=77', 'https://picsum.photos/800/200?random=77'),
-  ('inv3', 'Ramananandro', 'Haja', 'ramananandro.haja@example.com', 4, 'https://i.pravatar.cc/150?img=78', 'https://picsum.photos/800/200?random=78'),
-  ('inv4', 'Rasamoelina', 'Emma', 'rasamoelina.emma@example.com', 4, 'https://i.pravatar.cc/150?img=79', 'https://picsum.photos/800/200?random=79'),
-  ('inv5', 'Randriamanampisoa', 'Rindra', 'randriamanampisoa.rindra@example.com', 4, 'https://i.pravatar.cc/150?img=80', 'https://picsum.photos/800/200?random=80'),
-  ('inv6', 'Rainivoandriananja', 'Tsiry', 'rainivoandriananja.tsiry@example.com', 4, 'https://i.pravatar.cc/150?img=81', 'https://picsum.photos/800/200?random=81'),
-  ('inv7', 'Andriamanantena', 'Fitia', 'andriamanantena.fitia@example.com', 4, 'https://i.pravatar.cc/150?img=82', 'https://picsum.photos/800/200?random=82'),
-  ('inv8', 'Randrianavalona', 'Hajaniaina', 'randrianavalona.hajaniaina@example.com', 4, 'https://i.pravatar.cc/150?img=83', 'https://picsum.photos/800/200?random=83'),
-  ('inv9', 'Rakotozafy', 'Sedera', 'rakotozafy.sedera@example.com', 4, 'https://i.pravatar.cc/150?img=84', 'https://picsum.photos/800/200?random=84'),
-  ('inv10', 'Razafindravoavy', 'Hoby', 'razafindravoavy.hoby@example.com', 4, 'https://i.pravatar.cc/150?img=85', 'https://picsum.photos/800/200?random=85'),
-  ('inv11', 'Ramarolahy', 'Njiva', 'ramarolahy.njiva@example.com', 4, 'https://i.pravatar.cc/150?img=86', 'https://picsum.photos/800/200?random=86'),
-  ('inv12', 'Rakotoniaina', 'Bako', 'rakotoniaina.bako@example.com', 4, 'https://i.pravatar.cc/150?img=87', 'https://picsum.photos/800/200?random=87'),
-  ('inv13', 'Randriamanalina', 'Ndriana', 'randriamanalina.ndriana@example.com', 4, 'https://i.pravatar.cc/150?img=88', 'https://picsum.photos/800/200?random=88'),
-  ('inv14', 'Razafimahefa', 'Nantenaina', 'razafimahefa.nantenaina@example.com', 4, 'https://i.pravatar.cc/150?img=89', 'https://picsum.photos/800/200?random=89'),
-  ('inv15', 'Andriatsitoaina', 'Sarobidy', 'andriatsitoaina.sarobidy@example.com', 4, 'https://i.pravatar.cc/150?img=90', 'https://picsum.photos/800/200?random=90'),
-  ('inv16', 'Rasoamahenina', 'Aline', 'rasoamahenina.aline@example.com', 4, 'https://i.pravatar.cc/150?img=91', 'https://picsum.photos/800/200?random=91'),
-  ('inv17', 'Rabemanantsoa', 'Fy', 'rabemanantsoa.fy@example.com', 4, 'https://i.pravatar.cc/150?img=92', 'https://picsum.photos/800/200?random=92'),
-  ('inv18', 'Randriambololontsoa', 'Liva', 'randriambololontsoa.liva@example.com', 4, 'https://i.pravatar.cc/150?img=93', 'https://picsum.photos/800/200?random=93'),
-  ('inv19', 'Rasoanirina', 'Tsanta', 'rasoanirina.tsanta@example.com', 4, 'https://i.pravatar.cc/150?img=94', 'https://picsum.photos/800/200?random=94'),
-  ('inv20', 'Randrianandrasana', 'Mirindra', 'randrianandrasana.mirindra@example.com', 4, 'https://i.pravatar.cc/150?img=95', 'https://picsum.photos/800/200?random=95');
+  ('3b4a5f6e-7d8c-9b0e-1d2c-3b4a5f6e7d8c', 'Andriamanantsoa', 'Georges', 'andriamanantsoa.georges@example.com', 4, 'https://i.pravatar.cc/150?img=76', 'https://picsum.photos/800/200?random=76'),
+  ('4a5f6e7d-8c9b-0e1d-2c3b-4a5f6e7d8c9b', 'Razakamanana', 'Soafara', 'razakamanana.soafara@example.com', 4, 'https://i.pravatar.cc/150?img=77', 'https://picsum.photos/800/200?random=77'),
+  ('5f6e7d8c-9b0e-1d2c-3b4a-5f6e7d8c9b0e', 'Ramananandro', 'Haja', 'ramananandro.haja@example.com', 4, 'https://i.pravatar.cc/150?img=78', 'https://picsum.photos/800/200?random=78'),
+  ('6e7d8c9b-0e1d-2c3b-4a5f-6e7d8c9b0e1d', 'Rasamoelina', 'Emma', 'rasamoelina.emma@example.com', 4, 'https://i.pravatar.cc/150?img=79', 'https://picsum.photos/800/200?random=79'),
+  ('7d8c9b0e-1d2c-3b4a-5f6e-7d8c9b0e1d2c', 'Randriamanampisoa', 'Rindra', 'randriamanampisoa.rindra@example.com', 4, 'https://i.pravatar.cc/150?img=80', 'https://picsum.photos/800/200?random=80'),
+  ('8c9b0e1d-2c3b-4a5f-6e7d-8c9b0e1d2c3b', 'Rainivoandriananja', 'Tsiry', 'rainivoandriananja.tsiry@example.com', 4, 'https://i.pravatar.cc/150?img=81', 'https://picsum.photos/800/200?random=81'),
+  ('9b0e1d2c-3b4a-5f6e-7d8c-9b0e1d2c3b4a', 'Andriamanantena', 'Fitia', 'andriamanantena.fitia@example.com', 4, 'https://i.pravatar.cc/150?img=82', 'https://picsum.photos/800/200?random=82'),
+  ('a0b1c2d3-e4f5-a6b7-c8d9-a0b1c2d3e4f5', 'Randrianavalona', 'Hajaniaina', 'randrianavalona.hajaniaina@example.com', 4, 'https://i.pravatar.cc/150?img=83', 'https://picsum.photos/800/200?random=83'),
+  ('b1c2d3e4-f5a6-b7c8-d9a0-b1c2d3e4f5a6', 'Rakotozafy', 'Sedera', 'rakotozafy.sedera@example.com', 4, 'https://i.pravatar.cc/150?img=84', 'https://picsum.photos/800/200?random=84'),
+  ('c2d3e4f5-a6b7-c8d9-a0b1-c2d3e4f5a6b7', 'Razafindravoavy', 'Hoby', 'razafindravoavy.hoby@example.com', 4, 'https://i.pravatar.cc/150?img=85', 'https://picsum.photos/800/200?random=85'),
+  ('d3e4f5a6-b7c8-d9a0-b1c2-d3e4f5a6b7c8', 'Ramarolahy', 'Njiva', 'ramarolahy.njiva@example.com', 4, 'https://i.pravatar.cc/150?img=86', 'https://picsum.photos/800/200?random=86'),
+  ('e4f5a6b7-c8d9-a0b1-c2d3-e4f5a6b7c8d9', 'Rakotoniaina', 'Bako', 'rakotoniaina.bako@example.com', 4, 'https://i.pravatar.cc/150?img=87', 'https://picsum.photos/800/200?random=87'),
+  ('f5a6b7c8-d9a0-b1c2-d3e4-f5a6b7c8d9a0', 'Randriamanalina', 'Ndriana', 'randriamanalina.ndriana@example.com', 4, 'https://i.pravatar.cc/150?img=88', 'https://picsum.photos/800/200?random=88'),
+  ('a6b7c8d9-a0b1-c2d3-e4f5-a6b7c8d9a0b1', 'Razafimahefa', 'Nantenaina', 'razafimahefa.nantenaina@example.com', 4, 'https://i.pravatar.cc/150?img=89', 'https://picsum.photos/800/200?random=89'),
+  ('b7c8d9a0-b1c2-d3e4-f5a6-b7c8d9a0b1c2', 'Andriatsitoaina', 'Sarobidy', 'andriatsitoaina.sarobidy@example.com', 4, 'https://i.pravatar.cc/150?img=90', 'https://picsum.photos/800/200?random=90'),
+  ('c8d9a0b1-c2d3-e4f5-a6b7-c8d9a0b1c2d3', 'Rasoamahenina', 'Aline', 'rasoamahenina.aline@example.com', 4, 'https://i.pravatar.cc/150?img=91', 'https://picsum.photos/800/200?random=91'),
+  ('d9a0b1c2-d3e4-f5a6-b7c8-d9a0b1c2d3e4', 'Rabemanantsoa', 'Fy', 'rabemanantsoa.fy@example.com', 4, 'https://i.pravatar.cc/150?img=92', 'https://picsum.photos/800/200?random=92'),
+  ('e0f1a2b3-c4d5-e6f7-a8b9-e0f1a2b3c4d5', 'Randriambololontsoa', 'Liva', 'randriambololontsoa.liva@example.com', 4, 'https://i.pravatar.cc/150?img=93', 'https://picsum.photos/800/200?random=93'),
+  ('f1a2b3c4-d5e6-f7a8-b9e0-f1a2b3c4d5e6', 'Rasoanirina', 'Tsanta', 'rasoanirina.tsanta@example.com', 4, 'https://i.pravatar.cc/150?img=94', 'https://picsum.photos/800/200?random=94'),
+  ('a2b3c4d5-e6f7-a8b9-e0f1-a2b3c4d5e6f7', 'Randrianandrasana', 'Mirindra', 'randrianandrasana.mirindra@example.com', 4, 'https://i.pravatar.cc/150?img=95', 'https://picsum.photos/800/200?random=95');
 
 -- Insertion des numéros de téléphone (format 034 XX XXX XX)
 -- Agriculteurs
 INSERT INTO telephone (id_utilisateur, numero, type, est_whatsapp, est_mobile_banking)
 SELECT 
-  'farmer' || i, 
+  id, 
   '034' || LPAD(FLOOR(RANDOM() * 100)::text, 2, '0') || LPAD(FLOOR(RANDOM() * 1000)::text, 3, '0') || LPAD(FLOOR(RANDOM() * 100)::text, 2, '0'),
   'principal',
   CASE WHEN RANDOM() > 0.5 THEN true ELSE false END,
   CASE WHEN RANDOM() > 0.7 THEN true ELSE false END
-FROM generate_series(1, 50) i;
+FROM (
+  SELECT id_utilisateur as id 
+  FROM utilisateur 
+  WHERE id_role = 1
+) as farmers;
 
 -- Techniciens
 INSERT INTO telephone (id_utilisateur, numero, type, est_whatsapp, est_mobile_banking)
 SELECT 
-  'tech' || i, 
+  id, 
   '034' || LPAD(FLOOR(RANDOM() * 100)::text, 2, '0') || LPAD(FLOOR(RANDOM() * 1000)::text, 3, '0') || LPAD(FLOOR(RANDOM() * 100)::text, 2, '0'),
   'principal',
   CASE WHEN RANDOM() > 0.5 THEN true ELSE false END,
   CASE WHEN RANDOM() > 0.7 THEN true ELSE false END
-FROM generate_series(1, 15) i;
+FROM (
+  SELECT id_utilisateur as id 
+  FROM utilisateur 
+  WHERE id_role = 2
+) as techs;
 
 -- Superviseurs
 INSERT INTO telephone (id_utilisateur, numero, type, est_whatsapp, est_mobile_banking)
 SELECT 
-  'sup' || i, 
+  id, 
   '034' || LPAD(FLOOR(RANDOM() * 100)::text, 2, '0') || LPAD(FLOOR(RANDOM() * 1000)::text, 3, '0') || LPAD(FLOOR(RANDOM() * 100)::text, 2, '0'),
   'principal',
   CASE WHEN RANDOM() > 0.5 THEN true ELSE false END,
   CASE WHEN RANDOM() > 0.7 THEN true ELSE false END
-FROM generate_series(1, 10) i;
+FROM (
+  SELECT id_utilisateur as id 
+  FROM utilisateur 
+  WHERE id_role = 3
+) as sups;
 
 -- Investisseurs
 INSERT INTO telephone (id_utilisateur, numero, type, est_whatsapp, est_mobile_banking)
 SELECT 
-  'inv' || i, 
+  id, 
   '034' || LPAD(FLOOR(RANDOM() * 100)::text, 2, '0') || LPAD(FLOOR(RANDOM() * 1000)::text, 3, '0') || LPAD(FLOOR(RANDOM() * 100)::text, 2, '0'),
   'principal',
   CASE WHEN RANDOM() > 0.5 THEN true ELSE false END,
   CASE WHEN RANDOM() > 0.7 THEN true ELSE false END
-FROM generate_series(1, 20) i;
+FROM (
+  SELECT id_utilisateur as id 
+  FROM utilisateur 
+  WHERE id_role = 4
+) as invs;
 
 -- Ajouter un téléphone secondaire pour certains utilisateurs
 INSERT INTO telephone (id_utilisateur, numero, type, est_whatsapp, est_mobile_banking)
 SELECT 
-  CASE 
-    WHEN RANDOM() < 0.25 THEN 'farmer' || FLOOR(RANDOM() * 50 + 1)
-    WHEN RANDOM() < 0.5 THEN 'tech' || FLOOR(RANDOM() * 15 + 1)
-    WHEN RANDOM() < 0.75 THEN 'sup' || FLOOR(RANDOM() * 10 + 1)
-    ELSE 'inv' || FLOOR(RANDOM() * 20 + 1)
-  END,
+  id_utilisateur, 
   '034' || LPAD(FLOOR(RANDOM() * 100)::text, 2, '0') || LPAD(FLOOR(RANDOM() * 1000)::text, 3, '0') || LPAD(FLOOR(RANDOM() * 100)::text, 2, '0'),
   'mobile_banking',
   false,
   true
-FROM generate_series(1, 30) i;
+FROM (
+  SELECT id_utilisateur 
+  FROM utilisateur
+  ORDER BY RANDOM()
+  LIMIT 30
+) as random_users;
 
 -- 2. Insertion de terrains
 -- Région Menabe (id_region = 7)
@@ -211,10 +227,10 @@ SELECT
   CASE WHEN RANDOM() < 0.6 THEN true ELSE false END, -- accès eau
   CASE WHEN RANDOM() < 0.5 THEN true ELSE false END, -- accès route
   CASE WHEN RANDOM() < 0.7 THEN true ELSE false END, -- statut (validé ou non)
-  'farmer' || (1 + FLOOR(RANDOM() * 50)), -- agriculteur aléatoire
-  CASE WHEN RANDOM() < 0.8 THEN 'tech' || (1 + FLOOR(RANDOM() * 15)) ELSE NULL END, -- technicien aléatoire ou NULL
-  CASE WHEN RANDOM() < 0.6 THEN 'sup' || (1 + FLOOR(RANDOM() * 10)) ELSE NULL END, -- superviseur aléatoire ou NULL
-  CASE WHEN RANDOM() < 0.7 THEN (CURRENT_DATE - (RANDOM() * 365)::integer) ELSE NULL END, -- date de validation pour certains terrains
+  (SELECT id_utilisateur FROM utilisateur WHERE id_role = 1 ORDER BY RANDOM() LIMIT 1), -- agriculteur aléatoire
+  CASE WHEN RANDOM() < 0.8 THEN (SELECT id_utilisateur FROM utilisateur WHERE id_role = 2 ORDER BY RANDOM() LIMIT 1) ELSE NULL END, -- technicien aléatoire
+  CASE WHEN RANDOM() < 0.6 THEN (SELECT id_utilisateur FROM utilisateur WHERE id_role = 3 ORDER BY RANDOM() LIMIT 1) ELSE NULL END, -- superviseur aléatoire
+  CASE WHEN RANDOM() < 0.7 THEN (CURRENT_DATE - (RANDOM() * 365)::integer) ELSE NULL END, -- date de validation
   CASE WHEN RANDOM() < 0.9 THEN 'https://picsum.photos/800/600?random=' || i || ',https://picsum.photos/800/600?random=' || (i+100) ELSE NULL END, -- photos
   ST_SetSRID(ST_MakePolygon(ST_GeomFromText('LINESTRING(44.' || (100 + i % 900) || ' -20.' || (i % 900) || ', 44.' || (100 + i % 900 + 0.01) || ' -20.' || (i % 900) || ', 44.' || (100 + i % 900 + 0.01) || ' -20.' || (i % 900 + 0.01) || ', 44.' || (100 + i % 900) || ' -20.' || (i % 900 + 0.01) || ', 44.' || (100 + i % 900) || ' -20.' || (i % 900) || ')')), 4326), -- géométrie
   NOW() - (RANDOM() * 500)::integer * '1 day'::interval, -- date de création
@@ -245,9 +261,9 @@ SELECT
   CASE WHEN RANDOM() < 0.4 THEN true ELSE false END, -- accès eau
   CASE WHEN RANDOM() < 0.6 THEN true ELSE false END, -- accès route
   CASE WHEN RANDOM() < 0.7 THEN true ELSE false END, -- statut (validé ou non)
-  'farmer' || (1 + FLOOR(RANDOM() * 50)), -- agriculteur aléatoire
-  CASE WHEN RANDOM() < 0.8 THEN 'tech' || (1 + FLOOR(RANDOM() * 15)) ELSE NULL END, -- technicien aléatoire ou NULL
-  CASE WHEN RANDOM() < 0.6 THEN 'sup' || (1 + FLOOR(RANDOM() * 10)) ELSE NULL END, -- superviseur aléatoire ou NULL
+  (SELECT id_utilisateur FROM utilisateur WHERE id_role = 1 ORDER BY RANDOM() LIMIT 1), -- agriculteur aléatoire
+  CASE WHEN RANDOM() < 0.8 THEN (SELECT id_utilisateur FROM utilisateur WHERE id_role = 2 ORDER BY RANDOM() LIMIT 1) ELSE NULL END, -- technicien aléatoire
+  CASE WHEN RANDOM() < 0.6 THEN (SELECT id_utilisateur FROM utilisateur WHERE id_role = 3 ORDER BY RANDOM() LIMIT 1) ELSE NULL END, -- superviseur aléatoire
   CASE WHEN RANDOM() < 0.7 THEN (CURRENT_DATE - (RANDOM() * 365)::integer) ELSE NULL END, -- date de validation pour certains terrains
   CASE WHEN RANDOM() < 0.9 THEN 'https://picsum.photos/800/600?random=' || (i+200) || ',https://picsum.photos/800/600?random=' || (i+300) ELSE NULL END, -- photos
   ST_SetSRID(ST_MakePolygon(ST_GeomFromText('LINESTRING(43.' || (800 + i % 900) || ' -22.' || (300 + i % 900) || ', 43.' || (800 + i % 900 + 0.01) || ' -22.' || (300 + i % 900) || ', 43.' || (800 + i % 900 + 0.01) || ' -22.' || (300 + i % 900 + 0.01) || ', 43.' || (800 + i % 900) || ' -22.' || (300 + i % 900 + 0.01) || ', 43.' || (800 + i % 900) || ' -22.' || (300 + i % 900) || ')')), 4326), -- géométrie
@@ -279,9 +295,9 @@ SELECT
   CASE WHEN RANDOM() < 0.8 THEN true ELSE false END, -- accès eau
   CASE WHEN RANDOM() < 0.7 THEN true ELSE false END, -- accès route
   CASE WHEN RANDOM() < 0.7 THEN true ELSE false END, -- statut (validé ou non)
-  'farmer' || (1 + FLOOR(RANDOM() * 50)), -- agriculteur aléatoire
-  CASE WHEN RANDOM() < 0.8 THEN 'tech' || (1 + FLOOR(RANDOM() * 15)) ELSE NULL END, -- technicien aléatoire ou NULL
-  CASE WHEN RANDOM() < 0.6 THEN 'sup' || (1 + FLOOR(RANDOM() * 10)) ELSE NULL END, -- superviseur aléatoire ou NULL
+  (SELECT id_utilisateur FROM utilisateur WHERE id_role = 1 ORDER BY RANDOM() LIMIT 1), -- agriculteur aléatoire
+  CASE WHEN RANDOM() < 0.8 THEN (SELECT id_utilisateur FROM utilisateur WHERE id_role = 2 ORDER BY RANDOM() LIMIT 1) ELSE NULL END, -- technicien aléatoire
+  CASE WHEN RANDOM() < 0.6 THEN (SELECT id_utilisateur FROM utilisateur WHERE id_role = 3 ORDER BY RANDOM() LIMIT 1) ELSE NULL END, -- superviseur aléatoire
   CASE WHEN RANDOM() < 0.7 THEN (CURRENT_DATE - (RANDOM() * 365)::integer) ELSE NULL END, -- date de validation pour certains terrains
   CASE WHEN RANDOM() < 0.9 THEN 'https://picsum.photos/800/600?random=' || (i+400) || ',https://picsum.photos/800/600?random=' || (i+500) ELSE NULL END, -- photos
   ST_SetSRID(ST_MakePolygon(ST_GeomFromText('LINESTRING(47.' || (i % 900) || ' -15.' || (i % 900) || ', 47.' || (i % 900 + 0.01) || ' -15.' || (i % 900) || ', 47.' || (i % 900 + 0.01) || ' -15.' || (i % 900 + 0.01) || ', 47.' || (i % 900) || ' -15.' || (i % 900 + 0.01) || ', 47.' || (i % 900) || ' -15.' || (i % 900) || ')')), 4326), -- géométrie
@@ -342,11 +358,11 @@ SELECT
   t.id_superviseur,
   'https://picsum.photos/800/600?random=' || (ROW_NUMBER() OVER () + 600) || ',https://picsum.photos/800/600?random=' || (ROW_NUMBER() OVER () + 700),
   NOW() - (RANDOM() * 500)::integer * '1 day'::interval,
-  CASE WHEN RANDOM() < 0.7 THEN 'sup' || (1 + FLOOR(RANDOM() * 10)) ELSE NULL END,
+  CASE WHEN RANDOM() < 0.7 THEN (SELECT id_utilisateur FROM utilisateur WHERE id_role = 3 ORDER BY RANDOM() LIMIT 1) ELSE NULL END,
   CASE WHEN RANDOM() < 0.7 THEN (CURRENT_DATE - (RANDOM() * 300)::integer) ELSE NULL END,
   CASE WHEN RANDOM() < 0.7 THEN 'Projet validé après examen du dossier et visite sur site. Le projet est faisable et répond aux critères de rentabilité et de durabilité.' ELSE NULL END,
   CASE 
-    WHEN ROW_NUMBER() OVER () % 10 IN (5, 6, 8, 9) THEN 'tech' || (1 + FLOOR(RANDOM() * 15)) 
+    WHEN ROW_NUMBER() OVER () % 10 IN (5, 6, 8, 9) THEN (SELECT id_utilisateur FROM utilisateur WHERE id_role = 2 ORDER BY RANDOM() LIMIT 1) 
     ELSE NULL 
   END,
   CASE 
@@ -543,7 +559,7 @@ WITH projets_financement AS (
 SELECT
   1000 + ROW_NUMBER() OVER(),
   pf.id_projet,
-  'inv' || (1 + floor(random() * 20)),
+  (SELECT id_utilisateur FROM utilisateur WHERE id_role = 4 ORDER BY RANDOM() LIMIT 1),
   -- Montant de l'investissement (en fonction du coût total et de la surface)
   CASE
     WHEN pf.statut IN ('finance', 'en_cours', 'termine') THEN
@@ -594,7 +610,7 @@ WITH projets_multi_investissement AS (
 SELECT
   2000 + ROW_NUMBER() OVER(),
   pmi.id_projet,
-  'inv' || (1 + floor(random() * 20)),
+  (SELECT id_utilisateur FROM utilisateur WHERE id_role = 4 ORDER BY RANDOM() LIMIT 1),
   -- Montant de l'investissement supplémentaire
   CASE
     WHEN RANDOM() < 0.3 THEN ROUND(pmi.cout_total * 0.15 + RANDOM() * 400)
