@@ -91,8 +91,8 @@ const InvestmentCard: React.FC<InvestmentCardProps> = ({ project, onViewDetails 
           </div>
         </div>
 
-        {/* Chart showing investment vs expected return - HAUTEUR ENCORE PLUS RÉDUITE */}
-        <div className="h-[70px] -mx-2">
+        {/* Chart showing investment vs expected return */}
+        <div className="h-[50px] -mx-2">
           <ChartContainer 
             config={{
               investment: { color: '#94a3b8' },
@@ -101,10 +101,10 @@ const InvestmentCard: React.FC<InvestmentCardProps> = ({ project, onViewDetails 
           >
             <BarChart 
               width={300} 
-              height={70}
+              height={50}
               data={project.chartData}
-              margin={{ top: 5, right: 5, bottom: 5, left: 5 }}
-              barSize={40}
+              margin={{ top: 0, right: 5, bottom: 0, left: 5 }}
+              barSize={35}
             >
               <XAxis 
                 dataKey="name" 
@@ -129,11 +129,11 @@ const InvestmentCard: React.FC<InvestmentCardProps> = ({ project, onViewDetails 
           </ChartContainer>
         </div>
 
-        {/* Séparateur visuel plus prononcé pour mieux séparer les sections */}
-        <div className="border-t border-gray-100 pt-2 mt-2"></div>
+        {/* Séparateur visuel plus prononcé */}
+        <div className="border-t border-gray-100 pt-4 mt-4"></div>
 
-        {/* Project Progress Section - BIEN SÉPARÉ DU GRAPHIQUE */}
-        <div className="space-y-2">
+        {/* Project Progress Section */}
+        <div className="space-y-2 mt-4">
           <div className="flex items-center justify-between text-xs">
             <div className="flex items-center gap-1 text-muted-foreground">
               <Clock size={12} className="mr-1" />
@@ -154,7 +154,6 @@ const InvestmentCard: React.FC<InvestmentCardProps> = ({ project, onViewDetails 
               </div>
               <Progress value={project.jalonProgress} className="h-1.5" />
               
-              {/* Jalons Preview - first 2 jalons */}
               {project.jalons && project.jalons.length > 0 && (
                 <div className="mt-2 space-y-1">
                   {project.jalons.slice(0, 2).map((jalon: any, index: number) => (
@@ -217,4 +216,4 @@ const InvestmentCard: React.FC<InvestmentCardProps> = ({ project, onViewDetails 
   );
 };
 
-export default InvestmentCard;
+export default InvestmentCard;  
