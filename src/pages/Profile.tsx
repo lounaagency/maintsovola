@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -342,7 +341,7 @@ export const Profile = () => {
             comments: 0,
             shares: 0,
             status: project.statut,
-            dateLancement: project.date_lancement,
+            dateLancement: project.date_debut_production,
             userInvestment: userInvestment,
             chartData: [
               {
