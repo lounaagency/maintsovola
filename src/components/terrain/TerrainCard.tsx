@@ -92,7 +92,7 @@ const TerrainCard: React.FC<TerrainCardProps> = ({
     
     return typeof terrain.photos === 'string'
       ? terrain.photos.split(',').filter(p => p.trim() !== '')
-      : terrain.photos.filter(p => p);
+      : Array.isArray(terrain.photos) ? terrain.photos.filter(p => p) : [];
   };
   
   const getValidationPhotos = () => {
@@ -100,7 +100,7 @@ const TerrainCard: React.FC<TerrainCardProps> = ({
     
     return typeof terrain.photos_validation === 'string'
       ? terrain.photos_validation.split(',').filter(p => p.trim() !== '')
-      : terrain.photos_validation.filter(p => p);
+      : Array.isArray(terrain.photos_validation) ? terrain.photos_validation.filter(p => p) : [];
   };
   
   const photos = getPhotos();
@@ -124,7 +124,11 @@ const TerrainCard: React.FC<TerrainCardProps> = ({
       }
       
       setIsDeleteConfirmOpen(false);
-      onClose();
+      
+      // Use setTimeout to handle modal close after state updates
+      setTimeout(() => {
+        onClose();
+      }, 0);
     } catch (error: any) {
       console.error("Error deleting terrain:", error);
       toast.error(`Erreur: ${error.message}`);
@@ -133,10 +137,10 @@ const TerrainCard: React.FC<TerrainCardProps> = ({
     }
   };
 
-  // Improved focus management for modal
+  // Improved focus management for modal with fixed timeout
   const handleOpenChange = (open: boolean) => {
     if (!open) {
-      // Allow proper focus return before closing
+      // Use setTimeout with 0ms delay to ensure proper focus management and DOM updates
       setTimeout(() => {
         onClose();
       }, 0);
@@ -460,7 +464,12 @@ const TerrainCard: React.FC<TerrainCardProps> = ({
             <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2">
               <Button 
                 variant="outline" 
-                onClick={onClose}
+                onClick={() => {
+                  // Use setTimeout to handle modal close properly
+                  setTimeout(() => {
+                    onClose();
+                  }, 0);
+                }}
               >
                 Fermer
               </Button>

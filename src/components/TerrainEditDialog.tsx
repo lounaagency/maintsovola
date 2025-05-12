@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -234,19 +235,21 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
         onSubmitSuccess(result as TerrainData);
       }
       
-      onClose();
+      // Use setTimeout to handle modal close after state updates
+      setTimeout(() => {
+        onClose();
+      }, 0);
     } catch (error: any) {
       console.error("Error saving terrain:", error);
       toast.error(`Erreur: ${error.message}`);
-    } finally {
       setLoading(false);
     }
   };
 
-  // Improved focus management
+  // Fixed onOpenChange handler to properly manage focus and prevent page becoming inaccessible
   const handleOpenChange = (open: boolean) => {
     if (!open) {
-      // Allow proper focus return before closing
+      // Use setTimeout with 0ms delay to ensure proper focus management and DOM updates
       setTimeout(() => {
         onClose();
       }, 0);

@@ -1,3 +1,4 @@
+
 import { TerrainData } from './terrain';
 
 export interface TerrainFormData {
@@ -24,12 +25,11 @@ export interface TerrainFormData {
 export const convertFormDataToTerrainData = (formData: TerrainFormData): TerrainData => {
   const terrainData: TerrainData = {
     ...formData,
-    id_region: Number(formData.id_region),
-    id_district: Number(formData.id_district),
-    id_commune: Number(formData.id_commune),
-    surface_proposee: parseFloat(formData.surface_proposee.toFixed(2)) || 0,
-    nom_terrain: formData.nom_terrain
-
+    id_region: formData.id_region ? Number(formData.id_region) : null,
+    id_district: formData.id_district ? Number(formData.id_district) : null,
+    id_commune: formData.id_commune ? Number(formData.id_commune) : null,
+    surface_proposee: parseFloat((formData.surface_proposee || 0).toFixed(2)) || 0,
+    nom_terrain: formData.nom_terrain || ""
   };
   
   // Add surface_validee if provided
