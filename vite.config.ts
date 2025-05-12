@@ -5,7 +5,6 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  base: "/app/", // ← Chemin de base pour un sous-dossier "/app"
   server: {
     host: "::",
     port: 8080,
