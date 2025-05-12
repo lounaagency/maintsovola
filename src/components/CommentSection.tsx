@@ -7,6 +7,7 @@ import { Heart, Reply } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { Link } from "react-router-dom";
 
 interface Comment {
   id: string;
@@ -217,7 +218,15 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
           </Avatar>
           <div className="ml-2 flex-1">
             <div className="bg-muted p-2 rounded-lg">
-              <div className="font-medium text-xs">{comment.author.name}</div>
+              {/* Transformation du nom en lien vers le profil */}
+              <div className="font-medium text-xs">
+                <Link 
+                  to={`/profile/${comment.author.id}`} 
+                  className="hover:underline hover:text-primary transition-colors"
+                >
+                  {comment.author.name}
+                </Link>
+              </div>
               <div className="text-sm mt-1">{comment.text}</div>
             </div>
             <div className="flex items-center mt-1 text-xs text-gray-500">

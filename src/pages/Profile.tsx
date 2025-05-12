@@ -303,16 +303,22 @@ export const Profile = () => {
           const completedJalons = projectJalons.filter(j => j.date_reelle).length;
           const jalonProgress = projectJalons.length > 0 ? (completedJalons / projectJalons.length) * 100 : 0;
           
-          const tantsahaObject = typeof tantsaha === 'object' ? tantsaha : {};
+          // Fix typecasting for tantsaha object properties
+          const tantsahaTyped = tantsaha as {
+            id_utilisateur?: string;
+            nom?: string;
+            prenoms?: string;
+            photo_profil?: string;
+          };
           
           return {
             id: project.id_projet.toString(),
             title: project.titre || `Projet #${project.id_projet}`,
             farmer: {
-              id: tantsahaObject.id_utilisateur,
-              name: `${tantsahaObject.nom || ""} ${tantsahaObject.prenoms || ""}`.trim(),
-              username: tantsahaObject.nom?.toLowerCase()?.replace(/\s+/g, '') || "",
-              avatar: tantsahaObject.photo_profil,
+              id: tantsahaTyped.id_utilisateur,
+              name: `${tantsahaTyped.nom || ""} ${tantsahaTyped.prenoms || ""}`.trim(),
+              username: tantsahaTyped.nom?.toLowerCase()?.replace(/\s+/g, '') || "",
+              avatar: tantsahaTyped.photo_profil,
             },
             location: {
               region: project.id_region || "Non spécifié",
