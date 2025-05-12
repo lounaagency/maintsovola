@@ -105,11 +105,11 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
               <TableCell>
                 <div className="font-medium">{terrain.nom_terrain}</div>
                 <div className="text-xs text-muted-foreground">
-                  {terrain.tantsahaNom}
+                  {terrain.tantsahaNom || "Non spécifié"}
                 </div>
               </TableCell>
               <TableCell>
-                {terrain.commune_name}, {terrain.district_name}
+                {terrain.commune_name || "Non spécifié"}, {terrain.district_name || "Non spécifié"}
               </TableCell>
               <TableCell>
                 {terrain.surface_validee || terrain.surface_proposee} ha
@@ -125,7 +125,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                   {terrain.id_technicien ? (
                     <div className="flex items-center">
                       <Check className="h-4 w-4 text-green-500 mr-1" />
-                      <span>{terrain.techniqueNom}</span>
+                      <span>{terrain.techniqueNom || "Non assigné"}</span>
                     </div>
                   ) : (
                     <div className="flex">
@@ -152,7 +152,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
               )}
 
               {type === "validated" && (
-                <TableCell>{terrain.superviseurNom}</TableCell>
+                <TableCell>{terrain.superviseurNom || "Non spécifié"}</TableCell>
               )}
 
               <TableCell>

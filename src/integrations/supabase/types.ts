@@ -879,6 +879,84 @@ export type Database = {
           },
         ]
       }
+      job_application: {
+        Row: {
+          cover_letter: string
+          created_at: string | null
+          cv_url: string | null
+          email: string
+          full_name: string
+          id: number
+          job_title: string
+          phone: string | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          cover_letter: string
+          created_at?: string | null
+          cv_url?: string | null
+          email: string
+          full_name: string
+          id?: number
+          job_title: string
+          phone?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          cover_letter?: string
+          created_at?: string | null
+          cv_url?: string | null
+          email?: string
+          full_name?: string
+          id?: number
+          job_title?: string
+          phone?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      job_posting: {
+        Row: {
+          created_at: string | null
+          description: string
+          id: number
+          is_active: boolean | null
+          location: string
+          requirements: string[]
+          responsibilities: string[]
+          title: string
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description: string
+          id?: number
+          is_active?: boolean | null
+          location: string
+          requirements: string[]
+          responsibilities: string[]
+          title: string
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string
+          id?: number
+          is_active?: boolean | null
+          location?: string
+          requirements?: string[]
+          responsibilities?: string[]
+          title?: string
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       message: {
         Row: {
           contenu: string
@@ -1378,6 +1456,42 @@ export type Database = {
         }
         Relationships: []
       }
+      public_contact: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: number
+          message: string
+          name: string
+          phone: string | null
+          status: string
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id?: number
+          message: string
+          name: string
+          phone?: string | null
+          status?: string
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: number
+          message?: string
+          name?: string
+          phone?: string | null
+          status?: string
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       region: {
         Row: {
           created_at: string | null
@@ -1430,6 +1544,57 @@ export type Database = {
           nom_role?: string
         }
         Relationships: []
+      }
+      site_utilisateur: {
+        Row: {
+          created_at: string | null
+          derniere_connexion: string | null
+          email: string
+          id_role: number | null
+          id_site_utilisateur: string
+          nom: string
+          prenom: string | null
+          statut: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          derniere_connexion?: string | null
+          email: string
+          id_role?: number | null
+          id_site_utilisateur: string
+          nom: string
+          prenom?: string | null
+          statut?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          derniere_connexion?: string | null
+          email?: string
+          id_role?: number | null
+          id_site_utilisateur?: string
+          nom?: string
+          prenom?: string | null
+          statut?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_utilisateur_id_role_fkey"
+            columns: ["id_role"]
+            isOneToOne: false
+            referencedRelation: "role"
+            referencedColumns: ["id_role"]
+          },
+          {
+            foreignKeyName: "site_utilisateur_id_role_fkey"
+            columns: ["id_role"]
+            isOneToOne: false
+            referencedRelation: "utilisateurs_par_role"
+            referencedColumns: ["id_role"]
+          },
+        ]
       }
       spatial_ref_sys: {
         Row: {
