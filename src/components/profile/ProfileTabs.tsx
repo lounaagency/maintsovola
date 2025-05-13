@@ -1,9 +1,9 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useAuth } from '@/contexts/AuthContext';
 import InvestmentTable from './InvestmentTable';
-import ProjectList from './ProjectList';
+import ProjectFeed from '../ProjectFeed';
 import PaymentHistory from './PaymentHistory';
 import InvestmentsList from './InvestmentsList';
 
@@ -20,23 +20,7 @@ const ProfileTabs: React.FC<ProfileTabsProps> = ({
   loading = false,
   onViewDetails = () => {}
 }) => {
-  const [investments, setInvestments] = useState([]);
-  const [projects, setProjects] = useState([]);
   const { user } = useAuth();
-
-  useEffect(() => {
-    // Fetch investments and projects data here
-    // For now, let's use dummy data
-    setInvestments([
-      { id: 1, project: 'Projet A', amount: 1000, date: '2023-01-01' },
-      { id: 2, project: 'Projet B', amount: 2000, date: '2023-02-01' },
-    ]);
-
-    setProjects([
-      { id: 1, name: 'Projet X', status: 'En cours' },
-      { id: 2, name: 'Projet Y', status: 'Terminé' },
-    ]);
-  }, []);
   
   return (
     <Tabs defaultValue="investments" className="mt-6">
@@ -57,15 +41,20 @@ const ProfileTabs: React.FC<ProfileTabsProps> = ({
               onViewDetails={onViewDetails}
             />
           ) : (
-            <InvestmentTable investments={investments} />
+            <InvestmentTable investments={[]} />
           )}
         </div>
       </TabsContent>
       
       <TabsContent value="projects" className="space-y-4">
         <div className="rounded-lg border bg-card p-4">
-          <h3 className="text-lg font-semibold mb-4">Mes projets</h3>
-          <ProjectList projects={projects} />
+          <ProjectFeed 
+            filters={{ userId: userId }}
+            showFilters={false}
+            showFollowingTab={false}
+            title="Projets publiés"
+            gridLayout={true}
+          />
         </div>
       </TabsContent>
       

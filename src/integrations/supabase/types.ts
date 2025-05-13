@@ -636,6 +636,7 @@ export type Database = {
           modified_at: string | null
           montant: number
           reference_paiement: string | null
+          statut_paiement: string | null
         }
         Insert: {
           created_at?: string | null
@@ -648,6 +649,7 @@ export type Database = {
           modified_at?: string | null
           montant: number
           reference_paiement?: string | null
+          statut_paiement?: string | null
         }
         Update: {
           created_at?: string | null
@@ -660,6 +662,7 @@ export type Database = {
           modified_at?: string | null
           montant?: number
           reference_paiement?: string | null
+          statut_paiement?: string | null
         }
         Relationships: [
           {

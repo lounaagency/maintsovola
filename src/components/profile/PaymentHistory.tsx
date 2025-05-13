@@ -13,7 +13,7 @@ interface Payment {
   montant: number;
   status: string;
   date_paiement: string;
-  id_investissement: number | null;
+  id_investissement?: number | null;
   projet?: {
     id_projet: number;
     titre: string;
@@ -53,8 +53,8 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ userId }) => {
         // Using a simpler query to avoid deep type instantiation
         const { data: paymentHistory, error: paymentsError } = await supabase
           .from('historique_paiement')
-          .select('*, id_investissement')
-          .in('id_investissement', investmentIds)
+          .select('*')
+          .in('id_projet', investmentIds.map(id => id))
           .order('date_paiement', { ascending: false });
 
         if (paymentsError) throw paymentsError;
@@ -64,30 +64,24 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ userId }) => {
         
         if (paymentHistory && paymentHistory.length > 0) {
           // Get all investments with project data
-          const relevantInvestments = paymentHistory
-            .filter(p => p.id_investissement)
-            .map(p => p.id_investissement);
-            
-          if (relevantInvestments.length > 0) {
-            const { data: investmentProjects } = await supabase
-              .from('investissement')
-              .select('id_investissement, id_projet, projet:id_projet(id_projet, titre)')
-              .in('id_investissement', relevantInvestments);
+          const { data: investmentProjects } = await supabase
+            .from('investissement')
+            .select('id_investissement, id_projet, projet:id_projet(id_projet, titre)')
+            .in('id_investissement', investmentIds);
               
-            if (investmentProjects) {
-              investmentProjects.forEach((item: any) => {
-                if (item.projet) {
-                  paymentProjects[item.id_investissement] = item.projet;
-                }
-              });
-            }
+          if (investmentProjects) {
+            investmentProjects.forEach((item: any) => {
+              if (item.projet) {
+                paymentProjects[item.id_projet] = item.projet;
+              }
+            });
           }
         }
 
         // Format the payment data
         const formattedPayments = paymentHistory?.map((payment: any) => ({
           ...payment,
-          projet: payment.id_investissement ? paymentProjects[payment.id_investissement] : null
+          projet: payment.id_projet ? paymentProjects[payment.id_projet] : null
         })) || [];
 
         setPayments(formattedPayments);
@@ -138,7 +132,7 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ userId }) => {
                   {format(new Date(payment.date_paiement), 'dd MMM yyyy', { locale: fr })}
                 </td>
                 <td className="px-4 py-3 text-sm text-primary font-mono">
-                  {payment.reference_transaction?.substring(0, 8)}...
+                  {payment.reference_transaction?.substring(0, 8) + "..."}
                 </td>
                 <td className="px-4 py-3 text-sm">
                   {payment.projet ? payment.projet.titre : 'Non spécifié'}
