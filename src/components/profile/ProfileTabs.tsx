@@ -1,24 +1,51 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useAuth } from '@/contexts/AuthContext';
 import InvestmentTable from './InvestmentTable';
 import ProjectFeed from '../ProjectFeed';
 import PaymentHistory from './PaymentHistory';
 import InvestmentsList from './InvestmentsList';
+import InvestmentSummary from './InvestmentSummary';
+import ProjectsSummary from './ProjectsSummary';
 
 interface ProfileTabsProps {
   userId: string;
   investedProjects?: any[];
   loading?: boolean;
   onViewDetails?: (projectId: number) => void;
+  investmentSummary?: {
+    totalInvested: number;
+    totalProfit: number;
+    averageROI: number;
+    ongoingProjects: number;
+    completedProjects: number;
+    projectsByStatusData: Array<{name: string, value: number, fill: string}>;
+  };
+  projectsSummary?: {
+    totalProjects: number;
+    totalArea: number;
+    totalFunding: number;
+    projectsByStatus: {
+      enFinancement: number;
+      enCours: number;
+      termine: number;
+    };
+    projectsByCulture?: Array<{
+      name: string;
+      count: number;
+      fill: string;
+    }>;
+  };
 }
 
 const ProfileTabs: React.FC<ProfileTabsProps> = ({ 
   userId,
   investedProjects = [],
   loading = false,
-  onViewDetails = () => {}
+  onViewDetails = () => {},
+  investmentSummary,
+  projectsSummary
 }) => {
   const { user } = useAuth();
   
@@ -33,6 +60,19 @@ const ProfileTabs: React.FC<ProfileTabsProps> = ({
       
       <TabsContent value="investments" className="space-y-4">
         <div className="rounded-lg border bg-card p-4">
+          {investmentSummary && (
+            <div className="mb-6">
+              <InvestmentSummary
+                totalInvested={investmentSummary.totalInvested}
+                totalProfit={investmentSummary.totalProfit}
+                averageROI={investmentSummary.averageROI}
+                ongoingProjects={investmentSummary.ongoingProjects}
+                completedProjects={investmentSummary.completedProjects}
+                projectsByStatusData={investmentSummary.projectsByStatusData}
+              />
+            </div>
+          )}
+          
           <h3 className="text-lg font-semibold mb-4">Mes investissements</h3>
           {investedProjects && investedProjects.length > 0 ? (
             <InvestmentsList 
@@ -48,6 +88,18 @@ const ProfileTabs: React.FC<ProfileTabsProps> = ({
       
       <TabsContent value="projects" className="space-y-4">
         <div className="rounded-lg border bg-card p-4">
+          {projectsSummary && (
+            <div className="mb-6">
+              <ProjectsSummary
+                totalProjects={projectsSummary.totalProjects}
+                totalArea={projectsSummary.totalArea}
+                totalFunding={projectsSummary.totalFunding}
+                projectsByStatus={projectsSummary.projectsByStatus}
+                projectsByCulture={projectsSummary.projectsByCulture}
+              />
+            </div>
+          )}
+          
           <ProjectFeed 
             filters={{ userId: userId }}
             showFilters={false}

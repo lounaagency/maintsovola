@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -33,6 +32,28 @@ export const Profile = () => {
   // Fix the type issue - ensure selectedProjectId is always a number
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
+  
+  // New state for summary data
+  const [investmentSummary, setInvestmentSummary] = useState({
+    totalInvested: 0,
+    totalProfit: 0,
+    averageROI: 0,
+    ongoingProjects: 0,
+    completedProjects: 0,
+    projectsByStatusData: []
+  });
+  
+  const [projectsSummary, setProjectsSummary] = useState({
+    totalProjects: 0,
+    totalArea: 0,
+    totalFunding: 0,
+    projectsByStatus: {
+      enFinancement: 0,
+      enCours: 0,
+      termine: 0
+    },
+    projectsByCulture: []
+  });
   
   if (!user) {
     return <Navigate to="/auth" replace />;
@@ -87,6 +108,7 @@ export const Profile = () => {
       await fetchFollowStatus(userId);
       await fetchProjectsCount(userId);
       await fetchInvestedProjects(userId);
+      await fetchProjectsSummary(userId);
       setLoading(false);
     };
     
@@ -186,6 +208,81 @@ export const Profile = () => {
       setProjectsCount(count || 0);
     } catch (error) {
       console.error('Error fetching projects count:', error);
+    }
+  };
+  
+  const fetchProjectsSummary = async (userId: string) => {
+    try {
+      const { data: projectsData, error } = await supabase
+        .from('projet')
+        .select(`
+          id_projet,
+          statut,
+          surface_ha,
+          cultures:projet_culture(culture_id, culture:culture_id(*)),
+          investissements:investissement(montant)
+        `)
+        .eq('id_tantsaha', userId);
+        
+      if (error) throw error;
+      
+      if (!projectsData) return;
+      
+      let totalArea = 0;
+      let totalFunding = 0;
+      const statusCount = { enFinancement: 0, enCours: 0, termine: 0 };
+      const cultureMap = new Map<string, number>();
+      
+      projectsData.forEach(project => {
+        // Sum up the area
+        totalArea += project.surface_ha || 0;
+        
+        // Count projects by status
+        if (project.statut === 'en financement') {
+          statusCount.enFinancement += 1;
+        } else if (project.statut === 'en_production' || project.statut === 'en_cours') {
+          statusCount.enCours += 1;
+        } else if (project.statut === 'terminé') {
+          statusCount.termine += 1;
+        }
+        
+        // Sum up funding
+        if (project.investissements && Array.isArray(project.investissements)) {
+          project.investissements.forEach(inv => {
+            totalFunding += inv.montant || 0;
+          });
+        }
+        
+        // Count cultures
+        if (project.cultures && Array.isArray(project.cultures)) {
+          project.cultures.forEach(pc => {
+            if (pc.culture && pc.culture.nom_culture) {
+              const cultureName = pc.culture.nom_culture;
+              cultureMap.set(cultureName, (cultureMap.get(cultureName) || 0) + 1);
+            }
+          });
+        }
+      });
+      
+      // Prepare culture data for chart
+      const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+      const projectsByCulture = Array.from(cultureMap.entries()).map(([name, count], index) => ({
+        name,
+        count,
+        fill: colors[index % colors.length]
+      }));
+      
+      // Update projects summary
+      setProjectsSummary({
+        totalProjects: projectsData.length,
+        totalArea,
+        totalFunding,
+        projectsByStatus: statusCount,
+        projectsByCulture
+      });
+      
+    } catch (error) {
+      console.error("Erreur lors de la récupération des informations sur les projets:", error);
     }
   };
   
@@ -366,6 +463,37 @@ export const Profile = () => {
         }).filter(Boolean);
       
       setInvestedProjects(processedProjects || []);
+      
+      // Calculate investment summary after getting the data
+      if (investedProjects && investedProjects.length > 0) {
+        const totalInvested = investedProjects.reduce((sum, project) => sum + project.userInvestment, 0);
+        const totalProfit = investedProjects.reduce((sum, project) => sum + project.userProfit, 0);
+        
+        // Calculate ROI and project status counts
+        const projectsWithROI = investedProjects.filter(p => p.userInvestment > 0);
+        const averageROI = projectsWithROI.length > 0 
+          ? projectsWithROI.reduce((sum, p) => sum + p.roi, 0) / projectsWithROI.length 
+          : 0;
+        
+        const ongoingProjects = investedProjects.filter(p => 
+          p.status === 'en_cours' || p.status === 'en_production' || p.status === 'en financement').length;
+        const completedProjects = investedProjects.filter(p => p.status === 'terminé').length;
+        
+        // Create data for status chart
+        const projectsByStatusData = [
+          { name: 'En cours', value: ongoingProjects, fill: '#3b82f6' },
+          { name: 'Terminés', value: completedProjects, fill: '#10b981' },
+        ];
+        
+        setInvestmentSummary({
+          totalInvested,
+          totalProfit,
+          averageROI,
+          ongoingProjects,
+          completedProjects,
+          projectsByStatusData
+        });
+      }
     } catch (error) {
       console.error('Error fetching invested projects:', error);
       setInvestedProjects([]);
@@ -435,6 +563,8 @@ export const Profile = () => {
         investedProjects={investedProjects}
         loading={loading}
         onViewDetails={handleOpenDetails}
+        investmentSummary={investmentSummary}
+        projectsSummary={projectsSummary}
       />
       
       {/* Add ProjectDetailsDialog */}
