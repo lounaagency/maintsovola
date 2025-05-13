@@ -9,6 +9,27 @@ import InvestmentsList from './InvestmentsList';
 import InvestmentSummary from './InvestmentSummary';
 import ProjectsSummary from './ProjectsSummary';
 
+interface ProjectCultureCount {
+  name: string;
+  count: number;
+  fill: string;
+}
+
+interface ProjectCategoryData {
+  count: number;
+  area: number;
+  funding: number;
+  profit: number;
+  ownerProfit: number;
+  cultures: ProjectCultureCount[];
+}
+
+interface ProjectStatusData {
+  enFinancement: ProjectCategoryData;
+  enCours: ProjectCategoryData;
+  termine: ProjectCategoryData;
+}
+
 interface ProfileTabsProps {
   userId: string;
   investedProjects?: any[];
@@ -26,11 +47,9 @@ interface ProfileTabsProps {
     totalProjects: number;
     totalArea: number;
     totalFunding: number;
-    projectsByStatus: {
-      enFinancement: number;
-      enCours: number;
-      termine: number;
-    };
+    totalProfit: number;
+    ownerProfit: number;
+    projectsByStatus: ProjectStatusData;
     projectsByCulture?: Array<{
       name: string;
       count: number;
@@ -94,6 +113,8 @@ const ProfileTabs: React.FC<ProfileTabsProps> = ({
                 totalProjects={projectsSummary.totalProjects}
                 totalArea={projectsSummary.totalArea}
                 totalFunding={projectsSummary.totalFunding}
+                totalProfit={projectsSummary.totalProfit}
+                ownerProfit={projectsSummary.ownerProfit}
                 projectsByStatus={projectsSummary.projectsByStatus}
                 projectsByCulture={projectsSummary.projectsByCulture}
               />
