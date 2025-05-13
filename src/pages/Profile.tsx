@@ -1,223 +1,450 @@
-import React, { useState, useEffect } from "react";
-import { useParams, Navigate, useSearchParams } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
-import { Avatar } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
-import ProjectFeed from "@/components/ProjectFeed";
-import { ProjectFilter } from "@/hooks/use-project-data";
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate, Navigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { Separator } from '@/components/ui/separator';
+import { toast } from 'sonner';
+import { UserProfile } from '@/types/userProfile';
+import ProfileHeader from '@/components/profile/ProfileHeader';
+import ProfileTabs from '@/components/profile/ProfileTabs';
+import ProjectDetailsDialog from '@/components/ProjectDetailsDialog';
 
-const Profile: React.FC = () => {
+// Type guard for SelectQueryError
+const isSelectQueryError = (obj: any): boolean => {
+  return obj && typeof obj === 'object' && 'message' in obj && 'details' in obj;
+};
+
+export const Profile = () => {
   const { id } = useParams<{ id: string }>();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const { user, profile, updateProfile } = useAuth();
+  const navigate = useNavigate();
+  const { user, profile: currentUserProfile } = useAuth();
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [isCurrentUser, setIsCurrentUser] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followersCount, setFollowersCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
+  const [investedProjects, setInvestedProjects] = useState<any[]>([]);
+  const [projectsCount, setProjectsCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState(false);
-  const [newNom, setNewNom] = useState("");
-  const [newPrenoms, setNewPrenoms] = useState("");
-  const [newBio, setNewBio] = useState("");
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [filters, setFilters] = useState<ProjectFilter>({});
-
-  useEffect(() => {
-    const newFilters: ProjectFilter = {};
-    
-    if (searchParams.has('id_projet')) {
-      newFilters.projectId = searchParams.get('id_projet') || undefined;
-    }
-    
-    setFilters(newFilters);
-  }, [searchParams]);
-
-  useEffect(() => {
-    if (profile) {
-      setNewNom(profile.nom);
-      setNewPrenoms(profile.prenoms || "");
-      setNewBio(profile.bio || "");
-      setAvatarUrl(profile.photo_profil || null);
-    }
-    setLoading(false);
-  }, [profile]);
-
-  useEffect(() => {
-    if (id && user && id !== user.id) {
-      setEditing(false);
-    } else if (user) {
-      setEditing(true);
-    }
-  }, [id, user]);
-
+  const [projectJalons, setProjectJalons] = useState<{[key: number]: any[]}>({});
+  const [userRole, setUserRole] = useState<string | null>(null);
+  
+  // Add state for project details dialog
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
+  
   if (!user) {
-    return <Navigate to={`/auth${location.search}`} replace />;
+    return <Navigate to="/auth" replace />;
   }
-
-  if (loading) {
-    return <div className="text-center mt-8">Chargement du profil...</div>;
-  }
-
-  const isCurrentUserProfile = user.id === id;
-
-  const handleUpdateProfile = async () => {
-    setLoading(true);
-    try {
-      const updates = {
-        id: user.id,
-        nom: newNom,
-        prenoms: newPrenoms,
-        bio: newBio,
-        updated_at: new Date(),
-      };
-
-      const { error } = await supabase.from("utilisateur").upsert(updates, {
-        returning: "minimal", // Do not return values after inserting
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      await updateProfile();
-      toast.success("Profil mis à jour avec succès!");
-      setEditing(false);
-    } catch (error: any) {
-      toast.error(`Erreur lors de la mise à jour du profil: ${error.message}`);
-    } finally {
-      setLoading(false);
-    }
+  
+  // Add the handleOpenDetails function
+  const handleOpenDetails = (projectId: number) => {
+    setSelectedProjectId(projectId);
+    setDetailsOpen(true);
   };
+  
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      if (user) {
+        try {
+          const { data, error } = await supabase
+            .from('utilisateurs_par_role')
+            .select('nom_role')
+            .eq('id_utilisateur', user.id)
+            .single();
+            
+          if (error) throw error;
+          
+          if (data) {
+            setUserRole(data.nom_role);
+          }
+        } catch (error) {
+          console.error("Erreur lors de la récupération du rôle de l'utilisateur:", error);
+        }
+      }
+    };
+    
+    fetchUserRole();
+  }, [user]);
+  
+  useEffect(() => {
+    const loadProfileData = async () => {
+      const userId = id || user?.id;
+      
+      if (!userId) return;
+      
+      if (user?.id === userId) {
+        setIsCurrentUser(true);
+        if (currentUserProfile) {
+          setProfile(currentUserProfile);
+        }
+      } else {
+        setIsCurrentUser(false);
+        await fetchUserProfile(userId);
+      }
+      
+      await fetchFollowStatus(userId);
+      await fetchProjectsCount(userId);
+      await fetchInvestedProjects(userId);
+      setLoading(false);
+    };
+    
+    loadProfileData();
+  }, [id, user, currentUserProfile]);
 
-  const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) {
-      return;
-    }
-
-    setUploading(true);
-
+  const fetchUserProfile = async (userId: string) => {
     try {
-      const fileExt = file.name.split(".").pop();
-      const fileName = `${user.id}.${fileExt}`;
-      const filePath = `${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("avatars")
-        .upload(filePath, file, {
-          cacheControl: "3600",
-          upsert: false,
-        });
-
-      if (uploadError) {
-        throw uploadError;
-      }
-
-      const { data: getUrl } = supabase.storage.from("avatars").getPublicUrl(filePath);
-      const publicURL = getUrl.publicUrl;
-
-      const { error: updateError } = await supabase
-        .from("utilisateur")
-        .update({ photo_profil: publicURL })
-        .eq("id_utilisateur", user.id);
-
-      if (updateError) {
-        throw updateError;
-      }
-
-      setAvatarUrl(publicURL);
-      await updateProfile();
-      toast.success("Avatar mis à jour!");
-    } catch (error: any) {
-      toast.error(`Erreur lors du chargement de l'avatar: ${error.message}`);
-    } finally {
-      setUploading(false);
+      const { data, error } = await supabase
+        .from('utilisateur')
+        .select(`
+          *,
+          role:id_role(nom_role),
+          telephones:telephone(*)
+        `)
+        .eq('id_utilisateur', userId)
+        .single();
+      
+      if (error) throw error;
+      
+      const telephones = data.telephones || [];
+      const mappedTelephones = telephones.map((tel: any) => ({
+        id_telephone: tel.id_telephone,
+        id_utilisateur: tel.id_utilisateur,
+        numero: tel.numero,
+        type: tel.type as "principal" | "whatsapp" | "mobile_banking" | "autre",
+        est_whatsapp: tel.est_whatsapp,
+        est_mobile_banking: tel.est_mobile_banking,
+        created_at: tel.created_at || new Date().toISOString(),
+        modified_at: tel.modified_at || new Date().toISOString()
+      }));
+      
+      setProfile({
+        id_utilisateur: isSelectQueryError(data) ? '' : data.id_utilisateur,
+        id: isSelectQueryError(data) ? '' : data.id_utilisateur,
+        nom: isSelectQueryError(data) ? '' : data.nom,
+        prenoms: isSelectQueryError(data) ? '' : data.prenoms,
+        email: isSelectQueryError(data) ? '' : data.email,
+        photo_profil: isSelectQueryError(data) ? '' : data.photo_profil,
+        photo_couverture: isSelectQueryError(data) ? '' : data.photo_couverture,
+        telephone: isSelectQueryError(data) ? '' : telephones[0]?.numero,
+        adresse: isSelectQueryError(data) ? '' : data.adresse || undefined,
+        bio: isSelectQueryError(data) ? '' : data.bio || undefined,
+        id_role: isSelectQueryError(data) ? '' : data.id_role,
+        nom_role: isSelectQueryError(data) ? '' : data.role?.nom_role,
+        telephones: mappedTelephones
+      });
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+      toast.error("Impossible de charger le profil de l'utilisateur");
     }
   };
   
-  const handleFilterChange = (newFilters: ProjectFilter) => {
-    const params = new URLSearchParams();
-    
-    if (newFilters.projectId) {
-      params.set('id_projet', String(newFilters.projectId));
+  const fetchFollowStatus = async (userId: string) => {
+    try {
+      const { data: followersResult, error: followersError } = await supabase
+        .from('abonnement')
+        .select('id_abonnement', { count: 'exact' })
+        .eq('id_suivi', userId);
+      
+      if (followersError) throw followersError;
+      setFollowersCount(followersResult?.length || 0);
+      
+      const { data: followingResult, error: followingError } = await supabase
+        .from('abonnement')
+        .select('id_abonnement', { count: 'exact' })
+        .eq('id_abonne', userId);
+      
+      if (followingError) throw followingError;
+      setFollowingCount(followingResult?.length || 0);
+      
+      if (user && userId !== user.id) {
+        const { data, error } = await supabase
+          .from('abonnement')
+          .select('id_abonnement')
+          .eq('id_abonne', user.id)
+          .eq('id_suivi', userId)
+          .maybeSingle();
+        
+        if (error) throw error;
+        setIsFollowing(!!data);
+      }
+    } catch (error) {
+      console.error('Error fetching follow status:', error);
     }
+  };
+  
+  const fetchProjectsCount = async (userId: string) => {
+    try {
+      const { count, error } = await supabase
+        .from('projet')
+        .select('id_projet', { count: 'exact', head: true })
+        .eq('id_tantsaha', userId);
+      
+      if (error) throw error;
+      
+      setProjectsCount(count || 0);
+    } catch (error) {
+      console.error('Error fetching projects count:', error);
+    }
+  };
+  
+  const fetchInvestedProjects = async (userId: string) => {
+    try {
+      const { data: investmentData, error } = await supabase
+        .from('investissement')
+        .select(`
+          *,
+          projet!inner(
+            *,
+            tantsaha:id_tantsaha(id_utilisateur, nom, prenoms, photo_profil)
+          )
+        `)
+        .eq('id_investisseur', userId);
+      
+      if (error) throw error;
+
+      const projectIds = investmentData
+        .map(inv => inv.id_projet)
+        .filter(id => id !== null && id !== undefined)
+        .map(id => Number(id));
+      
+      if (projectIds.length === 0) {
+        setInvestedProjects([]);
+        return;
+      }
+      
+      const { data: projectCultures } = await supabase
+        .from('projet_culture')
+        .select('*, culture(*)')
+        .in('id_projet', projectIds);
+      
+      const projectCultureMap = new Map();
+      if (projectCultures) {
+        projectCultures.forEach((pc: any) => {
+          if (!projectCultureMap.has(pc.id_projet)) {
+            projectCultureMap.set(pc.id_projet, []);
+          }
+          projectCultureMap.get(pc.id_projet).push(pc);
+        });
+      }
+      
+      const { data: totalInvestments } = await supabase
+        .from('investissement')
+        .select('id_projet, montant')
+        .in('id_projet', projectIds);
+      
+      const projectInvestmentMap = new Map();
+      if (totalInvestments) {
+        totalInvestments.forEach((inv: any) => {
+          if (!projectInvestmentMap.has(inv.id_projet)) {
+            projectInvestmentMap.set(inv.id_projet, 0);
+          }
+          projectInvestmentMap.set(inv.id_projet, projectInvestmentMap.get(inv.id_projet) + inv.montant);
+        });
+      }
+
+      // Fetch jalons for each project
+      const { data: jalonsData } = await supabase
+        .from('jalon_projet')
+        .select(`
+          *,
+          jalon_agricole:id_jalon_agricole(nom_jalon)
+        `)
+        .in('id_projet', projectIds);
+      
+      // Group jalons by project
+      const jalonsMap: {[key: number]: any[]} = {};
+      if (jalonsData) {
+        jalonsData.forEach((jalon: any) => {
+          if (!jalonsMap[jalon.id_projet]) {
+            jalonsMap[jalon.id_projet] = [];
+          }
+          jalonsMap[jalon.id_projet].push(jalon);
+        });
+      }
+      
+      setProjectJalons(jalonsMap);
+
+      const processedProjects = investmentData
+        .filter(investment => investment.projet) // Filtrer les investissements sans projet
+        .map(investment => {
+          const project = investment.projet;
+          if (!project) return null;
+          
+          const projectObj = project;
+          const tantsaha = projectObj.tantsaha || {};
+          
+          const cultures = projectCultureMap.get(project.id_projet) || [];
+          
+          const totalCost = cultures.reduce(
+            (sum: number, pc: any) => sum + (pc.cout_exploitation_previsionnel || 0), 
+            0
+          );
+          
+          const totalYield = cultures.reduce(
+            (sum: number, pc: any) => sum + (pc.rendement_previsionnel || 0), 
+            0
+          );
+          
+          const expectedRevenue = cultures.reduce(
+            (sum: number, pc: any) => sum + (pc.rendement_previsionnel * (pc.culture?.prix_tonne || 0)), 
+            0
+          );
+
+          const totalInvested = projectInvestmentMap.get(project.id_projet) || 0;
+          const userInvestment = investment.montant || 0;
+          
+          const investmentShare = totalInvested > 0 ? userInvestment / totalInvested : 0;
+          const totalProfit = expectedRevenue - totalCost;
+          const userProfit = totalProfit * investmentShare;
+          const roi = userInvestment > 0 ? (userProfit / userInvestment) * 100 : 0;
+          
+          const projectJalons = jalonsMap[project.id_projet] || [];
+          const completedJalons = projectJalons.filter(j => j.date_reelle).length;
+          const jalonProgress = projectJalons.length > 0 ? (completedJalons / projectJalons.length) * 100 : 0;
+          
+          // Fix typecasting for tantsaha object properties
+          const tantsahaTyped = tantsaha as {
+            id_utilisateur?: string;
+            nom?: string;
+            prenoms?: string;
+            photo_profil?: string;
+          };
+          
+          return {
+            id: project.id_projet.toString(),
+            title: project.titre || `Projet #${project.id_projet}`,
+            farmer: {
+              id: tantsahaTyped.id_utilisateur,
+              name: `${tantsahaTyped.nom || ""} ${tantsahaTyped.prenoms || ""}`.trim(),
+              username: tantsahaTyped.nom?.toLowerCase()?.replace(/\s+/g, '') || "",
+              avatar: tantsahaTyped.photo_profil,
+            },
+            location: {
+              region: project.id_region || "Non spécifié",
+              district: project.id_district || "Non spécifié",
+              commune: project.id_commune || "Non spécifié",
+            },
+            cultivationArea: project.surface_ha || 0,
+            cultivationType: cultures[0]?.culture?.nom_culture || "Non spécifié",
+            farmingCost: totalCost,
+            expectedYield: expectedRevenue,
+            expectedRevenue: expectedRevenue,
+            creationDate: project.created_at || new Date().toISOString(),
+            images: [],
+            description: project.description || "",
+            fundingGoal: totalCost,
+            currentFunding: totalInvested,
+            totalProfit: totalProfit,
+            userProfit: userProfit,
+            roi: roi,
+            investmentShare: investmentShare,
+            jalonProgress: jalonProgress,
+            completedJalons: completedJalons,
+            totalJalons: projectJalons.length,
+            jalons: projectJalons,
+            likes: 0,
+            comments: 0,
+            shares: 0,
+            status: project.statut,
+            dateLancement: project.date_debut_production,
+            userInvestment: userInvestment,
+            chartData: [
+              {
+                name: 'Investissement',
+                value: userInvestment,
+                fill: '#94a3b8'
+              },
+              {
+                name: 'Bénéfice estimé',
+                value: userProfit > 0 ? userProfit : 0,
+                fill: userProfit > 0 ? '#10b981' : '#f43f5e'
+              }
+            ]
+          };
+        }).filter(Boolean);
+      
+      setInvestedProjects(processedProjects || []);
+    } catch (error) {
+      console.error('Error fetching invested projects:', error);
+      setInvestedProjects([]);
+    }
+  };
+  
+  const handleFollow = async () => {
+    if (!user || !profile) return;
     
-    setSearchParams(params);
+    try {
+      if (isFollowing) {
+        const { error } = await supabase
+          .from('abonnement')
+          .delete()
+          .eq('id_abonne', user.id)
+          .eq('id_suivi', profile.id);
+        
+        if (error) throw error;
+        
+        setIsFollowing(false);
+        setFollowersCount(prev => prev - 1);
+        toast.success(`Vous ne suivez plus ${profile.nom}`);
+      } else {
+        const { error } = await supabase
+          .from('abonnement')
+          .insert([{
+            id_abonne: user.id,
+            id_suivi: profile.id_utilisateur
+          }]);
+        
+        if (error) throw error;
+        
+        setIsFollowing(true);
+        setFollowersCount(prev => prev + 1);
+        toast.success(`Vous suivez maintenant ${profile.nom}`);
+      }
+    } catch (error) {
+      console.error('Error updating follow status:', error);
+      toast.error("Une erreur est survenue");
+    }
   };
 
+  if (!profile) {
+    return (
+      <div className="flex justify-center items-center min-h-[50vh]">
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
   return (
-    <div className="container mx-auto mt-8 p-4">
-      <div className="md:flex md:items-center md:justify-between">
-        <div className="md:flex md:items-center">
-          <Avatar className="h-24 w-24">
-            {avatarUrl && <img src={avatarUrl} alt="Avatar" className="object-cover" />}
-          </Avatar>
-          <div className="ml-4">
-            <h1 className="text-2xl font-semibold">{profile?.nom} {profile?.prenoms}</h1>
-            <p className="text-gray-500">@{profile?.username}</p>
-          </div>
-        </div>
-
-        {isCurrentUserProfile && (
-          <Button variant="outline" onClick={() => setEditing(!editing)}>
-            {editing ? "Voir le profil" : "Modifier le profil"}
-          </Button>
-        )}
-      </div>
-
-      <div className="mt-6">
-        {editing ? (
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="nom">Nom</Label>
-              <Input
-                type="text"
-                id="nom"
-                value={newNom}
-                onChange={(e) => setNewNom(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="prenoms">Prénoms</Label>
-              <Input
-                type="text"
-                id="prenoms"
-                value={newPrenoms}
-                onChange={(e) => setNewPrenoms(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="bio">Bio</Label>
-              <Textarea
-                id="bio"
-                value={newBio}
-                onChange={(e) => setNewBio(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="avatar">Changer l'avatar</Label>
-              <Input type="file" id="avatar" accept="image/*" onChange={handleAvatarChange} />
-              {uploading && <div className="mt-2">Téléchargement...</div>}
-            </div>
-            <Button onClick={handleUpdateProfile} disabled={loading}>
-              {loading ? "Enregistrement..." : "Enregistrer les modifications"}
-            </Button>
-          </div>
-        ) : (
-          <>
-            <p className="text-gray-700">{profile?.bio || "Aucune bio"}</p>
-            <ProjectFeed
-              filters={{ ...filters, userId: id }}
-              showFilters={false}
-              showFollowingTab={false}
-              title="Projets de cet agriculteur"
-              onFilterChange={handleFilterChange}
-            />
-          </>
-        )}
-      </div>
+    <div className="container max-w-4xl py-6 space-y-6">
+      <ProfileHeader 
+        profile={profile}
+        isCurrentUser={isCurrentUser}
+        isFollowing={isFollowing}
+        followersCount={followersCount}
+        followingCount={followingCount}
+        projectsCount={projectsCount}
+        onFollowToggle={handleFollow}
+      />
+      
+      <Separator />
+      
+      <ProfileTabs 
+        userId={profile.id_utilisateur}
+        investedProjects={investedProjects}
+        loading={loading}
+        onViewDetails={handleOpenDetails}
+      />
+      
+      {/* Add ProjectDetailsDialog */}
+      {selectedProjectId && (
+        <ProjectDetailsDialog
+          isOpen={detailsOpen}
+          onClose={() => setDetailsOpen(false)}
+          projectId={selectedProjectId}
+          userRole={userRole || undefined}
+        />
+      )}
     </div>
   );
 };

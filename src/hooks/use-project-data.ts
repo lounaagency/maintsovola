@@ -211,33 +211,12 @@ export const useProjectData = (filters: ProjectFilter = {}) => {
           comments: commentCount,
           shares: 0,
           images: [], // Default empty array for images
-          isLiked: false, // Default value, will be updated if user is logged in
+          isLiked: false, // Default value, will be updated if needed
           status: projet.statut as AgriculturalProject['status'],
           technicianId: projet.id_technicien,
           cultures: projet.cultures,
         };
       });
-
-      // After transforming, check if the current user has liked any of these projects
-      if (user) {
-        const projectIds = transformedProjects.map(p => parseInt(p.id));
-        
-        if (projectIds.length > 0) {
-          const { data: userLikes, error: userLikesError } = await supabase
-            .from('aimer_projet')
-            .select('id_projet')
-            .eq('id_utilisateur', user.id)
-            .in('id_projet', projectIds);
-            
-          if (!userLikesError && userLikes) {
-            const likedProjectIds = new Set(userLikes.map(like => like.id_projet.toString()));
-            
-            transformedProjects.forEach(project => {
-              project.isLiked = likedProjectIds.has(project.id);
-            });
-          }
-        }
-      }
   
       setProjects(transformedProjects);
     } catch (err) {
