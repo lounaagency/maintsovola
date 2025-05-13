@@ -10,11 +10,13 @@ import { fr } from "date-fns/locale";
 import UserAvatar from "./UserAvatar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { v4 as uuidv4 } from 'uuid';
+
 interface ChatAreaProps {
   userId: string;
   conversation: ConversationMessage | null;
   onBack: () => void;
 }
+
 const ChatArea: React.FC<ChatAreaProps> = ({
   userId,
   conversation,
@@ -218,7 +220,10 @@ const ChatArea: React.FC<ChatAreaProps> = ({
         </Button>
         <UserAvatar src={conversation.other_user?.photo_profil} alt={conversation.other_user?.nom || ""} size="sm" />
         <div className="ml-3">
-          <h3 className="font-semibold">{conversation.other_user?.nom}</h3>
+          <h3 className="font-semibold">
+            {conversation.other_user?.nom} 
+            {conversation.other_user?.prenoms && ` ${conversation.other_user.prenoms}`}
+          </h3>
         </div>
       </div>
       
@@ -322,4 +327,5 @@ const ChatArea: React.FC<ChatAreaProps> = ({
       </form>
     </>;
 };
+
 export default ChatArea;

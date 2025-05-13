@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -29,7 +30,7 @@ export const Profile = () => {
   const [projectJalons, setProjectJalons] = useState<{[key: number]: any[]}>({});
   const [userRole, setUserRole] = useState<string | null>(null);
   
-  // Add state for project details dialog
+  // Fix the type issue - ensure selectedProjectId is always a number
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   
@@ -430,7 +431,7 @@ export const Profile = () => {
       <Separator />
       
       <ProfileTabs 
-        userId={profile.id_utilisateur}
+        userId={profile?.id_utilisateur || ''}
         investedProjects={investedProjects}
         loading={loading}
         onViewDetails={handleOpenDetails}
