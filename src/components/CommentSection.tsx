@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
+import { sendNotification } from "@/types/notification";
 
 interface Comment {
   id: string;
@@ -33,12 +34,90 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const { user, profile } = useAuth();
+  const [projectOwner, setProjectOwner] = useState<string | null>(null);
 
   useEffect(() => {
     if (postId) {
       fetchComments();
+      fetchProjectOwner();
     }
   }, [postId]);
+
+  // Fonction pour récupérer le propriétaire du projet
+  const fetchProjectOwner = async () => {
+    if (!postId) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('projet')
+        .select('id_proprietaire')
+        .eq('id_projet', parseInt(postId))
+        .single();
+        
+      if (error) throw error;
+      if (data) {
+        setProjectOwner(data.id_proprietaire);
+      }
+    } catch (error) {
+      console.error("Erreur lors de la récupération du propriétaire du projet:", error);
+    }
+  };
+
+  // Fonction pour envoyer une notification
+  const sendCommentNotification = async (
+    commentText: string, 
+    isReply: boolean = false, 
+    parentCommentAuthorId: string | null = null
+  ) => {
+    if (!user || !projectOwner) return;
+    
+    try {
+      // Éviter d'envoyer des notifications à soi-même
+      const recipientsToNotify: { id_utilisateur: string }[] = [];
+      
+      // Toujours notifier le propriétaire du projet s'il n'est pas l'auteur du commentaire
+      if (projectOwner !== user.id) {
+        recipientsToNotify.push({ id_utilisateur: projectOwner });
+      }
+      
+      // Si c'est une réponse et que l'auteur du commentaire parent n'est pas l'auteur de la réponse
+      // et n'est pas le propriétaire (qui a déjà été notifié)
+      if (isReply && parentCommentAuthorId && parentCommentAuthorId !== user.id && parentCommentAuthorId !== projectOwner) {
+        recipientsToNotify.push({ id_utilisateur: parentCommentAuthorId });
+      }
+      
+      // Ne pas envoyer de notification s'il n'y a pas de destinataire
+      if (recipientsToNotify.length === 0) return;
+      
+      // Préparer le message de notification
+      const commentPreview = commentText.length > 50 
+        ? `${commentText.substring(0, 50)}...` 
+        : commentText;
+        
+      const title = isReply 
+        ? "Nouvelle réponse à un commentaire" 
+        : "Nouveau commentaire sur votre projet";
+        
+      const message = isReply 
+        ? `${profile?.nom || 'Quelqu\'un'} a répondu à un commentaire: "${commentPreview}"` 
+        : `${profile?.nom || 'Quelqu\'un'} a commenté votre projet: "${commentPreview}"`;
+      
+      // Envoyer la notification
+      await sendNotification(
+        supabase,
+        user.id,
+        recipientsToNotify,
+        title,
+        message,
+        'info',
+        'projet',
+        postId,
+        postId
+      );
+    } catch (error) {
+      console.error("Erreur lors de l'envoi de la notification:", error);
+    }
+  };
 
   const fetchComments = async () => {
     if (!postId) return;
@@ -153,6 +232,23 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
       
       setComments([...comments, newCommentObj]);
       setNewComment("");
+      
+      // Si c'est une réponse, trouver l'auteur du commentaire parent
+      let parentCommentAuthorId: string | null = null;
+      if (replyingTo) {
+        const parentComment = comments.find(c => c.id === replyingTo);
+        if (parentComment) {
+          parentCommentAuthorId = parentComment.author.id;
+        }
+      }
+      
+      // Envoyer une notification
+      await sendCommentNotification(
+        newComment, 
+        !!replyingTo, 
+        parentCommentAuthorId
+      );
+      
       setReplyingTo(null);
       
       toast.success("Commentaire ajouté avec succès");
