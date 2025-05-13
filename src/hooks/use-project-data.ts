@@ -217,8 +217,34 @@ export const useProjectData = (filters: ProjectFilter = {}) => {
           cultures: projet.cultures,
         };
       });
-  
-      setProjects(transformedProjects);
+      
+      // Check if user has liked any of these projects
+      if (user && transformedProjects.length > 0) {
+        // Get the IDs of all projects
+        const projectIds = transformedProjects.map(project => parseInt(project.id));
+        
+        // Fetch likes for these projects made by the current user
+        const { data: userLikes, error: likesError } = await supabase
+          .from('aimer_projet')
+          .select('id_projet')
+          .eq('id_utilisateur', user.id)
+          .in('id_projet', projectIds);
+          
+        if (likesError) throw likesError;
+        
+        // Create a set of liked project IDs for faster lookup
+        const likedProjectIds = new Set(userLikes?.map(like => like.id_projet.toString()) || []);
+        
+        // Update the isLiked property for each project
+        const updatedProjects = transformedProjects.map(project => ({
+          ...project,
+          isLiked: likedProjectIds.has(project.id)
+        }));
+        
+        setProjects(updatedProjects);
+      } else {
+        setProjects(transformedProjects);
+      }
     } catch (err) {
       console.error("Erreur lors de la récupération des projets:", err);
       setError(err instanceof Error ? err.message : "Erreur inconnue");

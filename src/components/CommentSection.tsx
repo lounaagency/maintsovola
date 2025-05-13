@@ -61,14 +61,18 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
         .order('date_creation', { ascending: true });
         
       if (commentsError) throw commentsError;
+
+      // Récupérer les IDs des commentaires
+      const commentIds = commentsData.map(comment => comment.id_commentaire);
       
-      // Récupération des likes pour chaque commentaire
+      // Récupération des likes pour les commentaires de ce projet uniquement
       const { data: likesData, error: likesError } = await supabase
         .from('aimer_commentaire')
         .select(`
           id_commentaire,
           id_utilisateur
-        `);
+        `)
+        .in('id_commentaire', commentIds);
         
       if (likesError) throw likesError;
       
