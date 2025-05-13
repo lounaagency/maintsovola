@@ -19,6 +19,7 @@ import TechnicienContactLink from './TechnicienContactLink';
 import ProjectPhotosGallery from './ProjectPhotosGallery';
 import FinancialDetailsDialog from './FinancialDetailsDialog';
 import { ProjetCulture } from "@/types/culture";
+import PaymentOptions from './PaymentOptions';
 interface AgriculturalProjectCardProps {
   project: AgriculturalProject;
   onLikeToggle: (isLiked: boolean) => void;
@@ -32,6 +33,7 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({
   const [showComments, setShowComments] = useState<boolean>(false);
   const [showPhotos, setShowPhotos] = useState<boolean>(false);
   const [showFinancialDetails, setShowFinancialDetails] = useState<boolean>(false);
+  const [showPaymentOptions, setShowPaymentOptions] = useState<boolean>(false);
   const [investAmount, setInvestAmount] = useState<number>(0);
   const [currentFunding, setCurrentFunding] = useState<number>(project.currentFunding);
   const [fundingGap, setFundingGap] = useState<number>(Math.max(0, project.fundingGoal - project.currentFunding));
@@ -49,6 +51,7 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({
   const [projectCultures, setProjectCultures] = useState<ProjetCulture[]>([]);
   const [galleryTab, setGalleryTab] = useState<'photos' | 'map'>('photos');
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState<number>(0);
+  const [currentInvestmentId, setCurrentInvestmentId] = useState<string | null>(null);
   const {
     user,
     profile
@@ -145,6 +148,7 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({
     await fetchCurrentFundingData();
     setInvestAmount(fundingGap);
     setShowInvestModal(true);
+    setShowPaymentOptions(false);
   };
   const handleInvestAmountChange = (value: number[]) => {
     setInvestAmount(value[0]);
@@ -174,27 +178,47 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({
         id_investisseur: user.id,
         id_projet: parseInt(project.id),
         montant: investAmount,
-        date_decision_investir: new Date().toISOString().split('T')[0]
+        date_decision_investir: new Date().toISOString().split('T')[0],
+        statut_paiement: 'en attente' // Added status
       }).select('id_investissement');
+      
       if (investmentError) throw investmentError;
-      const {
-        error: notificationError
-      } = await supabase.rpc('notify_investment_stakeholders', {
-        project_id: parseInt(project.id),
-        investor_id: user.id,
-        investment_amount: investAmount
-      });
-      if (notificationError) {
-        console.error("Erreur lors de l'envoi des notifications:", notificationError);
-      }
-      toast.success("Votre investissement a été enregistré avec succès");
+
+      // Instead of directly notifying, now show payment options
       setShowInvestModal(false);
-      await fetchCurrentFundingData();
+      setShowPaymentOptions(true);
+      
+      // Store the investment ID for the payment process
+      if (investmentData && investmentData.length > 0) {
+        setCurrentInvestmentId(investmentData[0].id_investissement);
+      }
     } catch (error) {
       console.error("Erreur lors de l'investissement:", error);
       toast.error("Une erreur est survenue lors de l'enregistrement de votre investissement");
     }
   };
+
+  const handlePaymentComplete = async (success: boolean, transactionId?: string) => {
+    setShowPaymentOptions(false);
+    
+    if (success) {
+      // Additional success handling if needed
+      await fetchCurrentFundingData();
+
+      // Show success message with transaction ID if available
+      if (transactionId) {
+        toast.success(`Paiement effectué avec succès`, {
+          description: `Référence de transaction: ${transactionId}`
+        });
+      }
+    } else {
+      // Payment failed but investment is still recorded
+      toast.info("Votre investissement a été enregistré mais le paiement n'a pas été effectué", {
+        description: "Vous pouvez effectuer le paiement ultérieurement dans votre profil"
+      });
+    }
+  };
+
   const handleLike = () => {
     setLiked(!liked);
     onLikeToggle(liked);
@@ -405,6 +429,20 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({
               Confirmer l'investissement
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      <Dialog open={showPaymentOptions} onOpenChange={setShowPaymentOptions}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Paiement de l'investissement</DialogTitle>
+          </DialogHeader>
+          
+          <PaymentOptions 
+            investmentId={currentInvestmentId} 
+            amount={investAmount}
+            onPaymentComplete={handlePaymentComplete}
+          />
         </DialogContent>
       </Dialog>
       

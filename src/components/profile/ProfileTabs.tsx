@@ -1,56 +1,70 @@
-
-import React from 'react';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { PenSquare, Landmark } from 'lucide-react';
-import ProjectFeed from '@/components/ProjectFeed';
-import InvestmentsList from './InvestmentsList';
+import React, { useState, useEffect } from 'react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { useAuth } from '@/contexts/AuthContext';
+import InvestmentTable from './InvestmentTable';
+import ProjectList from './ProjectList';
+import PaymentHistory from './PaymentHistory';
 
 interface ProfileTabsProps {
   userId: string;
-  investedProjects: any[];
-  loading: boolean;
-  onViewDetails: (projectId: number) => void;
 }
 
-const ProfileTabs: React.FC<ProfileTabsProps> = ({
-  userId,
-  investedProjects,
-  loading,
-  onViewDetails
+const ProfileTabs: React.FC<ProfileTabsProps> = ({ 
+  userId
 }) => {
+  const [investments, setInvestments] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const { user } = useAuth();
+
+  useEffect(() => {
+    // Fetch investments and projects data here
+    // For now, let's use dummy data
+    setInvestments([
+      { id: 1, project: 'Projet A', amount: 1000, date: '2023-01-01' },
+      { id: 2, project: 'Projet B', amount: 2000, date: '2023-02-01' },
+    ]);
+
+    setProjects([
+      { id: 1, name: 'Projet X', status: 'En cours' },
+      { id: 2, name: 'Projet Y', status: 'Terminé' },
+    ]);
+  }, []);
+  
   return (
-    <Tabs defaultValue="projects">
-      <TabsList className="grid w-full grid-cols-2">
-        <TabsTrigger value="projects" className="flex items-center">
-          <PenSquare size={16} className="mr-2" />
-          Projets
-        </TabsTrigger>
-        <TabsTrigger value="investments" className="flex items-center">
-          <Landmark size={16} className="mr-2" />
-          Investissements
-        </TabsTrigger>
+    <Tabs defaultValue="investments" className="mt-6">
+      <TabsList className="grid grid-cols-4 mb-4">
+        <TabsTrigger value="investments">Investissements</TabsTrigger>
+        <TabsTrigger value="projects">Projets</TabsTrigger>
+        <TabsTrigger value="payments">Paiements</TabsTrigger>
+        <TabsTrigger value="activity">Activité</TabsTrigger>
       </TabsList>
       
-      <TabsContent value="projects" className="mt-6">
-        <div className="max-w-md mx-auto">
-          <ProjectFeed 
-            filters={{ 
-              userId: userId 
-            }}
-            showFilters={false}
-            showFollowingTab={false}
-            title=""
-            className="mt-0"
-          />
+      <TabsContent value="investments" className="space-y-4">
+        <div className="rounded-lg border bg-card p-4">
+          <h3 className="text-lg font-semibold mb-4">Mes investissements</h3>
+          <InvestmentTable investments={investments} />
         </div>
       </TabsContent>
       
-      <TabsContent value="investments" className="mt-6">
-        <InvestmentsList 
-          investedProjects={investedProjects}
-          loading={loading}
-          onViewDetails={onViewDetails}
-        />
+      <TabsContent value="projects" className="space-y-4">
+        <div className="rounded-lg border bg-card p-4">
+          <h3 className="text-lg font-semibold mb-4">Mes projets</h3>
+          <ProjectList projects={projects} />
+        </div>
+      </TabsContent>
+      
+      <TabsContent value="payments" className="space-y-4">
+        <div className="rounded-lg border bg-card p-4">
+          <h3 className="text-lg font-semibold mb-4">Historique des paiements</h3>
+          <PaymentHistory userId={userId} />
+        </div>
+      </TabsContent>
+      
+      <TabsContent value="activity" className="space-y-4">
+        <div className="rounded-lg border bg-card p-4">
+          <h3 className="text-lg font-semibold mb-4">Activité récente</h3>
+          <p className="text-muted-foreground">Aucune activité récente à afficher.</p>
+        </div>
       </TabsContent>
     </Tabs>
   );

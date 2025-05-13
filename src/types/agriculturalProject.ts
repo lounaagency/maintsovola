@@ -1,4 +1,5 @@
 
+
 import { ReactNode } from 'react';
 
 export interface Location {
@@ -37,4 +38,6 @@ export interface AgriculturalProject {
   cultures?: string;
   gapToFinance?: number;
   isFullyFunded?: boolean;
+  paymentStatus?: 'en_attente' | 'payé' | 'échoué';
 }
+

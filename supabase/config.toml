@@ -1,1 +1,5 @@
+
 project_id = "gtqpgewedhbprmebghhr"
+
+[functions.paiement-mvola]
+verify_jwt = true
