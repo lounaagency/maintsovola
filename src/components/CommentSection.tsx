@@ -50,13 +50,13 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
     try {
       const { data, error } = await supabase
         .from('projet')
-        .select('id_proprietaire')
+        .select('id_tantsaha')
         .eq('id_projet', parseInt(postId))
         .single();
         
       if (error) throw error;
       if (data) {
-        setProjectOwner(data.id_proprietaire);
+        setProjectOwner(data.id_tantsaha);
       }
     } catch (error) {
       console.error("Erreur lors de la récupération du propriétaire du projet:", error);

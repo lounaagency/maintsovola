@@ -47,10 +47,33 @@ export const Profile = () => {
     totalProjects: 0,
     totalArea: 0,
     totalFunding: 0,
+    totalProfit: 0,
+    ownerProfit: 0,
     projectsByStatus: {
-      enFinancement: 0,
-      enCours: 0,
-      termine: 0
+      enFinancement: {
+        count: 0,
+        area: 0,
+        funding: 0,
+        profit: 0,
+        ownerProfit: 0,
+        cultures: []
+      },
+      enCours: {
+        count: 0,
+        area: 0,
+        funding: 0,
+        profit: 0,
+        ownerProfit: 0,
+        cultures: []
+      },
+      termine: {
+        count: 0,
+        area: 0,
+        funding: 0,
+        profit: 0,
+        ownerProfit: 0,
+        cultures: []
+      }
     },
     projectsByCulture: []
   });
