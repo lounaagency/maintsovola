@@ -51,7 +51,7 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({
   const [projectCultures, setProjectCultures] = useState<ProjetCulture[]>([]);
   const [galleryTab, setGalleryTab] = useState<'photos' | 'map'>('photos');
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState<number>(0);
-  const [currentInvestmentId, setCurrentInvestmentId] = useState<string | null>(null);
+  const [currentInvestmentId, setCurrentInvestmentId] = useState<number | null>(null);
   const {
     user,
     profile

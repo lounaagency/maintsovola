@@ -1,16 +1,24 @@
+
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useAuth } from '@/contexts/AuthContext';
 import InvestmentTable from './InvestmentTable';
 import ProjectList from './ProjectList';
 import PaymentHistory from './PaymentHistory';
+import InvestmentsList from './InvestmentsList';
 
 interface ProfileTabsProps {
   userId: string;
+  investedProjects?: any[];
+  loading?: boolean;
+  onViewDetails?: (projectId: number) => void;
 }
 
 const ProfileTabs: React.FC<ProfileTabsProps> = ({ 
-  userId
+  userId,
+  investedProjects = [],
+  loading = false,
+  onViewDetails = () => {}
 }) => {
   const [investments, setInvestments] = useState([]);
   const [projects, setProjects] = useState([]);
@@ -42,7 +50,15 @@ const ProfileTabs: React.FC<ProfileTabsProps> = ({
       <TabsContent value="investments" className="space-y-4">
         <div className="rounded-lg border bg-card p-4">
           <h3 className="text-lg font-semibold mb-4">Mes investissements</h3>
-          <InvestmentTable investments={investments} />
+          {investedProjects && investedProjects.length > 0 ? (
+            <InvestmentsList 
+              investedProjects={investedProjects}
+              loading={loading}
+              onViewDetails={onViewDetails}
+            />
+          ) : (
+            <InvestmentTable investments={investments} />
+          )}
         </div>
       </TabsContent>
       

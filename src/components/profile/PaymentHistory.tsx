@@ -50,28 +50,45 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ userId }) => {
 
         const investmentIds = userInvestments.map(inv => inv.id_investissement);
 
+        // Using a simpler query to avoid deep type instantiation
         const { data: paymentHistory, error: paymentsError } = await supabase
           .from('historique_paiement')
-          .select(`
-            *,
-            projet:investissement(
-              id_projet,
-              projet(
-                id_projet,
-                titre
-              )
-            )
-          `)
+          .select('*, id_investissement')
           .in('id_investissement', investmentIds)
           .order('date_paiement', { ascending: false });
 
         if (paymentsError) throw paymentsError;
 
+        // Fetch projects separately to avoid deep nesting
+        const paymentProjects: Record<string, any> = {};
+        
+        if (paymentHistory && paymentHistory.length > 0) {
+          // Get all investments with project data
+          const relevantInvestments = paymentHistory
+            .filter(p => p.id_investissement)
+            .map(p => p.id_investissement);
+            
+          if (relevantInvestments.length > 0) {
+            const { data: investmentProjects } = await supabase
+              .from('investissement')
+              .select('id_investissement, id_projet, projet:id_projet(id_projet, titre)')
+              .in('id_investissement', relevantInvestments);
+              
+            if (investmentProjects) {
+              investmentProjects.forEach((item: any) => {
+                if (item.projet) {
+                  paymentProjects[item.id_investissement] = item.projet;
+                }
+              });
+            }
+          }
+        }
+
         // Format the payment data
-        const formattedPayments = paymentHistory.map((payment: any) => ({
+        const formattedPayments = paymentHistory?.map((payment: any) => ({
           ...payment,
-          projet: payment.projet?.projet || null
-        }));
+          projet: payment.id_investissement ? paymentProjects[payment.id_investissement] : null
+        })) || [];
 
         setPayments(formattedPayments);
       } catch (error) {
