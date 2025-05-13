@@ -129,7 +129,7 @@ export const Profile = () => {
         telephone: isSelectQueryError(data) ? '' : telephones[0]?.numero,
         adresse: isSelectQueryError(data) ? '' : data.adresse || undefined,
         bio: isSelectQueryError(data) ? '' : data.bio || undefined,
-        id_role: isSelectQueryError(data) ? '' : data.id_role,
+        id_role: isSelectQueryError(data) ? null : data.id_role,
         nom_role: isSelectQueryError(data) ? '' : data.role?.nom_role,
         telephones: mappedTelephones
       });
