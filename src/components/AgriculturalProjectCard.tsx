@@ -20,6 +20,8 @@ import ProjectPhotosGallery from './ProjectPhotosGallery';
 import FinancialDetailsDialog from './FinancialDetailsDialog';
 import { ProjetCulture } from "@/types/culture";
 import PaymentOptions from './PaymentOptions';
+import TerrainCardDialog from './terrain/TerrainCardDialog';
+
 interface AgriculturalProjectCardProps {
   project: AgriculturalProject;
   onLikeToggle: (isLiked: boolean) => void;
@@ -52,6 +54,9 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({
   const [galleryTab, setGalleryTab] = useState<'photos' | 'map'>('photos');
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState<number>(0);
   const [currentInvestmentId, setCurrentInvestmentId] = useState<number | null>(null);
+  const [terrainName, setTerrainName] = useState<string>("");
+  const [terrainId, setTerrainId] = useState<number | null>(null);
+  const [terrainDialogOpen, setTerrainDialogOpen] = useState<boolean>(false);
   const {
     user,
     profile
@@ -71,6 +76,7 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({
           id_terrain, 
           titre, 
           description,
+          terrain:id_terrain(id_terrain, nom_terrain),
           projet_culture (
             id_projet_culture,
             id_culture,
@@ -86,18 +92,28 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({
           )
         `).eq('id_projet', parseInt(project.id)).single();
       if (projectError) throw projectError;
+      
       setProjectDetails({
         title: projectData.titre,
         description: projectData.description
       });
+      
+      // Set terrain information if available
+      if (projectData.terrain) {
+        setTerrainId(projectData.terrain.id_terrain);
+        setTerrainName(projectData.terrain.nom_terrain || `Terrain #${projectData.terrain.id_terrain}`);
+      }
+      
       if (projectData.projet_culture) {
         setProjectCultures(projectData.projet_culture);
       }
+      
       if (projectData.photos) {
         const photos = Array.isArray(projectData.photos) ? projectData.photos : typeof projectData.photos === 'string' ? projectData.photos.split(',') : [];
         setProjectPhotos(photos);
         setDisplayedPhotos(photos);
       }
+      
       if (projectData.id_terrain) {
         const {
           data: terrainData,
@@ -244,6 +260,11 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({
       }
     });
   };
+  const handleOpenTerrainDialog = () => {
+    if (terrainId) {
+      setTerrainDialogOpen(true);
+    }
+  };
   const hasPhotos = displayedPhotos.length > 0;
   const hasMap = terrainCoordinates.length >= 3;
   const displayTitle = projectDetails.title || `Projet de culture de ${project.cultures}`;
@@ -309,8 +330,13 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({
               <span className="font-medium">{project.cultivationType}</span>
             </div>
             <div className="text-xs">
-              <span className="text-gray-500 block">Surface</span>
-              <span className="font-medium">{project.cultivationArea} ha</span>
+              <span className="text-gray-500 block">Terrain</span>
+              <span 
+                className="font-medium underline cursor-pointer hover:text-green-700"
+                onClick={handleOpenTerrainDialog}
+              >
+                {terrainName} ({project.cultivationArea} ha)
+              </span>
             </div>
             <div className="text-xs">
               <span className="text-gray-500 block">Localisation</span>
@@ -449,6 +475,14 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({
       <ProjectPhotosGallery isOpen={showPhotos} onClose={() => setShowPhotos(false)} photos={displayedPhotos} title={projectPhotos.length > 0 ? 'Photos du projet' : 'Photos du terrain'} terrainCoordinates={terrainCoordinates} initialTab={galleryTab} />
       
       <FinancialDetailsDialog isOpen={showFinancialDetails} onClose={() => setShowFinancialDetails(false)} projectCultures={projectCultures} />
+      
+      {terrainId && (
+        <TerrainCardDialog
+          isOpen={terrainDialogOpen}
+          onClose={() => setTerrainDialogOpen(false)}
+          terrainId={terrainId}
+        />
+      )}
     </>;
 };
 export default AgriculturalProjectCard;

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 import TerrainCard from '@/components/terrain/TerrainCard';
 import { TerrainData } from "@/types/terrain";
 
@@ -35,26 +35,67 @@ const TerrainCardDialog: React.FC<TerrainCardDialogProps> = ({
           *,
           region:id_region(nom_region),
           district:id_district(nom_district),
-          commune:id_commune(nom_commune),
-          tantsaha:id_tantsaha(nom, prenoms),
-          superviseur:id_superviseur(nom, prenoms),
-          technicien:id_technicien(nom, prenoms)
+          commune:id_commune(nom_commune)
         `)
         .eq('id_terrain', terrainId)
         .single();
       
       if (error) throw error;
       
-      // Format any field names needed
-      const formattedData = {
+      // After getting terrain, get user info separately to avoid relationship issues
+      let formattedData = {
         ...data,
         region_name: data.region?.nom_region,
         district_name: data.district?.nom_district,
         commune_name: data.commune?.nom_commune,
-        tantsahaNom: data.tantsaha ? `${data.tantsaha.nom} ${data.tantsaha.prenoms || ''}`.trim() : undefined,
-        techniqueNom: data.technicien ? `${data.technicien.nom} ${data.technicien.prenoms || ''}`.trim() : 'Non assigné',
-        superviseurNom: data.superviseur ? `${data.superviseur.nom} ${data.superviseur.prenoms || ''}`.trim() : 'Non assigné',
       };
+      
+      // Fetch tantsaha info if available
+      if (data.id_tantsaha) {
+        const { data: tantsahaData, error: tantsahaError } = await supabase
+          .from('utilisateur')
+          .select('nom, prenoms')
+          .eq('id_utilisateur', data.id_tantsaha)
+          .single();
+          
+        if (!tantsahaError && tantsahaData) {
+          formattedData.tantsahaNom = `${tantsahaData.nom} ${tantsahaData.prenoms || ''}`.trim();
+        }
+      }
+      
+      // Fetch technicien info if available
+      if (data.id_technicien) {
+        const { data: technicienData, error: technicienError } = await supabase
+          .from('utilisateur')
+          .select('nom, prenoms')
+          .eq('id_utilisateur', data.id_technicien)
+          .single();
+          
+        if (!technicienError && technicienData) {
+          formattedData.techniqueNom = `${technicienData.nom} ${technicienData.prenoms || ''}`.trim();
+        } else {
+          formattedData.techniqueNom = 'Non assigné';
+        }
+      } else {
+        formattedData.techniqueNom = 'Non assigné';
+      }
+      
+      // Fetch superviseur info if available
+      if (data.id_superviseur) {
+        const { data: superviseurData, error: superviseurError } = await supabase
+          .from('utilisateur')
+          .select('nom, prenoms')
+          .eq('id_utilisateur', data.id_superviseur)
+          .single();
+          
+        if (!superviseurError && superviseurData) {
+          formattedData.superviseurNom = `${superviseurData.nom} ${superviseurData.prenoms || ''}`.trim();
+        } else {
+          formattedData.superviseurNom = 'Non assigné';
+        }
+      } else {
+        formattedData.superviseurNom = 'Non assigné';
+      }
       
       setTerrain(formattedData as TerrainData);
     } catch (error) {
