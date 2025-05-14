@@ -3,16 +3,13 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.33.1";
 import { Buffer } from "https://deno.land/std@0.177.0/node/buffer.ts";
 
-// MVola API client implementation
+// MVola API client implementation (simplified version)
 class MVola {
   private consumerKey: string;
   private consumerSecret: string;
   private apiUser: string;
   private apiKey: string;
   private mode: 'sandbox' | 'production';
-  private language: string;
-  private token: string | null = null;
-  private tokenExpiry: Date | null = null;
   private baseUrl: string;
 
   constructor(options: {
@@ -21,14 +18,12 @@ class MVola {
     apiUser: string;
     apiKey: string;
     mode?: 'sandbox' | 'production';
-    language?: string;
   }) {
     this.consumerKey = options.consumerKey;
     this.consumerSecret = options.consumerSecret;
     this.apiUser = options.apiUser;
     this.apiKey = options.apiKey;
     this.mode = options.mode || 'sandbox';
-    this.language = options.language || 'fr';
     this.baseUrl = this.mode === 'sandbox' 
       ? 'https://api.sandbox.mvola.mg'
       : 'https://api.mvola.mg';
@@ -43,11 +38,6 @@ class MVola {
 
   // Get access token
   private async getAccessToken() {
-    // Check if we have a valid token
-    if (this.token && this.tokenExpiry && new Date() < this.tokenExpiry) {
-      return this.token;
-    }
-    
     const tokenEndpoint = 'https://developer.mvola.mg/oauth2/token';
     
     try {
@@ -65,13 +55,7 @@ class MVola {
       }
       
       const data = await response.json();
-      this.token = data.access_token;
-      
-      // Set token expiry (typically 3600 seconds)
-      const expiresIn = data.expires_in || 3600;
-      this.tokenExpiry = new Date(Date.now() + expiresIn * 1000);
-      
-      return this.token;
+      return data.access_token;
     } catch (error) {
       console.error('Error getting access token:', error);
       throw error;
@@ -89,47 +73,7 @@ class MVola {
       'Ocp-Apim-Subscription-Key': this.apiKey,
       'X-Correlation-ID': `${Date.now()}`,
       'Version': '1.0',
-      'X-Parent-Transaction-identifier': '',
     };
-  }
-
-  // Request to Pay API
-  async requestToPay(payload: {
-    amount: string;
-    currency: string;
-    descriptionText: string;
-    requestDate: string;
-    debitParty: Array<{ key: string, value: string }>;
-    creditParty: Array<{ key: string, value: string }>;
-    metadata?: Array<{ key: string, value: string }>;
-    requestingOrganisationTransactionReference: string;
-    originalTransactionReference?: string;
-  }) {
-    try {
-      const headers = await this.getApiHeaders();
-      const url = `${this.baseUrl}/mvola/mm/transactions/type/merchantpay/1.0.0/`;
-      
-      const response = await fetch(url, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(payload),
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`MVola API error: ${response.status} ${response.statusText} - ${errorText}`);
-      }
-      
-      const responseData = await response.json();
-      return {
-        ...responseData,
-        requestId: response.headers.get('X-Request-ID'),
-        serverCorrelationId: response.headers.get('X-Correlation-ID'),
-      };
-    } catch (error) {
-      console.error('Error in requestToPay:', error);
-      throw error;
-    }
   }
 
   // Get transaction status
@@ -173,7 +117,6 @@ const mvolaConsumerKey = Deno.env.get("MVOLA_CONSUMER_KEY") || "ENc6AOYG1iVILQ0H
 const mvolaConsumerSecret = Deno.env.get("MVOLA_CONSUMER_SECRET") || "If1mgy3kGnNdcRfz8QRfxZaDZd4a";
 const mvolaApiUser = Deno.env.get("MVOLA_API_USER") || "maintsovola";
 const mvolaApiKey = Deno.env.get("MVOLA_API_KEY") || "eyJ4NXQjUzI1NiI6Ik1ESmxOakl4TjJFMU9HWmxPR1ZtTUdReE9URmxNekJtTm1GalpqUTBZMll3T0dZME4ySTBZekU0WXpaak5qUmhZbVJtTW1RME9EZGlORGhqTUdFd01BPT0iLCJraWQiOiJnYXRld2F5X2NlcnRpZmljYXRlX2FsaWFzIiwidHlwIjoiSldUIiwiYWxnIjoiUlMyNTYifQ==.eyJzdWIiOiJsYXJyeXNAbWFpbnRzb3ZvbGEuY29tQGNhcmJvbi5zdXBlciIsImFwcGxpY2F0aW9uIjp7Im93bmVyIjoibGFycnlzQG1haW50c292b2xhLmNvbSIsInRpZXJRdW90YVR5cGUiOm51bGwsInRpZXIiOiI1MFBlck1pbiIsIm5hbWUiOiJtYWludHNvdm9sYSIsImlkIjo3NjQsInV1aWQiOiI1MGQzMDI0Zi0wMzYxLTQ3ZWQtOTIzYy0wYmJlODNjMDBkMzQifSwiaXNzIjoiaHR0cHM6XC9cL2RldmVsb3Blci5tdm9sYS5tZ1wvb2F1dGgyXC90b2tlbiIsInRpZXJJbmZvIjp7IkJyb256ZSI6eyJ0aWVyUXVvdGFUeXBlIjoicmVxdWVzdENvdW50IiwiZ3JhcGhRTE1heENvbXBsZXhpdHkiOjAsImdyYXBoUUxNYXhEZXB0aCI6MCwic3RvcE9uUXVvdGFSZWFjaCI6dHJ1ZSwic3Bpa2VBcnJlc3RMaW1pdCI6MCwic3Bpa2VBcnJlc3RVbml0IjpudWxsfX0sImtleXR5cGUiOiJTQU5EQk9YIiwicGVybWl0dGVkUmVmZXJlciI6IiIsInN1YnNjcmliZWRBUElzIjpbeyJzdWJzY3JpYmVyVGVuYW50RG9tYWluIjoiY2FyYm9uLnN1cGVyIiwibmFtZSI6Ik1WT0xBLU1lcmNoYW50LVBheS1BUEkiLCJjb250ZXh0IjoiXC9tdm9sYVwvbW1cL3RyYW5zYWN0aW9uc1wvdHlwZVwvbWVyY2hhbnRwYXlcLzEuMC4wIiwicHVibGlzaGVyIjoiYWRtaW4iLCJ2ZXJzaW9uIjoiMS4wLjAiLCJzdWJzY3JpcHRpb25UaWVyIjoiQnJvbnplIn1dLCJ0b2tlbl90eXBlIjoiYXBpS2V5IiwicGVybWl0dGVkSVAiOiIiLCJpYXQiOjE3NDcyMDI4MTcsImp0aSI6ImZiNGFkYzIxLTY3NTQtNGU4Ni05NGU0LWJlZDhiMWFhYjE5MyJ9.QTR3v2IhKROas1dMYvkZ-h4qj4f_mGbFhq_On4IFaP_UjYa6rrSp0DuNuTw0lDR8vESMgPgv7mvk4Exw7VInYDBr8POdZI-xhW2AcWU5S-4ZH9IiJSLEpfZLDySB7WJ91x5xDDBW4wM9KWsEcKsHCzaqvZWCZv0gWHXGQcpteMlwNtsnVzU2CuaPTNrcVy--7U563YPtuFdno5mkFDUGg-9UBsz7ZSYPgMiTy0H2x_Dgl31_j9vzxSjbonSLRW6djPAUAlKYqXr7TZrvPWTLIWm27UKoa4skRmDqale1FYXZNd4XhY6FGhVRO_-Y0OfV0QgHpurzNjltxX1mMXpXnA==";
-const mvolaMerchantNumber = Deno.env.get("MVOLA_MERCHANT") || "0343500003";
 const mvolaEnv = Deno.env.get("MVOLA_ENV") || "sandbox";
 
 // Initialize MVola client
@@ -195,7 +138,7 @@ serve(async (req) => {
   }
 
   try {
-    // Only allow POST requests for payment processing
+    // Only allow POST requests
     if (req.method !== "POST") {
       return new Response(
         JSON.stringify({
@@ -210,14 +153,14 @@ serve(async (req) => {
     }
 
     // Parse request JSON
-    const { phone, amount, reason, investissementId } = await req.json();
+    const { transactionId } = await req.json();
 
     // Validate required fields
-    if (!phone || !amount || !reason) {
+    if (!transactionId) {
       return new Response(
         JSON.stringify({
           success: false,
-          message: "Les champs 'phone', 'amount' et 'reason' sont obligatoires",
+          message: "Le champ 'transactionId' est obligatoire",
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -226,79 +169,74 @@ serve(async (req) => {
       );
     }
 
-    // Format phone number if needed
-    const formattedPhone = phone.startsWith("0") ? `+261${phone.substring(1)}` : phone;
-    const formattedMerchant = mvolaMerchantNumber.startsWith("0") ? `+261${mvolaMerchantNumber.substring(1)}` : mvolaMerchantNumber;
-
-    // Generate transaction reference
-    const transactionRef = `MVOLA-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
-    
-    console.log(`Initiating MVola payment: ${amount} Ar from ${formattedPhone} to ${formattedMerchant} for ${reason}`);
-    console.log(`Transaction reference: ${transactionRef}`);
+    console.log(`Checking status for transaction: ${transactionId}`);
 
     try {
-      // Real MVola API call
-      const mvolaResponse = await mvolaClient.requestToPay({
-        amount: amount.toString(),
-        currency: "Ar",
-        descriptionText: reason,
-        requestDate: new Date().toISOString(),
-        debitParty: [{
-          key: "msisdn",
-          value: formattedPhone
-        }],
-        creditParty: [{
-          key: "msisdn",
-          value: formattedMerchant
-        }],
-        metadata: [{
-          key: "investissementId",
-          value: investissementId ? investissementId.toString() : "direct"
-        }],
-        requestingOrganisationTransactionReference: transactionRef,
-        originalTransactionReference: transactionRef
-      });
-
-      console.log("MVola API response:", mvolaResponse);
+      // Get transaction status from MVola API
+      const statusResponse = await mvolaClient.getTransactionStatus(transactionId);
+      console.log("Transaction status response:", statusResponse);
       
-      // Save transaction to database with pending status
-      const paymentData = {
-        reference_transaction: mvolaResponse.serverCorrelationId || transactionRef,
-        status: "en_attente",
-        methode_paiement: "MVola",
-        montant: amount,
-        id_investissement: investissementId || null,
-        date_paiement: new Date().toISOString(),
-        details_paiement: {
-          phoneNumber: formattedPhone,
-          reason,
-          mvolaResponse
-        }
-      };
-
-      const { data: savedPayment, error: saveError } = await supabase
-        .from("historique_paiement")
-        .insert(paymentData)
-        .select()
-        .single();
-
-      if (saveError) {
-        console.error("Error saving payment to database:", saveError);
-        // We still return success since the payment was processed
-      } else {
-        console.log("Payment saved to database:", savedPayment);
+      // Determine status based on MVola response
+      let paymentStatus = "en_attente";
+      
+      if (statusResponse.status === "completed" || statusResponse.status === "successful") {
+        paymentStatus = "effectué";
+      } else if (statusResponse.status === "failed" || statusResponse.status === "rejected") {
+        paymentStatus = "échoué";
       }
 
-      // We don't update the investment status yet as the payment is pending
-      // Status will be updated through a status check function
+      // Update payment status in database
+      const { data: payment, error: fetchError } = await supabase
+        .from("historique_paiement")
+        .select("*")
+        .eq("reference_transaction", transactionId)
+        .single();
+      
+      if (fetchError) {
+        console.error("Error fetching payment:", fetchError);
+        throw new Error("Impossible de trouver le paiement associé");
+      }
+
+      // Update payment status
+      const { error: updateError } = await supabase
+        .from("historique_paiement")
+        .update({
+          status: paymentStatus,
+          details_paiement: {
+            ...payment.details_paiement,
+            statusResponse
+          }
+        })
+        .eq("reference_transaction", transactionId);
+
+      if (updateError) {
+        console.error("Error updating payment status:", updateError);
+      } else {
+        console.log(`Payment status updated to: ${paymentStatus}`);
+      }
+
+      // If payment is successful, update investment status
+      if (paymentStatus === "effectué" && payment.id_investissement) {
+        const { error: investmentError } = await supabase
+          .from("investissement")
+          .update({
+            statut_paiement: "payé",
+            date_paiement: new Date().toISOString()
+          })
+          .eq("id_investissement", payment.id_investissement);
+
+        if (investmentError) {
+          console.error("Error updating investment status:", investmentError);
+        } else {
+          console.log(`Investment ${payment.id_investissement} status updated to paid`);
+        }
+      }
 
       return new Response(
         JSON.stringify({
           success: true,
-          transactionId: mvolaResponse.serverCorrelationId || transactionRef,
-          message: "Demande de paiement MVola initiée. Veuillez confirmer la transaction sur votre téléphone.",
-          status: "pending",
-          details: mvolaResponse
+          status: paymentStatus,
+          details: statusResponse
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -311,7 +249,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           success: false,
-          message: `Erreur MVola: ${mvolaError.message || "Erreur inconnue"}`,
+          message: `Erreur lors de la vérification du statut: ${mvolaError.message || "Erreur inconnue"}`,
           details: mvolaError
         }),
         {
@@ -321,12 +259,12 @@ serve(async (req) => {
       );
     }
   } catch (error) {
-    console.error("Error processing MVola payment:", error);
+    console.error("Error checking transaction status:", error);
     
     return new Response(
       JSON.stringify({
         success: false,
-        message: `Erreur lors du traitement du paiement MVola: ${error.message || error}`,
+        message: `Erreur lors de la vérification du statut: ${error.message || error}`,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

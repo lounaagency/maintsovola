@@ -3,3 +3,6 @@ project_id = "gtqpgewedhbprmebghhr"
 
 [functions.paiement-mvola]
 verify_jwt = true
+
+[functions.mvola-status]
+verify_jwt = true
