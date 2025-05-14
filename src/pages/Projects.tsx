@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Navigate, useSearchParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -23,7 +24,9 @@ const Projects = () => {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-
+  if (!user) {
+    return <Navigate to={`/auth${location.search}`} replace />;
+  }
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
   };
