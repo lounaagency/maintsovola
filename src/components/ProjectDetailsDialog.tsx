@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -337,6 +336,24 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
     setSelectedJalon(null);
   };
 
+  const getJalonStatus = (jalon: any): 'completed' | 'overdue' | 'normal' => {
+    // If it has a date_reelle, it's completed
+    if (jalon.date_reelle) {
+      return 'completed';
+    }
+    
+    // If it has no date_reelle but the date_previsionnelle is in the past, it's overdue
+    const today = new Date();
+    const datePrevisionnelle = new Date(jalon.date_previsionnelle);
+    
+    if (datePrevisionnelle < today && !jalon.date_reelle) {
+      return 'overdue';
+    }
+    
+    // Otherwise, it's a normal jalon
+    return 'normal';
+  };
+
   if (loading || !project) {
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
@@ -584,40 +601,50 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
                         </thead>
                         <tbody>
                           {jalons.length > 0 ? (
-                            jalons.map((jalon) => (
-                              <tr key={`${jalon.id_projet}-${jalon.id_jalon_agricole}`} className="border-t">
-                                <td className="p-2 text-sm">
-                                  {jalon.culture?.id_culture.nom_culture || ''}
-                                </td>
-                                <td className="p-2 text-sm">
-                                  {jalon.jalon_agricole?.nom_jalon}
-                                </td>
-                                <td className="p-2 text-sm">
-                                  {formatDate(jalon.date_previsionnelle)}
-                                </td>
-                                <td className="p-2 text-sm">
-                                  {jalon.date_reelle ? (
-                                    <Button 
-                                      size="sm" 
-                                      variant="outline"
-                                      onClick={() => handleShowJalonReport(jalon, true)}
-                                    >
-                                      Voir le rapport
-                                    </Button>
-                                  ) : (
-                                    userRole === 'technicien' && (
+                            jalons.map((jalon) => {
+                              const status = getJalonStatus(jalon);
+                              const rowClassName = 
+                                status === 'completed' ? 'bg-[#F2FCE2]' : 
+                                status === 'overdue' ? 'bg-[#ffcccc]' : '';
+                              
+                              return (
+                                <tr 
+                                  key={`${jalon.id_projet}-${jalon.id_jalon_agricole}`} 
+                                  className={`border-t ${rowClassName}`}
+                                >
+                                  <td className="p-2 text-sm">
+                                    {jalon.culture?.id_culture.nom_culture || ''}
+                                  </td>
+                                  <td className="p-2 text-sm">
+                                    {jalon.jalon_agricole?.nom_jalon}
+                                  </td>
+                                  <td className="p-2 text-sm">
+                                    {formatDate(jalon.date_previsionnelle)}
+                                  </td>
+                                  <td className="p-2 text-sm">
+                                    {jalon.date_reelle ? (
                                       <Button 
                                         size="sm" 
                                         variant="outline"
-                                        onClick={() => handleShowJalonReport(jalon)}
+                                        onClick={() => handleShowJalonReport(jalon, true)}
                                       >
-                                        Marquer réalisé
+                                        Voir le rapport
                                       </Button>
-                                    )
-                                  )}
-                                </td>
-                              </tr>
-                            ))
+                                    ) : (
+                                      userRole === 'technicien' && (
+                                        <Button 
+                                          size="sm" 
+                                          variant="outline"
+                                          onClick={() => handleShowJalonReport(jalon)}
+                                        >
+                                          Marquer réalisé
+                                        </Button>
+                                      )
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })
                           ) : (
                             <tr>
                               <td colSpan={userRole === 'technicien' ? 5 : 4} className="p-4 text-center text-sm text-muted-foreground">
