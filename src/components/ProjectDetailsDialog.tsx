@@ -536,6 +536,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
                         <th className="p-2 text-left text-sm">Investisseur</th>
                         <th className="p-2 text-right text-sm">Montant</th>
                         <th className="p-2 text-right text-sm">Date</th>
+                        <th className="p-2 text-center text-sm">En attente</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -558,12 +559,15 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
                               <td className="p-2 text-right text-sm">
                                 {formatDate(displayDate)}
                               </td>
+                              <td className="p-2 text-center text-sm">
+                                {!isPaid ? "Oui" : ""}
+                              </td>
                             </tr>
                           );
                         })
                       ) : (
                         <tr>
-                          <td colSpan={3} className="p-4 text-center text-sm text-muted-foreground">
+                          <td colSpan={4} className="p-4 text-center text-sm text-muted-foreground">
                             Aucun investissement pour le moment
                           </td>
                         </tr>
@@ -576,6 +580,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
                           <td className="p-2 text-right font-medium">
                             {investments.reduce((sum, inv) => sum + (inv.montant || 0), 0).toLocaleString()} Ar
                           </td>
+                          <td></td>
                           <td></td>
                         </tr>
                       </tfoot>
