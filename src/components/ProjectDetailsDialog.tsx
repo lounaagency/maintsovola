@@ -114,7 +114,8 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
         .from('investissement')
         .select(`
           *,
-          investisseur:id_investisseur(nom, prenoms)
+          investisseur:id_investisseur(nom, prenoms),
+          statut_paiement:statut_paiement
         `)
         .eq('id_projet', projectId)
         .order('date_paiement', { ascending: false });
@@ -539,19 +540,27 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
                     </thead>
                     <tbody>
                       {investments.length > 0 ? (
-                        investments.map((inv) => (
-                          <tr key={inv.id_investissement} className="border-t">
-                            <td className="p-2 text-sm">
-                              {inv.investisseur?.nom} {inv.investisseur?.prenoms || ''}
-                            </td>
-                            <td className="p-2 text-right text-sm">
-                              {inv.montant?.toLocaleString()} Ar
-                            </td>
-                            <td className="p-2 text-right text-sm">
-                              {formatDate(inv.date_paiement)}
-                            </td>
-                          </tr>
-                        ))
+                        investments.map((inv) => {
+                          const isPaid = inv.statut_paiement === 'payé' || inv.date_paiement;
+                          const displayDate = isPaid ? inv.date_paiement : inv.date_decision_investir;
+                          
+                          return (
+                            <tr 
+                              key={inv.id_investissement} 
+                              className={`border-t ${!isPaid ? 'bg-[#FEC6A1]' : ''}`}
+                            >
+                              <td className="p-2 text-sm">
+                                {inv.investisseur?.nom} {inv.investisseur?.prenoms || ''}
+                              </td>
+                              <td className="p-2 text-right text-sm">
+                                {inv.montant?.toLocaleString()} Ar
+                              </td>
+                              <td className="p-2 text-right text-sm">
+                                {formatDate(displayDate)}
+                              </td>
+                            </tr>
+                          );
+                        })
                       ) : (
                         <tr>
                           <td colSpan={3} className="p-4 text-center text-sm text-muted-foreground">
