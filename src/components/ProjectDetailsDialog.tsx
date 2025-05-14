@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -12,11 +13,12 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import UserAvatar from './UserAvatar';
 import JalonReportDialog from "./JalonReportDialog";
 import { ExternalLink } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import TerrainCardDialog from "./terrain/TerrainCardDialog";
 
 interface ProjectDetailsDialogProps {
   isOpen: boolean;
@@ -53,6 +55,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
   const [rendementProduits, setRendementProduits] = useState<string>('');
   const [totalProfit, setTotalProfit] = useState<number>(0);
   const [fundingProgress, setFundingProgress] = useState<number>(0);
+  const [terrainDialogOpen, setTerrainDialogOpen] = useState<boolean>(false);
   
   useEffect(() => {
     if (isOpen && projectId) {
@@ -402,7 +405,12 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
                   </div>
                   <div  className="text-xs">
                     <p className="text-muted-foreground">Terrain</p>
-                    <p className="text-green-900">{project.terrain?.nom_terrain} ({project.surface_ha} ha)</p>
+                    <p 
+                      className="text-green-900 underline cursor-pointer hover:text-green-700" 
+                      onClick={() => setTerrainDialogOpen(true)}
+                    >
+                      {project.terrain?.nom_terrain} ({project.surface_ha} ha)
+                    </p>
                   </div>
                   <div  className="text-xs">
                     <p className="text-muted-foreground">Localisation</p>
@@ -704,6 +712,14 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
           onSubmitSuccess={handleJalonReportSuccess}
           readOnly={selectedJalon.readOnly}
           initialData={selectedJalon.initialData}
+        />
+      )}
+      
+      {project?.terrain?.id_terrain && (
+        <TerrainCardDialog
+          isOpen={terrainDialogOpen}
+          onClose={() => setTerrainDialogOpen(false)}
+          terrainId={project.terrain.id_terrain}
         />
       )}
     </>
