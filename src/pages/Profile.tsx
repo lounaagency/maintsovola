@@ -578,20 +578,21 @@ export const Profile = () => {
       
       setInvestedProjects(processedProjects || []);
       
-      // Calculate investment summary after getting the data
-      if (investedProjects && investedProjects.length > 0) {
-        const totalInvested = investedProjects.reduce((sum, project) => sum + project.userInvestment, 0);
-        const totalProfit = investedProjects.reduce((sum, project) => sum + project.userProfit, 0);
+      // Calculate investment summary directly from processedProjects, not from investedProjects state
+      // which hasn't been updated yet
+      if (processedProjects && processedProjects.length > 0) {
+        const totalInvested = processedProjects.reduce((sum, project) => sum + project.userInvestment, 0);
+        const totalProfit = processedProjects.reduce((sum, project) => sum + project.userProfit, 0);
         
         // Calculate ROI and project status counts
-        const projectsWithROI = investedProjects.filter(p => p.userInvestment > 0);
+        const projectsWithROI = processedProjects.filter(p => p.userInvestment > 0);
         const averageROI = projectsWithROI.length > 0 
           ? projectsWithROI.reduce((sum, p) => sum + p.roi, 0) / projectsWithROI.length 
           : 0;
         
-        const ongoingProjects = investedProjects.filter(p => 
+        const ongoingProjects = processedProjects.filter(p => 
           p.status === 'en_cours' || p.status === 'en_production' || p.status === 'en financement').length;
-        const completedProjects = investedProjects.filter(p => p.status === 'terminé').length;
+        const completedProjects = processedProjects.filter(p => p.status === 'terminé').length;
         
         // Create data for status chart
         const projectsByStatusData = [
