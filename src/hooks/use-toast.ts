@@ -1,7 +1,31 @@
 
-// This file was created to fix a re-export issue.
-// Re-export the toast components from the shadcn/ui library
-import { toast } from '@/components/ui/toast';
-import { useToast } from '@/components/ui/use-toast';
+import { Toast, ToastActionElement } from "@/components/ui/toast";
+import {
+  useToast as useToastPrimitive
+} from "@/components/ui/toast/use-toast";
 
-export { toast, useToast };
+export const useToast = useToastPrimitive;
+
+// Create a reusable toast function
+export const toast = {
+  error: (message: string) => {
+    useToastPrimitive().toast({
+      variant: "destructive",
+      title: "Error",
+      description: message,
+    });
+  },
+  success: (message: string) => {
+    useToastPrimitive().toast({
+      title: "Success",
+      description: message,
+    });
+  },
+  info: (message: string) => {
+    useToastPrimitive().toast({
+      description: message,
+    });
+  }
+};
+
+export type { Toast, ToastActionElement };

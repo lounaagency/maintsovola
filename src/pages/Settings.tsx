@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -68,7 +67,7 @@ const Settings = () => {
         id_telephone: item.id_telephone,
         id_utilisateur: item.id_utilisateur,
         numero: item.numero,
-        type: item.type as "principal" | "whatsapp" | "mobile_banking" | "autre",
+        type: item.type as "principal" | "whatsapp" | "mvola" | "orange_money" | "airtel_money" | "autre" | "mobile_banking",
         est_whatsapp: item.est_whatsapp,
         est_mobile_banking: item.est_mobile_banking,
         created_at: item.created_at,
@@ -210,7 +209,7 @@ const Settings = () => {
           id_telephone: data[0].id_telephone,
           id_utilisateur: data[0].id_utilisateur,
           numero: data[0].numero,
-          type: data[0].type as "principal" | "whatsapp" | "mvola" | "orange_money" | "airtel_money" | "autre",
+          type: data[0].type as "principal" | "whatsapp" | "mvola" | "orange_money" | "airtel_money" | "autre" | "mobile_banking",
           est_whatsapp: data[0].est_whatsapp,
           est_mobile_banking: data[0].est_mobile_banking,
           created_at: data[0].created_at,
@@ -454,7 +453,7 @@ const Settings = () => {
                         value={newPhone.type}
                         onChange={(e) => setNewPhone({
                           ...newPhone, 
-                          type: e.target.value as "principal" | "whatsapp" | "mvola" | "orange_money" | "airtel_money" | "autre"
+                          type: e.target.value as "principal" | "whatsapp" | "mvola" | "orange_money" | "airtel_money" | "autre" | "mobile_banking"
                         })}
                       >
                         <option value="principal">Principal</option>
