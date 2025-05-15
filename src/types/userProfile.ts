@@ -3,7 +3,7 @@ export interface UserTelephone {
   id_telephone: number;
   id_utilisateur: string;
   numero: string;
-  type: "principal" | "whatsapp" | "mobile_banking" | "autre";
+  type: "principal" | "whatsapp" | "mvola" | "orange_money" | "airtel_money" | "autre";
   est_whatsapp: boolean;
   est_mobile_banking: boolean;
   created_at: string;

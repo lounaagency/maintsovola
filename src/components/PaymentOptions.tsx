@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,8 @@ import { Smartphone, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { UserTelephone } from "@/types/userProfile";
+import { useAuth } from "@/contexts/AuthContext";
 
 type PaymentMethod = 'mvola' | 'orange' | 'airtel' | null;
 
@@ -21,14 +23,63 @@ const PaymentOptions: React.FC<PaymentOptionsProps> = ({
   amount,
   onPaymentComplete
 }) => {
+  const { user } = useAuth();
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(null);
   const [phoneNumber, setPhoneNumber] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [userPhones, setUserPhones] = useState<UserTelephone[]>([]);
+
+  useEffect(() => {
+    if (user) {
+      fetchUserPhoneNumbers();
+    }
+  }, [user]);
+
+  const fetchUserPhoneNumbers = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('telephone')
+        .select('*')
+        .eq('id_utilisateur', user.id);
+
+      if (error) throw error;
+      setUserPhones(data || []);
+    } catch (err) {
+      console.error("Error fetching user phone numbers:", err);
+    }
+  };
 
   const handlePaymentMethodChange = (value: string) => {
-    setPaymentMethod(value as PaymentMethod);
+    const method = value as PaymentMethod;
+    setPaymentMethod(method);
     setError(null);
+    
+    // Pre-fill phone number based on payment method
+    if (user && userPhones.length > 0) {
+      let matchingPhoneType: string;
+      
+      switch (method) {
+        case 'mvola':
+          matchingPhoneType = 'mvola';
+          break;
+        case 'orange':
+          matchingPhoneType = 'orange_money';
+          break;
+        case 'airtel':
+          matchingPhoneType = 'airtel_money';
+          break;
+        default:
+          matchingPhoneType = '';
+      }
+      
+      const matchingPhone = userPhones.find(phone => phone.type === matchingPhoneType);
+      if (matchingPhone) {
+        setPhoneNumber(matchingPhone.numero);
+      }
+    }
   };
 
   const validatePhoneNumber = (number: string): boolean => {
