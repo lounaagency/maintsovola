@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -59,7 +58,7 @@ const TerrainCardDialog: React.FC<TerrainCardDialogProps> = ({
           .single();
           
         if (!tantsahaError && tantsahaData) {
-          formattedData.tantsahaNom = `${tantsahaData.nom} ${tantsahaData.prenoms || ''}`.trim();
+          formattedData.tantsaha_nom = `${tantsahaData.nom} ${tantsahaData.prenoms || ''}`.trim();
         }
       }
       
@@ -72,12 +71,12 @@ const TerrainCardDialog: React.FC<TerrainCardDialogProps> = ({
           .single();
           
         if (!technicienError && technicienData) {
-          formattedData.techniqueNom = `${technicienData.nom} ${technicienData.prenoms || ''}`.trim();
+          formattedData.technicien_nom = `${technicienData.nom} ${technicienData.prenoms || ''}`.trim();
         } else {
-          formattedData.techniqueNom = 'Non assigné';
+          formattedData.technicien_nom = 'Non assigné';
         }
       } else {
-        formattedData.techniqueNom = 'Non assigné';
+        formattedData.technicien_nom = 'Non assigné';
       }
       
       // Fetch superviseur info if available
@@ -89,12 +88,12 @@ const TerrainCardDialog: React.FC<TerrainCardDialogProps> = ({
           .single();
           
         if (!superviseurError && superviseurData) {
-          formattedData.superviseurNom = `${superviseurData.nom} ${superviseurData.prenoms || ''}`.trim();
+          formattedData.superviseur_nom = `${superviseurData.nom} ${superviseurData.prenoms || ''}`.trim();
         } else {
-          formattedData.superviseurNom = 'Non assigné';
+          formattedData.superviseur_nom = 'Non assigné';
         }
       } else {
-        formattedData.superviseurNom = 'Non assigné';
+        formattedData.superviseur_nom = 'Non assigné';
       }
       
       setTerrain(formattedData as TerrainData);

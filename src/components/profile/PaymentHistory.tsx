@@ -20,7 +20,7 @@ interface Payment {
   reference_transaction: string;
   methode_paiement: string;
   montant: number;
-  status: string;
+  statut: string;
   date_paiement: string;
   id_investissement?: number | null;
   projet?: {
@@ -58,10 +58,10 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ userId }) => {
       try {
         setLoading(true);
         
-        // Fetch payments associated with user's investments
+        // Fetch investments made by the user
         const { data: userInvestments, error: investmentsError } = await supabase
           .from('investissement')
-          .select('id_investissement')
+          .select('id_investissement, id_projet, montant, date_decision_investir, statut_paiement, projet:id_projet(id_projet, titre)')
           .eq('id_investisseur', userId);
 
         if (investmentsError) throw investmentsError;
@@ -69,58 +69,56 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ userId }) => {
         if (!userInvestments || userInvestments.length === 0) {
           setPayments([]);
           setPendingPayments([]);
+          setLoading(false);
           return;
         }
 
-        const investmentIds = userInvestments.map(inv => inv.id_investissement);
+        // Get pending payments (investments without payment)
+        const pendingInvestments = userInvestments
+          .filter(inv => inv.statut_paiement !== 'payé')
+          .map(inv => ({
+            id_investissement: inv.id_investissement,
+            id_projet: inv.id_projet,
+            montant: inv.montant,
+            date_investissement: inv.date_decision_investir,
+            projet: inv.projet
+          }));
 
-        // Using a simpler query to avoid deep type instantiation
-        const { data: paymentHistory, error: paymentsError } = await supabase
-          .from('historique_paiement')
-          .select('*')
-          .in('id_investissement', investmentIds)
+        // Fetch investment payment history
+        const { data: paymentHistory, error: paymentHistoryError } = await supabase
+          .from('historique_paiement_invest')
+          .select('*, investissement:id_investissement(id_projet)')
+          .eq('numero_telephone', userId)
           .order('date_paiement', { ascending: false });
 
-        if (paymentsError) throw paymentsError;
-
-        // Fetch pending payments (investments without payment records)
-        const { data: pendingPaymentsData, error: pendingPaymentsError } = await supabase
-          .from('investissement')
-          .select('*, projet:id_projet(id_projet, titre)')
-          .eq('id_investisseur', userId)
-          .eq('statut_paiement', 'en attente');
-
-        if (pendingPaymentsError) throw pendingPaymentsError;
-
-        // Fetch projects separately to avoid deep nesting
-        const paymentProjects: Record<string, any> = {};
-        
-        if (paymentHistory && paymentHistory.length > 0) {
-          // Get all investments with project data
-          const { data: investmentProjects } = await supabase
-            .from('investissement')
-            .select('id_investissement, id_projet, projet:id_projet(id_projet, titre)')
-            .in('id_investissement', investmentIds);
-              
-          if (investmentProjects) {
-            investmentProjects.forEach((item: any) => {
-              if (item.projet) {
-                paymentProjects[item.id_projet] = item.projet;
-              }
-            });
-          }
-        }
+        if (paymentHistoryError) throw paymentHistoryError;
 
         // Format the payment data
-        const formattedPayments = paymentHistory?.map((payment: any) => ({
-          ...payment,
-          projet: payment.id_projet ? paymentProjects[payment.id_projet] : null
-        })) || [];
+        const formattedPayments = (paymentHistory || []).map((payment) => {
+          // Get project info from the related investment
+          const investment = userInvestments.find(inv => inv.id_investissement === payment.id_investissement);
+          
+          return {
+            id_paiement: payment.id_paiement,
+            reference_transaction: payment.reference_transaction,
+            methode_paiement: payment.methode_paiement,
+            montant: payment.montant,
+            statut: payment.statut,
+            date_paiement: payment.date_paiement,
+            id_investissement: payment.id_investissement,
+            projet: investment?.projet || null
+          };
+        });
 
         setPayments(formattedPayments);
-        setPendingPayments(pendingPaymentsData || []);
+        setPendingPayments(pendingInvestments);
       } catch (error) {
         console.error('Erreur lors de la récupération des paiements:', error);
+        toast({
+          title: "Erreur",
+          description: "Impossible de récupérer l'historique des paiements",
+          variant: "destructive",
+        });
       } finally {
         setLoading(false);
       }
@@ -174,7 +172,7 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ userId }) => {
                 {pendingPayments.map((payment) => (
                   <tr key={payment.id_investissement}>
                     <td className="px-4 py-3 text-sm">
-                      {format(new Date(payment.date_investissement), 'dd MMM yyyy', { locale: fr })}
+                      {payment.date_investissement ? format(new Date(payment.date_investissement), 'dd MMM yyyy', { locale: fr }) : '-'}
                     </td>
                     <td className="px-4 py-3 text-sm">
                       {payment.projet ? payment.projet.titre : 'Non spécifié'}
@@ -241,8 +239,8 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ userId }) => {
                       {formatCurrency(payment.montant)}
                     </td>
                     <td className="px-4 py-3 text-sm">
-                      <Badge variant={payment.status === 'effectué' ? 'success' : 'default'}>
-                        {payment.status}
+                      <Badge variant={payment.statut === 'effectué' ? 'success' : 'default'}>
+                        {payment.statut}
                       </Badge>
                     </td>
                   </tr>

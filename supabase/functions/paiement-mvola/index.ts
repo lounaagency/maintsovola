@@ -83,46 +83,58 @@ serve(async (req) => {
 
     console.log("Simulated MVola API response:", simulatedResponse);
 
-    // Save transaction to database
-    const paymentData = {
-      reference_transaction: simulatedResponse.serverCorrelationId || transactionRef,
-      status: "effectué",
-      methode_paiement: "MVola",
-      montant: amount,
-      id_investissement: investissementId || null,
-      date_paiement: new Date().toISOString(),
-      details_paiement: {
-        phoneNumber: formattedPhone,
-        reason,
-        mvolaResponse: simulatedResponse
+    // If investissementId is provided, update the investment status to "payé"
+    if (investissementId) {
+      const { error: updateError } = await supabase
+        .from("investissement")
+        .update({ 
+          statut_paiement: "payé",
+          date_paiement: new Date().toISOString(),
+          reference_paiement: simulatedResponse.serverCorrelationId || transactionRef
+        })
+        .eq("id_investissement", investissementId);
+
+      if (updateError) {
+        console.error("Error updating investment status:", updateError);
+        return new Response(
+          JSON.stringify({
+            success: false,
+            message: `Erreur lors de la mise à jour de l'investissement: ${updateError.message}`,
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 500,
+          }
+        );
       }
-    };
-
-    const { data: savedPayment, error: saveError } = await supabase
-      .from("historique_paiement")
-      .insert(paymentData)
-      .select()
-      .single();
-
-    if (saveError) {
-      console.error("Error saving payment to database:", saveError);
-      // We still return success since the payment was processed
-    } else {
-      console.log("Payment saved to database:", savedPayment);
       
-      // Update investissement table if investissementId is provided
-      if (investissementId) {
-        const { error: updateError } = await supabase
-          .from("investissement")
-          .update({ 
-            statut_paiement: "payé",
-            date_paiement: new Date().toISOString()
-          })
-          .eq("id_investissement", investissementId);
-
-        if (updateError) {
-          console.error("Error updating investment status:", updateError);
+      // Save payment details to the new historique_paiement_invest table
+      const paymentData = {
+        id_investissement: investissementId,
+        reference_transaction: simulatedResponse.serverCorrelationId || transactionRef,
+        methode_paiement: "MVola",
+        montant: amount,
+        statut: "effectué",
+        date_paiement: new Date().toISOString(),
+        numero_telephone: phone,
+        details_paiement: {
+          phoneNumber: formattedPhone,
+          reason,
+          mvolaResponse: simulatedResponse
         }
+      };
+
+      const { data: savedPayment, error: saveError } = await supabase
+        .from("historique_paiement_invest")
+        .insert(paymentData)
+        .select()
+        .single();
+
+      if (saveError) {
+        console.error("Error saving payment to new table:", saveError);
+        // We still return success since the investment was updated
+      } else {
+        console.log("Payment saved to new table:", savedPayment);
       }
     }
 
