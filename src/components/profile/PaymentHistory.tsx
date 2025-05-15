@@ -84,11 +84,13 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ userId }) => {
             projet: inv.projet
           }));
 
-        // Fetch investment payment history from the new table
+        // Fetch investment payment history
+        // FIXED: Instead of filtering by phone number, we get payments for the user's investments
+        const investmentIds = userInvestments.map(inv => inv.id_investissement);
         const { data: paymentHistory, error: paymentHistoryError } = await supabase
           .from('historique_paiement_invest')
           .select('*, investissement:id_investissement(id_projet)')
-          .eq('numero_telephone', userId);
+          .in('id_investissement', investmentIds);
 
         if (paymentHistoryError) throw paymentHistoryError;
 
