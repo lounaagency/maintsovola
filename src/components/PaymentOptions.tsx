@@ -46,7 +46,20 @@ const PaymentOptions: React.FC<PaymentOptionsProps> = ({
         .eq('id_utilisateur', user.id);
 
       if (error) throw error;
-      setUserPhones(data || []);
+      
+      // Cast the data to our UserTelephone type
+      const typedData: UserTelephone[] = data?.map(item => ({
+        id_telephone: item.id_telephone,
+        id_utilisateur: item.id_utilisateur,
+        numero: item.numero,
+        type: item.type as "principal" | "whatsapp" | "mvola" | "orange_money" | "airtel_money" | "autre",
+        est_whatsapp: item.est_whatsapp,
+        est_mobile_banking: item.est_mobile_banking,
+        created_at: item.created_at,
+        modified_at: item.modified_at
+      })) || [];
+      
+      setUserPhones(typedData);
     } catch (err) {
       console.error("Error fetching user phone numbers:", err);
     }
