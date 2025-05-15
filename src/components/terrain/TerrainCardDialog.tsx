@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -42,11 +43,14 @@ const TerrainCardDialog: React.FC<TerrainCardDialogProps> = ({
       if (error) throw error;
       
       // After getting terrain, get user info separately to avoid relationship issues
-      let formattedData = {
+      let formattedData: any = {
         ...data,
         region_name: data.region?.nom_region,
         district_name: data.district?.nom_district,
         commune_name: data.commune?.nom_commune,
+        tantsaha_nom: '',
+        technicien_nom: 'Non assigné',
+        superviseur_nom: 'Non assigné'
       };
       
       // Fetch tantsaha info if available

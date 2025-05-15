@@ -624,6 +624,59 @@ export type Database = {
           },
         ]
       }
+      historique_paiement_invest: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          date_paiement: string
+          details_paiement: Json | null
+          id_investissement: number | null
+          id_paiement: number
+          methode_paiement: string
+          modified_at: string | null
+          montant: number
+          numero_telephone: string
+          reference_transaction: string
+          statut: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          date_paiement?: string
+          details_paiement?: Json | null
+          id_investissement?: number | null
+          id_paiement?: number
+          methode_paiement: string
+          modified_at?: string | null
+          montant: number
+          numero_telephone: string
+          reference_transaction: string
+          statut?: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          date_paiement?: string
+          details_paiement?: Json | null
+          id_investissement?: number | null
+          id_paiement?: number
+          methode_paiement?: string
+          modified_at?: string | null
+          montant?: number
+          numero_telephone?: string
+          reference_transaction?: string
+          statut?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "historique_paiement_invest_id_investissement_fkey"
+            columns: ["id_investissement"]
+            isOneToOne: false
+            referencedRelation: "investissement"
+            referencedColumns: ["id_investissement"]
+          },
+        ]
+      }
       investissement: {
         Row: {
           created_at: string | null
