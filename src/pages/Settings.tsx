@@ -36,9 +36,7 @@ const Settings = () => {
     id_utilisateur: "",
     type: "principal",
     est_whatsapp: false,
-    est_mobile_banking: false,
-    created_at: '',
-    modified_at: ''
+    est_mobile_banking: false
   });
 
   useEffect(() => {
@@ -69,9 +67,7 @@ const Settings = () => {
         numero: item.numero,
         type: item.type as "principal" | "whatsapp" | "mvola" | "orange_money" | "airtel_money" | "autre" | "mobile_banking",
         est_whatsapp: item.est_whatsapp,
-        est_mobile_banking: item.est_mobile_banking,
-        created_at: item.created_at,
-        modified_at: item.modified_at
+        est_mobile_banking: item.est_mobile_banking
       })) || [];
       
       setTelephones(typedData);
@@ -195,7 +191,6 @@ const Settings = () => {
         ...newPhone,
         id_utilisateur: user.id
       };
-      
       const { data, error } = await supabase
         .from('telephone')
         .insert(phoneToAdd)
@@ -211,9 +206,7 @@ const Settings = () => {
           numero: data[0].numero,
           type: data[0].type as "principal" | "whatsapp" | "mvola" | "orange_money" | "airtel_money" | "autre" | "mobile_banking",
           est_whatsapp: data[0].est_whatsapp,
-          est_mobile_banking: data[0].est_mobile_banking,
-          created_at: data[0].created_at,
-          modified_at: data[0].modified_at
+          est_mobile_banking: data[0].est_mobile_banking
         };
         
         setTelephones([...telephones, newPhoneWithId]);
@@ -225,9 +218,7 @@ const Settings = () => {
         id_utilisateur: "",
         type: "principal",
         est_whatsapp: false,
-        est_mobile_banking: false,
-        created_at: '',
-        modified_at: ''
+        est_mobile_banking: false
       });
       
       toast({
