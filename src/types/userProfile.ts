@@ -1,6 +1,6 @@
 
 export interface UserTelephone {
-  id_telephone: number;
+  id_telephone?: number;
   id_utilisateur: string;
   numero: string;
   type: "principal" | "whatsapp" | "mvola" | "orange_money" | "airtel_money" | "autre" | "mobile_banking";

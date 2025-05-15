@@ -5,16 +5,28 @@ import { supabase } from "@/integrations/supabase/client";
 import { UserProfile } from "@/types/userProfile";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import ProfileTabs from "@/components/profile/ProfileTabs";
-import { toast } from "@/hooks/use-toast";
+import { useToast } from "@/components/ui/toast";
 
 const Profile = () => {
   const { id } = useParams();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isCurrentUser, setIsCurrentUser] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followersCount, setFollowersCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
+  const [projectsCount, setProjectsCount] = useState(0);
+  const { toast } = useToast();
   
   // Helper function to check if data is valid
   const isSelectQueryError = (data: any): boolean => {
     return !data || typeof data !== 'object';
+  };
+
+  const handleFollowToggle = async () => {
+    // Placeholder function for the follow toggle action
+    setIsFollowing(!isFollowing);
+    return Promise.resolve();
   };
 
   const fetchUserProfile = async (userId: string) => {
@@ -58,9 +70,52 @@ const Profile = () => {
         nom_role: isSelectQueryError(data) ? '' : data.role?.nom_role,
         telephones: mappedTelephones
       });
+
+      // Fetch follower counts
+      const { count: followers } = await supabase
+        .from('followers')
+        .select('*', { count: 'exact', head: true })
+        .eq('followed_id', userId);
+      
+      setFollowersCount(followers || 0);
+      
+      const { count: following } = await supabase
+        .from('followers')
+        .select('*', { count: 'exact', head: true })
+        .eq('follower_id', userId);
+      
+      setFollowingCount(following || 0);
+      
+      // Fetch projects count
+      const { count: projects } = await supabase
+        .from('projet')
+        .select('*', { count: 'exact', head: true })
+        .eq('id_tantsaha', userId);
+      
+      setProjectsCount(projects || 0);
+      
+      // Check if current authenticated user is viewing their own profile
+      const { data: authUser } = await supabase.auth.getUser();
+      setIsCurrentUser(authUser.user?.id === userId);
+      
+      // Check if current user follows this profile
+      if (authUser.user) {
+        const { count } = await supabase
+          .from('followers')
+          .select('*', { count: 'exact', head: true })
+          .eq('follower_id', authUser.user.id)
+          .eq('followed_id', userId);
+        
+        setIsFollowing(count !== null && count > 0);
+      }
+      
     } catch (error) {
       console.error('Error fetching user profile:', error);
-      toast.error("Impossible de charger le profil de l'utilisateur");
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger le profil de l'utilisateur",
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
@@ -93,8 +148,16 @@ const Profile = () => {
 
   return (
     <div className="container py-6">
-      <ProfileHeader profile={profile} />
-      <ProfileTabs userId={profile.id_utilisateur} profile={profile} />
+      <ProfileHeader 
+        profile={profile}
+        isCurrentUser={isCurrentUser}
+        isFollowing={isFollowing}
+        followersCount={followersCount}
+        followingCount={followingCount}
+        projectsCount={projectsCount}
+        onFollowToggle={handleFollowToggle}
+      />
+      <ProfileTabs userId={profile.id_utilisateur} />
     </div>
   );
 };

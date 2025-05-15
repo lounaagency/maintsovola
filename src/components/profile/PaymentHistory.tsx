@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
@@ -13,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from '@/components/ui/button';
 import PaymentOptions from '@/components/PaymentOptions';
-import { toast } from '@/components/ui/use-toast';
+import { useToast } from '@/components/ui/toast';
 
 interface Payment {
   id_paiement: number;
@@ -50,6 +49,7 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ userId }) => {
   const [loading, setLoading] = useState(true);
   const [selectedPayment, setSelectedPayment] = useState<PendingPayment | null>(null);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchPayments = async () => {

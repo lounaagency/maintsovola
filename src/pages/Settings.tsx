@@ -32,7 +32,6 @@ const Settings = () => {
   const [telephones, setTelephones] = useState<UserTelephone[]>([]);
   const [newPhone, setNewPhone] = useState<UserTelephone>({
     numero: "",
-    id_telephone : null,
     id_utilisateur: "",
     type: "principal",
     est_whatsapp: false,
@@ -185,17 +184,19 @@ const Settings = () => {
   const addPhoneNumber = async () => {
     if (!user || !newPhone.numero) return;
     
-
     try {
       const phoneToAdd = {
-        ...newPhone,
-        id_utilisateur: user.id
+        numero: newPhone.numero,
+        id_utilisateur: user.id,
+        type: newPhone.type,
+        est_whatsapp: newPhone.est_whatsapp,
+        est_mobile_banking: newPhone.est_mobile_banking
       };
+      
       const { data, error } = await supabase
         .from('telephone')
         .insert(phoneToAdd)
         .select();
-
 
       if (error) throw error;
       
@@ -213,7 +214,6 @@ const Settings = () => {
       }
       
       setNewPhone({
-        id_telephone : null,
         numero: "",
         id_utilisateur: "",
         type: "principal",
