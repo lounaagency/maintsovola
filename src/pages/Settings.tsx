@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -32,10 +33,13 @@ const Settings = () => {
   const [telephones, setTelephones] = useState<UserTelephone[]>([]);
   const [newPhone, setNewPhone] = useState<UserTelephone>({
     numero: "",
+    id_telephone : null,
     id_utilisateur: "",
     type: "principal",
     est_whatsapp: false,
-    est_mobile_banking: false
+    est_mobile_banking: false,
+    created_at: '',
+    modified_at: ''
   });
 
   useEffect(() => {
@@ -64,9 +68,11 @@ const Settings = () => {
         id_telephone: item.id_telephone,
         id_utilisateur: item.id_utilisateur,
         numero: item.numero,
-        type: item.type as "principal" | "whatsapp" | "mvola" | "orange_money" | "airtel_money" | "autre" | "mobile_banking",
+        type: item.type as "principal" | "whatsapp" | "mobile_banking" | "autre",
         est_whatsapp: item.est_whatsapp,
-        est_mobile_banking: item.est_mobile_banking
+        est_mobile_banking: item.est_mobile_banking,
+        created_at: item.created_at,
+        modified_at: item.modified_at
       })) || [];
       
       setTelephones(typedData);
@@ -184,19 +190,18 @@ const Settings = () => {
   const addPhoneNumber = async () => {
     if (!user || !newPhone.numero) return;
     
+
     try {
       const phoneToAdd = {
-        numero: newPhone.numero,
-        id_utilisateur: user.id,
-        type: newPhone.type,
-        est_whatsapp: newPhone.est_whatsapp,
-        est_mobile_banking: newPhone.est_mobile_banking
+        ...newPhone,
+        id_utilisateur: user.id
       };
       
       const { data, error } = await supabase
         .from('telephone')
         .insert(phoneToAdd)
         .select();
+
 
       if (error) throw error;
       
@@ -205,20 +210,25 @@ const Settings = () => {
           id_telephone: data[0].id_telephone,
           id_utilisateur: data[0].id_utilisateur,
           numero: data[0].numero,
-          type: data[0].type as "principal" | "whatsapp" | "mvola" | "orange_money" | "airtel_money" | "autre" | "mobile_banking",
+          type: data[0].type as "principal" | "whatsapp" | "mvola" | "orange_money" | "airtel_money" | "autre",
           est_whatsapp: data[0].est_whatsapp,
-          est_mobile_banking: data[0].est_mobile_banking
+          est_mobile_banking: data[0].est_mobile_banking,
+          created_at: data[0].created_at,
+          modified_at: data[0].modified_at
         };
         
         setTelephones([...telephones, newPhoneWithId]);
       }
       
       setNewPhone({
+        id_telephone : null,
         numero: "",
         id_utilisateur: "",
         type: "principal",
         est_whatsapp: false,
-        est_mobile_banking: false
+        est_mobile_banking: false,
+        created_at: '',
+        modified_at: ''
       });
       
       toast({
@@ -444,7 +454,7 @@ const Settings = () => {
                         value={newPhone.type}
                         onChange={(e) => setNewPhone({
                           ...newPhone, 
-                          type: e.target.value as "principal" | "whatsapp" | "mvola" | "orange_money" | "airtel_money" | "autre" | "mobile_banking"
+                          type: e.target.value as "principal" | "whatsapp" | "mvola" | "orange_money" | "airtel_money" | "autre"
                         })}
                       >
                         <option value="principal">Principal</option>

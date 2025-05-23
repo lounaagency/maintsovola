@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
@@ -12,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from '@/components/ui/button';
 import PaymentOptions from '@/components/PaymentOptions';
-import { useToast } from '@/components/ui/toast';
+import { toast } from '@/components/ui/use-toast';
 
 interface Payment {
   id_paiement: number;
@@ -49,7 +50,6 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ userId }) => {
   const [loading, setLoading] = useState(true);
   const [selectedPayment, setSelectedPayment] = useState<PendingPayment | null>(null);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
-  const { toast } = useToast();
 
   useEffect(() => {
     const fetchPayments = async () => {
@@ -84,13 +84,11 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ userId }) => {
             projet: inv.projet
           }));
 
-        // Fetch investment payment history
-        // FIXED: Instead of filtering by phone number, we get payments for the user's investments
-        const investmentIds = userInvestments.map(inv => inv.id_investissement);
+        // Fetch investment payment history from the new table
         const { data: paymentHistory, error: paymentHistoryError } = await supabase
           .from('historique_paiement_invest')
           .select('*, investissement:id_investissement(id_projet)')
-          .in('id_investissement', investmentIds);
+          .eq('numero_telephone', userId);
 
         if (paymentHistoryError) throw paymentHistoryError;
 
