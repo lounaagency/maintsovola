@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
@@ -46,7 +45,7 @@ const PaymentOptions: React.FC<PaymentOptionsProps> = ({
         .eq('id_utilisateur', user.id);
 
       if (error) throw error;
-      setUserPhones(data || []);
+      setUserPhones((data || []) as UserTelephone[]);
     } catch (err) {
       console.error("Error fetching user phone numbers:", err);
     }
