@@ -139,8 +139,15 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
             cout_exploitation_previsionnel
           ),
           investissements:investissement(montant)
-        `)
-        .eq('id_tantsaha', user.id); // Always filter by current user
+        `);
+      
+      if (userRole === 'simple') {
+        query = query.eq('id_tantsaha', user.id);
+      } else if (userRole === 'technicien') {
+        query = query.eq('id_technicien', user.id);
+      } else if (userRole === 'superviseur') {
+        // Supervisors see all projects
+      }
       
       if (filter) {
         query = query.or(`description.ilike.%${filter}%,titre.ilike.%${filter}%`);
@@ -297,7 +304,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
     return Math.min(Math.round((project.currentFunding / project.fundingGoal) * 100), 100);
   };
 
-  const canLaunchProductionForProject = (project: ProjectData): boolean => {
+  const canLaunchProduction = (project: ProjectData): boolean => {
     if (!userRole || !project || project.statut !== 'en financement') {
       return false;
     }
@@ -343,11 +350,11 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
               onViewDetails={handleOpenDetails}
               onEdit={handleOpenEdit}
               onValidate={handleOpenValidation}
-              onLaunchProduction={canLaunchProductionForProject(project) ? handleOpenProductionLaunch : undefined}
+              onLaunchProduction={canLaunchProduction(project) ? handleOpenProductionLaunch : undefined}
               onDelete={handleOpenDeleteConfirm}
               canEdit={canEditProject(project, userRole, user?.id)}
               canValidate={showValidateButton}
-              canLaunchProduction={canLaunchProductionForProject(project)}
+              canLaunchProduction={canLaunchProduction(project)}
               canDelete={canDeleteProject(project, userRole, user?.id)}
               showFunding={project.statut === 'en financement'}
             />
@@ -415,7 +422,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
               {projects.length > 0 ? (
                 projects.map((project) => {
                   const fundingPercentage = calculateFundingPercentage(project);
-                  const canLaunch = canLaunchProductionForProject(project);
+                  const canLaunch = canLaunchProduction(project);
                   
                   return (
                     <TableRow 
