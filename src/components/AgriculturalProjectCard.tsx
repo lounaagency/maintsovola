@@ -280,7 +280,7 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({
                   {project.farmer?.name}
                 </div>
                 <div className="text-xs text-gray-500">
-                  {project.creationDate}
+                  {new Date(project.creationDate).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                 </div>
               </div>
             </div>
