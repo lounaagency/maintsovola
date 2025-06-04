@@ -46,15 +46,15 @@ const FinancialDetailsDialog: React.FC<FinancialDetailsDialogProps> = ({
           </DialogTitle>
         </DialogHeader>
         
-        <div className="mt-4">
+        <div className="mt-6 mb-4 mx-2">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[150px]">Culture</TableHead>
-                <TableHead className="text-right">Coût d'exploitation</TableHead>
-                <TableHead className="text-right">Rendement prévu</TableHead>
-                <TableHead className="text-right">Prix par tonne</TableHead>
-                <TableHead className="text-right">Revenu estimé</TableHead>
+                <TableHead className="w-[150px] py-4">Culture</TableHead>
+                <TableHead className="text-right py-4">Coût d'exploitation</TableHead>
+                <TableHead className="text-right py-4">Rendement prévu</TableHead>
+                <TableHead className="text-right py-4">Prix par tonne</TableHead>
+                <TableHead className="text-right py-4">Revenu estimé</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -66,17 +66,17 @@ const FinancialDetailsDialog: React.FC<FinancialDetailsDialogProps> = ({
                 
                 return (
                   <TableRow key={projectCulture.id_projet_culture || index}>
-                    <TableCell className="font-medium">{projectCulture.culture?.nom_culture}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="font-medium py-3">{projectCulture.culture?.nom_culture}</TableCell>
+                    <TableCell className="text-right py-3">
                       {formatCurrency(projectCulture.cout_exploitation_previsionnel || projectCulture.culture?.cout_exploitation_ha || 0)}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right py-3">
                       {projectCulture.rendement_previsionnel || projectCulture.culture?.rendement_ha || 0} t
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right py-3">
                       {formatCurrency(projectCulture.culture?.prix_tonne || 0)}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right py-3">
                       {formatCurrency(estimatedRevenue)}
                     </TableCell>
                   </TableRow>
