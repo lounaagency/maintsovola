@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -315,9 +314,9 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
     if (!dateString) return "Non défini";
     const date = new Date(dateString);
     return date.toLocaleDateString('fr-FR', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
     });
   };
 

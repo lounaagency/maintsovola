@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -330,7 +329,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
               <div className="text-sm mt-1">{comment.text}</div>
             </div>
             <div className="flex items-center mt-1 text-xs text-gray-500">
-              <span>{new Date(comment.createdAt).toLocaleString()}</span>
+              <span>{new Date(comment.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' à ' + new Date(comment.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
               <button 
                 className={`ml-3 flex items-center ${comment.isLiked ? 'text-red-500' : ''}`}
                 onClick={() => handleToggleLike(comment.id, comment.isLiked)}

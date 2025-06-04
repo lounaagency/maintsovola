@@ -32,7 +32,7 @@ const InvestmentTable: React.FC<InvestmentTableProps> = ({ investments }) => {
             <tr key={investment.id}>
               <td className="px-4 py-2">{investment.project}</td>
               <td className="px-4 py-2">{new Intl.NumberFormat('fr-MG', { style: 'currency', currency: 'MGA' }).format(investment.amount)}</td>
-              <td className="px-4 py-2">{new Date(investment.date).toLocaleDateString('fr-MG')}</td>
+              <td className="px-4 py-2">{new Date(investment.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
             </tr>
           ))}
         </tbody>

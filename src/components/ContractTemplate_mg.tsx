@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { FileText } from "lucide-react";
@@ -177,7 +178,7 @@ const ContractTemplate: React.FC<ContractTemplateProps> = ({ project, className 
     addLine(`Fitsarana misahana : Fitsarana Ambaratonga Voalohany ao ${project.tribunal_ville}`);
 
     y += 10;
-    addLine(`NATAO TEO ${project.lieu_signature || '[À compléter]'}, NY ${project.date_signature || new Date().toLocaleDateString()}`);
+    addLine(`NATAO TEO ${project.lieu_signature || '[À compléter]'}, NY ${project.date_signature || new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}`);
     addLine("Amin'ny kopia roa mitovy.");
 
     y += 5;
