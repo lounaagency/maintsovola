@@ -101,7 +101,11 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
         </TableHeader>
         <TableBody>
           {terrains.map((terrain) => (
-            <TableRow key={terrain.id_terrain || Math.random()}>
+            <TableRow 
+              key={terrain.id_terrain || Math.random()}
+              className="cursor-pointer"
+              onClick={() => onViewDetails && onViewDetails(terrain)}
+            >
               <TableCell>
                 <div className="font-medium">{terrain.nom_terrain}</div>
                 <div className="text-xs text-muted-foreground">
@@ -135,6 +139,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                         onChange={(e) =>
                           assignTechnicien(terrain, e.target.value)
                         }
+                        onClick={(e) => e.stopPropagation()}
                         value=""
                       >
                         <option value="" disabled>
@@ -187,7 +192,10 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => onViewDetails(terrain)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onViewDetails(terrain);
+                      }}
                       title="Voir les détails"
                     >
                       <Eye className="h-4 w-4" />
@@ -201,7 +209,10 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => onEdit(terrain)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEdit(terrain);
+                        }}
                         title="Modifier"
                       >
                         <Edit className="h-4 w-4" />
@@ -215,7 +226,10 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => onValidate(terrain)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onValidate(terrain);
+                        }}
                         title="Valider le terrain"
                       >
                         <ShieldCheck className="h-4 w-4" />
@@ -228,7 +242,10 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => onDelete(terrain)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDelete(terrain);
+                        }}
                         title="Supprimer"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -241,7 +258,10 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => onContactTechnicien(terrain)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onContactTechnicien(terrain);
+                        }}
                         title="Contacter le technicien"
                       >
                         <Clock className="h-4 w-4" />
