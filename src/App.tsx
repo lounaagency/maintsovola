@@ -70,7 +70,7 @@ const App = () => {
                     <NotFound />
                   </Layout>
                 } />
-                <Route path="*" element={<Navigate to="/feed" replace />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </AnimatePresence>
             <Toaster />
