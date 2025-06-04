@@ -90,6 +90,28 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
   const [sortColumn, setSortColumn] = useState<string>("created_at");
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
+  const getEmptyMessage = (): string => {
+    if (fundingStatus === 'completed') {
+      return "Vous n'avez pas de projet avec financement complet.";
+    }
+    if (fundingStatus === 'in_progress') {
+      return "Vous n'avez pas de projet en levée de fonds.";
+    }
+    
+    switch (statutFilter) {
+      case 'en attente':
+        return "Vous n'avez pas de projet en attente.";
+      case 'en financement':
+        return "Vous n'avez pas de projet en financement.";
+      case 'en cours':
+        return "Vous n'avez pas de projet en cours.";
+      case 'terminé':
+        return "Vous n'avez pas de projet terminé.";
+      default:
+        return "Vous n'avez pas de projet.";
+    }
+  };
+
   useEffect(() => {
     const fetchUserRole = async () => {
       if (user) {
@@ -333,7 +355,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
     return (
       <Card className="w-full shadow-sm">
         <div className="flex justify-center items-center p-8">
-          <p className="text-muted-foreground">Aucun projet trouvé.</p>
+          <p className="text-muted-foreground">{getEmptyMessage()}</p>
         </div>
       </Card>
     );
@@ -528,7 +550,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
               ) : (
                 <TableRow>
                   <TableCell colSpan={10} className="text-center text-muted-foreground">
-                    Aucun projet trouvé.
+                    {getEmptyMessage()}
                   </TableCell>
                 </TableRow>
               )}
