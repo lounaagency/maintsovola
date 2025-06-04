@@ -48,9 +48,9 @@ const TerrainCardDialog: React.FC<TerrainCardDialogProps> = ({
         region_name: data.region?.nom_region,
         district_name: data.district?.nom_district,
         commune_name: data.commune?.nom_commune,
-        tantsaha_nom: '',
-        technicien_nom: 'Non assigné',
-        superviseur_nom: 'Non assigné'
+        tantsahaNom: '',
+        techniqueNom: 'Non assigné',
+        superviseurNom: 'Non assigné'
       };
       
       // Fetch tantsaha info if available
@@ -62,7 +62,7 @@ const TerrainCardDialog: React.FC<TerrainCardDialogProps> = ({
           .single();
           
         if (!tantsahaError && tantsahaData) {
-          formattedData.tantsaha_nom = `${tantsahaData.nom} ${tantsahaData.prenoms || ''}`.trim();
+          formattedData.tantsahaNom = `${tantsahaData.nom} ${tantsahaData.prenoms || ''}`.trim();
         }
       }
       
@@ -75,12 +75,12 @@ const TerrainCardDialog: React.FC<TerrainCardDialogProps> = ({
           .single();
           
         if (!technicienError && technicienData) {
-          formattedData.technicien_nom = `${technicienData.nom} ${technicienData.prenoms || ''}`.trim();
+          formattedData.techniqueNom = `${technicienData.nom} ${technicienData.prenoms || ''}`.trim();
         } else {
-          formattedData.technicien_nom = 'Non assigné';
+          formattedData.techniqueNom = 'Non assigné';
         }
       } else {
-        formattedData.technicien_nom = 'Non assigné';
+        formattedData.techniqueNom = 'Non assigné';
       }
       
       // Fetch superviseur info if available
@@ -92,12 +92,12 @@ const TerrainCardDialog: React.FC<TerrainCardDialogProps> = ({
           .single();
           
         if (!superviseurError && superviseurData) {
-          formattedData.superviseur_nom = `${superviseurData.nom} ${superviseurData.prenoms || ''}`.trim();
+          formattedData.superviseurNom = `${superviseurData.nom} ${superviseurData.prenoms || ''}`.trim();
         } else {
-          formattedData.superviseur_nom = 'Non assigné';
+          formattedData.superviseurNom = 'Non assigné';
         }
       } else {
-        formattedData.superviseur_nom = 'Non assigné';
+        formattedData.superviseurNom = 'Non assigné';
       }
       
       setTerrain(formattedData as TerrainData);
