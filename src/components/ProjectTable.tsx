@@ -119,7 +119,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
   }, [statutFilter, filter, user, userRole, sortColumn, sortDirection, fundingStatus]);
 
   const fetchProjects = async () => {
-    if (!user) return;
+    if (!user || !userRole) return;
     
     setLoading(true);
     try {
