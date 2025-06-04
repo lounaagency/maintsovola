@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useState, useMemo } from "react";
 import {
   Table,
   TableBody,
@@ -28,6 +28,9 @@ interface TerrainTableProps {
   techniciens?: { id_utilisateur: string; nom: string; prenoms?: string }[];
 }
 
+type SortField = 'nom_terrain' | 'region_name' | 'surface';
+type SortDirection = 'asc' | 'desc' | null;
+
 const TerrainTable: React.FC<TerrainTableProps> = ({
   terrains,
   type = "pending",
@@ -40,6 +43,67 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
   onContactTechnicien,
   techniciens = [],
 }) => {
+  const [sortField, setSortField] = useState<SortField | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>(null);
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      // Cycle through: null -> asc -> desc -> null
+      if (sortDirection === null) {
+        setSortDirection('asc');
+      } else if (sortDirection === 'asc') {
+        setSortDirection('desc');
+      } else {
+        setSortField(null);
+        setSortDirection(null);
+      }
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const sortedTerrains = useMemo(() => {
+    if (!sortField || !sortDirection) {
+      return terrains;
+    }
+
+    return [...terrains].sort((a, b) => {
+      let valueA: any;
+      let valueB: any;
+
+      switch (sortField) {
+        case 'nom_terrain':
+          valueA = a.nom_terrain || '';
+          valueB = b.nom_terrain || '';
+          break;
+        case 'region_name':
+          valueA = a.region_name || '';
+          valueB = b.region_name || '';
+          break;
+        case 'surface':
+          valueA = a.surface_validee || a.surface_proposee || 0;
+          valueB = b.surface_validee || b.surface_proposee || 0;
+          break;
+        default:
+          return 0;
+      }
+
+      if (typeof valueA === 'string' && typeof valueB === 'string') {
+        valueA = valueA.toLowerCase();
+        valueB = valueB.toLowerCase();
+      }
+
+      if (valueA < valueB) {
+        return sortDirection === 'asc' ? -1 : 1;
+      }
+      if (valueA > valueB) {
+        return sortDirection === 'asc' ? 1 : -1;
+      }
+      return 0;
+    });
+  }, [terrains, sortField, sortDirection]);
+
   const assignTechnicien = async (terrain: TerrainData, technicienId: string) => {
     try {
       const { data, error } = await supabase
@@ -88,9 +152,28 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[120px]">Terrain</TableHead>
-            <TableHead>Localisation</TableHead>
-            <TableHead>Surface</TableHead>
+            <TableHead 
+              className="w-[120px]"
+              sortable={true}
+              sorted={sortField === 'nom_terrain' ? sortDirection : null}
+              onSort={() => handleSort('nom_terrain')}
+            >
+              Terrain
+            </TableHead>
+            <TableHead
+              sortable={true}
+              sorted={sortField === 'region_name' ? sortDirection : null}
+              onSort={() => handleSort('region_name')}
+            >
+              Localisation
+            </TableHead>
+            <TableHead
+              sortable={true}
+              sorted={sortField === 'surface' ? sortDirection : null}
+              onSort={() => handleSort('surface')}
+            >
+              Surface
+            </TableHead>
             {type === "pending" && userRole === "superviseur" && (
               <TableHead>Technicien</TableHead>
             )}
@@ -100,7 +183,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {terrains.map((terrain) => (
+          {sortedTerrains.map((terrain) => (
             <TableRow 
               key={terrain.id_terrain || Math.random()}
               className="cursor-pointer"
@@ -113,7 +196,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                 </div>
               </TableCell>
               <TableCell>
-                {terrain.commune_name || "Non spécifié"}, {terrain.district_name || "Non spécifié"}
+                {terrain.region_name || "Non spécifié"}, {terrain.commune_name || "Non spécifié"}, {terrain.district_name || "Non spécifié"}
               </TableCell>
               <TableCell>
                 {terrain.surface_validee || terrain.surface_proposee} ha
