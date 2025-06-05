@@ -100,15 +100,9 @@ const SendPaymentModal: React.FC<SendPaymentModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent 
-        className="sm:max-w-lg max-h-[90vh] overflow-y-auto"
-        aria-describedby="id-element-description"
-      >
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Envoyer Paiement - {jalon.nom_jalon}</DialogTitle>
-          <div id="id-element-description" className="sr-only">
-            Formulaire de paiement pour envoyer des fonds à un technicien dans le cadre d'un jalon de projet agricole. Vous pouvez sélectionner le type de paiement et saisir les détails nécessaires.
-          </div>
         </DialogHeader>
 
         <JalonInfoCard jalon={jalon} />
