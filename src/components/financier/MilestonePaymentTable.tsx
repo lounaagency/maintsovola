@@ -1,16 +1,12 @@
 
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Send, Calendar, User, MapPin } from "lucide-react";
-import { formatCurrency } from "@/lib/utils";
+import { Send, Calendar, AlertTriangle, Clock, CalendarCheck } from "lucide-react";
 import { JalonFinancement } from "@/types/financier";
-import { format } from "date-fns";
-import { fr } from "date-fns/locale";
 import SendPaymentModal from "./SendPaymentModal";
+import MilestoneSection from "./MilestoneSection";
 
 interface MilestonePaymentTableProps {
   jalons: JalonFinancement[];
@@ -27,6 +23,60 @@ const MilestonePaymentTable: React.FC<MilestonePaymentTableProps> = ({
   const handleSendPayment = (jalon: JalonFinancement) => {
     setSelectedJalon(jalon);
     setShowPaymentModal(true);
+  };
+
+  const getUrgencyBadge = (dateLimite: string) => {
+    const today = new Date();
+    const limite = new Date(dateLimite);
+    const diffDays = Math.ceil((limite.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) {
+      return <Badge variant="destructive">En retard</Badge>;
+    } else if (diffDays <= 3) {
+      return <Badge variant="destructive">Urgent</Badge>;
+    } else if (diffDays <= 7) {
+      return <Badge variant="secondary">Cette semaine</Badge>;
+    } else {
+      return <Badge variant="outline">Planifié</Badge>;
+    }
+  };
+
+  const categorizeJalons = (jalons: JalonFinancement[]) => {
+    const today = new Date();
+    
+    const enRetard = jalons
+      .filter(jalon => {
+        const limite = new Date(jalon.date_limite);
+        const diffDays = Math.ceil((limite.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        return diffDays < 0;
+      })
+      .sort((a, b) => new Date(a.date_limite).getTime() - new Date(b.date_limite).getTime());
+
+    const urgent = jalons
+      .filter(jalon => {
+        const limite = new Date(jalon.date_limite);
+        const diffDays = Math.ceil((limite.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        return diffDays >= 0 && diffDays <= 3;
+      })
+      .sort((a, b) => new Date(a.date_limite).getTime() - new Date(b.date_limite).getTime());
+
+    const cetteSemaine = jalons
+      .filter(jalon => {
+        const limite = new Date(jalon.date_limite);
+        const diffDays = Math.ceil((limite.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        return diffDays > 3 && diffDays <= 7;
+      })
+      .sort((a, b) => new Date(a.date_limite).getTime() - new Date(b.date_limite).getTime());
+
+    const planifie = jalons
+      .filter(jalon => {
+        const limite = new Date(jalon.date_limite);
+        const diffDays = Math.ceil((limite.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        return diffDays > 7;
+      })
+      .sort((a, b) => new Date(a.date_limite).getTime() - new Date(b.date_limite).getTime());
+
+    return { enRetard, urgent, cetteSemaine, planifie };
   };
 
   if (isLoading) {
@@ -68,103 +118,70 @@ const MilestonePaymentTable: React.FC<MilestonePaymentTableProps> = ({
     );
   }
 
-  const getUrgencyBadge = (dateLimite: string) => {
-    const today = new Date();
-    const limite = new Date(dateLimite);
-    const diffDays = Math.ceil((limite.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-
-    if (diffDays < 0) {
-      return <Badge variant="destructive">En retard</Badge>;
-    } else if (diffDays <= 3) {
-      return <Badge variant="destructive">Urgent</Badge>;
-    } else if (diffDays <= 7) {
-      return <Badge variant="secondary">Cette semaine</Badge>;
-    } else {
-      return <Badge variant="outline">Planifié</Badge>;
-    }
-  };
+  const { enRetard, urgent, cetteSemaine, planifie } = categorizeJalons(jalons);
+  const totalJalons = enRetard.length + urgent.length + cetteSemaine.length + planifie.length;
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Send className="h-5 w-5" />
-            Jalons à Financer ({jalons.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Jalon</TableHead>
-                <TableHead>Technicien</TableHead>
-                <TableHead>Projet</TableHead>
-                <TableHead>Montant</TableHead>
-                <TableHead>Date Limite</TableHead>
-                <TableHead>Urgence</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {jalons.map((jalon) => (
-                <TableRow key={jalon.id_jalon_projet}>
-                  <TableCell>
-                    <div className="font-medium">{jalon.nom_jalon}</div>
-                    <div className="text-sm text-muted-foreground">
-                      Statut: {jalon.statut}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <div className="font-medium">
-                          {jalon.technicien_nom} {jalon.technicien_prenoms}
-                        </div>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <div className="font-medium">{jalon.nom_projet}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {jalon.surface_ha} ha
-                        </div>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="font-bold text-green-600">
-                      {formatCurrency(jalon.montant_demande)}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-sm">
-                      {format(new Date(jalon.date_limite), 'dd MMM yyyy', { locale: fr })}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {getUrgencyBadge(jalon.date_limite)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      size="sm"
-                      onClick={() => handleSendPayment(jalon)}
-                      className="gap-2"
-                    >
-                      <Send className="h-4 w-4" />
-                      Envoyer
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Send className="h-6 w-6" />
+            <h2 className="text-xl font-semibold">Jalons à Financer</h2>
+          </div>
+          <Badge variant="outline" className="px-3 py-1">
+            {totalJalons} jalon{totalJalons > 1 ? 's' : ''} au total
+          </Badge>
+        </div>
+
+        <div className="space-y-4">
+          <MilestoneSection
+            title="En Retard"
+            icon={AlertTriangle}
+            badgeVariant="destructive"
+            jalons={enRetard}
+            onSendPayment={handleSendPayment}
+            getUrgencyBadge={getUrgencyBadge}
+          />
+
+          <MilestoneSection
+            title="Urgent (≤ 3 jours)"
+            icon={AlertTriangle}
+            badgeVariant="destructive"
+            jalons={urgent}
+            onSendPayment={handleSendPayment}
+            getUrgencyBadge={getUrgencyBadge}
+          />
+
+          <MilestoneSection
+            title="Cette Semaine (4-7 jours)"
+            icon={Clock}
+            badgeVariant="secondary"
+            jalons={cetteSemaine}
+            onSendPayment={handleSendPayment}
+            getUrgencyBadge={getUrgencyBadge}
+          />
+
+          <MilestoneSection
+            title="Planifié (> 7 jours)"
+            icon={CalendarCheck}
+            badgeVariant="outline"
+            jalons={planifie}
+            onSendPayment={handleSendPayment}
+            getUrgencyBadge={getUrgencyBadge}
+          />
+        </div>
+
+        {totalJalons === 0 && (
+          <Card>
+            <CardContent className="text-center py-8 text-muted-foreground">
+              <Calendar className="h-8 w-8 mx-auto mb-2" />
+              <p>Aucun jalon en attente de financement</p>
+              <p className="text-sm">Tous les jalons sont financés</p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
 
       <SendPaymentModal
         isOpen={showPaymentModal}
