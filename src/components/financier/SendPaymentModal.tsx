@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar, User, MapPin, DollarSign, Phone, Receipt, CreditCard } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { JalonFinancement, PaiementTechnicien } from "@/types/financier";
@@ -33,9 +34,16 @@ const SendPaymentModal: React.FC<SendPaymentModalProps> = ({
   const [typePaiement, setTypePaiement] = useState<'Mobile Banking' | 'Chèque de banque' | 'Liquide'>('Mobile Banking');
   const [numeroCheque, setNumeroCheque] = useState("");
   const [numeroMobileBanking, setNumeroMobileBanking] = useState("");
+  const [saisieManuelle, setSaisieManuelle] = useState(false);
+  const [numeroManuel, setNumeroManuel] = useState("");
   
   const { sendPayment } = usePaymentActions();
-  const { data: phoneNumbers } = useTechnicienPhoneNumbers(jalon?.id_technicien || '');
+  const { data: phoneData } = useTechnicienPhoneNumbers(jalon?.id_technicien || '');
+
+  const mobileBankingNumbers = phoneData?.mobileBankingNumbers || [];
+  const allNumbers = phoneData?.allNumbers || [];
+  const defaultNumber = allNumbers.find(phone => phone.type === 'principal')?.numero || 
+                       allNumbers[0]?.numero || '';
 
   React.useEffect(() => {
     if (jalon) {
@@ -45,8 +53,10 @@ const SendPaymentModal: React.FC<SendPaymentModalProps> = ({
       setTypePaiement('Mobile Banking');
       setNumeroCheque("");
       setNumeroMobileBanking("");
+      setSaisieManuelle(false);
+      setNumeroManuel(defaultNumber);
     }
-  }, [jalon]);
+  }, [jalon, defaultNumber]);
 
   const handleReceiptGenerated = (pdfBlob: Blob) => {
     console.log('Receipt generated:', pdfBlob);
@@ -59,8 +69,11 @@ const SendPaymentModal: React.FC<SendPaymentModalProps> = ({
     if (!jalon) return;
 
     // Validation selon le type de paiement
-    if (typePaiement === 'Mobile Banking' && !numeroMobileBanking) {
-      return;
+    if (typePaiement === 'Mobile Banking') {
+      const numeroFinal = saisieManuelle ? numeroManuel : numeroMobileBanking;
+      if (!numeroFinal) {
+        return;
+      }
     }
     if (typePaiement === 'Chèque de banque' && !numeroCheque) {
       return;
@@ -75,7 +88,7 @@ const SendPaymentModal: React.FC<SendPaymentModalProps> = ({
         date_limite: jalon.date_limite,
         type_paiement: typePaiement,
         numero_cheque: typePaiement === 'Chèque de banque' ? numeroCheque : undefined,
-        numero_mobile_banking: typePaiement === 'Mobile Banking' ? numeroMobileBanking : undefined,
+        numero_mobile_banking: typePaiement === 'Mobile Banking' ? (saisieManuelle ? numeroManuel : numeroMobileBanking) : undefined,
       };
 
       await sendPayment.mutateAsync(paymentData);
@@ -180,24 +193,59 @@ const SendPaymentModal: React.FC<SendPaymentModalProps> = ({
 
           {/* Section Mobile Banking */}
           {typePaiement === 'Mobile Banking' && (
-            <div className="space-y-2">
+            <div className="space-y-3">
               <Label htmlFor="numeroMobileBanking">Numéro Mobile Banking</Label>
-              {phoneNumbers && phoneNumbers.length > 0 ? (
+              
+              {mobileBankingNumbers && mobileBankingNumbers.length > 0 && !saisieManuelle ? (
                 <Select value={numeroMobileBanking} onValueChange={setNumeroMobileBanking}>
                   <SelectTrigger>
                     <SelectValue placeholder="Sélectionner un numéro" />
                   </SelectTrigger>
                   <SelectContent>
-                    {phoneNumbers.map((phone) => (
+                    {mobileBankingNumbers.map((phone) => (
                       <SelectItem key={phone.id_telephone} value={phone.numero}>
                         {phone.numero} ({phone.type})
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-              ) : (
-                <div className="text-sm text-amber-600 bg-amber-50 p-3 rounded-md">
-                  Aucun numéro Mobile Banking trouvé pour ce technicien
+              ) : null}
+
+              {(mobileBankingNumbers.length === 0 || saisieManuelle) && (
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="saisieManuelle" 
+                      checked={saisieManuelle}
+                      onCheckedChange={(checked) => setSaisieManuelle(checked as boolean)}
+                    />
+                    <Label htmlFor="saisieManuelle" className="text-sm">
+                      Saisir manuellement le numéro Mobile Banking
+                    </Label>
+                  </div>
+                  
+                  {(mobileBankingNumbers.length === 0 || saisieManuelle) && (
+                    <Input
+                      id="numeroManuel"
+                      value={numeroManuel}
+                      onChange={(e) => setNumeroManuel(e.target.value)}
+                      placeholder="Ex: +261 34 12 345 67"
+                      required
+                    />
+                  )}
+                </div>
+              )}
+
+              {mobileBankingNumbers.length > 0 && !saisieManuelle && (
+                <div className="flex items-center space-x-2 mt-2">
+                  <Checkbox 
+                    id="saisieManuelle" 
+                    checked={saisieManuelle}
+                    onCheckedChange={(checked) => setSaisieManuelle(checked as boolean)}
+                  />
+                  <Label htmlFor="saisieManuelle" className="text-sm">
+                    Saisir un autre numéro manuellement
+                  </Label>
                 </div>
               )}
             </div>
@@ -248,7 +296,7 @@ const SendPaymentModal: React.FC<SendPaymentModalProps> = ({
             </Button>
             <Button 
               type="submit" 
-              disabled={sendPayment.isPending || (typePaiement === 'Mobile Banking' && (!phoneNumbers || phoneNumbers.length === 0))}
+              disabled={sendPayment.isPending}
               className="gap-2"
             >
               {sendPayment.isPending ? (
