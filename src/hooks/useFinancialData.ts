@@ -65,7 +65,7 @@ export const useJalonsFinancement = () => {
             titre,
             id_technicien,
             surface_ha,
-            technicien:id_technicien(nom, prenoms)
+            utilisateur:id_technicien(nom, prenoms)
           )
         `)
         .in('statut', ['Prévu', 'En cours'])
@@ -86,8 +86,8 @@ export const useJalonsFinancement = () => {
         nom_jalon: item.jalon_agricole?.nom_jalon || 'Jalon inconnu',
         nom_projet: item.projet?.titre || 'Projet inconnu',
         id_technicien: item.projet?.id_technicien || '',
-        technicien_nom: item.projet?.technicien?.nom || 'Non assigné',
-        technicien_prenoms: item.projet?.technicien?.prenoms || '',
+        technicien_nom: item.projet?.utilisateur?.nom || 'Non assigné',
+        technicien_prenoms: item.projet?.utilisateur?.prenoms || '',
         montant_demande: Math.floor(Math.random() * 500000) + 100000, // Montant simulé en attendant les coûts
         surface_ha: item.projet?.surface_ha || 0
       }));
@@ -107,7 +107,7 @@ export const useHistoriquePaiements = () => {
           projet:id_projet(
             titre,
             id_technicien,
-            technicien:id_technicien(nom, prenoms)
+            technicien:id_technicien!inner(nom, prenoms)
           )
         `)
         .order('date_paiement', { ascending: false })
