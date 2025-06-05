@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -199,7 +198,7 @@ const SendPaymentModal: React.FC<SendPaymentModalProps> = ({
                 </Select>
               ) : (
                 <div className="text-sm text-amber-600 bg-amber-50 p-3 rounded-md">
-                  Aucun numéro Mobile Banking trouvé pour ce technicien. 
+                  Aucun numéro Mobile Banking trouvé pour {jalon.technicien_nom} {jalon.technicien_prenoms}. 
                   Le technicien doit ajouter un numéro avec le type 'mobile_banking' dans ses paramètres.
                 </div>
               )}
