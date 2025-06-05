@@ -7,7 +7,6 @@ import { formatCurrency } from "@/lib/utils";
 import { JalonFinancement, PaiementTechnicien } from "@/types/financier";
 import { PAYMENT_TYPES, PaymentType } from "@/types/paymentTypes";
 import { usePaymentActions } from "@/hooks/usePaymentActions";
-import { useTechnicienPhoneNumbers } from "@/hooks/useTechnicienPhoneNumbers";
 import PaymentSummaryCard from "./PaymentSummaryCard";
 import PaymentFormFields from "./PaymentFormFields";
 import MobileBankingSection from "./MobileBankingSection";
@@ -33,7 +32,6 @@ const SendPaymentModal: React.FC<SendPaymentModalProps> = ({
   const [numeroMobileBanking, setNumeroMobileBanking] = useState("");
   
   const { sendPayment } = usePaymentActions();
-  const { data: phoneNumbers } = useTechnicienPhoneNumbers(jalon?.id_technicien || '');
 
   React.useEffect(() => {
     if (jalon) {
@@ -108,7 +106,6 @@ const SendPaymentModal: React.FC<SendPaymentModalProps> = ({
           {typePaiement === PAYMENT_TYPES.MOBILE_BANKING && (
             <MobileBankingSection
               jalon={jalon}
-              phoneNumbers={phoneNumbers}
               numeroMobileBanking={numeroMobileBanking}
               setNumeroMobileBanking={setNumeroMobileBanking}
             />
@@ -136,10 +133,7 @@ const SendPaymentModal: React.FC<SendPaymentModalProps> = ({
             </Button>
             <Button 
               type="submit" 
-              disabled={
-                sendPayment.isPending || 
-                (typePaiement === PAYMENT_TYPES.MOBILE_BANKING && (!phoneNumbers || phoneNumbers.length === 0))
-              }
+              disabled={sendPayment.isPending}
               className="gap-2"
             >
               {sendPayment.isPending ? (
