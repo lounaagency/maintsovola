@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +19,9 @@ interface MilestoneSectionProps {
   getUrgencyBadge: (dateLimite: string) => React.ReactNode;
 }
 
+type SortField = 'nom_jalon' | 'technicien_nom' | 'nom_projet' | 'montant_demande' | 'date_limite';
+type SortDirection = 'asc' | 'desc' | null;
+
 const MilestoneSection: React.FC<MilestoneSectionProps> = ({
   title,
   icon: Icon,
@@ -27,9 +30,83 @@ const MilestoneSection: React.FC<MilestoneSectionProps> = ({
   onSendPayment,
   getUrgencyBadge
 }) => {
+  const [sortField, setSortField] = useState<SortField | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>(null);
+
   if (jalons.length === 0) {
     return null;
   }
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      // Toggle direction
+      if (sortDirection === 'asc') {
+        setSortDirection('desc');
+      } else if (sortDirection === 'desc') {
+        setSortDirection(null);
+        setSortField(null);
+      } else {
+        setSortDirection('asc');
+      }
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const sortedJalons = React.useMemo(() => {
+    if (!sortField || !sortDirection) {
+      return jalons;
+    }
+
+    return [...jalons].sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+
+      switch (sortField) {
+        case 'nom_jalon':
+          aValue = a.nom_jalon;
+          bValue = b.nom_jalon;
+          break;
+        case 'technicien_nom':
+          aValue = `${a.technicien_nom} ${a.technicien_prenoms}`.trim();
+          bValue = `${b.technicien_nom} ${b.technicien_prenoms}`.trim();
+          break;
+        case 'nom_projet':
+          aValue = a.nom_projet;
+          bValue = b.nom_projet;
+          break;
+        case 'montant_demande':
+          aValue = a.montant_demande;
+          bValue = b.montant_demande;
+          break;
+        case 'date_limite':
+          aValue = new Date(a.date_limite);
+          bValue = new Date(b.date_limite);
+          break;
+        default:
+          return 0;
+      }
+
+      if (sortDirection === 'asc') {
+        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+      } else {
+        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+      }
+    });
+  }, [jalons, sortField, sortDirection]);
+
+  const getSortIcon = (field: SortField) => {
+    if (sortField !== field) {
+      return '⇵';
+    }
+    if (sortDirection === 'asc') {
+      return '▲';
+    } else if (sortDirection === 'desc') {
+      return '▼';
+    }
+    return '⇵';
+  };
 
   return (
     <Card className="mb-4">
@@ -48,17 +125,65 @@ const MilestoneSection: React.FC<MilestoneSectionProps> = ({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Jalon</TableHead>
-              <TableHead>Technicien</TableHead>
-              <TableHead>Projet</TableHead>
-              <TableHead>Montant</TableHead>
-              <TableHead>Date Limite</TableHead>
-              <TableHead>Urgence</TableHead>
+              <TableHead 
+                className="cursor-pointer select-none"
+                onClick={() => handleSort('nom_jalon')}
+              >
+                <div className="flex items-center justify-between">
+                  Jalon
+                  <span className="ml-1 text-xs">{getSortIcon('nom_jalon')}</span>
+                </div>
+              </TableHead>
+              <TableHead 
+                className="cursor-pointer select-none"
+                onClick={() => handleSort('technicien_nom')}
+              >
+                <div className="flex items-center justify-between">
+                  Technicien
+                  <span className="ml-1 text-xs">{getSortIcon('technicien_nom')}</span>
+                </div>
+              </TableHead>
+              <TableHead 
+                className="cursor-pointer select-none"
+                onClick={() => handleSort('nom_projet')}
+              >
+                <div className="flex items-center justify-between">
+                  Projet
+                  <span className="ml-1 text-xs">{getSortIcon('nom_projet')}</span>
+                </div>
+              </TableHead>
+              <TableHead 
+                className="cursor-pointer select-none"
+                onClick={() => handleSort('montant_demande')}
+              >
+                <div className="flex items-center justify-between">
+                  Montant
+                  <span className="ml-1 text-xs">{getSortIcon('montant_demande')}</span>
+                </div>
+              </TableHead>
+              <TableHead 
+                className="cursor-pointer select-none"
+                onClick={() => handleSort('date_limite')}
+              >
+                <div className="flex items-center justify-between">
+                  Date Limite
+                  <span className="ml-1 text-xs">{getSortIcon('date_limite')}</span>
+                </div>
+              </TableHead>
+              <TableHead 
+                className="cursor-pointer select-none"
+                onClick={() => handleSort('date_limite')}
+              >
+                <div className="flex items-center justify-between">
+                  Urgence
+                  <span className="ml-1 text-xs">{getSortIcon('date_limite')}</span>
+                </div>
+              </TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {jalons.map((jalon) => (
+            {sortedJalons.map((jalon) => (
               <TableRow key={jalon.id_jalon_projet}>
                 <TableCell>
                   <div className="font-medium">{jalon.nom_jalon}</div>
