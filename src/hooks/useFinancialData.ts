@@ -7,17 +7,43 @@ export const useFinancialSummary = () => {
   return useQuery({
     queryKey: ['financial-summary'],
     queryFn: async (): Promise<ResumeFinancier | null> => {
-      const { data, error } = await supabase
-        .from('vue_resume_financier')
-        .select('*')
-        .single();
+      // Simuler des données financières pour le moment
+      // En attendant la création de la table budget_mensuel
+      const currentDate = new Date();
+      const annee = currentDate.getFullYear();
+      const mois = currentDate.getMonth() + 1;
       
-      if (error) {
-        console.error('Error fetching financial summary:', error);
-        return null;
-      }
+      // Récupérer le total des investissements du mois
+      const { data: investissements } = await supabase
+        .from('investissement')
+        .select('montant')
+        .gte('created_at', `${annee}-${mois.toString().padStart(2, '0')}-01`);
       
-      return data;
+      const montant_investi = investissements?.reduce((sum, inv) => sum + inv.montant, 0) || 0;
+      
+      // Compter les jalons en attente
+      const { data: jalons } = await supabase
+        .from('jalon_projet')
+        .select('id_jalon_projet')
+        .in('statut', ['Prévu', 'En cours']);
+      
+      const jalons_en_attente = jalons?.length || 0;
+      
+      // Données simulées pour le budget
+      const budget_total = 5000000; // 5M Ar
+      const montant_engage = montant_investi * 0.8;
+      const montant_utilise = montant_investi * 0.6;
+      const solde_disponible = budget_total - montant_engage - montant_utilise;
+      
+      return {
+        annee,
+        mois,
+        budget_total,
+        montant_engage,
+        montant_utilise,
+        solde_disponible,
+        jalons_en_attente
+      };
     },
     refetchInterval: 30000, // Rafraîchir toutes les 30 secondes
   });
@@ -28,16 +54,43 @@ export const useJalonsFinancement = () => {
     queryKey: ['jalons-financement'],
     queryFn: async (): Promise<JalonFinancement[]> => {
       const { data, error } = await supabase
-        .from('vue_jalons_financement')
-        .select('*')
-        .order('date_limite', { ascending: true });
+        .from('jalon_projet')
+        .select(`
+          id_jalon_projet,
+          id_projet,
+          date_previsionnelle,
+          statut,
+          jalon_agricole:id_jalon_agricole(nom_jalon),
+          projet:id_projet(
+            titre,
+            id_technicien,
+            surface_ha,
+            utilisateur:id_technicien(nom, prenoms)
+          )
+        `)
+        .in('statut', ['Prévu', 'En cours'])
+        .gte('date_previsionnelle', new Date().toISOString().split('T')[0])
+        .lte('date_previsionnelle', new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+        .order('date_previsionnelle', { ascending: true });
       
       if (error) {
         console.error('Error fetching jalons financement:', error);
         return [];
       }
       
-      return data || [];
+      return data.map((item: any) => ({
+        id_jalon_projet: item.id_jalon_projet,
+        id_projet: item.id_projet,
+        date_limite: item.date_previsionnelle,
+        statut: item.statut,
+        nom_jalon: item.jalon_agricole?.nom_jalon || 'Jalon inconnu',
+        nom_projet: item.projet?.titre || 'Projet inconnu',
+        id_technicien: item.projet?.id_technicien || '',
+        technicien_nom: item.projet?.utilisateur?.nom || 'Non assigné',
+        technicien_prenoms: item.projet?.utilisateur?.prenoms || '',
+        montant_demande: Math.floor(Math.random() * 500000) + 100000, // Montant simulé en attendant les coûts
+        surface_ha: item.projet?.surface_ha || 0
+      }));
     },
     refetchInterval: 60000, // Rafraîchir chaque minute
   });
@@ -52,7 +105,7 @@ export const useHistoriquePaiements = () => {
         .select(`
           *,
           projet:id_projet(titre),
-          utilisateur:id_technicien(nom, prenoms)
+          technicien:id_technicien(nom, prenoms)
         `)
         .order('date_paiement', { ascending: false })
         .limit(50);
@@ -63,9 +116,17 @@ export const useHistoriquePaiements = () => {
       }
       
       return data.map(item => ({
-        ...item,
-        nom_projet: item.projet?.titre || 'Projet inconnu',
-        technicien_nom: item.utilisateur ? `${item.utilisateur.nom} ${item.utilisateur.prenoms || ''}`.trim() : 'Non assigné'
+        id_historique_paiement: item.id_historique_paiement,
+        id_projet: item.id_projet,
+        montant: item.montant,
+        date_paiement: item.date_paiement,
+        reference_paiement: item.reference_paiement || '',
+        type_paiement: item.type_paiement,
+        justificatif_url: undefined, // Champ non encore ajouté à la table
+        statut_justificatif: 'en_attente', // Valeur par défaut
+        observation: item.observation,
+        technicien_nom: item.technicien ? `${item.technicien.nom} ${item.technicien.prenoms || ''}`.trim() : 'Non assigné',
+        nom_projet: item.projet?.titre || 'Projet inconnu'
       }));
     },
   });
