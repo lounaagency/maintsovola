@@ -43,10 +43,10 @@ export const usePaymentActions = () => {
 
       if (histError) throw histError;
 
-      // 4. Mettre à jour le statut du jalon à "Financé"
+      // 4. Mettre à jour le statut du jalon à "Terminé" (valeur autorisée par la contrainte)
       const { error: jalonUpdateError } = await supabase
         .from('jalon_projet')
-        .update({ statut: 'Financé' })
+        .update({ statut: 'Terminé' })
         .eq('id_jalon_projet', payment.id_jalon_projet);
 
       if (jalonUpdateError) throw jalonUpdateError;

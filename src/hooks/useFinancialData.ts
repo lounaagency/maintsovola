@@ -106,7 +106,8 @@ export const useHistoriquePaiements = () => {
           *,
           projet:id_projet(
             titre,
-            technicien:id_technicien(nom, prenoms)
+            id_technicien,
+            technicien:id_technicien!inner(nom, prenoms)
           )
         `)
         .order('date_paiement', { ascending: false })
