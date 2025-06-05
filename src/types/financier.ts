@@ -1,4 +1,6 @@
 
+import { PAYMENT_TYPES, PaymentType } from './paymentTypes';
+
 export interface BudgetMensuel {
   id_budget_mensuel: number;
   annee: number;
@@ -41,7 +43,7 @@ export interface PaiementTechnicien {
   reference_paiement: string;
   observation?: string;
   date_limite?: string;
-  type_paiement: 'Mobile Banking' | 'Chèque de banque' | 'Liquide';
+  type_paiement: PaymentType;
   numero_cheque?: string;
   numero_mobile_banking?: string;
 }

@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar, User, MapPin, DollarSign, Phone, Receipt, CreditCard } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { JalonFinancement, PaiementTechnicien } from "@/types/financier";
+import { PAYMENT_TYPES, PaymentType } from "@/types/paymentTypes";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { usePaymentActions } from "@/hooks/usePaymentActions";
@@ -30,7 +31,7 @@ const SendPaymentModal: React.FC<SendPaymentModalProps> = ({
   const [montant, setMontant] = useState("");
   const [reference, setReference] = useState("");
   const [observation, setObservation] = useState("");
-  const [typePaiement, setTypePaiement] = useState<'Mobile Banking' | 'Chèque de banque' | 'Liquide'>('Mobile Banking');
+  const [typePaiement, setTypePaiement] = useState<PaymentType>(PAYMENT_TYPES.MOBILE_BANKING);
   const [numeroCheque, setNumeroCheque] = useState("");
   const [numeroMobileBanking, setNumeroMobileBanking] = useState("");
   
@@ -42,7 +43,7 @@ const SendPaymentModal: React.FC<SendPaymentModalProps> = ({
       setMontant(jalon.montant_demande.toString());
       setReference(`PAY-${jalon.id_jalon_projet}-${Date.now()}`);
       setObservation("");
-      setTypePaiement('Mobile Banking');
+      setTypePaiement(PAYMENT_TYPES.MOBILE_BANKING);
       setNumeroCheque("");
       setNumeroMobileBanking("");
     }
@@ -59,10 +60,10 @@ const SendPaymentModal: React.FC<SendPaymentModalProps> = ({
     if (!jalon) return;
 
     // Validation selon le type de paiement
-    if (typePaiement === 'Mobile Banking' && !numeroMobileBanking) {
+    if (typePaiement === PAYMENT_TYPES.MOBILE_BANKING && !numeroMobileBanking) {
       return;
     }
-    if (typePaiement === 'Chèque de banque' && !numeroCheque) {
+    if (typePaiement === PAYMENT_TYPES.CHEQUE && !numeroCheque) {
       return;
     }
     
@@ -74,10 +75,11 @@ const SendPaymentModal: React.FC<SendPaymentModalProps> = ({
         observation: observation || undefined,
         date_limite: jalon.date_limite,
         type_paiement: typePaiement,
-        numero_cheque: typePaiement === 'Chèque de banque' ? numeroCheque : undefined,
-        numero_mobile_banking: typePaiement === 'Mobile Banking' ? numeroMobileBanking : undefined,
+        numero_cheque: typePaiement === PAYMENT_TYPES.CHEQUE ? numeroCheque : undefined,
+        numero_mobile_banking: typePaiement === PAYMENT_TYPES.MOBILE_BANKING ? numeroMobileBanking : undefined,
       };
 
+      console.log('Submitting payment:', paymentData);
       await sendPayment.mutateAsync(paymentData);
       onClose();
     } catch (error) {
@@ -151,24 +153,24 @@ const SendPaymentModal: React.FC<SendPaymentModalProps> = ({
 
           <div className="space-y-2">
             <Label htmlFor="typePaiement">Type de règlement</Label>
-            <Select value={typePaiement} onValueChange={(value: any) => setTypePaiement(value)}>
+            <Select value={typePaiement} onValueChange={(value: PaymentType) => setTypePaiement(value)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Mobile Banking">
+                <SelectItem value={PAYMENT_TYPES.MOBILE_BANKING}>
                   <div className="flex items-center gap-2">
                     <Phone className="h-4 w-4" />
                     Mobile Banking
                   </div>
                 </SelectItem>
-                <SelectItem value="Chèque de banque">
+                <SelectItem value={PAYMENT_TYPES.CHEQUE}>
                   <div className="flex items-center gap-2">
                     <CreditCard className="h-4 w-4" />
                     Chèque de banque
                   </div>
                 </SelectItem>
-                <SelectItem value="Liquide">
+                <SelectItem value={PAYMENT_TYPES.CASH}>
                   <div className="flex items-center gap-2">
                     <Receipt className="h-4 w-4" />
                     Liquide
@@ -179,7 +181,7 @@ const SendPaymentModal: React.FC<SendPaymentModalProps> = ({
           </div>
 
           {/* Section Mobile Banking */}
-          {typePaiement === 'Mobile Banking' && (
+          {typePaiement === PAYMENT_TYPES.MOBILE_BANKING && (
             <div className="space-y-2">
               <Label htmlFor="numeroMobileBanking">Numéro Mobile Banking</Label>
               {phoneNumbers && phoneNumbers.length > 0 ? (
@@ -197,14 +199,15 @@ const SendPaymentModal: React.FC<SendPaymentModalProps> = ({
                 </Select>
               ) : (
                 <div className="text-sm text-amber-600 bg-amber-50 p-3 rounded-md">
-                  Aucun numéro Mobile Banking trouvé pour ce technicien
+                  Aucun numéro Mobile Banking trouvé pour ce technicien. 
+                  Le technicien doit ajouter un numéro avec le type 'mobile_banking' dans ses paramètres.
                 </div>
               )}
             </div>
           )}
 
           {/* Section Chèque */}
-          {typePaiement === 'Chèque de banque' && (
+          {typePaiement === PAYMENT_TYPES.CHEQUE && (
             <div className="space-y-2">
               <Label htmlFor="numeroCheque">Numéro de chèque</Label>
               <Input
@@ -218,7 +221,7 @@ const SendPaymentModal: React.FC<SendPaymentModalProps> = ({
           )}
 
           {/* Section Liquide */}
-          {typePaiement === 'Liquide' && (
+          {typePaiement === PAYMENT_TYPES.CASH && (
             <ReceiptGenerator
               receiptData={{
                 montant: parseFloat(montant) || 0,
@@ -248,7 +251,10 @@ const SendPaymentModal: React.FC<SendPaymentModalProps> = ({
             </Button>
             <Button 
               type="submit" 
-              disabled={sendPayment.isPending || (typePaiement === 'Mobile Banking' && (!phoneNumbers || phoneNumbers.length === 0))}
+              disabled={
+                sendPayment.isPending || 
+                (typePaiement === PAYMENT_TYPES.MOBILE_BANKING && (!phoneNumbers || phoneNumbers.length === 0))
+              }
               className="gap-2"
             >
               {sendPayment.isPending ? (

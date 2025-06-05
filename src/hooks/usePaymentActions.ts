@@ -3,12 +3,20 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { PaiementTechnicien } from "@/types/financier";
+import { PAYMENT_TYPES } from "@/types/paymentTypes";
 
 export const usePaymentActions = () => {
   const queryClient = useQueryClient();
 
   const sendPayment = useMutation({
     mutationFn: async (payment: PaiementTechnicien) => {
+      console.log('Sending payment with data:', payment);
+      
+      // Validation côté client
+      if (!Object.values(PAYMENT_TYPES).includes(payment.type_paiement)) {
+        throw new Error(`Type de paiement invalide: ${payment.type_paiement}. Types acceptés: ${Object.values(PAYMENT_TYPES).join(', ')}`);
+      }
+
       // 1. Récupérer l'id_projet du jalon
       const { data: jalonData, error: jalonError } = await supabase
         .from('jalon_projet')
@@ -16,32 +24,42 @@ export const usePaymentActions = () => {
         .eq('id_jalon_projet', payment.id_jalon_projet)
         .single();
 
-      if (jalonError) throw jalonError;
+      if (jalonError) {
+        console.error('Erreur lors de la récupération du jalon:', jalonError);
+        throw jalonError;
+      }
 
       // 2. Préparer l'observation avec les détails du paiement
       let observation = payment.observation || '';
-      if (payment.type_paiement === 'Mobile Banking' && payment.numero_mobile_banking) {
+      if (payment.type_paiement === PAYMENT_TYPES.MOBILE_BANKING && payment.numero_mobile_banking) {
         observation += ` | Mobile Banking: ${payment.numero_mobile_banking}`;
-      } else if (payment.type_paiement === 'Chèque de banque' && payment.numero_cheque) {
+      } else if (payment.type_paiement === PAYMENT_TYPES.CHEQUE && payment.numero_cheque) {
         observation += ` | Chèque N°: ${payment.numero_cheque}`;
-      } else if (payment.type_paiement === 'Liquide') {
+      } else if (payment.type_paiement === PAYMENT_TYPES.CASH) {
         observation += ` | Paiement en liquide - Reçu généré`;
       }
+
+      const paymentData = {
+        id_projet: jalonData.id_projet,
+        montant: payment.montant,
+        reference_paiement: payment.reference_paiement,
+        observation: observation.trim(),
+        type_paiement: payment.type_paiement,
+      };
+
+      console.log('Inserting payment data:', paymentData);
 
       // 3. Créer l'entrée dans historique_paiement
       const { data: histData, error: histError } = await supabase
         .from('historique_paiement')
-        .insert({
-          id_projet: jalonData.id_projet,
-          montant: payment.montant,
-          reference_paiement: payment.reference_paiement,
-          observation: observation.trim(),
-          type_paiement: payment.type_paiement,
-        })
+        .insert(paymentData)
         .select()
         .single();
 
-      if (histError) throw histError;
+      if (histError) {
+        console.error('Erreur lors de l\'insertion du paiement:', histError);
+        throw histError;
+      }
 
       // 4. Mettre à jour le statut du jalon à "Terminé" (valeur autorisée par la contrainte)
       const { error: jalonUpdateError } = await supabase
@@ -49,7 +67,10 @@ export const usePaymentActions = () => {
         .update({ statut: 'Terminé' })
         .eq('id_jalon_projet', payment.id_jalon_projet);
 
-      if (jalonUpdateError) throw jalonUpdateError;
+      if (jalonUpdateError) {
+        console.error('Erreur lors de la mise à jour du jalon:', jalonUpdateError);
+        throw jalonUpdateError;
+      }
 
       return histData;
     },
@@ -61,7 +82,16 @@ export const usePaymentActions = () => {
     },
     onError: (error: any) => {
       console.error('Payment error:', error);
-      toast.error(`Erreur lors du paiement: ${error.message}`);
+      let errorMessage = `Erreur lors du paiement: ${error.message}`;
+      
+      // Messages d'erreur plus spécifiques
+      if (error.message?.includes('type_paiement_check')) {
+        errorMessage = `Type de paiement invalide. Veuillez utiliser: ${Object.values(PAYMENT_TYPES).join(', ')}`;
+      } else if (error.message?.includes('violates foreign key constraint')) {
+        errorMessage = 'Erreur de référence de données. Veuillez réessayer.';
+      }
+      
+      toast.error(errorMessage);
     },
   });
 
