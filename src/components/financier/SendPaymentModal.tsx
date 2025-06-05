@@ -4,18 +4,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar, User, MapPin, DollarSign, Phone, Receipt, CreditCard } from "lucide-react";
+import { DollarSign } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { JalonFinancement, PaiementTechnicien } from "@/types/financier";
-import { format } from "date-fns";
-import { fr } from "date-fns/locale";
 import { usePaymentActions } from "@/hooks/usePaymentActions";
 import { useTechnicienPhoneNumbers } from "@/hooks/useTechnicienPhoneNumbers";
 import ReceiptGenerator from "./ReceiptGenerator";
+import JalonInfoCard from "./JalonInfoCard";
+import PaymentDetailsForm from "./PaymentDetailsForm";
+import PaymentTypeSelector from "./PaymentTypeSelector";
+import MobileBankingSection from "./MobileBankingSection";
 
 interface SendPaymentModalProps {
   isOpen: boolean;
@@ -107,148 +105,34 @@ const SendPaymentModal: React.FC<SendPaymentModalProps> = ({
           <DialogTitle>Envoyer Paiement - {jalon.nom_jalon}</DialogTitle>
         </DialogHeader>
 
-        <Card className="mb-4">
-          <CardContent className="pt-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <User className="h-4 w-4 text-muted-foreground" />
-              <span className="font-medium">
-                {jalon.technicien_nom} {jalon.technicien_prenoms}
-              </span>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <MapPin className="h-4 w-4 text-muted-foreground" />
-              <span>{jalon.nom_projet} ({jalon.surface_ha} ha)</span>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <span>
-                Échéance: {format(new Date(jalon.date_limite), 'dd MMMM yyyy', { locale: fr })}
-              </span>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-              <span className="font-bold text-green-600">
-                Montant demandé: {formatCurrency(jalon.montant_demande)}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
+        <JalonInfoCard jalon={jalon} />
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="montant">Montant à envoyer</Label>
-            <Input
-              id="montant"
-              type="number"
-              step="0.01"
-              value={montant}
-              onChange={(e) => setMontant(e.target.value)}
-              required
-              min="0"
-            />
-          </div>
+          <PaymentDetailsForm
+            montant={montant}
+            setMontant={setMontant}
+            reference={reference}
+            setReference={setReference}
+            observation={observation}
+            setObservation={setObservation}
+          />
 
-          <div className="space-y-2">
-            <Label htmlFor="reference">Référence de paiement</Label>
-            <Input
-              id="reference"
-              value={reference}
-              onChange={(e) => setReference(e.target.value)}
-              required
-              placeholder="REF-PAYMENT-..."
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="typePaiement">Type de règlement</Label>
-            <Select value={typePaiement} onValueChange={(value: any) => setTypePaiement(value)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Mobile Banking">
-                  <div className="flex items-center gap-2">
-                    <Phone className="h-4 w-4" />
-                    Mobile Banking
-                  </div>
-                </SelectItem>
-                <SelectItem value="Chèque de banque">
-                  <div className="flex items-center gap-2">
-                    <CreditCard className="h-4 w-4" />
-                    Chèque de banque
-                  </div>
-                </SelectItem>
-                <SelectItem value="Liquide">
-                  <div className="flex items-center gap-2">
-                    <Receipt className="h-4 w-4" />
-                    Liquide
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <PaymentTypeSelector
+            typePaiement={typePaiement}
+            setTypePaiement={setTypePaiement}
+          />
 
           {/* Section Mobile Banking */}
           {typePaiement === 'Mobile Banking' && (
-            <div className="space-y-3">
-              <Label htmlFor="numeroMobileBanking">Numéro Mobile Banking</Label>
-              
-              {mobileBankingNumbers && mobileBankingNumbers.length > 0 && !saisieManuelle ? (
-                <Select value={numeroMobileBanking} onValueChange={setNumeroMobileBanking}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner un numéro" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {mobileBankingNumbers.map((phone) => (
-                      <SelectItem key={phone.id_telephone} value={phone.numero}>
-                        {phone.numero} ({phone.type})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : null}
-
-              {(mobileBankingNumbers.length === 0 || saisieManuelle) && (
-                <div className="space-y-3">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox 
-                      id="saisieManuelle" 
-                      checked={saisieManuelle}
-                      onCheckedChange={(checked) => setSaisieManuelle(checked as boolean)}
-                    />
-                    <Label htmlFor="saisieManuelle" className="text-sm">
-                      Saisir manuellement le numéro Mobile Banking
-                    </Label>
-                  </div>
-                  
-                  {(mobileBankingNumbers.length === 0 || saisieManuelle) && (
-                    <Input
-                      id="numeroManuel"
-                      value={numeroManuel}
-                      onChange={(e) => setNumeroManuel(e.target.value)}
-                      placeholder="Ex: +261 34 12 345 67"
-                      required
-                    />
-                  )}
-                </div>
-              )}
-
-              {mobileBankingNumbers.length > 0 && !saisieManuelle && (
-                <div className="flex items-center space-x-2 mt-2">
-                  <Checkbox 
-                    id="saisieManuelle" 
-                    checked={saisieManuelle}
-                    onCheckedChange={(checked) => setSaisieManuelle(checked as boolean)}
-                  />
-                  <Label htmlFor="saisieManuelle" className="text-sm">
-                    Saisir un autre numéro manuellement
-                  </Label>
-                </div>
-              )}
-            </div>
+            <MobileBankingSection
+              mobileBankingNumbers={mobileBankingNumbers}
+              numeroMobileBanking={numeroMobileBanking}
+              setNumeroMobileBanking={setNumeroMobileBanking}
+              saisieManuelle={saisieManuelle}
+              setSaisieManuelle={setSaisieManuelle}
+              numeroManuel={numeroManuel}
+              setNumeroManuel={setNumeroManuel}
+            />
           )}
 
           {/* Section Chèque */}
@@ -278,17 +162,6 @@ const SendPaymentModal: React.FC<SendPaymentModalProps> = ({
               onReceiptGenerated={handleReceiptGenerated}
             />
           )}
-
-          <div className="space-y-2">
-            <Label htmlFor="observation">Observation (optionnel)</Label>
-            <Textarea
-              id="observation"
-              value={observation}
-              onChange={(e) => setObservation(e.target.value)}
-              placeholder="Notes ou commentaires sur ce paiement..."
-              rows={3}
-            />
-          </div>
 
           <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={onClose}>
