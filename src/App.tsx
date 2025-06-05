@@ -15,6 +15,7 @@ import { AnimatePresence } from "framer-motion";
 import Auth from "./pages/Auth";
 import Terrain from "./pages/Terrain";
 import Projects from "./pages/Projects";
+import Financier from "./pages/Financier";
 import { AuthProvider } from "./contexts/AuthContext";
 
 // Create a client
@@ -58,6 +59,11 @@ const App = () => {
                 <Route path="/projects" element={
                   <Layout>
                     <Projects />
+                  </Layout>
+                } />
+                <Route path="/financier" element={
+                  <Layout>
+                    <Financier />
                   </Layout>
                 } />
                 <Route path="/settings" element={
