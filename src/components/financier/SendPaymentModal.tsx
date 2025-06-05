@@ -6,12 +6,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
-import { Calendar, User, MapPin, DollarSign } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Calendar, User, MapPin, DollarSign, Phone, Receipt, CreditCard } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
-import { JalonFinancement } from "@/types/financier";
+import { JalonFinancement, PaiementTechnicien } from "@/types/financier";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { usePaymentActions } from "@/hooks/usePaymentActions";
+import { useTechnicienPhoneNumbers } from "@/hooks/useTechnicienPhoneNumbers";
+import ReceiptGenerator from "./ReceiptGenerator";
 
 interface SendPaymentModalProps {
   isOpen: boolean;
@@ -27,34 +30,57 @@ const SendPaymentModal: React.FC<SendPaymentModalProps> = ({
   const [montant, setMontant] = useState("");
   const [reference, setReference] = useState("");
   const [observation, setObservation] = useState("");
+  const [typePaiement, setTypePaiement] = useState<'Mobile Banking' | 'Chèque de banque' | 'Liquide'>('Mobile Banking');
+  const [numeroCheque, setNumeroCheque] = useState("");
+  const [numeroMobileBanking, setNumeroMobileBanking] = useState("");
   
   const { sendPayment } = usePaymentActions();
+  const { data: phoneNumbers } = useTechnicienPhoneNumbers(jalon?.id_technicien || '');
 
   React.useEffect(() => {
     if (jalon) {
       setMontant(jalon.montant_demande.toString());
       setReference(`PAY-${jalon.id_jalon_projet}-${Date.now()}`);
       setObservation("");
+      setTypePaiement('Mobile Banking');
+      setNumeroCheque("");
+      setNumeroMobileBanking("");
     }
   }, [jalon]);
+
+  const handleReceiptGenerated = (pdfBlob: Blob) => {
+    console.log('Receipt generated:', pdfBlob);
+    // Ici on pourrait uploader le reçu vers Supabase Storage si nécessaire
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!jalon) return;
+
+    // Validation selon le type de paiement
+    if (typePaiement === 'Mobile Banking' && !numeroMobileBanking) {
+      return;
+    }
+    if (typePaiement === 'Chèque de banque' && !numeroCheque) {
+      return;
+    }
     
     try {
-      await sendPayment.mutateAsync({
+      const paymentData: PaiementTechnicien = {
         id_jalon_projet: jalon.id_jalon_projet,
         montant: parseFloat(montant),
         reference_paiement: reference,
         observation: observation || undefined,
         date_limite: jalon.date_limite,
-      });
-      
+        type_paiement: typePaiement,
+        numero_cheque: typePaiement === 'Chèque de banque' ? numeroCheque : undefined,
+        numero_mobile_banking: typePaiement === 'Mobile Banking' ? numeroMobileBanking : undefined,
+      };
+
+      await sendPayment.mutateAsync(paymentData);
       onClose();
     } catch (error) {
-      // L'erreur est gérée dans le hook
       console.error('Payment error:', error);
     }
   };
@@ -63,7 +89,7 @@ const SendPaymentModal: React.FC<SendPaymentModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Envoyer Paiement - {jalon.nom_jalon}</DialogTitle>
         </DialogHeader>
@@ -124,6 +150,88 @@ const SendPaymentModal: React.FC<SendPaymentModalProps> = ({
           </div>
 
           <div className="space-y-2">
+            <Label htmlFor="typePaiement">Type de règlement</Label>
+            <Select value={typePaiement} onValueChange={(value: any) => setTypePaiement(value)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Mobile Banking">
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-4 w-4" />
+                    Mobile Banking
+                  </div>
+                </SelectItem>
+                <SelectItem value="Chèque de banque">
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="h-4 w-4" />
+                    Chèque de banque
+                  </div>
+                </SelectItem>
+                <SelectItem value="Liquide">
+                  <div className="flex items-center gap-2">
+                    <Receipt className="h-4 w-4" />
+                    Liquide
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Section Mobile Banking */}
+          {typePaiement === 'Mobile Banking' && (
+            <div className="space-y-2">
+              <Label htmlFor="numeroMobileBanking">Numéro Mobile Banking</Label>
+              {phoneNumbers && phoneNumbers.length > 0 ? (
+                <Select value={numeroMobileBanking} onValueChange={setNumeroMobileBanking}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner un numéro" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {phoneNumbers.map((phone) => (
+                      <SelectItem key={phone.id_telephone} value={phone.numero}>
+                        {phone.numero} ({phone.type})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className="text-sm text-amber-600 bg-amber-50 p-3 rounded-md">
+                  Aucun numéro Mobile Banking trouvé pour ce technicien
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Section Chèque */}
+          {typePaiement === 'Chèque de banque' && (
+            <div className="space-y-2">
+              <Label htmlFor="numeroCheque">Numéro de chèque</Label>
+              <Input
+                id="numeroCheque"
+                value={numeroCheque}
+                onChange={(e) => setNumeroCheque(e.target.value)}
+                required
+                placeholder="Ex: CHQ-123456789"
+              />
+            </div>
+          )}
+
+          {/* Section Liquide */}
+          {typePaiement === 'Liquide' && (
+            <ReceiptGenerator
+              receiptData={{
+                montant: parseFloat(montant) || 0,
+                technicien_nom: `${jalon.technicien_nom} ${jalon.technicien_prenoms}`,
+                nom_projet: jalon.nom_projet,
+                reference_paiement: reference,
+                date_paiement: new Date().toISOString(),
+              }}
+              onReceiptGenerated={handleReceiptGenerated}
+            />
+          )}
+
+          <div className="space-y-2">
             <Label htmlFor="observation">Observation (optionnel)</Label>
             <Textarea
               id="observation"
@@ -140,7 +248,7 @@ const SendPaymentModal: React.FC<SendPaymentModalProps> = ({
             </Button>
             <Button 
               type="submit" 
-              disabled={sendPayment.isPending}
+              disabled={sendPayment.isPending || (typePaiement === 'Mobile Banking' && (!phoneNumbers || phoneNumbers.length === 0))}
               className="gap-2"
             >
               {sendPayment.isPending ? (

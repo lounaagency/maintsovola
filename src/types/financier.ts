@@ -41,6 +41,23 @@ export interface PaiementTechnicien {
   reference_paiement: string;
   observation?: string;
   date_limite?: string;
+  type_paiement: 'Mobile Banking' | 'Chèque de banque' | 'Liquide';
+  numero_cheque?: string;
+  numero_mobile_banking?: string;
+}
+
+export interface TechnicienMobileBanking {
+  id_telephone: number;
+  numero: string;
+  type: string;
+}
+
+export interface ReceiptData {
+  montant: number;
+  technicien_nom: string;
+  nom_projet: string;
+  reference_paiement: string;
+  date_paiement: string;
 }
 
 export interface HistoriquePaiementFinancier {

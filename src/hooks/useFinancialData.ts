@@ -106,7 +106,7 @@ export const useHistoriquePaiements = () => {
           *,
           projet:id_projet(
             titre,
-            utilisateur:id_technicien(nom, prenoms)
+            technicien:id_technicien(nom, prenoms)
           )
         `)
         .order('date_paiement', { ascending: false })
@@ -127,7 +127,7 @@ export const useHistoriquePaiements = () => {
         justificatif_url: undefined, // Champ non encore ajouté à la table
         statut_justificatif: 'en_attente', // Valeur par défaut
         observation: item.observation,
-        technicien_nom: item.projet?.utilisateur ? `${item.projet.utilisateur.nom} ${item.projet.utilisateur.prenoms || ''}`.trim() : 'Non assigné',
+        technicien_nom: item.projet?.technicien ? `${item.projet.technicien.nom} ${item.projet.technicien.prenoms || ''}`.trim() : 'Non assigné',
         nom_projet: item.projet?.titre || 'Projet inconnu'
       }));
     },

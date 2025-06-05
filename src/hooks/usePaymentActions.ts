@@ -18,22 +18,32 @@ export const usePaymentActions = () => {
 
       if (jalonError) throw jalonError;
 
-      // 2. Créer l'entrée dans historique_paiement
+      // 2. Préparer l'observation avec les détails du paiement
+      let observation = payment.observation || '';
+      if (payment.type_paiement === 'Mobile Banking' && payment.numero_mobile_banking) {
+        observation += ` | Mobile Banking: ${payment.numero_mobile_banking}`;
+      } else if (payment.type_paiement === 'Chèque de banque' && payment.numero_cheque) {
+        observation += ` | Chèque N°: ${payment.numero_cheque}`;
+      } else if (payment.type_paiement === 'Liquide') {
+        observation += ` | Paiement en liquide - Reçu généré`;
+      }
+
+      // 3. Créer l'entrée dans historique_paiement
       const { data: histData, error: histError } = await supabase
         .from('historique_paiement')
         .insert({
           id_projet: jalonData.id_projet,
           montant: payment.montant,
           reference_paiement: payment.reference_paiement,
-          observation: payment.observation,
-          type_paiement: 'financement_jalon',
+          observation: observation.trim(),
+          type_paiement: payment.type_paiement,
         })
         .select()
         .single();
 
       if (histError) throw histError;
 
-      // 3. Mettre à jour le statut du jalon à "Financé"
+      // 4. Mettre à jour le statut du jalon à "Financé"
       const { error: jalonUpdateError } = await supabase
         .from('jalon_projet')
         .update({ statut: 'Financé' })
