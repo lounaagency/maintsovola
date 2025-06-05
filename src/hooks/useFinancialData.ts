@@ -1,3 +1,4 @@
+
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ResumeFinancier, JalonFinancement, HistoriquePaiementFinancier } from "@/types/financier";
@@ -64,7 +65,7 @@ export const useJalonsFinancement = () => {
             titre,
             id_technicien,
             surface_ha,
-            utilisateur:id_technicien(nom, prenoms)
+            technicien:id_technicien(nom, prenoms)
           )
         `)
         .in('statut', ['Prévu', 'En cours'])
@@ -85,8 +86,8 @@ export const useJalonsFinancement = () => {
         nom_jalon: item.jalon_agricole?.nom_jalon || 'Jalon inconnu',
         nom_projet: item.projet?.titre || 'Projet inconnu',
         id_technicien: item.projet?.id_technicien || '',
-        technicien_nom: item.projet?.utilisateur?.nom || 'Non assigné',
-        technicien_prenoms: item.projet?.utilisateur?.prenoms || '',
+        technicien_nom: item.projet?.technicien?.nom || 'Non assigné',
+        technicien_prenoms: item.projet?.technicien?.prenoms || '',
         montant_demande: Math.floor(Math.random() * 500000) + 100000, // Montant simulé en attendant les coûts
         surface_ha: item.projet?.surface_ha || 0
       }));
@@ -106,7 +107,7 @@ export const useHistoriquePaiements = () => {
           projet:id_projet(
             titre,
             id_technicien,
-            utilisateur:id_technicien(nom, prenoms)
+            technicien:id_technicien(nom, prenoms)
           )
         `)
         .order('date_paiement', { ascending: false })
@@ -127,7 +128,7 @@ export const useHistoriquePaiements = () => {
         justificatif_url: undefined, // Champ non encore ajouté à la table
         statut_justificatif: 'en_attente', // Valeur par défaut
         observation: item.observation,
-        technicien_nom: item.projet?.utilisateur ? `${item.projet.utilisateur.nom} ${item.projet.utilisateur.prenoms || ''}`.trim() : 'Non assigné',
+        technicien_nom: item.projet?.technicien ? `${item.projet.technicien.nom} ${item.projet.technicien.prenoms || ''}`.trim() : 'Non assigné',
         nom_projet: item.projet?.titre || 'Projet inconnu'
       }));
     },

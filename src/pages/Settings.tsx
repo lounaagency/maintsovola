@@ -10,6 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 
 import { supabase } from "@/integrations/supabase/client";
 import { UserProfile, UserTelephone } from "@/types/userProfile";
+import { PHONE_TYPES, PhoneType, isMobileBankingPhone } from "@/types/paymentTypes";
 import { motion } from "framer-motion";
 import { User, Phone, Upload, Plus, Trash2, Check, X } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
@@ -35,7 +36,7 @@ const Settings = () => {
     numero: "",
     id_telephone : null,
     id_utilisateur: "",
-    type: "principal",
+    type: PHONE_TYPES.PRINCIPAL,
     est_whatsapp: false,
     est_mobile_banking: false,
     created_at: '',
@@ -53,6 +54,16 @@ const Settings = () => {
     }
   }, [profile]);
 
+  // Fonction pour déterminer automatiquement si c'est Mobile Banking
+  const updateMobileBankingFlag = (phoneType: PhoneType, currentPhone: UserTelephone) => {
+    const shouldBeMobileBanking = isMobileBankingPhone(phoneType);
+    return {
+      ...currentPhone,
+      type: phoneType,
+      est_mobile_banking: shouldBeMobileBanking
+    };
+  };
+
   const fetchPhoneNumbers = async () => {
     if (!user) return;
 
@@ -68,7 +79,7 @@ const Settings = () => {
         id_telephone: item.id_telephone,
         id_utilisateur: item.id_utilisateur,
         numero: item.numero,
-        type: item.type as "principal" | "whatsapp" | "mobile_banking" | "autre",
+        type: item.type as PhoneType,
         est_whatsapp: item.est_whatsapp,
         est_mobile_banking: item.est_mobile_banking,
         created_at: item.created_at,
@@ -190,27 +201,36 @@ const Settings = () => {
   const addPhoneNumber = async () => {
     if (!user || !newPhone.numero) return;
     
+    console.log('Adding phone number:', newPhone);
 
     try {
+      // Préparer les données avec la logique Mobile Banking automatique
       const phoneToAdd = {
-        ...newPhone,
-        id_utilisateur: user.id
+        id_utilisateur: user.id,
+        numero: newPhone.numero.trim(),
+        type: newPhone.type,
+        est_whatsapp: newPhone.est_whatsapp,
+        est_mobile_banking: newPhone.est_mobile_banking || isMobileBankingPhone(newPhone.type)
       };
+      
+      console.log('Phone data to insert:', phoneToAdd);
       
       const { data, error } = await supabase
         .from('telephone')
         .insert(phoneToAdd)
         .select();
 
-
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
       
       if (data && data[0]) {
         const newPhoneWithId: UserTelephone = {
           id_telephone: data[0].id_telephone,
           id_utilisateur: data[0].id_utilisateur,
           numero: data[0].numero,
-          type: data[0].type as "principal" | "whatsapp" | "mvola" | "orange_money" | "airtel_money" | "autre",
+          type: data[0].type as PhoneType,
           est_whatsapp: data[0].est_whatsapp,
           est_mobile_banking: data[0].est_mobile_banking,
           created_at: data[0].created_at,
@@ -218,28 +238,41 @@ const Settings = () => {
         };
         
         setTelephones([...telephones, newPhoneWithId]);
+        
+        // Réinitialiser le formulaire
+        setNewPhone({
+          id_telephone : null,
+          numero: "",
+          id_utilisateur: "",
+          type: PHONE_TYPES.PRINCIPAL,
+          est_whatsapp: false,
+          est_mobile_banking: false,
+          created_at: '',
+          modified_at: ''
+        });
+        
+        toast({
+          title: "Succès",
+          description: `Numéro de téléphone ajouté${phoneToAdd.est_mobile_banking ? ' (Mobile Banking activé)' : ''}`,
+        });
+      }
+    } catch (error: any) {
+      console.error("Error adding phone number:", error);
+      
+      let errorMessage = "Impossible d'ajouter le numéro de téléphone";
+      
+      // Messages d'erreur plus spécifiques
+      if (error.code === '23505') {
+        errorMessage = "Ce numéro existe déjà";
+      } else if (error.code === '23503') {
+        errorMessage = "Erreur de référence utilisateur";
+      } else if (error.message) {
+        errorMessage = `Erreur: ${error.message}`;
       }
       
-      setNewPhone({
-        id_telephone : null,
-        numero: "",
-        id_utilisateur: "",
-        type: "principal",
-        est_whatsapp: false,
-        est_mobile_banking: false,
-        created_at: '',
-        modified_at: ''
-      });
-      
-      toast({
-        title: "Succès",
-        description: "Numéro de téléphone ajouté",
-      });
-    } catch (error) {
-      console.error("Error adding phone number:", error);
       toast({
         title: "Erreur",
-        description: "Impossible d'ajouter le numéro de téléphone",
+        description: errorMessage,
         variant: "destructive"
       });
     }
@@ -267,7 +300,6 @@ const Settings = () => {
         description: "Impossible de supprimer le numéro de téléphone",
         variant: "destructive"
       });
-
     }
   };
 
@@ -452,17 +484,18 @@ const Settings = () => {
                         id="type"
                         className="w-full border rounded-md p-2"
                         value={newPhone.type}
-                        onChange={(e) => setNewPhone({
-                          ...newPhone, 
-                          type: e.target.value as "principal" | "whatsapp" | "mvola" | "orange_money" | "airtel_money" | "autre"
-                        })}
+                        onChange={(e) => {
+                          const selectedType = e.target.value as PhoneType;
+                          setNewPhone(updateMobileBankingFlag(selectedType, newPhone));
+                        }}
                       >
-                        <option value="principal">Principal</option>
-                        <option value="whatsapp">WhatsApp</option>
-                        <option value="mvola">MVola</option>
-                        <option value="orange_money">Orange Money</option>
-                        <option value="airtel_money">Airtel Money</option>
-                        <option value="autre">Autre</option>
+                        <option value={PHONE_TYPES.PRINCIPAL}>Principal</option>
+                        <option value={PHONE_TYPES.WHATSAPP}>WhatsApp</option>
+                        <option value={PHONE_TYPES.MVOLA}>MVola</option>
+                        <option value={PHONE_TYPES.ORANGE_MONEY}>Orange Money</option>
+                        <option value={PHONE_TYPES.AIRTEL_MONEY}>Airtel Money</option>
+                        <option value={PHONE_TYPES.MOBILE_BANKING}>Mobile Banking</option>
+                        <option value={PHONE_TYPES.AUTRE}>Autre</option>
                       </select>
                     </div>
                   </div>
@@ -481,14 +514,23 @@ const Settings = () => {
                       <input 
                         type="checkbox" 
                         id="est_mobile_banking" 
-                        checked={newPhone.est_mobile_banking}
+                        checked={newPhone.est_mobile_banking || isMobileBankingPhone(newPhone.type)}
                         onChange={(e) => setNewPhone({...newPhone, est_mobile_banking: e.target.checked})}
+                        disabled={isMobileBankingPhone(newPhone.type)} // Automatique pour certains types
                       />
-                      <Label htmlFor="est_mobile_banking">Mobile Banking</Label>
+                      <Label htmlFor="est_mobile_banking">
+                        Mobile Banking {isMobileBankingPhone(newPhone.type) && "(Automatique)"}
+                      </Label>
                     </div>
                   </div>
                   
-                  <Button onClick={addPhoneNumber} disabled={!newPhone.numero}>
+                  {isMobileBankingPhone(newPhone.type) && (
+                    <div className="text-sm text-blue-600 bg-blue-50 p-2 rounded">
+                      Ce type de numéro sera automatiquement marqué comme Mobile Banking
+                    </div>
+                  )}
+                  
+                  <Button onClick={addPhoneNumber} disabled={!newPhone.numero.trim()}>
                     <Plus size={16} className="mr-2" />
                     Ajouter
                   </Button>

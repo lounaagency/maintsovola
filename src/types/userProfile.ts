@@ -1,9 +1,11 @@
 
+import { PhoneType } from "./paymentTypes";
+
 export interface UserTelephone {
   id_telephone: number;
   id_utilisateur: string;
   numero: string;
-  type: "principal" | "whatsapp" | "mvola" | "orange_money" | "airtel_money" | "mobile_banking" | "autre";
+  type: PhoneType;
   est_whatsapp: boolean;
   est_mobile_banking: boolean;
   created_at: string;
