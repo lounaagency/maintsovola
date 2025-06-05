@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -253,7 +252,7 @@ const Settings = () => {
         
         toast({
           title: "Succès",
-          description: `Numéro de téléphone ajouté${phoneToAdd.est_mobile_banking ? ' (Mobile Banking activé)' : ''}`,
+          description: `Numéro de téléphone ajouté${phoneToAdd.est_mobile_banking ? ' (mobile_banking activé)' : ''}`,
         });
       }
     } catch (error: any) {
@@ -452,7 +451,7 @@ const Settings = () => {
                         <div className="flex gap-2 text-xs">
                           <span className="bg-muted px-2 py-0.5 rounded">{phone.type}</span>
                           {phone.est_whatsapp && <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded">WhatsApp</span>}
-                          {phone.est_mobile_banking && <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded">Mobile Banking</span>}
+                          {phone.est_mobile_banking && <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded">mobile_banking</span>}
                         </div>
                       </div>
                     </div>
@@ -519,14 +518,14 @@ const Settings = () => {
                         disabled={isMobileBankingPhone(newPhone.type)} // Automatique pour certains types
                       />
                       <Label htmlFor="est_mobile_banking">
-                        Mobile Banking {isMobileBankingPhone(newPhone.type) && "(Automatique)"}
+                        mobile_banking {isMobileBankingPhone(newPhone.type) && "(Automatique)"}
                       </Label>
                     </div>
                   </div>
                   
                   {isMobileBankingPhone(newPhone.type) && (
                     <div className="text-sm text-blue-600 bg-blue-50 p-2 rounded">
-                      Ce type de numéro sera automatiquement marqué comme Mobile Banking
+                      Ce type de numéro sera automatiquement marqué comme mobile_banking
                     </div>
                   )}
                   
