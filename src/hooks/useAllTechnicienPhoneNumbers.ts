@@ -2,6 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { UserTelephone } from "@/types/userProfile";
+import { PhoneType } from "@/types/paymentTypes";
 
 export const useAllTechnicienPhoneNumbers = (technicienId: string) => {
   return useQuery({
@@ -24,7 +25,13 @@ export const useAllTechnicienPhoneNumbers = (technicienId: string) => {
       
       console.log('All phones found for technicien:', allPhones);
       
-      return allPhones || [];
+      // Mapper les données pour caster le type correctement
+      const typedPhones: UserTelephone[] = (allPhones || []).map(phone => ({
+        ...phone,
+        type: phone.type as PhoneType
+      }));
+      
+      return typedPhones;
     },
     enabled: !!technicienId,
   });
