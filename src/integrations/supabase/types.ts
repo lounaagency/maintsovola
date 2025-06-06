@@ -195,6 +195,13 @@ export type Database = {
             referencedColumns: ["id_commentaire"]
           },
           {
+            foreignKeyName: "commentaire_id_parent_commentaire_fkey"
+            columns: ["id_parent_commentaire"]
+            isOneToOne: false
+            referencedRelation: "commentaire"
+            referencedColumns: ["id_commentaire"]
+          },
+          {
             foreignKeyName: "commentaire_id_projet_fkey"
             columns: ["id_projet"]
             isOneToOne: false
@@ -1709,6 +1716,20 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "telephone_id_utilisateur_fkey"
+            columns: ["id_utilisateur"]
+            isOneToOne: false
+            referencedRelation: "utilisateur"
+            referencedColumns: ["id_utilisateur"]
+          },
+          {
+            foreignKeyName: "telephone_id_utilisateur_fkey"
+            columns: ["id_utilisateur"]
+            isOneToOne: false
+            referencedRelation: "utilisateurs_par_role"
+            referencedColumns: ["id_utilisateur"]
+          },
+          {
             foreignKeyName: "telephone_id_utilisateur_fkey1"
             columns: ["id_utilisateur"]
             isOneToOne: false
@@ -1936,7 +1957,6 @@ export type Database = {
           photo_couverture: string | null
           photo_profil: string | null
           prenoms: string | null
-          role: string | null
         }
         Insert: {
           adresse?: string | null
@@ -1949,7 +1969,6 @@ export type Database = {
           photo_couverture?: string | null
           photo_profil?: string | null
           prenoms?: string | null
-          role?: string | null
         }
         Update: {
           adresse?: string | null
@@ -1962,7 +1981,6 @@ export type Database = {
           photo_couverture?: string | null
           photo_profil?: string | null
           prenoms?: string | null
-          role?: string | null
         }
         Relationships: [
           {

@@ -12,11 +12,22 @@ export const useTechnicienPhoneNumbers = (technicienId: string) => {
       
       console.log('Fetching phone numbers for technicien:', technicienId);
       
-      // Récupérer tous les téléphones du technicien
+      // Récupérer tous les téléphones du technicien avec vérification du rôle
       const { data: allPhones, error } = await supabase
         .from('telephone')
-        .select('id_telephone, numero, type, est_mobile_banking')
-        .eq('id_utilisateur', technicienId);
+        .select(`
+          id_telephone, 
+          numero, 
+          type, 
+          est_mobile_banking,
+          utilisateur!inner(
+            role!inner(
+              nom_role
+            )
+          )
+        `)
+        .eq('id_utilisateur', technicienId)
+        .eq('utilisateur.role.nom_role', 'technicien');
       
       if (error) {
         console.error('Error fetching technicien phone numbers:', error);
