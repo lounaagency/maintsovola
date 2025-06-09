@@ -140,20 +140,40 @@ export const Profile = () => {
 
   const fetchUserProfile = async (userId: string) => {
     try {
-      const { data, error } = await supabase
+      console.log('Fetching profile for user:', userId);
+      
+      // Première requête : récupérer les données utilisateur avec le rôle
+      const { data: userData, error: userError } = await supabase
         .from('utilisateur')
         .select(`
           *,
-          role:id_role(nom_role),
-          telephones:telephone(*)
+          role:id_role(nom_role)
         `)
         .eq('id_utilisateur', userId)
         .single();
       
-      if (error) throw error;
+      if (userError) {
+        console.error("Error fetching user data:", userError);
+        toast.error("Impossible de charger le profil de l'utilisateur");
+        return;
+      }
+
+      console.log('User data fetched:', userData);
+
+      // Deuxième requête : récupérer les téléphones séparément
+      const { data: telephonesData, error: telephonesError } = await supabase
+        .from('telephone')
+        .select('*')
+        .eq('id_utilisateur', userId);
+
+      if (telephonesError) {
+        console.error("Error fetching telephones:", telephonesError);
+        // Continue même si les téléphones échouent
+      }
+
+      console.log('Telephones data fetched:', telephonesData);
       
-      const telephones = data.telephones || [];
-      const mappedTelephones = telephones.map((tel: any) => ({
+      const mappedTelephones = telephonesData ? telephonesData.map((tel: any) => ({
         id_telephone: tel.id_telephone,
         id_utilisateur: tel.id_utilisateur,
         numero: tel.numero,
@@ -162,21 +182,21 @@ export const Profile = () => {
         est_mobile_banking: tel.est_mobile_banking,
         created_at: tel.created_at || new Date().toISOString(),
         modified_at: tel.modified_at || new Date().toISOString()
-      }));
+      })) : [];
       
       setProfile({
-        id_utilisateur: isSelectQueryError(data) ? '' : data.id_utilisateur,
-        id: isSelectQueryError(data) ? '' : data.id_utilisateur,
-        nom: isSelectQueryError(data) ? '' : data.nom,
-        prenoms: isSelectQueryError(data) ? '' : data.prenoms,
-        email: isSelectQueryError(data) ? '' : data.email,
-        photo_profil: isSelectQueryError(data) ? '' : data.photo_profil,
-        photo_couverture: isSelectQueryError(data) ? '' : data.photo_couverture,
-        telephone: isSelectQueryError(data) ? '' : telephones[0]?.numero,
-        adresse: isSelectQueryError(data) ? '' : data.adresse || undefined,
-        bio: isSelectQueryError(data) ? '' : data.bio || undefined,
-        id_role: isSelectQueryError(data) ? null : data.id_role,
-        nom_role: isSelectQueryError(data) ? '' : data.role?.nom_role,
+        id_utilisateur: userData.id_utilisateur,
+        id: userData.id_utilisateur,
+        nom: userData.nom,
+        prenoms: userData.prenoms,
+        email: userData.email,
+        photo_profil: userData.photo_profil,
+        photo_couverture: userData.photo_couverture,
+        telephone: mappedTelephones[0]?.numero,
+        adresse: userData.adresse || undefined,
+        bio: userData.bio || undefined,
+        id_role: userData.id_role,
+        nom_role: userData.role?.nom_role,
         telephones: mappedTelephones
       });
     } catch (error) {
@@ -284,9 +304,9 @@ export const Profile = () => {
           count: 0,
           area: 0,
           funding: 0,
-          profit: 0, 
+          profit: 0,
           ownerProfit: 0,
-          cultures: [] as Array<{ name: string, count: number, fill: string }>
+          cultures: []
         }
       };
       

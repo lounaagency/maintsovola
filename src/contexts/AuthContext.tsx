@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -79,42 +78,60 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const fetchUserProfile = async (userId: string) => {
     try {
-      const { data, error } = await supabase
+      console.log('Fetching user profile for:', userId);
+      
+      // Première requête : récupérer les données utilisateur avec le rôle
+      const { data: userData, error: userError } = await supabase
         .from('utilisateur')
         .select(`
           *,
-          role:id_role(nom_role),
-          telephones:telephone(*)
+          role:id_role(nom_role)
         `)
         .eq('id_utilisateur', userId)
         .single();
 
-      if (error) {
-        console.error("Error fetching profile:", error);
+      if (userError) {
+        console.error("Error fetching user data:", userError);
         return;
       }
+
+      console.log('User data fetched:', userData);
+
+      // Deuxième requête : récupérer les téléphones séparément
+      const { data: telephonesData, error: telephonesError } = await supabase
+        .from('telephone')
+        .select('*')
+        .eq('id_utilisateur', userId);
+
+      if (telephonesError) {
+        console.error("Error fetching telephones:", telephonesError);
+        // Continue même si les téléphones échouent
+      }
+
+      console.log('Telephones data fetched:', telephonesData);
       
-      const telephones = data.telephones ? data.telephones.map((tel: any) => ({
+      const telephones = telephonesData ? telephonesData.map((tel: any) => ({
         ...tel,
         type: tel.type as "principal" | "whatsapp" | "mobile_banking" | "autre"
       })) : [];
       
       const userProfile: UserProfile = {
-        id_utilisateur: data.id_utilisateur,
-        id: data.id_utilisateur,
-        nom: data.nom,
-        prenoms: data.prenoms,
-        email: data.email,
-        photo_profil: data.photo_profil,
-        photo_couverture: data.photo_couverture,
+        id_utilisateur: userData.id_utilisateur,
+        id: userData.id_utilisateur,
+        nom: userData.nom,
+        prenoms: userData.prenoms,
+        email: userData.email,
+        photo_profil: userData.photo_profil,
+        photo_couverture: userData.photo_couverture,
         telephone: telephones && telephones[0]?.numero,
-        adresse: data.adresse || undefined,
-        bio: data.bio || undefined,
-        id_role: data.id_role,
-        nom_role: data.role?.nom_role,
+        adresse: userData.adresse || undefined,
+        bio: userData.bio || undefined,
+        id_role: userData.id_role,
+        nom_role: userData.role?.nom_role,
         telephones: telephones
       };
       
+      console.log('Final user profile:', userProfile);
       setProfile(userProfile);
     } catch (error) {
       console.error("Error fetching profile:", error);
@@ -249,36 +266,52 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (!user) return;
     
     try {
-      const { data, error } = await supabase
+      console.log('Refreshing user profile for:', user.id);
+      
+      // Première requête : récupérer les données utilisateur avec le rôle
+      const { data: userData, error: userError } = await supabase
         .from('utilisateur')
         .select(`
           *,
-          role:id_role(nom_role),
-          telephones:telephone(*)
+          role:id_role(nom_role)
         `)
         .eq('id_utilisateur', user.id)
         .single();
       
-      if (error) throw error;
+      if (userError) {
+        console.error("Error refreshing user data:", userError);
+        return;
+      }
+
+      // Deuxième requête : récupérer les téléphones séparément
+      const { data: telephonesData, error: telephonesError } = await supabase
+        .from('telephone')
+        .select('*')
+        .eq('id_utilisateur', user.id);
+
+      if (telephonesError) {
+        console.error("Error refreshing telephones:", telephonesError);
+        // Continue même si les téléphones échouent
+      }
       
-      const telephones = data.telephones ? data.telephones.map((tel: any) => ({
+      const telephones = telephonesData ? telephonesData.map((tel: any) => ({
         ...tel,
         type: tel.type as "principal" | "whatsapp" | "mobile_banking" | "autre"
       })) : [];
       
       const userProfile: UserProfile = {
-        id_utilisateur: data.id_utilisateur,
-        id: data.id_utilisateur,
-        nom: data.nom,
-        prenoms: data.prenoms,
-        email: data.email,
-        photo_profil: data.photo_profil,
-        photo_couverture: data.photo_couverture,
+        id_utilisateur: userData.id_utilisateur,
+        id: userData.id_utilisateur,
+        nom: userData.nom,
+        prenoms: userData.prenoms,
+        email: userData.email,
+        photo_profil: userData.photo_profil,
+        photo_couverture: userData.photo_couverture,
         telephone: telephones && telephones[0]?.numero,
-        adresse: data.adresse || undefined,
-        bio: data.bio || undefined,
-        id_role: data.id_role,
-        nom_role: data.role?.nom_role,
+        adresse: userData.adresse || undefined,
+        bio: userData.bio || undefined,
+        id_role: userData.id_role,
+        nom_role: userData.role?.nom_role,
         telephones: telephones
       };
       
