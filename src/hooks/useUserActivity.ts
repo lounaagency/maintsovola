@@ -137,21 +137,35 @@ export const useUserActivity = (userId: string, filters: ActivityFilters = {}) =
           });
       }
 
-      // 5. Récupérer les abonnements (follows)
+      // 5. Récupérer les abonnements (follows) - requête simplifiée
       const { data: follows } = await supabase
         .from('abonnement')
-        .select(`
-          id_abonnement,
-          created_at,
-          utilisateur_suivi:id_suivi(nom, prenoms)
-        `)
+        .select('id_abonnement, created_at, id_suivi')
         .eq('id_abonne', userId)
         .order('created_at', { ascending: false })
         .limit(10);
 
       if (follows) {
+        // Récupérer les informations des utilisateurs suivis séparément
+        const userIds = follows.map(follow => follow.id_suivi);
+        const { data: followedUsers } = await supabase
+          .from('utilisateur')
+          .select('id_utilisateur, nom, prenoms')
+          .in('id_utilisateur', userIds);
+
+        const userMap = new Map();
+        if (followedUsers) {
+          followedUsers.forEach(user => {
+            userMap.set(user.id_utilisateur, user);
+          });
+        }
+
         follows.forEach(follow => {
-          const userName = `${follow.utilisateur_suivi?.nom || ''} ${follow.utilisateur_suivi?.prenoms || ''}`.trim();
+          const followedUser = userMap.get(follow.id_suivi);
+          const userName = followedUser 
+            ? `${followedUser.nom || ''} ${followedUser.prenoms || ''}`.trim()
+            : 'Utilisateur inconnu';
+          
           activitiesData.push({
             id: `follow_${follow.id_abonnement}`,
             type: 'follow',

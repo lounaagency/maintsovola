@@ -2,7 +2,7 @@
 import React from 'react';
 import { useUserActivity } from '@/hooks/useUserActivity';
 import ActivityItem from './ActivityItem';
-import { Activity2 } from 'lucide-react';
+import { Activity } from 'lucide-react';
 
 interface ActivityFeedProps {
   userId: string;
@@ -30,7 +30,7 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({ userId }) => {
   if (activities.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
-        <Activity2 className="w-12 h-12 mx-auto mb-3 opacity-50" />
+        <Activity className="w-12 h-12 mx-auto mb-3 opacity-50" />
         <p>Aucune activité récente à afficher.</p>
         <p className="text-sm mt-1">Vos actions apparaîtront ici au fur et à mesure.</p>
       </div>
