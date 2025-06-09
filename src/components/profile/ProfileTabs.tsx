@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useAuth } from '@/contexts/AuthContext';
@@ -8,6 +7,7 @@ import PaymentHistory from './PaymentHistory';
 import InvestmentsList from './InvestmentsList';
 import InvestmentSummary from './InvestmentSummary';
 import ProjectsSummary from './ProjectsSummary';
+import ActivityFeed from './ActivityFeed';
 
 interface ProjectCultureCount {
   name: string;
@@ -141,7 +141,7 @@ const ProfileTabs: React.FC<ProfileTabsProps> = ({
       <TabsContent value="activity" className="space-y-4">
         <div className="rounded-lg border bg-card p-4">
           <h3 className="text-lg font-semibold mb-4">Activité récente</h3>
-          <p className="text-muted-foreground">Aucune activité récente à afficher.</p>
+          <ActivityFeed userId={userId} />
         </div>
       </TabsContent>
     </Tabs>
