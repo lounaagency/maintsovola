@@ -10,7 +10,7 @@ import { TerrainData } from "@/types/terrain";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import ValidationForm from "./ValidationForm";
-import TerrainFormFields from "./TerrainFormFields";
+import TerrainFormFields from "@/components/terrain/TerrainFormFields";
 import { sendNotification } from "@/types/notification";
 
 interface TerrainFormProps {
@@ -245,24 +245,16 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
           terrainData.date_validation = String(terrainData.date_validation);
         }
         
-        // Préparer les données de mise à jour avec attribution automatique du superviseur
-        const updateData: any = {
-          surface_validee: terrainData.surface_validee,
-          photos_validation: String(terrainData.photos_validation),
-          statut: terrainData.statut,
-          date_validation: terrainData.date_validation,
-          rapport_validation: terrainData.rapport_validation,
-          validation_decision: terrainData.validation_decision
-        };
-
-        // Attribuer automatiquement le superviseur si la validation est positive
-        if (data.validation_decision === 'valider') {
-          updateData.id_superviseur = userId;
-        }
-        
         const { error } = await supabase
           .from('terrain')
-          .update(updateData)
+          .update({
+            surface_validee: terrainData.surface_validee,
+            photos_validation: String(terrainData.photos_validation),
+            statut: terrainData.statut,
+            date_validation: terrainData.date_validation,
+            rapport_validation: terrainData.rapport_validation,
+            validation_decision: terrainData.validation_decision
+          })
           .eq('id_terrain', initialData?.id_terrain);
           
         if (error) throw error;
@@ -290,8 +282,7 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
             date_validation: terrainData.date_validation,
             rapport_validation: terrainData.rapport_validation,
             validation_decision: terrainData.validation_decision,
-            surface_validee: terrainData.surface_validee,
-            id_superviseur: data.validation_decision === 'valider' ? userId : initialData?.id_superviseur
+            surface_validee: terrainData.surface_validee
           });
         }
       } else {
