@@ -59,7 +59,7 @@ export const useAllTechnicienPhoneNumbers = (technicienId: string) => {
         created_at: phone.created_at,
         modified_at: phone.modified_at
       }));
-      console.log('Typed phones for technicien:', typedPhones);
+      
       return typedPhones;
     },
     enabled: !!technicienId,
