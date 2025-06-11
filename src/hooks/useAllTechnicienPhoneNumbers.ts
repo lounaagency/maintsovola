@@ -26,6 +26,7 @@ export const useAllTechnicienPhoneNumbers = (technicienId: string) => {
           modified_at
         `)
         .eq('id_utilisateur', technicienId);
+        
       
       if (error) {
         console.error('Error fetching technicien phone numbers:', error);
