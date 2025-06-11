@@ -1,4 +1,3 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ResumeFinancier, JalonFinancement, HistoriquePaiementFinancier } from "@/types/financier";
@@ -53,6 +52,8 @@ export const useJalonsFinancement = () => {
   return useQuery({
     queryKey: ['jalons-financement'],
     queryFn: async (): Promise<JalonFinancement[]> => {
+      console.log('🔍 Fetching jalons financement...');
+      
       const { data, error } = await supabase
         .from('jalon_projet')
         .select(`
@@ -74,23 +75,34 @@ export const useJalonsFinancement = () => {
         .order('date_previsionnelle', { ascending: true });
       
       if (error) {
-        console.error('Error fetching jalons financement:', error);
+        console.error('❌ Error fetching jalons financement:', error);
         return [];
       }
       
-      return data.map((item: any) => ({
-        id_jalon_projet: item.id_jalon_projet,
-        id_projet: item.id_projet,
-        date_previsionnelle: item.date_previsionnelle,
-        statut: item.statut,
-        nom_jalon: item.jalon_agricole?.nom_jalon || 'Jalon inconnu',
-        nom_projet: item.projet?.titre || 'Projet inconnu',
-        id_technicien: item.projet?.id_technicien || '',
-        technicien_nom: item.projet?.utilisateur?.nom || 'Non assigné',
-        technicien_prenoms: item.projet?.utilisateur?.prenoms || '',
-        montant_demande: Math.floor(Math.random() * 500000) + 100000, // Montant simulé en attendant les coûts
-        surface_ha: item.projet?.surface_ha || 0
-      }));
+      console.log('📄 Raw jalons data:', data);
+      
+      const mappedJalons = data.map((item: any) => {
+        const mappedJalon = {
+          id_jalon_projet: item.id_jalon_projet,
+          id_projet: item.id_projet,
+          date_previsionnelle: item.date_previsionnelle,
+          statut: item.statut,
+          nom_jalon: item.jalon_agricole?.nom_jalon || 'Jalon inconnu',
+          nom_projet: item.projet?.titre || 'Projet inconnu',
+          id_technicien: item.projet?.id_technicien || '',
+          technicien_nom: item.projet?.utilisateur?.nom || 'Non assigné',
+          technicien_prenoms: item.projet?.utilisateur?.prenoms || '',
+          montant_demande: Math.floor(Math.random() * 500000) + 100000, // Montant simulé en attendant les coûts
+          surface_ha: item.projet?.surface_ha || 0
+        };
+        
+        console.log(`👤 Jalon ${item.id_jalon_projet} - Technicien ID: ${mappedJalon.id_technicien}, Nom: ${mappedJalon.technicien_nom} ${mappedJalon.technicien_prenoms}`);
+        
+        return mappedJalon;
+      });
+      
+      console.log('✅ Mapped jalons:', mappedJalons);
+      return mappedJalons;
     },
     refetchInterval: 60000, // Rafraîchir chaque minute
   });
