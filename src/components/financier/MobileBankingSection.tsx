@@ -28,25 +28,52 @@ const MobileBankingSection: React.FC<MobileBankingSectionProps> = ({
     );
   }
 
+  console.log('All phone numbers for technicien:', allPhoneNumbers);
+
   // Filtrer pour ne garder que les numéros Mobile Banking
-  const mobileBankingNumbers = allPhoneNumbers?.filter(phone => 
-    phone.est_mobile_banking === true && (
-      phone.type === PHONE_TYPES.MVOLA ||
-      phone.type === PHONE_TYPES.ORANGE_MONEY ||
-      phone.type === PHONE_TYPES.AIRTEL_MONEY
-    )
-  ) || [];
+  // Utiliser un OU logique : est_mobile_banking === true OU type spécifique mobile banking
+  const mobileBankingNumbers = allPhoneNumbers?.filter(phone => {
+    const isMarkedAsMobileBanking = phone.est_mobile_banking === true;
+    const isSpecificMobileBankingType = phone.type === PHONE_TYPES.MVOLA ||
+                                       phone.type === PHONE_TYPES.ORANGE_MONEY ||
+                                       phone.type === PHONE_TYPES.AIRTEL_MONEY ||
+                                       phone.type === PHONE_TYPES.MOBILE_BANKING;
+    
+    const isValidMobileBanking = isMarkedAsMobileBanking || isSpecificMobileBankingType;
+    
+    console.log(`Phone ${phone.numero}: est_mobile_banking=${phone.est_mobile_banking}, type=${phone.type}, isValid=${isValidMobileBanking}`);
+    
+    return isValidMobileBanking;
+  }) || [];
+
+  console.log('Filtered mobile banking numbers:', mobileBankingNumbers);
 
   if (mobileBankingNumbers.length === 0) {
     return (
       <div className="space-y-2">
         <Label htmlFor="numeroMobileBanking">Numéro Mobile Banking</Label>
         <div className="text-sm text-destructive">
-          Aucun numéro Mobile Banking (MVola, Orange Money, Airtel Money) trouvé pour {jalon.technicien_nom} {jalon.technicien_prenoms}
+          Aucun numéro Mobile Banking trouvé pour {jalon.technicien_nom} {jalon.technicien_prenoms}
         </div>
       </div>
     );
   }
+
+  // Fonction pour formater l'affichage du type
+  const formatPhoneType = (type: string) => {
+    switch (type) {
+      case PHONE_TYPES.MVOLA:
+        return 'MVola';
+      case PHONE_TYPES.ORANGE_MONEY:
+        return 'Orange Money';
+      case PHONE_TYPES.AIRTEL_MONEY:
+        return 'Airtel Money';
+      case PHONE_TYPES.MOBILE_BANKING:
+        return 'Mobile Banking';
+      default:
+        return type;
+    }
+  };
 
   return (
     <div className="space-y-2">
@@ -58,7 +85,7 @@ const MobileBankingSection: React.FC<MobileBankingSectionProps> = ({
         <SelectContent>
           {mobileBankingNumbers.map((phone) => (
             <SelectItem key={phone.id_telephone} value={phone.numero}>
-              {phone.numero} ({phone.type})
+              {phone.numero} ({formatPhoneType(phone.type)})
             </SelectItem>
           ))}
         </SelectContent>
