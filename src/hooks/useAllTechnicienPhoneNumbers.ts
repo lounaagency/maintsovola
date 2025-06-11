@@ -8,9 +8,14 @@ export const useAllTechnicienPhoneNumbers = (technicienId: string) => {
   return useQuery({
     queryKey: ['all-technicien-phone-numbers', technicienId],
     queryFn: async (): Promise<UserTelephone[]> => {
-      if (!technicienId) return [];
+      console.log('📱 useAllTechnicienPhoneNumbers called with ID:', technicienId);
       
-      console.log('Fetching all phone numbers for technicien:', technicienId);
+      if (!technicienId) {
+        console.log('❌ No technicien ID provided');
+        return [];
+      }
+      
+      console.log('🔍 Fetching all phone numbers for technicien:', technicienId);
       
       // Récupérer tous les téléphones du technicien avec vérification du rôle
       const { data: allPhones, error } = await supabase
@@ -29,9 +34,11 @@ export const useAllTechnicienPhoneNumbers = (technicienId: string) => {
         
       
       if (error) {
-        console.error('Error fetching technicien phone numbers:', error);
+        console.error('❌ Error fetching technicien phone numbers:', error);
         return [];
       }
+      
+      console.log(`📱 Found ${allPhones?.length || 0} phone numbers for user ${technicienId}:`, allPhones);
       
       // Vérifier que l'utilisateur est bien un technicien
       const { data: userRole, error: roleError } = await supabase
@@ -43,11 +50,12 @@ export const useAllTechnicienPhoneNumbers = (technicienId: string) => {
         .single();
 
       if (roleError || !userRole?.role?.nom_role || userRole.role.nom_role !== 'technicien') {
-        console.log('User is not a technicien or role check failed');
+        console.log('❌ User is not a technicien or role check failed:', roleError, userRole);
         return [];
       }
       
-      console.log('All phones found for technicien:', allPhones);
+      console.log('✅ User role verified as technicien');
+      console.log('📱 All phones found for technicien:', allPhones);
       
       // Mapper les données pour caster le type correctement
       const typedPhones: UserTelephone[] = (allPhones || []).map(phone => ({
@@ -60,7 +68,8 @@ export const useAllTechnicienPhoneNumbers = (technicienId: string) => {
         created_at: phone.created_at,
         modified_at: phone.modified_at
       }));
-      console.log('Typed phones for technicien:', typedPhones);
+      
+      console.log('✅ Returning typed phones:', typedPhones);
       return typedPhones;
     },
     enabled: !!technicienId,
