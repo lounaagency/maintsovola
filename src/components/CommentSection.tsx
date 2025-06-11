@@ -25,9 +25,10 @@ interface Comment {
 
 interface CommentSectionProps {
   postId: string;
+  onCommentCountChange?: (newCount: number) => void;
 }
 
-const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
+const CommentSection: React.FC<CommentSectionProps> = ({ postId, onCommentCountChange }) => {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
@@ -180,6 +181,11 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
       });
       
       setComments(transformedComments);
+      
+      // Notify parent component of the comment count
+      if (onCommentCountChange) {
+        onCommentCountChange(transformedComments.length);
+      }
     } catch (error) {
       console.error("Erreur lors de la récupération des commentaires:", error);
       toast.error("Impossible de charger les commentaires");
@@ -229,8 +235,14 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
         parentId: replyingTo,
       };
       
-      setComments([...comments, newCommentObj]);
+      const updatedComments = [...comments, newCommentObj];
+      setComments(updatedComments);
       setNewComment("");
+      
+      // Notify parent component of the new comment count
+      if (onCommentCountChange) {
+        onCommentCountChange(updatedComments.length);
+      }
       
       // Si c'est une réponse, trouver l'auteur du commentaire parent
       let parentCommentAuthorId: string | null = null;
@@ -438,3 +450,5 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
 };
 
 export default CommentSection;
+
+}
