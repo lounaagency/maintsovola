@@ -1,15 +1,15 @@
-import { Capacitor } from '@capacitor/core';
+//import { Capacitor } from '@capacitor/core';
 
 let Camera: any = null;
 let CameraResultType: any = null;
 let CameraSource: any = null;
 
-if (Capacitor.isNativePlatform()) {
+/*if (Capacitor.isNativePlatform()) {
   const cameraModule = require('@capacitor/camera');
   Camera = cameraModule.Camera;
   CameraResultType = cameraModule.CameraResultType;
   CameraSource = cameraModule.CameraSource;
-}
+}*/
 
 export class CameraService {
   private static instance: CameraService;

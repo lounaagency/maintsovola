@@ -1,5 +1,5 @@
 
-import { Capacitor } from '@capacitor/core';
+/*import { Capacitor } from '@capacitor/core';
 
 // Define types to match the Capacitor Geolocation plugin
 export interface Position {
@@ -171,3 +171,4 @@ export class GeolocationService {
 }
 
 export const geolocationService = GeolocationService.getInstance();
+*/

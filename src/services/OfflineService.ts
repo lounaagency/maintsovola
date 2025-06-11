@@ -1,8 +1,8 @@
-import { Capacitor } from '@capacitor/core';
+//import { Capacitor } from '@capacitor/core';
 import { supabase } from "@/integrations/supabase/client";
 
 // Capacitor-safe fallback
-const isNative = Capacitor.isNativePlatform();
+/*const isNative = Capacitor.isNativePlatform();
 
 const Storage = isNative
   ? require('@capacitor/storage').Storage
@@ -18,7 +18,7 @@ const Network = isNative
   : {
       getStatus: async () => ({ connected: true }),
       addListener: async (_event: string, _callback: any) => {}
-    };
+    };*/
 
 interface SyncQueueItem {
   id: string;
@@ -53,7 +53,7 @@ export class OfflineService {
   async initialize() {
     await this.loadSyncQueue();
 
-    const status = await Network.getStatus();
+    /*const status = await Network.getStatus();
     this.networkStatus = status.connected;
 
     Network.addListener('networkStatusChange', (status) => {
@@ -63,7 +63,7 @@ export class OfflineService {
       if (wasOffline && status.connected) {
         this.synchronize();
       }
-    });
+    });*/
   }
 
   addNetworkStatusListener(listener: (status: boolean) => void) {
@@ -104,10 +104,10 @@ export class OfflineService {
 
   private async loadSyncQueue() {
     try {
-      const { value } = await Storage.get({ key: 'offline_sync_queue' });
+      /*const { value } = await Storage.get({ key: 'offline_sync_queue' });
       if (value) {
         this.syncQueue = JSON.parse(value);
-      }
+      }*/
     } catch (error) {
       console.error('Error loading sync queue:', error);
       this.syncQueue = [];
@@ -116,10 +116,10 @@ export class OfflineService {
 
   private async saveSyncQueue() {
     try {
-      await Storage.set({
+      /*await Storage.set({
         key: 'offline_sync_queue',
         value: JSON.stringify(this.syncQueue)
-      });
+      });*/
     } catch (error) {
       console.error('Error saving sync queue:', error);
     }
@@ -162,10 +162,10 @@ export class OfflineService {
 
   async cacheData(key: string, data: any) {
     try {
-      await Storage.set({
+      /*await Storage.set({
         key: `cache_${key}`,
         value: JSON.stringify({ data, timestamp: Date.now() })
-      });
+      });*/
     } catch (error) {
       console.error('Error caching data:', error);
     }
@@ -173,19 +173,19 @@ export class OfflineService {
 
   async getCachedData(key: string, maxAge?: number) {
     try {
-      const { value } = await Storage.get({ key: `cache_${key}` });
+      /*const { value } = await Storage.get({ key: `cache_${key}` });
       if (!value) {
         return { data: null, isFresh: false };
-      }
+      }*/
 
-      const cachedItem = JSON.parse(value) as CachedItem;
+      /*const cachedItem = JSON.parse(value) as CachedItem;
       const now = Date.now();
       const isFresh = !maxAge || (now - cachedItem.timestamp < maxAge);
 
       return {
         data: cachedItem.data,
         isFresh
-      };
+      };*/
     } catch (error) {
       console.error('Error getting cached data:', error);
       return { data: null, isFresh: false };
@@ -194,11 +194,11 @@ export class OfflineService {
 
   async clearCache() {
     try {
-      const { keys } = await Storage.keys();
+      /*const { keys } = await Storage.keys();
       const cacheKeys = keys.filter(key => key.startsWith('cache_'));
       for (const key of cacheKeys) {
         await Storage.remove({ key });
-      }
+      }*/
     } catch (error) {
       console.error('Error clearing cache:', error);
     }
