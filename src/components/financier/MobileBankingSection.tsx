@@ -18,31 +18,39 @@ const MobileBankingSection: React.FC<MobileBankingSectionProps> = ({
 }) => {
   const { data: allPhoneNumbers, isLoading } = useAllTechnicienPhoneNumbers(jalon.id_technicien);
 
+  if (isLoading) {
+    return (
+      <div className="space-y-2">
+        <Label htmlFor="numeroMobileBanking">Numéro Mobile Banking</Label>
+        <div className="text-sm text-muted-foreground">Chargement des numéros...</div>
+      </div>
+    );
+  }
+
+  if (!allPhoneNumbers || allPhoneNumbers.length === 0) {
+    return (
+      <div className="space-y-2">
+        <Label htmlFor="numeroMobileBanking">Numéro Mobile Banking</Label>
+        <div className="text-sm text-destructive">
+          Aucun numéro de téléphone trouvé pour {jalon.technicien_nom} {jalon.technicien_prenoms}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-2">
       <Label htmlFor="numeroMobileBanking">Numéro Mobile Banking</Label>
       <Select value={numeroMobileBanking} onValueChange={setNumeroMobileBanking}>
         <SelectTrigger>
-          <SelectValue placeholder={
-            isLoading 
-              ? "Chargement..." 
-              : allPhoneNumbers && allPhoneNumbers.length > 0 
-                ? "Sélectionner un numéro" 
-                : "Aucun numéro disponible"
-          } />
+          <SelectValue placeholder="Sélectionner un numéro" />
         </SelectTrigger>
         <SelectContent>
-          {allPhoneNumbers && allPhoneNumbers.length > 0 ? (
-            allPhoneNumbers.map((phone) => (
-              <SelectItem key={phone.id_telephone} value={phone.numero}>
-                {phone.numero} ({phone.type})
-              </SelectItem>
-            ))
-          ) : (
-            <SelectItem value="" disabled>
-              Aucun numéro de téléphone trouvé pour {jalon.technicien_nom} {jalon.technicien_prenoms}
+          {allPhoneNumbers.map((phone) => (
+            <SelectItem key={phone.id_telephone} value={phone.numero}>
+              {phone.numero} ({phone.type})
             </SelectItem>
-          )}
+          ))}
         </SelectContent>
       </Select>
     </div>

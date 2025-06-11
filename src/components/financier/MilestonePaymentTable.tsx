@@ -25,9 +25,9 @@ const MilestonePaymentTable: React.FC<MilestonePaymentTableProps> = ({
     setShowPaymentModal(true);
   };
 
-  const getUrgencyBadge = (dateLimite: string) => {
+  const getUrgencyBadge = (datePrevisionnelle: string) => {
     const today = new Date();
-    const limite = new Date(dateLimite);
+    const limite = new Date(datePrevisionnelle);
     const diffDays = Math.ceil((limite.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
     if (diffDays < 0) {
@@ -46,35 +46,35 @@ const MilestonePaymentTable: React.FC<MilestonePaymentTableProps> = ({
     
     const enRetard = jalons
       .filter(jalon => {
-        const limite = new Date(jalon.date_limite);
+        const limite = new Date(jalon.date_previsionnelle);
         const diffDays = Math.ceil((limite.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
         return diffDays < 0;
       })
-      .sort((a, b) => new Date(a.date_limite).getTime() - new Date(b.date_limite).getTime());
+      .sort((a, b) => new Date(a.date_previsionnelle).getTime() - new Date(b.date_previsionnelle).getTime());
 
     const urgent = jalons
       .filter(jalon => {
-        const limite = new Date(jalon.date_limite);
+        const limite = new Date(jalon.date_previsionnelle);
         const diffDays = Math.ceil((limite.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
         return diffDays >= 0 && diffDays <= 3;
       })
-      .sort((a, b) => new Date(a.date_limite).getTime() - new Date(b.date_limite).getTime());
+      .sort((a, b) => new Date(a.date_previsionnelle).getTime() - new Date(b.date_previsionnelle).getTime());
 
     const cetteSemaine = jalons
       .filter(jalon => {
-        const limite = new Date(jalon.date_limite);
+        const limite = new Date(jalon.date_previsionnelle);
         const diffDays = Math.ceil((limite.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
         return diffDays > 3 && diffDays <= 7;
       })
-      .sort((a, b) => new Date(a.date_limite).getTime() - new Date(b.date_limite).getTime());
+      .sort((a, b) => new Date(a.date_previsionnelle).getTime() - new Date(b.date_previsionnelle).getTime());
 
     const planifie = jalons
       .filter(jalon => {
-        const limite = new Date(jalon.date_limite);
+        const limite = new Date(jalon.date_previsionnelle);
         const diffDays = Math.ceil((limite.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
         return diffDays > 7;
       })
-      .sort((a, b) => new Date(a.date_limite).getTime() - new Date(b.date_limite).getTime());
+      .sort((a, b) => new Date(a.date_previsionnelle).getTime() - new Date(b.date_previsionnelle).getTime());
 
     return { enRetard, urgent, cetteSemaine, planifie };
   };

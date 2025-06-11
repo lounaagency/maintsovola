@@ -26,7 +26,7 @@ export interface ResumeFinancier {
 export interface JalonFinancement {
   id_jalon_projet: number;
   id_projet: number;
-  date_limite: string;
+  date_previsionnelle: string;
   statut: string;
   nom_jalon: string;
   nom_projet: string;
@@ -42,7 +42,7 @@ export interface PaiementTechnicien {
   montant: number;
   reference_paiement: string;
   observation?: string;
-  date_limite?: string;
+  date_previsionnelle?: string;
   type_paiement: PaymentType;
   numero_cheque?: string;
   numero_mobile_banking?: string;

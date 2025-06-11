@@ -66,7 +66,7 @@ const SendPaymentModal: React.FC<SendPaymentModalProps> = ({
         montant: parseFloat(montant),
         reference_paiement: reference,
         observation: observation || undefined,
-        date_limite: jalon.date_limite,
+        date_previsionnelle: jalon.date_previsionnelle,
         type_paiement: typePaiement,
         numero_cheque: typePaiement === PAYMENT_TYPES.CHEQUE ? numeroCheque : undefined,
         numero_mobile_banking: typePaiement === PAYMENT_TYPES.MOBILE_BANKING ? numeroMobileBanking : undefined,

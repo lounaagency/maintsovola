@@ -23,25 +23,32 @@ export const useAllTechnicienPhoneNumbers = (technicienId: string) => {
           est_whatsapp, 
           est_mobile_banking, 
           created_at, 
-          modified_at,
-          utilisateur!inner(
-            id_utilisateur,
-            role!inner(
-              nom_role
-            )
-          )
+          modified_at
         `)
-        .eq('id_utilisateur', technicienId)
-        .eq('utilisateur.role.nom_role', 'technicien');
+        .eq('id_utilisateur', technicienId);
       
       if (error) {
         console.error('Error fetching technicien phone numbers:', error);
         return [];
       }
       
+      // Vérifier que l'utilisateur est bien un technicien
+      const { data: userRole, error: roleError } = await supabase
+        .from('utilisateur')
+        .select(`
+          role!inner(nom_role)
+        `)
+        .eq('id_utilisateur', technicienId)
+        .single();
+
+      if (roleError || !userRole?.role?.nom_role || userRole.role.nom_role !== 'technicien') {
+        console.log('User is not a technicien or role check failed');
+        return [];
+      }
+      
       console.log('All phones found for technicien:', allPhones);
       
-      // Mapper les données pour caster le type correctement et nettoyer la structure
+      // Mapper les données pour caster le type correctement
       const typedPhones: UserTelephone[] = (allPhones || []).map(phone => ({
         id_telephone: phone.id_telephone,
         id_utilisateur: phone.id_utilisateur,

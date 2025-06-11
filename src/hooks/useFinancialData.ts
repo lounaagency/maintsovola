@@ -81,7 +81,7 @@ export const useJalonsFinancement = () => {
       return data.map((item: any) => ({
         id_jalon_projet: item.id_jalon_projet,
         id_projet: item.id_projet,
-        date_limite: item.date_previsionnelle,
+        date_previsionnelle: item.date_previsionnelle,
         statut: item.statut,
         nom_jalon: item.jalon_agricole?.nom_jalon || 'Jalon inconnu',
         nom_projet: item.projet?.titre || 'Projet inconnu',
