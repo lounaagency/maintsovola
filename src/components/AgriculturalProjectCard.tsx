@@ -57,6 +57,7 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({
   const [terrainName, setTerrainName] = useState<string>("");
   const [terrainId, setTerrainId] = useState<number | null>(null);
   const [terrainDialogOpen, setTerrainDialogOpen] = useState<boolean>(false);
+  const [commentCount, setCommentCount] = useState<number>(project.comments);
   const {
     user,
     profile
@@ -242,6 +243,11 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({
   const handleToggleComments = () => {
     setShowComments(!showComments);
   };
+
+  const handleCommentCountChange = (newCount: number) => {
+    setCommentCount(newCount);
+  };
+
   const handleOpenGallery = (initialTab: 'photos' | 'map' = 'photos') => {
     setGalleryTab(initialTab);
     setShowPhotos(true);
@@ -395,12 +401,12 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({
             }}></div>
             </div>
           </div>
-          <ProjectActions projectId={project.id} likes={project.likes} comments={project.comments} shares={project.shares} isLiked={liked} onLikeToggle={handleLike} onOpenComments={handleToggleComments} onInvest={handleOpenInvestModal} fundingGap={fundingGap} canInvest={canInvest} onShare={() => {
+          <ProjectActions projectId={project.id} likes={project.likes} comments={commentCount} shares={project.shares} isLiked={liked} onLikeToggle={handleLike} onOpenComments={handleToggleComments} onInvest={handleOpenInvestModal} fundingGap={fundingGap} canInvest={canInvest} onShare={() => {
           toast.info("Fonctionnalité de partage à venir");
         }} />            
         </div>
         
-        {showComments && <CommentSection postId={project.id} />}
+        {showComments && <CommentSection postId={project.id} onCommentCountChange={handleCommentCountChange} />}
       </Card>
       
       <Dialog open={showInvestModal} onOpenChange={setShowInvestModal}>

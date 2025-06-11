@@ -155,13 +155,31 @@ export const useProjectData = (filters: ProjectFilter = {}) => {
         }
       }
 
-      // Apply culture filter if specified
+      // Apply culture filter if specified - IMPROVED LOGIC
       if (filters.culture && projetsData) {
-        const cultureFilter = filters.culture.toLowerCase();
-        projetsData = projetsData.filter(projet => 
-          projet.cultures && 
-          projet.cultures.toLowerCase().includes(cultureFilter)
-        );
+        console.log('🌾 Culture filter applied:', filters.culture);
+        console.log('📊 Projects before culture filter:', projetsData.length);
+        
+        const cultureFilter = filters.culture.toLowerCase().trim();
+        projetsData = projetsData.filter(projet => {
+          if (!projet.cultures) {
+            console.log('❌ Project has no cultures:', projet.id_projet);
+            return false;
+          }
+          
+          const projectCultures = projet.cultures.toLowerCase().trim();
+          console.log(`🔍 Comparing filter "${cultureFilter}" with project cultures "${projectCultures}" for project ${projet.id_projet}`);
+          
+          // Improved matching: exact match or contains as word
+          const matches = projectCultures === cultureFilter || 
+                         projectCultures.includes(cultureFilter) ||
+                         cultureFilter.includes(projectCultures);
+          
+          console.log(`✅ Match result for project ${projet.id_projet}:`, matches);
+          return matches;
+        });
+        
+        console.log('📊 Projects after culture filter:', projetsData.length);
       }
 
       // Transform projects to match our application's AgriculturalProject interface

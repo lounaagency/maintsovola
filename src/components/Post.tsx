@@ -36,6 +36,7 @@ const Post: React.FC<PostProps> = ({
 }) => {
   const [liked, setLiked] = useState(isLiked);
   const [likeCount, setLikeCount] = useState(likes);
+  const [commentCount, setCommentCount] = useState(comments);
   const [showComments, setShowComments] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
 
@@ -50,6 +51,10 @@ const Post: React.FC<PostProps> = ({
 
   const toggleComments = () => {
     setShowComments(!showComments);
+  };
+
+  const handleCommentCountChange = (newCount: number) => {
+    setCommentCount(newCount);
   };
 
   return (
@@ -94,7 +99,7 @@ const Post: React.FC<PostProps> = ({
           <ProjectActions 
             projectId={id}
             likes={likeCount}
-            comments={comments}
+            comments={commentCount}
             shares={shares}
             isLiked={liked}
             onLikeToggle={handleLike}
@@ -115,7 +120,10 @@ const Post: React.FC<PostProps> = ({
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <CommentSection postId={id} />
+            <CommentSection 
+              postId={id} 
+              onCommentCountChange={handleCommentCountChange}
+            />
           </motion.div>
         )}
       </AnimatePresence>

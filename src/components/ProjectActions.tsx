@@ -12,6 +12,9 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { sendGroupedNotification } from '@/lib/groupedNotifications';
 
 interface ProjectActionsProps {
   projectId: string;
@@ -42,6 +45,7 @@ const ProjectActions: React.FC<ProjectActionsProps> = ({
   fundingGap = 0
 }) => {
   const isMobile = useIsMobile();
+  const { user } = useAuth();
   const projectUrl = `${window.location.origin}/feed?id_projet=${projectId}`;
   
   const shareHandlers = {
@@ -58,6 +62,68 @@ const ProjectActions: React.FC<ProjectActionsProps> = ({
       navigator.clipboard.writeText(projectUrl).then(() => {
         toast.success("Lien copié !");
       });
+    }
+  };
+
+  // Fonction pour gérer le like avec notification
+  const handleLikeClick = async () => {
+    if (!user) {
+      toast.error("Vous devez être connecté pour aimer un projet");
+      return;
+    }
+
+    try {
+      if (!isLiked) {
+        // Ajouter un like
+        const { error } = await supabase
+          .from('aimer_projet')
+          .insert({ 
+            id_projet: parseInt(projectId), 
+            id_utilisateur: user.id 
+          });
+          
+        if (error) throw error;
+
+        // Récupérer le propriétaire du projet pour la notification
+        const { data: projectData, error: projectError } = await supabase
+          .from('projet')
+          .select('id_tantsaha')
+          .eq('id_projet', parseInt(projectId))
+          .single();
+          
+        if (projectError) throw projectError;
+
+        // Envoyer une notification groupée au propriétaire du projet
+        if (projectData?.id_tantsaha) {
+          await sendGroupedNotification({
+            senderId: user.id,
+            recipientId: projectData.id_tantsaha,
+            entityType: 'projet',
+            entityId: parseInt(projectId),
+            action: 'like',
+            projetId: parseInt(projectId)
+          });
+        }
+      } else {
+        // Supprimer le like
+        const { error } = await supabase
+          .from('aimer_projet')
+          .delete()
+          .match({ 
+            id_projet: parseInt(projectId), 
+            id_utilisateur: user.id 
+          });
+          
+        if (error) throw error;
+      }
+
+      // Appeler le callback parent pour mettre à jour l'UI
+      if (onLikeToggle) {
+        onLikeToggle();
+      }
+    } catch (error) {
+      console.error("Erreur lors de la gestion du like:", error);
+      toast.error("Erreur lors de la gestion du like");
     }
   };
 
@@ -81,7 +147,7 @@ const ProjectActions: React.FC<ProjectActionsProps> = ({
           'flex items-center gap-1 text-sm font-normal',
           isLiked ? 'text-red-500' : 'text-muted-foreground'
         )}
-        onClick={onLikeToggle}
+        onClick={handleLikeClick}
       >
         <span>{likes > 0 ? likes : ''}</span>
         <Heart
