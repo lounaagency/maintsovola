@@ -1,7 +1,7 @@
 
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Home, MapPin, LogOut, Settings, Bell, User, FileText, Wifi, WifiOff } from "lucide-react";
+import { Home, MapPin, LogOut, Settings, Bell, User, FileText, Wifi, WifiOff, DollarSign } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import UserAvatar from "./UserAvatar";
 import Notifications from "./Notifications";
@@ -88,7 +88,7 @@ const Navbar: React.FC = () => {
             className={`p-2 rounded-md ${isActive("/financier") ? "text-green-600 bg-gray-100" : "text-gray-700 hover:bg-gray-100"}`}
             title="Finances"
           >
-            <FileText size={22} />
+            <DollarSign size={22} />
           </Link> 
         )}
           <MessageBadge isActive={isActive("/messages")} />
