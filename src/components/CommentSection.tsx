@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -8,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
-import { sendNotification } from "@/types/notification";
+import { sendGroupedNotification } from "@/lib/groupedNotifications";
 
 interface Comment {
   id: string;
@@ -64,7 +63,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, onCommentCountC
     }
   };
 
-  // Fonction pour envoyer une notification
+  // Fonction pour envoyer une notification groupée pour les commentaires
   const sendCommentNotification = async (
     commentText: string, 
     isReply: boolean = false, 
@@ -73,48 +72,28 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, onCommentCountC
     if (!user || !projectOwner) return;
     
     try {
-      // Éviter d'envoyer des notifications à soi-même
-      const recipientsToNotify: { id_utilisateur: string }[] = [];
-      
-      // Toujours notifier le propriétaire du projet s'il n'est pas l'auteur du commentaire
+      // Notification au propriétaire du projet (si ce n'est pas lui qui commente)
       if (projectOwner !== user.id) {
-        recipientsToNotify.push({ id_utilisateur: projectOwner });
+        await sendGroupedNotification({
+          senderId: user.id,
+          recipientId: projectOwner,
+          entityType: 'projet',
+          entityId: parseInt(postId),
+          action: 'comment',
+          projetId: parseInt(postId)
+        });
       }
       
-      // Si c'est une réponse et que l'auteur du commentaire parent n'est pas l'auteur de la réponse
-      // et n'est pas le propriétaire (qui a déjà été notifié)
+      // Si c'est une réponse, notification au propriétaire du commentaire parent
       if (isReply && parentCommentAuthorId && parentCommentAuthorId !== user.id && parentCommentAuthorId !== projectOwner) {
-        recipientsToNotify.push({ id_utilisateur: parentCommentAuthorId });
+        await sendGroupedNotification({
+          senderId: user.id,
+          recipientId: parentCommentAuthorId,
+          entityType: 'commentaire',
+          entityId: parseInt(replyingTo || '0'),
+          action: 'comment'
+        });
       }
-      
-      // Ne pas envoyer de notification s'il n'y a pas de destinataire
-      if (recipientsToNotify.length === 0) return;
-      
-      // Préparer le message de notification
-      const commentPreview = commentText.length > 50 
-        ? `${commentText.substring(0, 50)}...` 
-        : commentText;
-        
-      const title = isReply 
-        ? "Nouvelle réponse à un commentaire" 
-        : "Nouveau commentaire sur votre projet";
-        
-      const message = isReply 
-        ? `${profile?.nom || 'Quelqu\'un'} a répondu à un commentaire: "${commentPreview}"` 
-        : `${profile?.nom || 'Quelqu\'un'} a commenté votre projet: "${commentPreview}"`;
-      
-      // Envoyer la notification
-      await sendNotification(
-        supabase,
-        user.id,
-        recipientsToNotify,
-        title,
-        message,
-        'info',
-        'projet',
-        postId,
-        postId
-      );
     } catch (error) {
       console.error("Erreur lors de l'envoi de la notification:", error);
     }
@@ -254,7 +233,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, onCommentCountC
         }
       }
       
-      // Envoyer une notification
+      // Envoyer une notification groupée
       await sendCommentNotification(
         newComment, 
         !!replyingTo, 
@@ -298,6 +277,18 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, onCommentCountC
           });
           
         if (error) throw error;
+
+        // Envoyer une notification groupée au propriétaire du commentaire
+        const comment = comments.find(c => c.id === commentId);
+        if (comment && comment.author.id !== user.id) {
+          await sendGroupedNotification({
+            senderId: user.id,
+            recipientId: comment.author.id,
+            entityType: 'commentaire',
+            entityId: parseInt(commentId),
+            action: 'like'
+          });
+        }
       }
       
       // Mettre à jour l'état local
