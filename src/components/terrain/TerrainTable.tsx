@@ -303,7 +303,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                     )}
 
                   {onValidate &&
-                    userRole === "superviseur" &&
+                    (userRole === "superviseur" || userRole === "technicien") &&
                     terrain.id_technicien &&
                     !terrain.statut && (
                       <Button
@@ -321,6 +321,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
 
                   {onDelete &&
                     (userRole === "simple" && terrain.id_tantsaha === terrain.id_tantsaha ||
+                      userRole === "technicien" ||
                       userRole === "superviseur") && (
                       <Button
                         variant="ghost"
