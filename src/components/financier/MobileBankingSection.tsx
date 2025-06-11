@@ -4,6 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { JalonFinancement } from "@/types/financier";
 import { useAllTechnicienPhoneNumbers } from "@/hooks/useAllTechnicienPhoneNumbers";
+import { PHONE_TYPES } from "@/types/paymentTypes";
 
 interface MobileBankingSectionProps {
   jalon: JalonFinancement;
@@ -27,12 +28,21 @@ const MobileBankingSection: React.FC<MobileBankingSectionProps> = ({
     );
   }
 
-  if (!allPhoneNumbers || allPhoneNumbers.length === 0) {
+  // Filtrer pour ne garder que les numéros Mobile Banking
+  const mobileBankingNumbers = allPhoneNumbers?.filter(phone => 
+    phone.est_mobile_banking === true && (
+      phone.type === PHONE_TYPES.MVOLA ||
+      phone.type === PHONE_TYPES.ORANGE_MONEY ||
+      phone.type === PHONE_TYPES.AIRTEL_MONEY
+    )
+  ) || [];
+
+  if (mobileBankingNumbers.length === 0) {
     return (
       <div className="space-y-2">
         <Label htmlFor="numeroMobileBanking">Numéro Mobile Banking</Label>
         <div className="text-sm text-destructive">
-          Aucun numéro de téléphone trouvé pour {jalon.technicien_nom} {jalon.technicien_prenoms}
+          Aucun numéro Mobile Banking (MVola, Orange Money, Airtel Money) trouvé pour {jalon.technicien_nom} {jalon.technicien_prenoms}
         </div>
       </div>
     );
@@ -46,7 +56,7 @@ const MobileBankingSection: React.FC<MobileBankingSectionProps> = ({
           <SelectValue placeholder="Sélectionner un numéro" />
         </SelectTrigger>
         <SelectContent>
-          {allPhoneNumbers.map((phone) => (
+          {mobileBankingNumbers.map((phone) => (
             <SelectItem key={phone.id_telephone} value={phone.numero}>
               {phone.numero} ({phone.type})
             </SelectItem>

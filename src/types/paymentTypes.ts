@@ -20,11 +20,11 @@ export const PHONE_TYPES = {
 export type PhoneType = typeof PHONE_TYPES[keyof typeof PHONE_TYPES];
 
 // Mapping des types de téléphone qui sont considérés comme Mobile Banking
+// Excluant désormais PHONE_TYPES.MOBILE_BANKING
 export const MOBILE_BANKING_PHONE_TYPES: PhoneType[] = [
   PHONE_TYPES.MVOLA,
   PHONE_TYPES.ORANGE_MONEY, 
-  PHONE_TYPES.AIRTEL_MONEY,
-  PHONE_TYPES.MOBILE_BANKING
+  PHONE_TYPES.AIRTEL_MONEY
 ];
 
 export const isMobileBankingPhone = (phoneType: string): boolean => {

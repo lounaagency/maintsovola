@@ -493,7 +493,6 @@ const Settings = () => {
                         <option value={PHONE_TYPES.MVOLA}>MVola</option>
                         <option value={PHONE_TYPES.ORANGE_MONEY}>Orange Money</option>
                         <option value={PHONE_TYPES.AIRTEL_MONEY}>Airtel Money</option>
-                        <option value={PHONE_TYPES.MOBILE_BANKING}>Mobile Banking</option>
                         <option value={PHONE_TYPES.AUTRE}>Autre</option>
                       </select>
                     </div>
