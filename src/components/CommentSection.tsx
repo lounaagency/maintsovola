@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -450,5 +451,3 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, onCommentCountC
 };
 
 export default CommentSection;
-
-}
