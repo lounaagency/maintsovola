@@ -30,7 +30,7 @@ const PaymentSummaryCard: React.FC<PaymentSummaryCardProps> = ({ jalon }) => {
         <div className="flex items-center gap-2">
           <Calendar className="h-4 w-4 text-muted-foreground" />
           <span>
-            Échéance: {format(new Date(jalon.date_limite), 'dd MMMM yyyy', { locale: fr })}
+            Échéance: {format(new Date(jalon.date_previsionnelle), 'dd MMMM yyyy', { locale: fr })}
           </span>
         </div>
         

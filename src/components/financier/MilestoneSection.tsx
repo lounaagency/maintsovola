@@ -16,10 +16,10 @@ interface MilestoneSectionProps {
   badgeVariant: "destructive" | "secondary" | "outline";
   jalons: JalonFinancement[];
   onSendPayment: (jalon: JalonFinancement) => void;
-  getUrgencyBadge: (dateLimite: string) => React.ReactNode;
+  getUrgencyBadge: (datePrevisionnelle: string) => React.ReactNode;
 }
 
-type SortField = 'nom_jalon' | 'technicien_nom' | 'nom_projet' | 'montant_demande' | 'date_limite';
+type SortField = 'nom_jalon' | 'technicien_nom' | 'nom_projet' | 'montant_demande' | 'date_previsionnelle';
 type SortDirection = 'asc' | 'desc' | null;
 
 const MilestoneSection: React.FC<MilestoneSectionProps> = ({
@@ -80,9 +80,9 @@ const MilestoneSection: React.FC<MilestoneSectionProps> = ({
           aValue = a.montant_demande;
           bValue = b.montant_demande;
           break;
-        case 'date_limite':
-          aValue = new Date(a.date_limite);
-          bValue = new Date(b.date_limite);
+        case 'date_previsionnelle':
+          aValue = new Date(a.date_previsionnelle);
+          bValue = new Date(b.date_previsionnelle);
           break;
         default:
           return 0;
@@ -163,20 +163,20 @@ const MilestoneSection: React.FC<MilestoneSectionProps> = ({
               </TableHead>
               <TableHead 
                 className="cursor-pointer select-none"
-                onClick={() => handleSort('date_limite')}
+                onClick={() => handleSort('date_previsionnelle')}
               >
                 <div className="flex items-center justify-between">
                   Date Limite
-                  <span className="ml-1 text-xs">{getSortIcon('date_limite')}</span>
+                  <span className="ml-1 text-xs">{getSortIcon('date_previsionnelle')}</span>
                 </div>
               </TableHead>
               <TableHead 
                 className="cursor-pointer select-none"
-                onClick={() => handleSort('date_limite')}
+                onClick={() => handleSort('date_previsionnelle')}
               >
                 <div className="flex items-center justify-between">
                   Urgence
-                  <span className="ml-1 text-xs">{getSortIcon('date_limite')}</span>
+                  <span className="ml-1 text-xs">{getSortIcon('date_previsionnelle')}</span>
                 </div>
               </TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -219,11 +219,11 @@ const MilestoneSection: React.FC<MilestoneSectionProps> = ({
                 </TableCell>
                 <TableCell>
                   <div className="text-sm">
-                    {format(new Date(jalon.date_limite), 'dd MMM yyyy', { locale: fr })}
+                    {format(new Date(jalon.date_previsionnelle), 'dd MMM yyyy', { locale: fr })}
                   </div>
                 </TableCell>
                 <TableCell>
-                  {getUrgencyBadge(jalon.date_limite)}
+                  {getUrgencyBadge(jalon.date_previsionnelle)}
                 </TableCell>
                 <TableCell className="text-right">
                   <Button
