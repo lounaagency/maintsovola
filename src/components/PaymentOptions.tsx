@@ -9,6 +9,12 @@ import { toast } from "sonner";
 import { UserTelephone } from "@/types/userProfile";
 import { useAuth } from "@/contexts/AuthContext";
 
+// Importe le nouveau hook ici
+import useMvola from '@/hooks/use-mvola'; // chemin relatif selon la struture
+import mvolaLogo from "@/assets/MVola_brand-logo.png";
+import orangeMoneyLogo from "@/assets/Orange-Money-logo.png";
+import airtelMoneyLogo from "@/assets/Airtel-Money-Logo.png";
+
 type PaymentMethod = 'mvola' | 'orange' | 'airtel' | null;
 
 interface PaymentOptionsProps {
@@ -28,6 +34,14 @@ const PaymentOptions: React.FC<PaymentOptionsProps> = ({
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [userPhones, setUserPhones] = useState<UserTelephone[]>([]);
+
+  // Utilise le hook useMvola ici
+  const {
+    initiatePayment,
+    checkTransactionStatus,
+    loading,
+    error: mvolaError,
+  } = useMvola();
 
   useEffect(() => {
     if (user) {
@@ -74,7 +88,9 @@ const PaymentOptions: React.FC<PaymentOptionsProps> = ({
           matchingPhoneType = '';
       }
       
-      const matchingPhone = userPhones.find(phone => phone.type === matchingPhoneType);
+      const matchingPhone = userPhones.find(
+        (phone) => phone.type === matchingPhoneType
+      );
       if (matchingPhone) {
         setPhoneNumber(matchingPhone.numero);
       }
@@ -102,34 +118,48 @@ const PaymentOptions: React.FC<PaymentOptionsProps> = ({
 
     try {
       if (paymentMethod === 'mvola') {
-        // Process MVola payment
-        const { data: response, error } = await supabase.functions.invoke('paiement-mvola', {
-          body: {
-            phone: phoneNumber,
-            amount,
-            reason: `Investissement Maintso Vola #${investmentId}`,
-            investissementId: investmentId
-          },
+        // Initier le paiement via l'API MVola - Etape 1
+        const result = await initiatePayment({
+          amount: amount.toString(),
+          currency: "MGA",
+          description: `Investissement Maintso vola #${investmentId}`,
+          merchantID: import.meta.env.VITE_MERCHANT_ID,
+          customerMsisdn: phoneNumber,
+          X_Callback_URL: import.meta.env.VITE_CALLBACK_URL,
         });
 
-        if (error) {
-          throw new Error(`Erreur lors de l'appel à l'API MVola: ${error.message}`);
+        if (!result || result.status !== 200) {
+          throw new Error(
+            mvolaError || "Échec de l'initiation du paiement MVola"
+          );
         }
 
-        if (!response.success) {
-          throw new Error(response.message || "Échec du paiement MVola");
+        // On vérifie le statut de la transaction
+        const statusResult = await checkTransactionStatus(
+          result.serverCorrelationId
+        );
+
+        if (!statusResult || statusResult.status !== 200) {
+          throw new Error("Le paiement n'a pas été confirmé.");
         }
 
+        // Paiement réussi
         toast.success("Paiement effectué avec succès", {
           description: "Votre investissement a été enregistré et payé"
         });
 
-        onPaymentComplete?.(true, response.transactionId);
+        // Retourne le succès + transac ID si disponible
+        onPaymentComplete?.(true, result.objectReference);
       } else {
         // Handle other payment methods (not implemented yet)
-        toast.info(`Le paiement par ${paymentMethod === 'orange' ? 'Orange Money' : 'Airtel Money'} sera disponible prochainement`, {
-          description: "Nous vous notifierons lorsque cette méthode sera disponible"
-        });
+        toast.info(
+          `Le paiement par ${
+            paymentMethod === "orange" ? "Orange Money" : "Airtel Money"
+          } sera disponible prochainement`,
+          {
+            description:
+              "Nous vous notifierons lorsque cette méthode sera disponible",
+          });
         
         // Consider this as a successful transaction for now
         onPaymentComplete?.(true);
@@ -151,18 +181,26 @@ const PaymentOptions: React.FC<PaymentOptionsProps> = ({
       <div>
         <h3 className="text-lg font-medium">Choisissez votre méthode de paiement</h3>
         <p className="text-sm text-muted-foreground">
-          Montant à payer: {new Intl.NumberFormat('fr-MG', { style: 'currency', currency: 'MGA' }).format(amount)}
+          Montant à payer:{" "}
+          {new Intl.NumberFormat("fr-MG", {
+            style: "currency",
+            currency: "MGA",
+          }).format(amount)}
         </p>
       </div>
 
-      <RadioGroup value={paymentMethod || ''} onValueChange={handlePaymentMethodChange} className="grid grid-cols-3 gap-4">
+      <RadioGroup
+        value={paymentMethod || ''}
+        onValueChange={handlePaymentMethodChange}
+        className="grid grid-cols-3 gap-4"
+      >
         <div>
           <RadioGroupItem value="mvola" id="mvola" className="peer sr-only" />
           <Label
             htmlFor="mvola"
             className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
           >
-            <Smartphone className="mb-3 h-6 w-6 text-pink-600" />
+            <img src={mvolaLogo} alt='MVola' className="mb-3 h-12 w-12" />
             <span className="text-sm font-medium">MVola</span>
           </Label>
         </div>
@@ -173,7 +211,7 @@ const PaymentOptions: React.FC<PaymentOptionsProps> = ({
             htmlFor="orange"
             className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-muted p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary opacity-50 cursor-not-allowed"
           >
-            <Smartphone className="mb-3 h-6 w-6 text-orange-500" />
+            <img src={orangeMoneyLogo} alt='Orange Money' className="mb-3 h-12 w-12" />
             <span className="text-sm font-medium">Orange Money</span>
             <span className="text-xs mt-1">Bientôt</span>
           </Label>
@@ -185,7 +223,7 @@ const PaymentOptions: React.FC<PaymentOptionsProps> = ({
             htmlFor="airtel"
             className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-muted p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary opacity-50 cursor-not-allowed"
           >
-            <Smartphone className="mb-3 h-6 w-6 text-red-500" />
+            <img src={airtelMoneyLogo} alt='Airtel Money' className="mb-3 h-12 w-12" />
             <span className="text-sm font-medium">Airtel Money</span>
             <span className="text-xs mt-1">Bientôt</span>
           </Label>
@@ -204,7 +242,13 @@ const PaymentOptions: React.FC<PaymentOptionsProps> = ({
               disabled={isProcessing}
             />
             <p className="text-sm text-muted-foreground">
-              Entrez le numéro {paymentMethod === 'mvola' ? 'MVola' : paymentMethod === 'orange' ? 'Orange Money' : 'Airtel Money'} associé à votre compte
+              Entrez le numéro {" "}
+              {paymentMethod === "mvola"
+                ? "MVola"
+                : paymentMethod === "orange"
+                ? "Orange Money"
+                : "Airtel Money"}{" "}
+              associé à votre compte
             </p>
           </div>
 
