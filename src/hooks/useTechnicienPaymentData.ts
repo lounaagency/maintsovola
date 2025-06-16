@@ -25,7 +25,7 @@ interface ReceivedPayment {
   reference_paiement: string;
   type_paiement: string;
   nom_projet: string;
-  statut_justificatif: string;
+  observation: string;
 }
 
 export const useTechnicienPaymentData = (userId: string) => {
@@ -49,14 +49,14 @@ export const useTechnicienPaymentData = (userId: string) => {
 
         // Récupérer l'historique des paiements reçus par le technicien
         const { data: historiquePayments } = await supabase
-          .from('historique_paiement_financier')
+          .from('historique_paiement')
           .select(`
             id_historique_paiement,
             montant,
             date_paiement,
             reference_paiement,
             type_paiement,
-            statut_justificatif,
+            observation,
             projet:id_projet(titre)
           `)
           .eq('id_technicien', userId);
@@ -72,7 +72,7 @@ export const useTechnicienPaymentData = (userId: string) => {
             jalon_agricole:id_jalon_agricole(nom_jalon),
             cout_jalon_projet!inner(montant_total)
           `)
-          .eq('projet.id_tantsaha', userId)
+          .eq('projet.id_technicien', userId)
           .in('statut', ['Prévu', 'En cours'])
           .gte('date_previsionnelle', new Date().toISOString());
 
@@ -121,10 +121,10 @@ export const useTechnicienPaymentData = (userId: string) => {
           id_historique_paiement: payment.id_historique_paiement,
           montant: payment.montant,
           date_paiement: payment.date_paiement,
-          reference_paiement: payment.reference_paiement,
+          reference_paiement: payment.reference_paiement || '',
           type_paiement: payment.type_paiement,
           nom_projet: payment.projet?.titre || 'Projet inconnu',
-          statut_justificatif: payment.statut_justificatif
+          observation: payment.observation || ''
         })) || [];
 
         setMetrics({

@@ -14,7 +14,7 @@ interface ReceivedPayment {
   reference_paiement: string;
   type_paiement: string;
   nom_projet: string;
-  statut_justificatif: string;
+  observation: string;
 }
 
 interface TechnicienPaymentHistoryProps {
@@ -24,19 +24,6 @@ interface TechnicienPaymentHistoryProps {
 const TechnicienPaymentHistory: React.FC<TechnicienPaymentHistoryProps> = ({ receivedPayments }) => {
   const [filterPeriod, setFilterPeriod] = useState<string>('all');
   const [filterProject, setFilterProject] = useState<string>('all');
-
-  const getStatusBadge = (statut: string) => {
-    switch (statut) {
-      case 'validé':
-        return <Badge variant="default" className="bg-green-100 text-green-700">Validé</Badge>;
-      case 'en_attente':
-        return <Badge variant="outline" className="text-orange-600">En attente</Badge>;
-      case 'rejeté':
-        return <Badge variant="destructive">Rejeté</Badge>;
-      default:
-        return <Badge variant="secondary">{statut}</Badge>;
-    }
-  };
 
   const getPaymentMethodBadge = (type: string) => {
     switch (type) {
@@ -143,7 +130,6 @@ const TechnicienPaymentHistory: React.FC<TechnicienPaymentHistoryProps> = ({ rec
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       <h4 className="font-medium">Ref: {payment.reference_paiement}</h4>
-                      {getStatusBadge(payment.statut_justificatif)}
                       {getPaymentMethodBadge(payment.type_paiement)}
                     </div>
                     
@@ -163,6 +149,10 @@ const TechnicienPaymentHistory: React.FC<TechnicienPaymentHistoryProps> = ({ rec
                         </span>
                       </div>
                     </div>
+                    
+                    {payment.observation && (
+                      <p className="text-sm text-muted-foreground mt-1">{payment.observation}</p>
+                    )}
                   </div>
                   
                   <div className="text-right">
