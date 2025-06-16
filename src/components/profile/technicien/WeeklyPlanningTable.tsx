@@ -34,6 +34,18 @@ const WeeklyPlanningTable: React.FC<WeeklyPlanningTableProps> = ({ userId, userR
     );
   }
 
+  // Filtrer les tâches en retard et les tâches de la semaine
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
+  
+  const overdueTasks = tasks.filter(task => 
+    new Date(task.date_prevue) < today && task.statut !== 'fait'
+  );
+  
+  const currentWeekTasks = tasks.filter(task => 
+    new Date(task.date_prevue) >= today || task.statut === 'fait'
+  );
+
   const getStatusColor = (status: WeeklyTask['statut']) => {
     switch (status) {
       case 'fait': return 'bg-green-100 text-green-800';
@@ -76,118 +88,146 @@ const WeeklyPlanningTable: React.FC<WeeklyPlanningTableProps> = ({ userId, userR
     setSelectedTask(null);
   };
 
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Planning de la semaine</h3>
-        <Badge variant="outline">{tasks.length} tâche(s)</Badge>
-      </div>
+  const renderTaskCard = (task: WeeklyTask) => (
+    <Card key={task.id_tache} className="hover:shadow-md transition-shadow">
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 space-y-2">
+            <div className="flex items-center gap-3">
+              <h4 className="font-medium">{task.description}</h4>
+              <Badge className={getPriorityColor(task.priorite)}>
+                {task.priorite}
+              </Badge>
+              <Badge className={getStatusColor(task.statut)}>
+                {task.statut.replace('_', ' ')}
+              </Badge>
+            </div>
 
-      <div className="space-y-3">
-        {tasks.map((task) => (
-          <Card key={task.id_tache} className="hover:shadow-md transition-shadow">
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 space-y-2">
-                  <div className="flex items-center gap-3">
-                    <h4 className="font-medium">{task.description}</h4>
-                    <Badge className={getPriorityColor(task.priorite)}>
-                      {task.priorite}
-                    </Badge>
-                    <Badge className={getStatusColor(task.statut)}>
-                      {task.statut.replace('_', ' ')}
-                    </Badge>
-                  </div>
-
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Calendar size={14} />
-                      <span>{new Date(task.date_prevue).toLocaleDateString()}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Clock size={14} />
-                      <span>{task.duree_estimee}min</span>
-                    </div>
-                  </div>
-
-                  <p className="text-sm text-muted-foreground">
-                    Projet: {task.titre_projet}
-                  </p>
-                </div>
-
-                <div className="flex gap-2">
-                  {task.statut === 'a_faire' && (
-                    <>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleStartTask(task)}
-                      >
-                        Démarrer
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleStatusChange(task.id_tache, 'bloque')}
-                      >
-                        <AlertTriangle size={14} />
-                      </Button>
-                    </>
-                  )}
-                  
-                  {task.statut === 'en_cours' && (
-                    <>
-                      <Button
-                        size="sm"
-                        onClick={() => handleStatusChange(task.id_tache, 'fait')}
-                        className="bg-green-600 hover:bg-green-700"
-                      >
-                        <CheckCircle size={14} />
-                        Terminer
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleStatusChange(task.id_tache, 'bloque')}
-                      >
-                        <AlertTriangle size={14} />
-                      </Button>
-                    </>
-                  )}
-
-                  {task.statut === 'retard' && (
-                    <Button
-                      size="sm"
-                      onClick={() => handleStatusChange(task.id_tache, 'fait')}
-                      className="bg-green-600 hover:bg-green-700"
-                    >
-                      <CheckCircle size={14} />
-                      Rattraper
-                    </Button>
-                  )}
-
-                  {task.statut === 'bloque' && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleStatusChange(task.id_tache, 'en_cours')}
-                    >
-                      Reprendre
-                    </Button>
-                  )}
-                </div>
+            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <Calendar size={14} />
+                <span>{new Date(task.date_prevue).toLocaleDateString()}</span>
               </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              <div className="flex items-center gap-1">
+                <Clock size={14} />
+                <span>{task.duree_estimee}min</span>
+              </div>
+            </div>
 
-      {tasks.length === 0 && (
-        <div className="text-center py-12 text-muted-foreground">
-          <Calendar size={48} className="mx-auto mb-4 opacity-50" />
-          <p>Aucune tâche planifiée cette semaine</p>
+            <p className="text-sm text-muted-foreground">
+              Projet: {task.titre_projet}
+            </p>
+          </div>
+
+          <div className="flex gap-2">
+            {task.statut === 'a_faire' && (
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleStartTask(task)}
+                >
+                  Démarrer
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleStatusChange(task.id_tache, 'bloque')}
+                >
+                  <AlertTriangle size={14} />
+                </Button>
+              </>
+            )}
+            
+            {task.statut === 'en_cours' && (
+              <>
+                <Button
+                  size="sm"
+                  onClick={() => handleStatusChange(task.id_tache, 'fait')}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <CheckCircle size={14} />
+                  Terminer
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleStatusChange(task.id_tache, 'bloque')}
+                >
+                  <AlertTriangle size={14} />
+                </Button>
+              </>
+            )}
+
+            {task.statut === 'retard' && (
+              <Button
+                size="sm"
+                onClick={() => handleStatusChange(task.id_tache, 'fait')}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                <CheckCircle size={14} />
+                Rattraper
+              </Button>
+            )}
+
+            {task.statut === 'bloque' && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleStatusChange(task.id_tache, 'en_cours')}
+              >
+                Reprendre
+              </Button>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  return (
+    <div className="space-y-6">
+      {/* Section des tâches en retard */}
+      {overdueTasks.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="text-red-500" size={20} />
+              <h3 className="text-lg font-semibold text-red-700">Tâches en retard</h3>
+            </div>
+            <Badge variant="destructive">{overdueTasks.length} tâche(s)</Badge>
+          </div>
+
+          <div className="space-y-3 p-4 bg-red-50 border border-red-200 rounded-lg">
+            {overdueTasks.map(renderTaskCard)}
+          </div>
         </div>
       )}
+
+      {/* Section du planning de la semaine */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Planning de la semaine</h3>
+          <Badge variant="outline">{currentWeekTasks.length} tâche(s)</Badge>
+        </div>
+
+        <div className="space-y-3">
+          {currentWeekTasks.map(renderTaskCard)}
+        </div>
+
+        {currentWeekTasks.length === 0 && overdueTasks.length === 0 && (
+          <div className="text-center py-12 text-muted-foreground">
+            <Calendar size={48} className="mx-auto mb-4 opacity-50" />
+            <p>Aucune tâche planifiée cette semaine</p>
+          </div>
+        )}
+
+        {currentWeekTasks.length === 0 && overdueTasks.length > 0 && (
+          <div className="text-center py-8 text-muted-foreground">
+            <p>Aucune nouvelle tâche cette semaine</p>
+          </div>
+        )}
+      </div>
 
       {selectedTask && (
         <JalonReportDialog

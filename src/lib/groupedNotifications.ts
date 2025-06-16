@@ -33,11 +33,28 @@ function formatGroupedMessage(
   userNames: string[], 
   totalCount: number, 
   action: 'like' | 'comment',
-  entityType: 'projet' | 'terrain' | 'jalon',
+  entityType: 'projet' | 'terrain' | 'jalon' | 'commentaire',
   entityName?: string
 ): { title: string; message: string } {
   const actionText = action === 'like' ? 'aimé' : 'commenté';
-  const entityText = entityType === 'projet' ? 'votre projet' : entityType === 'terrain' ? 'votre terrain' : 'votre jalon';
+  let entityText = '';
+  
+  switch (entityType) {
+    case 'projet':
+      entityText = 'votre projet';
+      break;
+    case 'terrain':
+      entityText = 'votre terrain';
+      break;
+    case 'jalon':
+      entityText = 'votre jalon';
+      break;
+    case 'commentaire':
+      entityText = 'votre commentaire';
+      break;
+    default:
+      entityText = 'votre contenu';
+  }
   
   let title: string;
   let message: string;
@@ -102,7 +119,7 @@ async function updateGroupedNotification(
   existingNotification: any,
   newSenderId: string,
   action: 'like' | 'comment',
-  entityType: 'projet' | 'terrain' | 'jalon',
+  entityType: 'projet' | 'terrain' | 'jalon' | 'commentaire',
   entityId: number
 ): Promise<void> {
   try {
