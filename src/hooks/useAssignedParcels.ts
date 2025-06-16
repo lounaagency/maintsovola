@@ -27,14 +27,14 @@ export const useAssignedParcels = (userId: string, userRole: string) => {
             id_commune,
             projet_culture!inner(
               culture:id_culture(nom_culture),
-              date_semis,
-              date_recolte_prevue
+              date_debut_previsionnelle,
+              date_debut_reelle
             )
           `);
 
         if (userRole === 'technicien') {
-          // Filtrer par technicien assigné (à adapter selon votre structure)
-          query = query.eq('id_technicien_assigne', userId);
+          // Filtrer par technicien assigné
+          query = query.eq('id_technicien', userId);
         }
 
         const { data, error } = await query;
@@ -49,9 +49,9 @@ export const useAssignedParcels = (userId: string, userRole: string) => {
           date_debut_production: project.date_debut_production,
           cultures: project.projet_culture?.map((pc: any) => ({
             nom_culture: pc.culture?.nom_culture || 'Non spécifié',
-            phase_actuelle: determinePhase(pc.date_semis, pc.date_recolte_prevue),
-            date_semis: pc.date_semis,
-            date_recolte_prevue: pc.date_recolte_prevue,
+            phase_actuelle: determinePhase(pc.date_debut_previsionnelle, pc.date_debut_reelle),
+            date_semis: pc.date_debut_previsionnelle,
+            date_recolte_prevue: pc.date_debut_reelle,
           })) || [],
           localisation: {
             region: project.id_region?.toString() || 'Non spécifié',
@@ -79,12 +79,12 @@ export const useAssignedParcels = (userId: string, userRole: string) => {
 };
 
 // Fonction utilitaire pour déterminer la phase actuelle
-const determinePhase = (dateSemis?: string, dateRecolte?: string): 'ensemencement' | 'croissance' | 'recolte' | 'termine' => {
-  if (!dateSemis) return 'ensemencement';
+const determinePhase = (datePrevisionnelle?: string, dateReelle?: string): 'ensemencement' | 'croissance' | 'recolte' | 'termine' => {
+  if (!datePrevisionnelle) return 'ensemencement';
   
-  const semis = new Date(dateSemis);
+  const semis = new Date(datePrevisionnelle);
   const maintenant = new Date();
-  const recolte = dateRecolte ? new Date(dateRecolte) : null;
+  const recolte = dateReelle ? new Date(dateReelle) : null;
   
   if (recolte && maintenant > recolte) return 'termine';
   if (recolte && maintenant >= new Date(recolte.getTime() - 30 * 24 * 60 * 60 * 1000)) return 'recolte';

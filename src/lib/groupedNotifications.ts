@@ -1,11 +1,10 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { sendNotification } from '@/types/notification';
 
 interface GroupedNotificationData {
   senderId: string;
   recipientId: string;
-  entityType: 'projet' | 'commentaire';
+  entityType: 'projet' | 'terrain' | 'jalon';
   entityId: number;
   action: 'like' | 'comment';
   projetId?: number;
@@ -33,11 +32,11 @@ function formatGroupedMessage(
   userNames: string[], 
   totalCount: number, 
   action: 'like' | 'comment',
-  entityType: 'projet' | 'commentaire',
+  entityType: 'projet' | 'terrain' | 'jalon',
   entityName?: string
 ): { title: string; message: string } {
   const actionText = action === 'like' ? 'aimé' : 'commenté';
-  const entityText = entityType === 'projet' ? 'votre projet' : 'votre commentaire';
+  const entityText = entityType === 'projet' ? 'votre projet' : 'votre terrain' || 'votre jalon';
   
   let title: string;
   let message: string;
@@ -102,7 +101,7 @@ async function updateGroupedNotification(
   existingNotification: any,
   newSenderId: string,
   action: 'like' | 'comment',
-  entityType: 'projet' | 'commentaire',
+  entityType: 'projet' | 'terrain' | 'jalon',
   entityId: number
 ): Promise<void> {
   try {

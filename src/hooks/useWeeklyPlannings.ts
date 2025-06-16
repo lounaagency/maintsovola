@@ -18,24 +18,24 @@ export const useWeeklyPlannings = (userId: string, userRole: string) => {
         const startOfWeek = new Date(today.setDate(today.getDate() - today.getDay()));
         const endOfWeek = new Date(today.setDate(today.getDate() - today.getDay() + 6));
 
-        // Simuler des tâches hebdomadaires (à adapter avec vos vraies données)
+        // Utiliser la bonne colonne de la table jalon_projet
         let query = supabase
           .from('jalon_projet')
           .select(`
             id_jalon_projet,
             id_projet,
-            date_prevue,
+            date_previsionnelle,
             date_reelle,
-            remarques,
+            observations,
             jalon_agricole:id_jalon_agricole(nom_jalon),
             projet:id_projet(titre)
           `)
-          .gte('date_prevue', startOfWeek.toISOString())
-          .lte('date_prevue', endOfWeek.toISOString());
+          .gte('date_previsionnelle', startOfWeek.toISOString())
+          .lte('date_previsionnelle', endOfWeek.toISOString());
 
         if (userRole === 'technicien') {
           // Filtrer par projets assignés au technicien
-          query = query.eq('projet.id_technicien_assigne', userId);
+          query = query.eq('projet.id_technicien', userId);
         }
 
         const { data, error } = await query;
@@ -47,9 +47,9 @@ export const useWeeklyPlannings = (userId: string, userRole: string) => {
           id_projet: jalon.id_projet,
           titre_projet: jalon.projet?.titre || `Projet ${jalon.id_projet}`,
           description: jalon.jalon_agricole?.nom_jalon || 'Tâche',
-          date_prevue: jalon.date_prevue,
-          priorite: determinePriorite(jalon.date_prevue),
-          statut: jalon.date_reelle ? 'fait' : determineStatut(jalon.date_prevue),
+          date_prevue: jalon.date_previsionnelle,
+          priorite: determinePriorite(jalon.date_previsionnelle),
+          statut: jalon.date_reelle ? 'fait' : determineStatut(jalon.date_previsionnelle),
           type_intervention: jalon.jalon_agricole?.nom_jalon || 'Intervention',
           duree_estimee: 120, // 2 heures par défaut
         })) || [];
@@ -74,7 +74,7 @@ export const useWeeklyPlannings = (userId: string, userRole: string) => {
       if (newStatus === 'fait') {
         await supabase
           .from('jalon_projet')
-          .update({ date_reelle: new Date().toISOString() })
+          .update({ date_reelle: new Date().toISOString().split('T')[0] })
           .eq('id_jalon_projet', taskId);
       }
       
