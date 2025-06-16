@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useAuth } from '@/contexts/AuthContext';
@@ -160,10 +161,37 @@ const ProfileTabs: React.FC<ProfileTabsProps> = ({
             </div>
           </TabsContent>
           
-          <TabsContent value="paiements" className="space-y-4">
-            <div className="rounded-lg border bg-card p-4">
-              <h3 className="text-lg font-semibold mb-4">Suivi des paiements</h3>
-              <PaymentHistory userId={userId} />
+          <TabsContent value="paiements" className="space-y-6">
+            <div className="rounded-lg border bg-card p-6">
+              {/* Section Suivi des Paiements */}
+              <PaymentTrackingSection metrics={metrics} />
+              
+              <Separator className="my-6" />
+              
+              {/* Section Filtres et Actions */}
+              <PaymentFilters 
+                onFilterChange={handlePaymentFilter}
+                onExport={handleExport}
+              />
+              
+              <Separator className="my-6" />
+              
+              {/* Section Analytics */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Analyse des Paiements</h3>
+                <PaymentAnalytics 
+                  paymentTrends={paymentTrends}
+                  paymentMethods={paymentMethods}
+                />
+              </div>
+              
+              <Separator className="my-6" />
+              
+              {/* Section Historique détaillé */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Historique détaillé des paiements</h3>
+                <PaymentHistory userId={userId} />
+              </div>
             </div>
           </TabsContent>
         </>
