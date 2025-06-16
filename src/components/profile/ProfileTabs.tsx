@@ -8,6 +8,11 @@ import InvestmentsList from './InvestmentsList';
 import InvestmentSummary from './InvestmentSummary';
 import ProjectsSummary from './ProjectsSummary';
 import ActivityFeed from './ActivityFeed';
+import PaymentTrackingSection from './PaymentTrackingSection';
+import PaymentAnalytics from './PaymentAnalytics';
+import PaymentFilters, { PaymentFilterState } from './PaymentFilters';
+import { usePaymentData } from '@/hooks/usePaymentData';
+import { Separator } from '@/components/ui/separator';
 
 // Nouveaux composants pour techniciens
 import AssignedParcelsView from './technicien/AssignedParcelsView';
@@ -73,9 +78,20 @@ const ProfileTabs: React.FC<ProfileTabsProps> = ({
   projectsSummary
 }) => {
   const { user, profile } = useAuth();
+  const { metrics, paymentTrends, paymentMethods, loading: paymentLoading } = usePaymentData(userId);
   
   // Déterminer le rôle de l'utilisateur
   const userRole = profile?.nom_role || 'simple';
+
+  const handlePaymentFilter = (filters: PaymentFilterState) => {
+    console.log('Applying filters:', filters);
+    // TODO: Implémenter la logique de filtrage
+  };
+
+  const handleExport = (type: 'csv' | 'pdf') => {
+    console.log('Exporting as:', type);
+    // TODO: Implémenter la logique d'export
+  };
   
   // Fonction pour rendre les onglets selon le rôle
   const renderTabsList = () => {
@@ -259,10 +275,37 @@ const ProfileTabs: React.FC<ProfileTabsProps> = ({
           </div>
         </TabsContent>
         
-        <TabsContent value="payments" className="space-y-4">
-          <div className="rounded-lg border bg-card p-4">
-            <h3 className="text-lg font-semibold mb-4">Historique des paiements</h3>
-            <PaymentHistory userId={userId} />
+        <TabsContent value="payments" className="space-y-6">
+          <div className="rounded-lg border bg-card p-6">
+            {/* Section Suivi des Paiements */}
+            <PaymentTrackingSection metrics={metrics} />
+            
+            <Separator className="my-6" />
+            
+            {/* Section Filtres et Actions */}
+            <PaymentFilters 
+              onFilterChange={handlePaymentFilter}
+              onExport={handleExport}
+            />
+            
+            <Separator className="my-6" />
+            
+            {/* Section Analytics */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Analyse des Paiements</h3>
+              <PaymentAnalytics 
+                paymentTrends={paymentTrends}
+                paymentMethods={paymentMethods}
+              />
+            </div>
+            
+            <Separator className="my-6" />
+            
+            {/* Section Historique détaillé */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Historique détaillé des paiements</h3>
+              <PaymentHistory userId={userId} />
+            </div>
           </div>
         </TabsContent>
         
