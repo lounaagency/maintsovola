@@ -55,7 +55,7 @@ export const useWeeklyPlannings = (userId: string, userRole: string) => {
             description: jalon.jalon_agricole?.nom_jalon || 'Tâche',
             date_prevue: jalon.date_previsionnelle,
             priorite: determinePriorite(jalon.date_previsionnelle),
-            statut: jalon.date_reelle ? 'fait' : determineStatut(jalon.date_previsionnelle),
+            statut: jalon.date_reelle ? 'fait' : determineStatut(jalon.date_previsionnelle) as WeeklyTask['statut'],
             type_intervention: jalon.jalon_agricole?.nom_jalon || 'Intervention',
             duree_estimee: 120, // 2 heures par défaut
           };

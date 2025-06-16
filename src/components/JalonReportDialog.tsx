@@ -28,6 +28,8 @@ interface JalonReportDialogProps {
   initialData?: {
     rapport?: string;
     dateReelle?: string;
+    heureDebut?: string;
+    heureFin?: string;
     photos?: string[];
   };
 }
@@ -45,6 +47,8 @@ const JalonReportDialog: React.FC<JalonReportDialogProps> = ({
 }) => {
   const [rapport, setRapport] = useState(initialData.rapport || "");
   const [dateReelle, setDateReelle] = useState(initialData.dateReelle || datePrevue);
+  const [heureDebut, setHeureDebut] = useState(initialData.heureDebut || "");
+  const [heureFin, setHeureFin] = useState(initialData.heureFin || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [photoUrls, setPhotoUrls] = useState<string[]>(initialData.photos || []);
   
@@ -53,6 +57,12 @@ const JalonReportDialog: React.FC<JalonReportDialogProps> = ({
     
     if (!rapport.trim()) {
       toast.error("Veuillez rédiger un rapport d'intervention");
+      return;
+    }
+
+    // Validation des heures si les deux sont renseignées
+    if (heureDebut && heureFin && heureDebut >= heureFin) {
+      toast.error("L'heure de fin doit être postérieure à l'heure de début");
       return;
     }
     
@@ -66,11 +76,13 @@ const JalonReportDialog: React.FC<JalonReportDialogProps> = ({
       // Convert photo URLs array to JSON string
       const photosString = photoUrls.length > 0 ? JSON.stringify(photoUrls) : null;
       
-      // Update jalon with report and photos
+      // Update jalon with report, times and photos
       const { error: updateError } = await supabase
         .from('jalon_projet')
         .update({
           date_reelle: dateReelle,
+          heure_debut: heureDebut || null,
+          heure_fin: heureFin || null,
           rapport_jalon: rapport,
           photos_jalon: photosString
         })
@@ -221,6 +233,34 @@ const JalonReportDialog: React.FC<JalonReportDialogProps> = ({
               disabled={readOnly}
               className={readOnly ? "bg-muted" : ""}
             />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="heureDebut">Heure de début</Label>
+              <Input 
+                id="heureDebut" 
+                type="time" 
+                value={heureDebut} 
+                onChange={(e) => setHeureDebut(e.target.value)}
+                readOnly={readOnly}
+                disabled={readOnly}
+                className={readOnly ? "bg-muted" : ""}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="heureFin">Heure de fin</Label>
+              <Input 
+                id="heureFin" 
+                type="time" 
+                value={heureFin} 
+                onChange={(e) => setHeureFin(e.target.value)}
+                readOnly={readOnly}
+                disabled={readOnly}
+                className={readOnly ? "bg-muted" : ""}
+              />
+            </div>
           </div>
           
           <div className="space-y-2">
