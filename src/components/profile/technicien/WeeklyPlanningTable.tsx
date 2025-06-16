@@ -173,7 +173,7 @@ const WeeklyPlanningTable: React.FC<WeeklyPlanningTableProps> = ({ userId, userR
             {task.statut === 'retard' && (
               <Button
                 size="sm"
-                onClick={() => handleStatusChange(task.id_tache, 'fait')}
+                onClick={() => handleStartTask(task)}
                 className="bg-green-600 hover:bg-green-700"
               >
                 <CheckCircle size={14} />

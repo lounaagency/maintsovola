@@ -860,6 +860,8 @@ export type Database = {
           created_by: string | null
           date_previsionnelle: string
           date_reelle: string | null
+          heure_debut: string | null
+          heure_fin: string | null
           id_jalon_agricole: number
           id_jalon_projet: number
           id_projet: number
@@ -874,6 +876,8 @@ export type Database = {
           created_by?: string | null
           date_previsionnelle: string
           date_reelle?: string | null
+          heure_debut?: string | null
+          heure_fin?: string | null
           id_jalon_agricole: number
           id_jalon_projet?: number
           id_projet: number
@@ -888,6 +892,8 @@ export type Database = {
           created_by?: string | null
           date_previsionnelle?: string
           date_reelle?: string | null
+          heure_debut?: string | null
+          heure_fin?: string | null
           id_jalon_agricole?: number
           id_jalon_projet?: number
           id_projet?: number
