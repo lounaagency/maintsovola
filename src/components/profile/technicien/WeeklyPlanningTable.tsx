@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,17 +33,29 @@ const WeeklyPlanningTable: React.FC<WeeklyPlanningTableProps> = ({ userId, userR
     );
   }
 
-  // Filtrer les tâches en retard et les tâches de la semaine
+  // Améliorer le filtrage des tâches avec debugging
   const today = new Date();
-  today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
+  today.setHours(0, 0, 0, 0);
   
-  const overdueTasks = tasks.filter(task => 
-    new Date(task.date_prevue) < today && task.statut !== 'fait'
-  );
+  console.log('All tasks received:', tasks);
+  console.log('Today:', today);
   
-  const currentWeekTasks = tasks.filter(task => 
-    new Date(task.date_prevue) >= today || task.statut === 'fait'
-  );
+  const overdueTasks = tasks.filter(task => {
+    const taskDate = new Date(task.date_prevue);
+    taskDate.setHours(0, 0, 0, 0);
+    const isOverdue = taskDate < today && task.statut !== 'fait';
+    console.log(`Task ${task.description}: date=${taskDate.toDateString()}, status=${task.statut}, isOverdue=${isOverdue}`);
+    return isOverdue;
+  });
+  
+  const currentWeekTasks = tasks.filter(task => {
+    const taskDate = new Date(task.date_prevue);
+    taskDate.setHours(0, 0, 0, 0);
+    return taskDate >= today || task.statut === 'fait';
+  });
+
+  console.log('Overdue tasks:', overdueTasks);
+  console.log('Current week tasks:', currentWeekTasks);
 
   const getStatusColor = (status: WeeklyTask['statut']) => {
     switch (status) {
