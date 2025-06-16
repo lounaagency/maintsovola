@@ -9,6 +9,11 @@ import InvestmentSummary from './InvestmentSummary';
 import ProjectsSummary from './ProjectsSummary';
 import ActivityFeed from './ActivityFeed';
 
+// Nouveaux composants pour techniciens
+import AssignedParcelsView from './technicien/AssignedParcelsView';
+import WeeklyPlanningTable from './technicien/WeeklyPlanningTable';
+import TechnicalResourcesLibrary from './technicien/TechnicalResourcesLibrary';
+
 interface ProjectCultureCount {
   name: string;
   count: number;
@@ -66,84 +71,222 @@ const ProfileTabs: React.FC<ProfileTabsProps> = ({
   investmentSummary,
   projectsSummary
 }) => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   
-  return (
-    <Tabs defaultValue="investments" className="mt-6">
+  // Déterminer le rôle de l'utilisateur
+  const userRole = profile?.nom_role || 'simple';
+  
+  // Fonction pour rendre les onglets selon le rôle
+  const renderTabsList = () => {
+    if (userRole === 'technicien') {
+      return (
+        <TabsList className="grid grid-cols-5 mb-4">
+          <TabsTrigger value="parcelles">Parcelles</TabsTrigger>
+          <TabsTrigger value="planning">Planning</TabsTrigger>
+          <TabsTrigger value="rapports">Rapports</TabsTrigger>
+          <TabsTrigger value="ressources">Ressources</TabsTrigger>
+          <TabsTrigger value="paiements">Paiements</TabsTrigger>
+        </TabsList>
+      );
+    }
+    
+    if (userRole === 'superviseur') {
+      return (
+        <TabsList className="grid grid-cols-6 mb-4">
+          <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
+          <TabsTrigger value="carte">Carte</TabsTrigger>
+          <TabsTrigger value="techniciens">Techniciens</TabsTrigger>
+          <TabsTrigger value="logistique">Logistique</TabsTrigger>
+          <TabsTrigger value="alertes">Alertes</TabsTrigger>
+          <TabsTrigger value="kpi">KPI</TabsTrigger>
+        </TabsList>
+      );
+    }
+    
+    // Utilisateurs simples (défaut)
+    return (
       <TabsList className="grid grid-cols-4 mb-4">
         <TabsTrigger value="investments">Investissements</TabsTrigger>
         <TabsTrigger value="projects">Projets</TabsTrigger>
         <TabsTrigger value="payments">Paiements</TabsTrigger>
         <TabsTrigger value="activity">Activité</TabsTrigger>
       </TabsList>
-      
-      <TabsContent value="investments" className="space-y-4">
-        <div className="rounded-lg border bg-card p-4">
-          {investmentSummary && (
-            <div className="mb-6">
-              <InvestmentSummary
-                totalInvested={investmentSummary.totalInvested}
-                totalProfit={investmentSummary.totalProfit}
-                averageROI={investmentSummary.averageROI}
-                ongoingProjects={investmentSummary.ongoingProjects}
-                completedProjects={investmentSummary.completedProjects}
-                projectsByStatusData={investmentSummary.projectsByStatusData}
-              />
+    );
+  };
+
+  // Fonction pour rendre le contenu selon le rôle
+  const renderTabsContent = () => {
+    if (userRole === 'technicien') {
+      return (
+        <>
+          <TabsContent value="parcelles" className="space-y-4">
+            <div className="rounded-lg border bg-card p-4">
+              <AssignedParcelsView userId={userId} userRole={userRole} />
             </div>
-          )}
+          </TabsContent>
           
-          <h3 className="text-lg font-semibold mb-4">Mes investissements</h3>
-          {investedProjects && investedProjects.length > 0 ? (
-            <InvestmentsList 
-              investedProjects={investedProjects}
-              loading={loading}
-              onViewDetails={onViewDetails}
+          <TabsContent value="planning" className="space-y-4">
+            <div className="rounded-lg border bg-card p-4">
+              <WeeklyPlanningTable userId={userId} userRole={userRole} />
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="rapports" className="space-y-4">
+            <div className="rounded-lg border bg-card p-4">
+              <h3 className="text-lg font-semibold mb-4">Rapports d'intervention</h3>
+              <p className="text-muted-foreground">Fonctionnalité en cours de développement...</p>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="ressources" className="space-y-4">
+            <div className="rounded-lg border bg-card p-4">
+              <TechnicalResourcesLibrary />
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="paiements" className="space-y-4">
+            <div className="rounded-lg border bg-card p-4">
+              <h3 className="text-lg font-semibold mb-4">Suivi des paiements</h3>
+              <PaymentHistory userId={userId} />
+            </div>
+          </TabsContent>
+        </>
+      );
+    }
+    
+    if (userRole === 'superviseur') {
+      return (
+        <>
+          <TabsContent value="overview" className="space-y-4">
+            <div className="rounded-lg border bg-card p-4">
+              <h3 className="text-lg font-semibold mb-4">Vue d'ensemble des projets</h3>
+              <p className="text-muted-foreground">Dashboard superviseur en cours de développement...</p>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="carte" className="space-y-4">
+            <div className="rounded-lg border bg-card p-4">
+              <h3 className="text-lg font-semibold mb-4">Carte interactive</h3>
+              <p className="text-muted-foreground">Carte des parcelles en cours de développement...</p>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="techniciens" className="space-y-4">
+            <div className="rounded-lg border bg-card p-4">
+              <h3 className="text-lg font-semibold mb-4">Suivi des techniciens</h3>
+              <p className="text-muted-foreground">Gestion des techniciens en cours de développement...</p>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="logistique" className="space-y-4">
+            <div className="rounded-lg border bg-card p-4">
+              <h3 className="text-lg font-semibold mb-4">Demandes logistiques</h3>
+              <p className="text-muted-foreground">Gestion logistique en cours de développement...</p>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="alertes" className="space-y-4">
+            <div className="rounded-lg border bg-card p-4">
+              <h3 className="text-lg font-semibold mb-4">Alertes et remontées</h3>
+              <p className="text-muted-foreground">Centre d'alertes en cours de développement...</p>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="kpi" className="space-y-4">
+            <div className="rounded-lg border bg-card p-4">
+              <h3 className="text-lg font-semibold mb-4">Indicateurs de performance</h3>
+              <p className="text-muted-foreground">Tableau de bord KPI en cours de développement...</p>
+            </div>
+          </TabsContent>
+        </>
+      );
+    }
+    
+    // Contenu pour utilisateurs simples (inchangé)
+    return (
+      <>
+        <TabsContent value="investments" className="space-y-4">
+          <div className="rounded-lg border bg-card p-4">
+            {investmentSummary && (
+              <div className="mb-6">
+                <InvestmentSummary
+                  totalInvested={investmentSummary.totalInvested}
+                  totalProfit={investmentSummary.totalProfit}
+                  averageROI={investmentSummary.averageROI}
+                  ongoingProjects={investmentSummary.ongoingProjects}
+                  completedProjects={investmentSummary.completedProjects}
+                  projectsByStatusData={investmentSummary.projectsByStatusData}
+                />
+              </div>
+            )}
+            
+            <h3 className="text-lg font-semibold mb-4">Mes investissements</h3>
+            {investedProjects && investedProjects.length > 0 ? (
+              <InvestmentsList 
+                investedProjects={investedProjects}
+                loading={loading}
+                onViewDetails={onViewDetails}
+              />
+            ) : (
+              <InvestmentTable investments={[]} />
+            )}
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="projects" className="space-y-4">
+          <div className="rounded-lg border bg-card p-4">
+            {projectsSummary && (
+              <div className="mb-6">
+                <ProjectsSummary
+                  totalProjects={projectsSummary.totalProjects}
+                  totalArea={projectsSummary.totalArea}
+                  totalFunding={projectsSummary.totalFunding}
+                  totalProfit={projectsSummary.totalProfit}
+                  ownerProfit={projectsSummary.ownerProfit}
+                  projectsByStatus={projectsSummary.projectsByStatus}
+                  projectsByCulture={projectsSummary.projectsByCulture}
+                />
+              </div>
+            )}
+            
+            <ProjectFeed 
+              filters={{ userId: userId }}
+              showFilters={false}
+              showFollowingTab={false}
+              title="Projets publiés"
+              gridLayout={true}
             />
-          ) : (
-            <InvestmentTable investments={[]} />
-          )}
-        </div>
-      </TabsContent>
-      
-      <TabsContent value="projects" className="space-y-4">
-        <div className="rounded-lg border bg-card p-4">
-          {projectsSummary && (
-            <div className="mb-6">
-              <ProjectsSummary
-                totalProjects={projectsSummary.totalProjects}
-                totalArea={projectsSummary.totalArea}
-                totalFunding={projectsSummary.totalFunding}
-                totalProfit={projectsSummary.totalProfit}
-                ownerProfit={projectsSummary.ownerProfit}
-                projectsByStatus={projectsSummary.projectsByStatus}
-                projectsByCulture={projectsSummary.projectsByCulture}
-              />
-            </div>
-          )}
-          
-          <ProjectFeed 
-            filters={{ userId: userId }}
-            showFilters={false}
-            showFollowingTab={false}
-            title="Projets publiés"
-            gridLayout={true}
-          />
-        </div>
-      </TabsContent>
-      
-      <TabsContent value="payments" className="space-y-4">
-        <div className="rounded-lg border bg-card p-4">
-          <h3 className="text-lg font-semibold mb-4">Historique des paiements</h3>
-          <PaymentHistory userId={userId} />
-        </div>
-      </TabsContent>
-      
-      <TabsContent value="activity" className="space-y-4">
-        <div className="rounded-lg border bg-card p-4">
-          <h3 className="text-lg font-semibold mb-4">Activité récente</h3>
-          <ActivityFeed userId={userId} />
-        </div>
-      </TabsContent>
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="payments" className="space-y-4">
+          <div className="rounded-lg border bg-card p-4">
+            <h3 className="text-lg font-semibold mb-4">Historique des paiements</h3>
+            <PaymentHistory userId={userId} />
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="activity" className="space-y-4">
+          <div className="rounded-lg border bg-card p-4">
+            <h3 className="text-lg font-semibold mb-4">Activité récente</h3>
+            <ActivityFeed userId={userId} />
+          </div>
+        </TabsContent>
+      </>
+    );
+  };
+
+  // Déterminer la valeur par défaut selon le rôle
+  const getDefaultValue = () => {
+    if (userRole === 'technicien') return 'parcelles';
+    if (userRole === 'superviseur') return 'overview';
+    return 'investments';
+  };
+  
+  return (
+    <Tabs defaultValue={getDefaultValue()} className="mt-6">
+      {renderTabsList()}
+      {renderTabsContent()}
     </Tabs>
   );
 };
