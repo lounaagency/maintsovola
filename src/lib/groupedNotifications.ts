@@ -5,7 +5,7 @@ import { sendNotification } from '@/types/notification';
 interface GroupedNotificationData {
   senderId: string;
   recipientId: string;
-  entityType: 'projet' | 'terrain' | 'jalon';
+  entityType: 'projet' | 'terrain' | 'jalon' | 'commentaire';
   entityId: number;
   action: 'like' | 'comment';
   projetId?: number;
