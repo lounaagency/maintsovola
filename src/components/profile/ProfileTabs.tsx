@@ -12,6 +12,7 @@ import ActivityFeed from './ActivityFeed';
 // Nouveaux composants pour techniciens
 import AssignedParcelsView from './technicien/AssignedParcelsView';
 import WeeklyPlanningTable from './technicien/WeeklyPlanningTable';
+import CompletedTasksList from './technicien/CompletedTasksList';
 import TechnicalResourcesLibrary from './technicien/TechnicalResourcesLibrary';
 
 interface ProjectCultureCount {
@@ -83,7 +84,7 @@ const ProfileTabs: React.FC<ProfileTabsProps> = ({
         <TabsList className="grid grid-cols-5 mb-4">
           <TabsTrigger value="parcelles">Parcelles</TabsTrigger>
           <TabsTrigger value="planning">Planning</TabsTrigger>
-          <TabsTrigger value="rapports">Rapports</TabsTrigger>
+          <TabsTrigger value="rapports">Effectués</TabsTrigger>
           <TabsTrigger value="ressources">Ressources</TabsTrigger>
           <TabsTrigger value="paiements">Paiements</TabsTrigger>
         </TabsList>
@@ -133,8 +134,7 @@ const ProfileTabs: React.FC<ProfileTabsProps> = ({
           
           <TabsContent value="rapports" className="space-y-4">
             <div className="rounded-lg border bg-card p-4">
-              <h3 className="text-lg font-semibold mb-4">Rapports d'intervention</h3>
-              <p className="text-muted-foreground">Fonctionnalité en cours de développement...</p>
+              <CompletedTasksList userId={userId} userRole={userRole} />
             </div>
           </TabsContent>
           
