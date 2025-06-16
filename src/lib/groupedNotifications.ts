@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { sendNotification } from '@/types/notification';
 
@@ -36,7 +37,7 @@ function formatGroupedMessage(
   entityName?: string
 ): { title: string; message: string } {
   const actionText = action === 'like' ? 'aimé' : 'commenté';
-  const entityText = entityType === 'projet' ? 'votre projet' : 'votre terrain' || 'votre jalon';
+  const entityText = entityType === 'projet' ? 'votre projet' : entityType === 'terrain' ? 'votre terrain' : 'votre jalon';
   
   let title: string;
   let message: string;

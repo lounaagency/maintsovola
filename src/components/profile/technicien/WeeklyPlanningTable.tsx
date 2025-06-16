@@ -1,11 +1,12 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, Clock, AlertTriangle, CheckCircle } from 'lucide-react';
 import { useWeeklyPlannings } from '@/hooks/useWeeklyPlannings';
 import { WeeklyTask } from '@/types/technicien';
+import JalonReportDialog from '@/components/JalonReportDialog';
 
 interface WeeklyPlanningTableProps {
   userId: string;
@@ -14,6 +15,8 @@ interface WeeklyPlanningTableProps {
 
 const WeeklyPlanningTable: React.FC<WeeklyPlanningTableProps> = ({ userId, userRole }) => {
   const { tasks, loading, error, updateTaskStatus } = useWeeklyPlannings(userId, userRole);
+  const [selectedTask, setSelectedTask] = useState<WeeklyTask | null>(null);
+  const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
 
   if (loading) {
     return (
@@ -52,6 +55,25 @@ const WeeklyPlanningTable: React.FC<WeeklyPlanningTableProps> = ({ userId, userR
 
   const handleStatusChange = (taskId: number, newStatus: WeeklyTask['statut']) => {
     updateTaskStatus(taskId, newStatus);
+  };
+
+  const handleStartTask = (task: WeeklyTask) => {
+    setSelectedTask(task);
+    setIsReportDialogOpen(true);
+  };
+
+  const handleReportSubmitSuccess = () => {
+    if (selectedTask) {
+      // Update task status to 'fait' after successful report submission
+      updateTaskStatus(selectedTask.id_tache, 'fait');
+    }
+    setIsReportDialogOpen(false);
+    setSelectedTask(null);
+  };
+
+  const handleCloseReportDialog = () => {
+    setIsReportDialogOpen(false);
+    setSelectedTask(null);
   };
 
   return (
@@ -99,7 +121,7 @@ const WeeklyPlanningTable: React.FC<WeeklyPlanningTableProps> = ({ userId, userR
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => handleStatusChange(task.id_tache, 'en_cours')}
+                        onClick={() => handleStartTask(task)}
                       >
                         Démarrer
                       </Button>
@@ -165,6 +187,18 @@ const WeeklyPlanningTable: React.FC<WeeklyPlanningTableProps> = ({ userId, userR
           <Calendar size={48} className="mx-auto mb-4 opacity-50" />
           <p>Aucune tâche planifiée cette semaine</p>
         </div>
+      )}
+
+      {selectedTask && (
+        <JalonReportDialog
+          isOpen={isReportDialogOpen}
+          onClose={handleCloseReportDialog}
+          projectId={selectedTask.id_projet}
+          jalonId={selectedTask.id_tache}
+          jalonName={selectedTask.description}
+          datePrevue={selectedTask.date_prevue}
+          onSubmitSuccess={handleReportSubmitSuccess}
+        />
       )}
     </div>
   );
