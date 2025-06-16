@@ -3,14 +3,14 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency } from '@/lib/utils';
-import { Calendar, MapPin } from 'lucide-react';
+import { Calendar, MapPin, AlertCircle } from 'lucide-react';
 
 interface UpcomingPayment {
   id_jalon_projet: number;
   projet_titre: string;
   jalon_nom: string;
   date_previsionnelle: string;
-  montant: number;
+  montant: number | null;
   statut: string;
 }
 
@@ -59,6 +59,8 @@ const UpcomingPaymentSchedule: React.FC<UpcomingPaymentScheduleProps> = ({ upcom
                   className={`flex items-center justify-between p-4 rounded-lg border ${
                     isThisWeek(payment.date_previsionnelle) 
                       ? 'border-blue-200 bg-blue-50' 
+                      : payment.montant === null
+                      ? 'border-orange-200 bg-orange-50'
                       : 'border-gray-200 bg-gray-50'
                   }`}
                 >
@@ -69,6 +71,12 @@ const UpcomingPaymentSchedule: React.FC<UpcomingPaymentScheduleProps> = ({ upcom
                       {isThisWeek(payment.date_previsionnelle) && (
                         <Badge variant="default" className="bg-blue-100 text-blue-700">
                           Cette semaine
+                        </Badge>
+                      )}
+                      {payment.montant === null && (
+                        <Badge variant="outline" className="text-orange-600 border-orange-600">
+                          <AlertCircle className="h-3 w-3 mr-1" />
+                          Montant à définir
                         </Badge>
                       )}
                     </div>
@@ -92,8 +100,10 @@ const UpcomingPaymentSchedule: React.FC<UpcomingPaymentScheduleProps> = ({ upcom
                   </div>
                   
                   <div className="text-right">
-                    <div className="text-lg font-semibold text-green-600">
-                      {formatCurrency(payment.montant)}
+                    <div className={`text-lg font-semibold ${
+                      payment.montant === null ? 'text-orange-600' : 'text-green-600'
+                    }`}>
+                      {payment.montant === null ? 'À définir' : formatCurrency(payment.montant)}
                     </div>
                   </div>
                 </div>

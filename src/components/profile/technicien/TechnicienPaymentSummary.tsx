@@ -3,13 +3,14 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency } from '@/lib/utils';
-import { Wallet, Calendar, TrendingUp, Clock } from 'lucide-react';
+import { Wallet, Calendar, TrendingUp, Clock, AlertTriangle } from 'lucide-react';
 
 interface TechnicienPaymentMetrics {
   totalReceived: number;
   thisWeekForecast: number;
   thisMonthForecast: number;
   pendingPayments: number;
+  milestonesWithoutAmount: number;
 }
 
 interface TechnicienPaymentSummaryProps {
@@ -82,6 +83,25 @@ const TechnicienPaymentSummary: React.FC<TechnicienPaymentSummaryProps> = ({ met
           </CardContent>
         </Card>
       </div>
+
+      {metrics.milestonesWithoutAmount > 0 && (
+        <Card className="border-orange-200 bg-orange-50">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-orange-800">
+              Jalons sans montant défini
+            </CardTitle>
+            <AlertTriangle className="h-4 w-4 text-orange-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-lg font-semibold text-orange-800">
+              {metrics.milestonesWithoutAmount} jalon(s)
+            </div>
+            <p className="text-xs text-orange-700 mt-2">
+              Les montants de paiement ne sont pas encore configurés pour ces jalons
+            </p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

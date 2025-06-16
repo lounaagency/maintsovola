@@ -7,6 +7,7 @@ interface TechnicienPaymentMetrics {
   thisWeekForecast: number;
   thisMonthForecast: number;
   pendingPayments: number;
+  milestonesWithoutAmount: number;
 }
 
 interface UpcomingPayment {
@@ -14,7 +15,7 @@ interface UpcomingPayment {
   projet_titre: string;
   jalon_nom: string;
   date_previsionnelle: string;
-  montant: number;
+  montant: number | null;
   statut: string;
 }
 
@@ -34,6 +35,7 @@ export const useTechnicienPaymentData = (userId: string) => {
     thisWeekForecast: 0,
     thisMonthForecast: 0,
     pendingPayments: 0,
+    milestonesWithoutAmount: 0,
   });
   
   const [upcomingPayments, setUpcomingPayments] = useState<UpcomingPayment[]>([]);
@@ -61,7 +63,7 @@ export const useTechnicienPaymentData = (userId: string) => {
           `)
           .eq('id_technicien', userId);
 
-        // Récupérer les jalons à venir avec leurs coûts
+        // Récupérer les jalons à venir avec leurs coûts (jointure externe pour inclure les jalons sans coûts définis)
         const { data: jalonsData } = await supabase
           .from('jalon_projet')
           .select(`
@@ -70,7 +72,7 @@ export const useTechnicienPaymentData = (userId: string) => {
             statut,
             projet:id_projet(titre),
             jalon_agricole:id_jalon_agricole(nom_jalon),
-            cout_jalon_projet!inner(montant_total)
+            cout_jalon_projet(montant_total)
           `)
           .eq('projet.id_technicien', userId)
           .in('statut', ['Prévu', 'En cours'])
@@ -87,22 +89,27 @@ export const useTechnicienPaymentData = (userId: string) => {
         let thisWeekForecast = 0;
         let thisMonthForecast = 0;
         let pendingPayments = 0;
+        let milestonesWithoutAmount = 0;
 
         const upcomingPaymentsList: UpcomingPayment[] = [];
 
         if (jalonsData) {
           jalonsData.forEach(jalon => {
             const datePrevisionnelle = new Date(jalon.date_previsionnelle);
-            const montant = jalon.cout_jalon_projet?.[0]?.montant_total || 0;
+            const montant = jalon.cout_jalon_projet?.[0]?.montant_total || null;
             
-            pendingPayments += montant;
+            if (montant === null) {
+              milestonesWithoutAmount++;
+            } else {
+              pendingPayments += montant;
 
-            if (datePrevisionnelle <= oneWeekFromNow) {
-              thisWeekForecast += montant;
-            }
-            
-            if (datePrevisionnelle <= endOfMonth) {
-              thisMonthForecast += montant;
+              if (datePrevisionnelle <= oneWeekFromNow) {
+                thisWeekForecast += montant;
+              }
+              
+              if (datePrevisionnelle <= endOfMonth) {
+                thisMonthForecast += montant;
+              }
             }
 
             upcomingPaymentsList.push({
@@ -131,7 +138,8 @@ export const useTechnicienPaymentData = (userId: string) => {
           totalReceived,
           thisWeekForecast,
           thisMonthForecast,
-          pendingPayments
+          pendingPayments,
+          milestonesWithoutAmount
         });
 
         setUpcomingPayments(upcomingPaymentsList.sort((a, b) => 
