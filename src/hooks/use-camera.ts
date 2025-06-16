@@ -1,7 +1,11 @@
 
 import { useState } from 'react';
 import { cameraService } from '@/services/CameraService';
-import type { Photo } from '@capacitor/camera';
+
+export interface Photo {
+  webPath?: string;
+  saved: boolean;
+}
 
 export function useCamera() {
   const [isCapturing, setIsCapturing] = useState(false);
@@ -19,7 +23,6 @@ export function useCamera() {
     }
   };
 
-  // Update this function to adapt the return type
   const selectFromGallery = async (multiple = true): Promise<Photo[]> => {
     try {
       setIsCapturing(true);

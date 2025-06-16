@@ -10,7 +10,7 @@ export interface Notification {
   type: 'info' | 'success' | 'warning' | 'error' | 'alerte' | 'validation' | 'assignment';
   date_creation: string;
   lu: boolean;
-  entity_type?: 'terrain' | 'projet' | 'jalon' | 'investissement' | string;
+  entity_type?: 'terrain' | 'projet' | 'jalon' | 'investissement' | 'commentaire' | string;
   entity_id?: number | null;
   projet_id?: number | null;
 }
@@ -22,7 +22,7 @@ export async function sendNotification(
   title: string,
   message: string,
   type: 'info' | 'success' | 'warning' | 'error' | 'alerte' | 'validation' | 'assignment' = 'info',
-  entityType?: 'terrain' | 'projet' | 'jalon' | 'investissement',
+  entityType?: 'terrain' | 'projet' | 'jalon' | 'investissement' | 'commentaire',
   entityId?: number | string | null,
   projetId?: number | string | null
 ) {

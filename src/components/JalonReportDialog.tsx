@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import {
   Dialog,
@@ -13,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import PhotoUploader from "./PhotoUploader";
+import { sendGroupedNotification } from "@/lib/groupedNotifications";
 
 interface JalonReportDialogProps {
   isOpen: boolean;
@@ -57,19 +59,14 @@ const JalonReportDialog: React.FC<JalonReportDialogProps> = ({
     try {
       setIsSubmitting(true);
       
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Utilisateur non connecté");
+      
       // Convert photo URLs array to JSON string
       const photosString = photoUrls.length > 0 ? JSON.stringify(photoUrls) : null;
       
       // Update jalon with report and photos
-      const { error } = await supabase.rpc('notify_jalon_completion', {
-        project_id: projectId,
-        jalon_id: jalonId,
-        technicien_id: (await supabase.auth.getUser()).data.user?.id,
-        jalon_date: dateReelle
-      });
-
-      if (error) throw error;
-
       const { error: updateError } = await supabase
         .from('jalon_projet')
         .update({
@@ -81,6 +78,61 @@ const JalonReportDialog: React.FC<JalonReportDialogProps> = ({
         .eq('id_jalon_agricole', jalonId);
       
       if (updateError) throw updateError;
+      
+      // Get project owner and investors for notifications
+      const { data: projectData, error: projectError } = await supabase
+        .from('projet')
+        .select('id_tantsaha')
+        .eq('id_projet', projectId)
+        .single();
+        
+      if (projectError) {
+        console.error('Error fetching project data:', projectError);
+      } else if (projectData) {
+        // Notify project owner
+        try {
+          await sendGroupedNotification({
+            senderId: user.id,
+            recipientId: projectData.id_tantsaha,
+            entityType: 'jalon',
+            entityId: jalonId,
+            action: 'comment',
+            projetId: projectId
+          });
+        } catch (notifError) {
+          console.error('Error sending notification to project owner:', notifError);
+        }
+      }
+      
+      // Get and notify investors
+      try {
+        const { data: investorsData, error: investorsError } = await supabase
+          .from('investissement')
+          .select('id_investisseur')
+          .eq('id_projet', projectId);
+          
+        if (investorsError) {
+          console.error('Error fetching investors:', investorsError);
+        } else if (investorsData) {
+          // Send notifications to all investors
+          for (const investor of investorsData) {
+            try {
+              await sendGroupedNotification({
+                senderId: user.id,
+                recipientId: investor.id_investisseur,
+                entityType: 'jalon',
+                entityId: jalonId,
+                action: 'comment',
+                projetId: projectId
+              });
+            } catch (notifError) {
+              console.error('Error sending notification to investor:', notifError);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error processing investor notifications:', error);
+      }
       
       toast.success("Rapport d'intervention enregistré avec succès");
       
