@@ -11,11 +11,14 @@ import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import { markMessagesAsRead } from '@/lib/messagerie';
 import { useUnreadMessagesCount } from '@/hooks/use-unread-messages';
+import { Skeleton } from "@/components/ui/skeleton";
+
 interface ConversationListProps {
   userId: string;
   selectedConversation: ConversationMessage | null;
   onSelectConversation: (conversation: ConversationMessage) => void;
 }
+
 const ConversationList: React.FC<ConversationListProps> = ({
   userId,
   selectedConversation,
@@ -27,95 +30,120 @@ const ConversationList: React.FC<ConversationListProps> = ({
   const [isSearchingUser, setIsSearchingUser] = useState(false);
   const [userSearchQuery, setUserSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
-  const {
-    fetchUnreadCount
-  } = useUnreadMessagesCount(userId);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  const { fetchUnreadCount } = useUnreadMessagesCount(userId);
+
   const fetchConversations = useCallback(async () => {
     if (!userId) return;
+    
     try {
+      setIsLoading(true);
+      setError(null);
+
       // Get all conversations for the current user
-      const {
-        data: conversationsData,
-        error: conversationsError
-      } = await supabase.from('conversation').select('id_conversation, id_utilisateur1, id_utilisateur2, derniere_activite').or(`id_utilisateur1.eq.${userId},id_utilisateur2.eq.${userId}`).order('derniere_activite', {
-        ascending: false
-      });
+      const { data: conversationsData, error: conversationsError } = await supabase
+        .from('conversation')
+        .select('id_conversation, id_utilisateur1, id_utilisateur2, derniere_activite')
+        .or(`id_utilisateur1.eq.${userId},id_utilisateur2.eq.${userId}`)
+        .order('derniere_activite', { ascending: false });
+
       if (conversationsError) {
         console.error("Error fetching conversations:", conversationsError);
+        setError("Erreur lors du chargement des conversations");
         return;
       }
+
       if (!conversationsData || conversationsData.length === 0) {
         setConversations([]);
         setFilteredConversations([]);
         return;
       }
+
       const formattedConversations: ConversationMessage[] = [];
+
       for (const conv of conversationsData) {
-        // Determine the other user in the conversation
-        const otherUserId = conv.id_utilisateur1 === userId ? conv.id_utilisateur2 : conv.id_utilisateur1;
+        try {
+          // Determine the other user in the conversation
+          const otherUserId = conv.id_utilisateur1 === userId ? conv.id_utilisateur2 : conv.id_utilisateur1;
 
-        // Get user details
-        const {
-          data: userData,
-          error: userError
-        } = await supabase.from('utilisateur').select('id_utilisateur, nom, prenoms, photo_profil').eq('id_utilisateur', otherUserId).single();
-        if (userError) {
-          console.error("Error fetching user details:", userError);
-          continue;
-        }
+          // Get user details
+          const { data: userData, error: userError } = await supabase
+            .from('utilisateur')
+            .select('id_utilisateur, nom, prenoms, photo_profil')
+            .eq('id_utilisateur', otherUserId)
+            .single();
 
-        // Get last message in the conversation
-        const {
-          data: lastMessageData,
-          error: lastMessageError
-        } = await supabase.from('message').select('*').eq('id_conversation', conv.id_conversation).order('date_envoi', {
-          ascending: false
-        }).limit(1);
-        if (lastMessageError) {
-          console.error("Error fetching last message:", lastMessageError);
-          continue;
-        }
+          if (userError) {
+            console.error("Error fetching user details:", userError);
+            continue;
+          }
 
-        // Count unread messages
-        const {
-          count: unreadCount,
-          error: unreadError
-        } = await supabase.from('message').select('*', {
-          count: 'exact',
-          head: true
-        }).eq('id_conversation', conv.id_conversation).eq('id_destinataire', userId).eq('lu', false);
-        if (unreadError) {
-          console.error("Error counting unread messages:", unreadError);
+          // Get last message in the conversation - now with proper id_conversation filter
+          const { data: lastMessageData, error: lastMessageError } = await supabase
+            .from('message')
+            .select('*')
+            .eq('id_conversation', conv.id_conversation)
+            .order('date_envoi', { ascending: false })
+            .limit(1);
+
+          if (lastMessageError) {
+            console.error("Error fetching last message:", lastMessageError);
+            // Continue without error since conversation might not have messages yet
+          }
+
+          // Count unread messages
+          const { count: unreadCount, error: unreadError } = await supabase
+            .from('message')
+            .select('*', { count: 'exact', head: true })
+            .eq('id_conversation', conv.id_conversation)
+            .eq('id_destinataire', userId)
+            .eq('lu', false);
+
+          if (unreadError) {
+            console.error("Error counting unread messages:", unreadError);
+          }
+
+          const lastMessage = lastMessageData && lastMessageData.length > 0 ? lastMessageData[0] : null;
+
+          formattedConversations.push({
+            id_message: lastMessage?.id_message || 0,
+            id_conversation: conv.id_conversation,
+            id_expediteur: lastMessage?.id_expediteur || "",
+            id_destinataire: lastMessage?.id_destinataire || "",
+            contenu: lastMessage?.contenu || "",
+            date_envoi: lastMessage?.date_envoi || conv.derniere_activite,
+            lu: lastMessage?.lu || false,
+            user: {
+              id: userData.id_utilisateur,
+              name: `${userData.nom} ${userData.prenoms || ''}`.trim(),
+              photo_profil: userData.photo_profil,
+              status: "online"
+            },
+            lastMessage: {
+              text: lastMessage?.contenu || "Nouvelle conversation",
+              timestamp: lastMessage?.date_envoi || conv.derniere_activite
+            },
+            timestamp: lastMessage?.date_envoi || conv.derniere_activite,
+            unread: unreadCount || 0
+          });
+        } catch (error) {
+          console.error("Error processing conversation:", error);
+          // Continue with next conversation
         }
-        const lastMessage = lastMessageData && lastMessageData.length > 0 ? lastMessageData[0] : null;
-        formattedConversations.push({
-          id_message: lastMessage?.id_message || 0,
-          id_conversation: conv.id_conversation,
-          id_expediteur: lastMessage?.id_expediteur || "",
-          id_destinataire: lastMessage?.id_destinataire || "",
-          contenu: lastMessage?.contenu || "",
-          date_envoi: lastMessage?.date_envoi || conv.derniere_activite,
-          lu: lastMessage?.lu || false,
-          user: {
-            id: userData.id_utilisateur,
-            name: `${userData.nom} ${userData.prenoms || ''}`.trim(),
-            photo_profil: userData.photo_profil,
-            status: "online" // Default status
-          },
-          lastMessage: {
-            text: lastMessage?.contenu || "Nouvelle conversation",
-            timestamp: lastMessage?.date_envoi || conv.derniere_activite
-          },
-          timestamp: lastMessage?.date_envoi || conv.derniere_activite,
-          unread: unreadCount || 0
-        });
       }
+
       setConversations(formattedConversations);
       setFilteredConversations(formattedConversations);
     } catch (error) {
       console.error("Error fetching conversations:", error);
+      setError("Erreur lors du chargement des conversations");
+    } finally {
+      setIsLoading(false);
     }
   }, [userId]);
+
   const handleUserSearch = async () => {
     if (!userSearchQuery) return;
     try {
@@ -130,6 +158,7 @@ const ConversationList: React.FC<ConversationListProps> = ({
       console.error("Error searching for users:", error);
     }
   };
+
   const handleSelectConversation = useCallback(async (conversation: ConversationMessage) => {
     // If there are unread messages in this conversation, mark them as read
     if (conversation.unread && conversation.unread > 0) {
@@ -159,6 +188,7 @@ const ConversationList: React.FC<ConversationListProps> = ({
     // Select the conversation
     onSelectConversation(conversation);
   }, [userId, onSelectConversation, fetchUnreadCount]);
+
   const startConversation = async (selectedUser: UserProfile) => {
     setIsSearchingUser(false);
     try {
@@ -211,6 +241,7 @@ const ConversationList: React.FC<ConversationListProps> = ({
       console.error("Error starting conversation:", error);
     }
   };
+
   const formatMessageDate = (dateString: string) => {
     try {
       return formatDistanceToNow(new Date(dateString), {
@@ -221,6 +252,7 @@ const ConversationList: React.FC<ConversationListProps> = ({
       return dateString;
     }
   };
+
   useEffect(() => {
     if (userId) {
       fetchConversations();
@@ -239,6 +271,7 @@ const ConversationList: React.FC<ConversationListProps> = ({
       };
     }
   }, [userId, fetchConversations]);
+
   useEffect(() => {
     if (searchQuery) {
       const filtered = conversations.filter(conversation => conversation.user?.name.toLowerCase().includes(searchQuery.toLowerCase()) || conversation.lastMessage?.text && conversation.lastMessage.text.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -247,6 +280,7 @@ const ConversationList: React.FC<ConversationListProps> = ({
       setFilteredConversations(conversations);
     }
   }, [searchQuery, conversations]);
+
   const conversationItems = useMemo(() => {
     return filteredConversations.map(conversation => <div key={conversation.id_conversation} onClick={() => handleSelectConversation(conversation)} className={`cursor-pointer ${selectedConversation?.id_conversation === conversation.id_conversation ? 'bg-muted' : ''}`}>
         <MessageItem id={conversation.id_conversation.toString()} user={{
@@ -256,23 +290,60 @@ const ConversationList: React.FC<ConversationListProps> = ({
       }} lastMessage={conversation.lastMessage?.text || ""} timestamp={formatMessageDate(conversation.timestamp || "")} unread={conversation.unread || 0} />
       </div>);
   }, [filteredConversations, selectedConversation, handleSelectConversation]);
-  return <div className="flex flex-col w-full h-full border-r border-border bg-background overflow-hidden">
+
+  if (error) {
+    return (
+      <div className="flex flex-col w-full h-full border-r border-border bg-background overflow-hidden">
+        <div className="p-4 border-b border-border py-[16px] my-0">
+          <h1 className="text-xl font-bold mb-4">Messages</h1>
+          <div className="text-center py-8 text-red-500">
+            {error}
+            <Button 
+              variant="outline" 
+              className="mt-2 block mx-auto" 
+              onClick={fetchConversations}
+            >
+              Réessayer
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col w-full h-full border-r border-border bg-background overflow-hidden">
       <div className="p-4 border-b border-border py-[16px] my-0">
         <h1 className="text-xl font-bold mb-4">Messages</h1>
         
         <div className="flex items-center space-x-2">
           <div className="relative flex-1">
             <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input placeholder="Rechercher dans les messages..." className="pl-8" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+            <Input
+              placeholder="Rechercher dans les messages..."
+              className="pl-8"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
           </div>
-          <Button variant="ghost" size="icon" onClick={() => setIsSearchingUser(!isSearchingUser)}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsSearchingUser(!isSearchingUser)}
+          >
             <Users className="h-5 w-5" />
           </Button>
         </div>
         
-        {isSearchingUser ? <div className="mt-4 space-y-4">
+        {isSearchingUser ? (
+          <div className="mt-4 space-y-4">
             <div className="flex gap-2">
-              <Input placeholder="Rechercher un utilisateur..." value={userSearchQuery} onChange={e => setUserSearchQuery(e.target.value)} className="flex-1" />
+              <Input
+                placeholder="Rechercher un utilisateur..."
+                value={userSearchQuery}
+                onChange={(e) => setUserSearchQuery(e.target.value)}
+                className="flex-1"
+              />
               <Button onClick={handleUserSearch}>
                 <Search className="h-4 w-4 mr-2" />
                 Rechercher
@@ -280,27 +351,60 @@ const ConversationList: React.FC<ConversationListProps> = ({
             </div>
             
             <ScrollArea className="h-[400px] rounded-md border p-4">
-              {searchResults.length > 0 ? searchResults.map(result => <div key={result.id_utilisateur} className="flex items-center p-2 hover:bg-muted rounded-md cursor-pointer mb-2" onClick={() => startConversation(result)}>
+              {searchResults.length > 0 ? (
+                searchResults.map(result => (
+                  <div
+                    key={result.id_utilisateur}
+                    className="flex items-center p-2 hover:bg-muted rounded-md cursor-pointer mb-2"
+                    onClick={() => startConversation(result)}
+                  >
                     <div className="w-10 h-10 rounded-full bg-gray-300 overflow-hidden mr-3">
-                      {result.photo_profil && <img src={result.photo_profil} alt={result.nom} className="w-full h-full object-cover" />}
+                      {result.photo_profil && (
+                        <img src={result.photo_profil} alt={result.nom} className="w-full h-full object-cover" />
+                      )}
                     </div>
                     <div>
                       <div className="font-medium">
                         {result.nom} {result.prenoms || ''}
                       </div>
                     </div>
-                  </div>) : <div className="text-center py-4 text-gray-500">
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-4 text-gray-500">
                   {userSearchQuery ? "Aucun utilisateur trouvé" : "Recherchez un utilisateur pour démarrer une conversation"}
-                </div>}
+                </div>
+              )}
             </ScrollArea>
-          </div> : <ScrollArea className="h-[calc(100vh-220px)] mt-4">
+          </div>
+        ) : (
+          <ScrollArea className="h-[calc(100vh-220px)] mt-4">
             <div className="space-y-1">
-              {filteredConversations.length > 0 ? conversationItems : <div className="text-center py-8 text-gray-500">
+              {isLoading ? (
+                <div className="space-y-2">
+                  {Array.from({ length: 5 }).map((_, index) => (
+                    <div key={index} className="flex items-center p-3">
+                      <Skeleton className="h-10 w-10 rounded-full" />
+                      <div className="ml-3 flex-1">
+                        <Skeleton className="h-4 w-3/4 mb-2" />
+                        <Skeleton className="h-3 w-1/2" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : filteredConversations.length > 0 ? (
+                conversationItems
+              ) : (
+                <div className="text-center py-8 text-gray-500">
                   {searchQuery ? "Aucun message ne correspond à votre recherche" : "Aucune conversation. Commencez à discuter !"}
-                </div>}
+                </div>
+              )}
             </div>
-          </ScrollArea>}
+          </ScrollArea>
+        )}
       </div>
-    </div>;
+    </div>
+  );
 };
+
 export default ConversationList;

@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Message, Conversation } from "@/types/message";
 import { useAuth } from "@/contexts/AuthContext";
@@ -43,7 +42,12 @@ export const createConversation = async (userId1: string, userId2: string) => {
 
 export const sendMessage = async (message: Message) => {
   try {
-    // Envoyer le message
+    // Ensure we have a conversation ID before sending the message
+    if (!message.id_conversation) {
+      throw new Error('ID de conversation manquant');
+    }
+
+    // Envoyer le message - now with guaranteed id_conversation
     const { data, error } = await supabase
       .from('message')
       .insert({
