@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { AssignedParcel } from '@/types/technicien';
@@ -26,10 +25,10 @@ export const useAssignedParcels = (userId: string, userRole: string) => {
             id_district,
             id_commune,
             id_terrain,
-            terrain:id_terrain(nom_terrain),
+            terrain:id_terrain(id_terrain, nom_terrain),
             projet_culture!inner(
               id_projet_culture,
-              culture:id_culture(nom_culture),
+              culture:id_culture(id_culture, nom_culture),
               date_debut_previsionnelle,
               date_debut_reelle
             )
@@ -51,7 +50,7 @@ export const useAssignedParcels = (userId: string, userRole: string) => {
           const { data: jalonsData } = await supabase
             .from('jalon_projet')
             .select(`
-              id_projet_culture,
+              id_projet,
               date_previsionnelle,
               date_reelle,
               jalon_agricole:id_jalon_agricole(
@@ -107,7 +106,7 @@ export const useAssignedParcels = (userId: string, userRole: string) => {
             surface_ha: project.surface_ha || 0,
             statut: project.statut || 'en_cours',
             date_debut_production: project.date_debut_production,
-            id_terrain: project.id_terrain,
+            id_terrain: project.terrain?.id_terrain,
             nom_terrain: project.terrain?.nom_terrain,
             cultures: culturesWithJalons,
             localisation: {

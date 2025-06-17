@@ -617,7 +617,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
                             <th className="p-2 text-left text-sm">Jalon</th>
                             <th className="p-2 text-left text-sm">Date prévue</th>
                             <th className="p-2 text-left text-sm">Date réelle</th>
-                            {userRole === 'technicien' && <th className="p-2 text-sm"></th>}
+                            {userRole === 'technicien' && <th className="p-2 text-center text-sm">Actions</th>}
                           </tr>
                         </thead>
                         <tbody>
@@ -643,16 +643,19 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
                                     {formatDate(jalon.date_previsionnelle)}
                                   </td>
                                   <td className="p-2 text-sm">
-                                    {jalon.date_reelle ? (
-                                      <Button 
-                                        size="sm" 
-                                        variant="outline"
-                                        onClick={() => handleShowJalonReport(jalon, true)}
-                                      >
-                                        Voir le rapport
-                                      </Button>
-                                    ) : (
-                                      userRole === 'technicien' && (
+                                    {jalon.date_reelle ? formatDate(jalon.date_reelle) : ''}
+                                  </td>
+                                  {userRole === 'technicien' && (
+                                    <td className="p-2 text-center">
+                                      {jalon.date_reelle ? (
+                                        <Button 
+                                          size="sm" 
+                                          variant="outline"
+                                          onClick={() => handleShowJalonReport(jalon, true)}
+                                        >
+                                          Voir le rapport
+                                        </Button>
+                                      ) : (
                                         <Button 
                                           size="sm" 
                                           variant="outline"
@@ -660,9 +663,9 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
                                         >
                                           Marquer réalisé
                                         </Button>
-                                      )
-                                    )}
-                                  </td>
+                                      )}
+                                    </td>
+                                  )}
                                 </tr>
                               );
                             })
