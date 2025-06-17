@@ -5,11 +5,16 @@ export interface AssignedParcel {
   surface_ha: number;
   statut: string;
   date_debut_production?: string;
+  id_terrain?: number;
+  nom_terrain?: string;
   cultures: Array<{
     nom_culture: string;
     phase_actuelle: 'ensemencement' | 'croissance' | 'recolte' | 'termine';
     date_semis?: string;
     date_recolte_prevue?: string;
+    dernier_jalon?: string;
+    date_dernier_jalon?: string;
+    statut_jalon: string;
   }>;
   localisation: {
     region: string;
