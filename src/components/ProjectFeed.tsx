@@ -4,46 +4,17 @@ import { motion } from 'framer-motion';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import AgriculturalProjectCard from '@/components/AgriculturalProjectCard';
 import { useProjectData, ProjectFilter } from '@/hooks/use-project-data';
+import { LazyImage } from '@/components/ui/lazy-image';
+import ProjectCardSkeleton from '@/components/skeletons/ProjectCardSkeleton';
 
 export interface ProjectFeedProps {
-  /**
-   * Filter options for the feed
-   */
   filters?: ProjectFilter;
-  
-  /**
-   * Whether to show the filter badges and controls
-   */
   showFilters?: boolean;
-  
-  /**
-   * Whether to show the "Following" tab
-   */
   showFollowingTab?: boolean;
-  
-  /**
-   * Title to display above the feed
-   */
   title?: string;
-  
-  /**
-   * The tab that should be active by default
-   */
   defaultTab?: 'for-you' | 'following';
-  
-  /**
-   * CSS class to apply to the container
-   */
   className?: string;
-  
-  /**
-   * Whether to use a grid layout instead of stack
-   */
   gridLayout?: boolean;
-  
-  /**
-   * Callback for when filters are updated
-   */
   onFilterChange?: (filters: ProjectFilter) => void;
 }
 
@@ -103,7 +74,6 @@ const ProjectFeed: React.FC<ProjectFeedProps> = ({
   };
   
   const clearFilters = () => {
-    // Keep the projectId filter if it exists
     const projectId = activeFilters.projectId;
     const userId = activeFilters.userId;
     const status = activeFilters.status;
@@ -125,7 +95,6 @@ const ProjectFeed: React.FC<ProjectFeedProps> = ({
     if (!showFilters) return null;
     
     const filtersToShow = { ...activeFilters };
-    // Don't show these as filter badges
     delete filtersToShow.projectId;
     delete filtersToShow.userId;
     delete filtersToShow.followedUsersOnly;
@@ -187,11 +156,7 @@ const ProjectFeed: React.FC<ProjectFeedProps> = ({
 
   const renderProjects = (projectsList: any[], isLoading: boolean) => {
     if (isLoading) {
-      return (
-        <div className="flex items-center justify-center h-40">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        </div>
-      );
+      return <ProjectCardSkeleton count={6} variant={gridLayout ? "grid" : "list"} />;
     }
 
     if (projectsList.length === 0) {
@@ -291,7 +256,6 @@ const ProjectFeed: React.FC<ProjectFeedProps> = ({
     );
   };
 
-  // If we're not showing tabs, just render the projects directly
   if (!showFollowingTab) {
     return (
       <div className={className}>
@@ -302,7 +266,6 @@ const ProjectFeed: React.FC<ProjectFeedProps> = ({
     );
   }
 
-  // Otherwise, render with tabs for "For You" and "Following"
   return (
     <div className={className}>
       {title && <h1 className="text-2xl font-bold text-gray-900 mb-4">{title}</h1>}
