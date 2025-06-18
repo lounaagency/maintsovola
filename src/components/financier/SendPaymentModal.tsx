@@ -47,22 +47,40 @@ const SendPaymentModal: React.FC<SendPaymentModalProps> = ({
   }, [jalon]);
 
   const handleReceiptGenerated = (pdfBlob: Blob) => {
-    console.log('Receipt generated:', pdfBlob);
+    console.log("Reçu généré:", pdfBlob);
   };
 
-  /*const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!jalon) return;
 
     if (typePaiement === PAYMENT_TYPES.MOBILE_BANKING && !numeroMobileBanking) {
+       toast.error({ title: "Erreur", description: "Veuillez sélectionner un numéro Mobile Banking." });
       return;
     }
     if (typePaiement === PAYMENT_TYPES.CHEQUE && !numeroCheque) {
+      toast.error({ title: "Erreur", description: "Veuillez entrer un numéro de chèque." });
       return;
     }
     
     try {
+      // Si Mobile Banking, appeler MVola
+      if (typePaiement === PAYMENT_TYPES.MOBILE_BANKING) {
+        const response = await sendPaymentToMvola({
+          amount: montant,
+          phoneNumber: numeroMobileBanking,
+          description: `Paiement - ${jalon.nom_jalon}`,
+          merchantId: import.meta.env.VITE_MERCHANT_ID,
+          investmentId: jalon.id_jalon_projet,
+        });
+
+        if (!response || response.status !== 200) {
+          throw new Error("Échec de l'envoi via MVola");
+        }
+      }
+
+      // Toujours enregistrer dans Supabase après succès MVola
       const paymentData: PaiementTechnicien = {
         id_jalon_projet: jalon.id_jalon_projet,
         montant: parseFloat(montant),
@@ -74,72 +92,18 @@ const SendPaymentModal: React.FC<SendPaymentModalProps> = ({
         numero_mobile_banking: typePaiement === PAYMENT_TYPES.MOBILE_BANKING ? numeroMobileBanking : undefined,
       };
 
-      console.log('Submitting payment:', paymentData);
+      console.log("Envoi du paiement :", paymentData);
       await sendPayment.mutateAsync(paymentData);
+      toast.success({ title: "Succès", description: "Paiement effectué et enregistré." });
       onClose();
-    } catch (error) {
-      console.error('Payment error:', error);
-    }
-  };*/
-  const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-
-  if (!jalon) return;
-
-  // Validation initiale
-  if (typePaiement === PAYMENT_TYPES.MOBILE_BANKING && !numeroMobileBanking) {
-    toast.error({ title: "Erreur", description: "Veuillez sélectionner un numéro Mobile Banking." });
-    return;
-  }
-  if (typePaiement === PAYMENT_TYPES.CHEQUE && !numeroCheque) {
-    toast.error({ title: "Erreur", description: "Veuillez entrer un numéro de chèque." });
-    return;
-  }
-
-  try {
-    let paymentSuccess = true;
-
-    // Si c'est un paiement Mobile Banking, on passe par MVola
-    if (typePaiement === PAYMENT_TYPES.MOBILE_BANKING) {
-      const response = await sendPaymentToMvola({
-        amount: montant,
-        phoneNumber: numeroMobileBanking,
-        description: `Paiement - ${jalon.nom_jalon}`,
-        merchantId: import.meta.env.VITE_MERCHANT_ID,
-        investmentId: jalon.id_jalon_projet,
+    } catch (error: any) {
+      console.error("Erreur lors du paiement :", error);
+      toast.error({
+        title: "Erreur",
+        description: error.message || "Impossible de traiter le paiement.",
       });
-
-      // Vérifie si la réponse est OK
-      if (!response || response.status !== 200) {
-        throw new Error("Échec de l'envoi via MVola");
-      }
     }
-
-    // Enregistre toujours le paiement dans Supabase
-    const paymentData: PaiementTechnicien = {
-      id_jalon_projet: jalon.id_jalon_projet,
-      montant: parseFloat(montant),
-      reference_paiement: reference,
-      observation: observation || undefined,
-      date_previsionnelle: jalon.date_previsionnelle,
-      type_paiement: typePaiement,
-      numero_cheque: typePaiement === PAYMENT_TYPES.CHEQUE ? numeroCheque : undefined,
-      numero_mobile_banking: typePaiement === PAYMENT_TYPES.MOBILE_BANKING ? numeroMobileBanking : undefined,
-    };
-
-    console.log('Submitting payment:', paymentData);
-    await sendPayment.mutateAsync(paymentData);
-    toast.success({ title: "Succès", description: "Paiement effectué et enregistré." });
-    onClose();
-
-  } catch (error: any) {
-    console.error('Payment error:', error);
-    toast.error({
-      title: "Erreur",
-      description: error.message || "Impossible de traiter le paiement.",
-    });
-  }
-};
+  };
 
   if (!jalon) return null;
 
@@ -166,9 +130,9 @@ const SendPaymentModal: React.FC<SendPaymentModalProps> = ({
 
           {typePaiement === PAYMENT_TYPES.MOBILE_BANKING && (
             <MobileBankingSection
-              jalon={jalon}
-              numeroMobileBanking={numeroMobileBanking}
-              setNumeroMobileBanking={setNumeroMobileBanking}
+              technicienEmail={jalon.technicien_email}
+              selectedNumber={numeroMobileBanking}
+              setSelectedNumber={setNumeroMobileBanking}
             />
           )}
 
@@ -194,10 +158,10 @@ const SendPaymentModal: React.FC<SendPaymentModalProps> = ({
             </Button>
             <Button 
               type="submit" 
-              disabled={sendPayment.isPending}
+              disabled={sendPayment.isPending || isMvolaLoading}
               className="gap-2"
             >
-              {sendPayment.isPending ? (
+              {sendPayment.isPending || isMvolaLoading ? (
                 "Envoi en cours..."
               ) : (
                 <>
