@@ -12,6 +12,7 @@ import PaymentFormFields from "./PaymentFormFields";
 import MobileBankingSection from "./MobileBankingSection";
 import ChequeSection from "./ChequeSection";
 import CashSection from "./CashSection";
+import useMvola from "@/hooks/use-mvola";
 
 interface SendPaymentModalProps {
   isOpen: boolean;
@@ -32,6 +33,7 @@ const SendPaymentModal: React.FC<SendPaymentModalProps> = ({
   const [numeroMobileBanking, setNumeroMobileBanking] = useState("");
   
   const { sendPayment } = usePaymentActions();
+  const { sendPaymentToMvola, loading: isMvolaLoading } = useMvola();
 
   React.useEffect(() => {
     if (jalon) {
@@ -48,7 +50,7 @@ const SendPaymentModal: React.FC<SendPaymentModalProps> = ({
     console.log('Receipt generated:', pdfBlob);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  /*const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!jalon) return;
@@ -78,7 +80,66 @@ const SendPaymentModal: React.FC<SendPaymentModalProps> = ({
     } catch (error) {
       console.error('Payment error:', error);
     }
-  };
+  };*/
+  const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  if (!jalon) return;
+
+  // Validation initiale
+  if (typePaiement === PAYMENT_TYPES.MOBILE_BANKING && !numeroMobileBanking) {
+    toast.error({ title: "Erreur", description: "Veuillez sélectionner un numéro Mobile Banking." });
+    return;
+  }
+  if (typePaiement === PAYMENT_TYPES.CHEQUE && !numeroCheque) {
+    toast.error({ title: "Erreur", description: "Veuillez entrer un numéro de chèque." });
+    return;
+  }
+
+  try {
+    let paymentSuccess = true;
+
+    // Si c'est un paiement Mobile Banking, on passe par MVola
+    if (typePaiement === PAYMENT_TYPES.MOBILE_BANKING) {
+      const response = await sendPaymentToMvola({
+        amount: montant,
+        phoneNumber: numeroMobileBanking,
+        description: `Paiement - ${jalon.nom_jalon}`,
+        merchantId: import.meta.env.VITE_MERCHANT_ID,
+        investmentId: jalon.id_jalon_projet,
+      });
+
+      // Vérifie si la réponse est OK
+      if (!response || response.status !== 200) {
+        throw new Error("Échec de l'envoi via MVola");
+      }
+    }
+
+    // Enregistre toujours le paiement dans Supabase
+    const paymentData: PaiementTechnicien = {
+      id_jalon_projet: jalon.id_jalon_projet,
+      montant: parseFloat(montant),
+      reference_paiement: reference,
+      observation: observation || undefined,
+      date_previsionnelle: jalon.date_previsionnelle,
+      type_paiement: typePaiement,
+      numero_cheque: typePaiement === PAYMENT_TYPES.CHEQUE ? numeroCheque : undefined,
+      numero_mobile_banking: typePaiement === PAYMENT_TYPES.MOBILE_BANKING ? numeroMobileBanking : undefined,
+    };
+
+    console.log('Submitting payment:', paymentData);
+    await sendPayment.mutateAsync(paymentData);
+    toast.success({ title: "Succès", description: "Paiement effectué et enregistré." });
+    onClose();
+
+  } catch (error: any) {
+    console.error('Payment error:', error);
+    toast.error({
+      title: "Erreur",
+      description: error.message || "Impossible de traiter le paiement.",
+    });
+  }
+};
 
   if (!jalon) return null;
 
