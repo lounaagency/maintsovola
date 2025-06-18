@@ -1,7 +1,38 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { TechnicienMobileBanking } from "@/types/financier";
+
+export const getMobileBankingNumbers = async (email: string) => {
+  const { data, error } = await supabase
+    .from("utilisateur")
+    .select(`
+      email,
+      telephone(numero, type, est_mobile_banking)
+    `)
+    .eq("email", email)
+    .eq("role.nom_role", "technicien");
+
+  if (error) throw error;
+
+  // Extraire les numéros Mobile Banking
+  const numbers = data?.flatMap(item =>
+    item.telephone.filter(phone =>
+      phone.est_mobile_banking || phone.type === "mobile_banking"
+    )
+  ).map(phone => phone.numero) || [];
+
+  return numbers;
+};
+
+export const useTechnicienMobileBanking = (email: string) => {
+  return useQuery({
+    queryKey: ["mobile-banking-numbers", email],
+    queryFn: () => getMobileBankingNumbers(email),
+    enabled: !!email,
+  });
+};
+
+/*import { TechnicienMobileBanking } from "@/types/financier";
 import { isMobileBankingPhone } from "@/types/paymentTypes";
 
 export const useTechnicienPhoneNumbers = (technicienId: string) => {
@@ -47,7 +78,7 @@ export const useTechnicienPhoneNumbers = (technicienId: string) => {
         id_telephone: phone.id_telephone,
         numero: phone.numero,
         type: phone.type
-      }));
+      }));*/
     },
     enabled: !!technicienId,
   });
