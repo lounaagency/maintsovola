@@ -1,131 +1,78 @@
-
-import React from "react";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { JalonFinancement } from "@/types/financier";
-import { useAllTechnicienPhoneNumbers } from "@/hooks/useAllTechnicienPhoneNumbers";
-import { PHONE_TYPES } from "@/types/paymentTypes";
+import React, { useState, useEffect } from "react";
+import {
+  Label,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui";
+import { useTechnicienMobileBanking } from "@/hooks/useTechnicienMobileBanking";
 
 interface MobileBankingSectionProps {
-  jalon: JalonFinancement;
-  numeroMobileBanking: string;
-  setNumeroMobileBanking: (value: string) => void;
+  technicienEmail: string;
+  selectedNumber: string;
+  setSelectedNumber: (value: string) => void;
 }
 
 const MobileBankingSection: React.FC<MobileBankingSectionProps> = ({
-  jalon,
-  numeroMobileBanking,
-  setNumeroMobileBanking
+  technicienEmail,
+  selectedNumber,
+  setSelectedNumber
 }) => {
-  console.log('🏦 MobileBankingSection - Jalon data:', jalon);
-  console.log('🏦 MobileBankingSection - Technicien ID from jalon:', jalon.id_technicien);
-  
-  const { data: allPhoneNumbers, isLoading } = useAllTechnicienPhoneNumbers(jalon.id_technicien);
-  
-  console.log('🏦 MobileBankingSection - Phone numbers received:', allPhoneNumbers);
+  const {
+    data: numbers,
+    isLoading,
+    isError,
+  } = useTechnicienMobileBanking(technicienEmail);
 
+  // Si chargement
   if (isLoading) {
     return (
       <div className="space-y-2">
         <Label htmlFor="numeroMobileBanking">Numéro Mobile Banking</Label>
-        <div className="text-sm text-muted-foreground">Chargement des numéros...</div>
+        <p className="text-sm text-muted-foreground">Chargement des numéros...</p>
       </div>
     );
   }
 
-  // Filtrer pour ne garder que les numéros Mobile Banking
-  const mobileBankingNumbers = allPhoneNumbers?.filter(phone => {
-    const isMobileBanking = phone.est_mobile_banking === true || (
-      phone.type === PHONE_TYPES.MVOLA ||
-      phone.type === PHONE_TYPES.ORANGE_MONEY ||
-      phone.type === PHONE_TYPES.AIRTEL_MONEY ||
-      phone.type === PHONE_TYPES.MOBILE_BANKING
-    );
-    
-    console.log(`📱 Phone ${phone.numero} (type: ${phone.type}, est_mobile_banking: ${phone.est_mobile_banking}) - Is mobile banking: ${isMobileBanking}`);
-    
-    return isMobileBanking;
-  }) || [];
-  
-  console.log('🏦 Filtered mobile banking numbers:', mobileBankingNumbers);
-
-  if (mobileBankingNumbers.length === 0) {
+  // Si erreur ou aucun numéro trouvé
+  if (isError || !numbers || numbers.length === 0) {
     return (
       <div className="space-y-2">
         <Label htmlFor="numeroMobileBanking">Numéro Mobile Banking</Label>
-        <div className="text-sm text-destructive">
-          Aucun numéro Mobile Banking trouvé pour {jalon.technicien_nom} {jalon.technicien_prenoms} (ID: {jalon.id_technicien})
-        </div>
+        <p className="text-sm text-destructive">
+          Aucun numéro Mobile Banking trouvé pour {technicienEmail}
+        </p>
       </div>
     );
   }
 
-  const getDisplayType = (type: string) => {
-    switch (type) {
-      case PHONE_TYPES.MVOLA:
-        return 'MVola';
-      case PHONE_TYPES.ORANGE_MONEY:
-        return 'Orange Money';
-      case PHONE_TYPES.AIRTEL_MONEY:
-        return 'Airtel Money';
-      case PHONE_TYPES.MOBILE_BANKING:
-        return 'Mobile Banking';
-      default:
-        return type;
+  // Si un seul numéro, on le sélectionne automatiquement
+  useEffect(() => {
+    if (numbers && numbers.length === 1) {
+      setSelectedNumber(numbers[0]);
     }
-  };
+  }, [numbers, setSelectedNumber]);
 
-  /*return (
-    <div className="space-y-2">
-      <Label htmlFor="numeroMobileBanking">Numéro Mobile Banking</Label>
-      <Select value={numeroMobileBanking} onValueChange={setNumeroMobileBanking}>
-        <SelectTrigger>
-          <SelectValue placeholder="Sélectionner un numéro" />
-        </SelectTrigger>
-        <SelectContent>
-          {mobileBankingNumbers.map((phone) => (
-            <SelectItem key={phone.id_telephone} value={phone.numero}>
-              {phone.numero} ({getDisplayType(phone.type)})
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
-  );*/
   return (
     <div className="space-y-2">
       <Label htmlFor="numeroMobileBanking">Numéro Mobile Banking</Label>
-      <Select value={numeroMobileBanking} onValueChange={setNumeroMobileBanking}>
-        <SelectTrigger>
+      <Select value={selectedNumber} onValueChange={setSelectedNumber}>
+        <SelectTrigger id="numeroMobileBanking">
           <SelectValue placeholder="Sélectionner un numéro" />
         </SelectTrigger>
         <SelectContent>
-          {mobileBankingNumbers.map((phone) => (
-            <SelectItem key={phone.id_telephone} value={phone.numero}>
-              {phone.numero} ({getDisplayType(phone.type)})
+          {numbers.map((num, index) => (
+            <SelectItem key={index} value={num}>
+              {num}
             </SelectItem>
           ))}
         </SelectContent>
       </Select>
-  
-      {error && <p className="text-sm text-destructive mt-2">{error}</p>}
-  
-      {numeroMobileBanking && (
-        <Button
-          onClick={() =>
-            sendPaymentToMvola({
-              amount: jalon.montant_demande.toString(),
-              phoneNumber: numeroMobileBanking,
-              description: `Paiement pour ${jalon.nom_jalon}`,
-              merchantId: import.meta.env.VITE_MERCHANT_ID
-            })
-          }
-          disabled={loading}
-          className="mt-4 w-full"
-        >
-          {loading ? 'Envoi en cours...' : `Envoyer ${formatCurrency(jalon.montant_demande)} Ar`}
-        </Button>
-      )}
+      <p className="text-xs text-muted-foreground">
+        Sélectionnez le numéro à utiliser pour le paiement
+      </p>
     </div>
   );
 };
