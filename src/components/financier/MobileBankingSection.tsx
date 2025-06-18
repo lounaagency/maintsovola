@@ -75,6 +75,23 @@ const MobileBankingSection: React.FC<MobileBankingSectionProps> = ({
     }
   };
 
+  /*return (
+    <div className="space-y-2">
+      <Label htmlFor="numeroMobileBanking">Numéro Mobile Banking</Label>
+      <Select value={numeroMobileBanking} onValueChange={setNumeroMobileBanking}>
+        <SelectTrigger>
+          <SelectValue placeholder="Sélectionner un numéro" />
+        </SelectTrigger>
+        <SelectContent>
+          {mobileBankingNumbers.map((phone) => (
+            <SelectItem key={phone.id_telephone} value={phone.numero}>
+              {phone.numero} ({getDisplayType(phone.type)})
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );*/
   return (
     <div className="space-y-2">
       <Label htmlFor="numeroMobileBanking">Numéro Mobile Banking</Label>
@@ -90,6 +107,25 @@ const MobileBankingSection: React.FC<MobileBankingSectionProps> = ({
           ))}
         </SelectContent>
       </Select>
+  
+      {error && <p className="text-sm text-destructive mt-2">{error}</p>}
+  
+      {numeroMobileBanking && (
+        <Button
+          onClick={() =>
+            sendPaymentToMvola({
+              amount: jalon.montant_demande.toString(),
+              phoneNumber: numeroMobileBanking,
+              description: `Paiement pour ${jalon.nom_jalon}`,
+              merchantId: import.meta.env.VITE_MERCHANT_ID
+            })
+          }
+          disabled={loading}
+          className="mt-4 w-full"
+        >
+          {loading ? 'Envoi en cours...' : `Envoyer ${formatCurrency(jalon.montant_demande)} Ar`}
+        </Button>
+      )}
     </div>
   );
 };
