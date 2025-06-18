@@ -9,6 +9,9 @@ import { toast } from "sonner";
 import { UserTelephone } from "@/types/userProfile";
 import { useAuth } from "@/contexts/AuthContext";
 
+// Importe le nouveau hook ici
+import useMvola from '@/hooks/use-mvola'; // chemin relatif selon la struture
+
 type PaymentMethod = 'mvola' | 'orange' | 'airtel' | null;
 
 interface PaymentOptionsProps {
@@ -28,6 +31,14 @@ const PaymentOptions: React.FC<PaymentOptionsProps> = ({
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [userPhones, setUserPhones] = useState<UserTelephone[]>([]);
+
+  // Utilise le hook useMvola ici
+  const {
+    initiatePayment,
+    checkTransactionStatus,
+    loading,
+    error: mvolaError,
+  } = useMvola();
 
   useEffect(() => {
     if (user) {
@@ -103,28 +114,52 @@ const PaymentOptions: React.FC<PaymentOptionsProps> = ({
     try {
       if (paymentMethod === 'mvola') {
         // Process MVola payment
-        const { data: response, error } = await supabase.functions.invoke('paiement-mvola', {
+        /* const { data: response, error } = await supabase.functions.invoke('paiement-mvola', {
           body: {
             phone: phoneNumber,
             amount,
             reason: `Investissement Maintso Vola #${investmentId}`,
             investissementId: investmentId
-          },
+          }, */
+        // Initier le paiement via l'API MVola - Etape 1
+        const result = await initiatePayment({
+          amount: amount.toString(),
+          currency: "MGA",
+          description: `Investissement Maintso vola #${investmentId}`,
+          merchantID: import.meta.env.VITE_MERCHANT_ID,
+          customerMsisdn: phoneNumber,
+          X_Callback_URL: import.meta.env.VITE_CALLBACK_URL,
         });
 
-        if (error) {
-          throw new Error(`Erreur lors de l'appel à l'API MVola: ${error.message}`);
+        /* if (error) {
+          throw new Error(`Erreur lors de l'appel à l'API MVola: ${error.message}`); */
+        if (!result || result.status !== 200) {
+          throw new Error(
+            mvolaError || "Échec de l'initiation du paiement MVola"
+          );
         }
 
-        if (!response.success) {
-          throw new Error(response.message || "Échec du paiement MVola");
+        /* if (!response.success) {
+          throw new Error(response.message || "Échec du paiement MVola"); */
+        
+        // On vérifie le statut de la transaction
+        const statusResult = await checkTransactionStatus(
+          result.serverCorrelationId
+        );
+
+        if (!statusResult || statusResult.status !== 200) {
+          throw new Error("Le paiement n'a pas été confirmé.");
         }
 
+        // Paiement réussi
         toast.success("Paiement effectué avec succès", {
           description: "Votre investissement a été enregistré et payé"
         });
 
-        onPaymentComplete?.(true, response.transactionId);
+        // onPaymentComplete?.(true, response.transactionId);
+        // Retourne le succès + transac ID si disponible
+        onPaymentComplete?.(true, result.objectReference);
+
       } else {
         // Handle other payment methods (not implemented yet)
         toast.info(`Le paiement par ${paymentMethod === 'orange' ? 'Orange Money' : 'Airtel Money'} sera disponible prochainement`, {
