@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import { DollarSign } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { JalonFinancement, PaiementTechnicien } from "@/types/financier";
@@ -34,6 +35,7 @@ const SendPaymentModal: React.FC<SendPaymentModalProps> = ({
   
   const { sendPayment } = usePaymentActions();
   const { sendPaymentToMvola, loading: isMvolaLoading } = useMvola();
+  const { toast } = useToast();
 
   React.useEffect(() => {
     if (jalon) {
@@ -56,11 +58,11 @@ const SendPaymentModal: React.FC<SendPaymentModalProps> = ({
     if (!jalon) return;
 
     if (typePaiement === PAYMENT_TYPES.MOBILE_BANKING && !numeroMobileBanking) {
-       toast.error({ title: "Erreur", description: "Veuillez sélectionner un numéro Mobile Banking." });
+      toast({ title: "Erreur", description: "Veuillez sélectionner un numéro Mobile Banking." });
       return;
     }
     if (typePaiement === PAYMENT_TYPES.CHEQUE && !numeroCheque) {
-      toast.error({ title: "Erreur", description: "Veuillez entrer un numéro de chèque." });
+      toast({ title: "Erreur", description: "Veuillez entrer un numéro de chèque." });
       return;
     }
     
@@ -94,11 +96,11 @@ const SendPaymentModal: React.FC<SendPaymentModalProps> = ({
 
       console.log("Envoi du paiement :", paymentData);
       await sendPayment.mutateAsync(paymentData);
-      toast.success({ title: "Succès", description: "Paiement effectué et enregistré." });
+      toast({ title: "Succès", description: "Paiement effectué et enregistré." });
       onClose();
     } catch (error: any) {
       console.error("Erreur lors du paiement :", error);
-      toast.error({
+      toast({
         title: "Erreur",
         description: error.message || "Impossible de traiter le paiement.",
       });
