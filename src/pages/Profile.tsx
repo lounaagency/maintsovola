@@ -700,7 +700,6 @@ export const Profile = () => {
         <ProjectDetailsDialog
           isOpen={detailsOpen}
           onClose={() => setDetailsOpen(false)}
-          onSuccess={(projectId: number) => console.log('Project updated:', projectId)}
           projectId={selectedProjectId}
           userRole={userRole || undefined}
         />

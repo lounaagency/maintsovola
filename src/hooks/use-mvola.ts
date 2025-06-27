@@ -6,6 +6,8 @@ export interface InitiatePaymentRequest {
   phoneNumber: string;
   description: string;
   merchantId: string;
+  customerMsisdn: string;
+  X_Callback_URL: string;
   investmentId: number;
 }
 
@@ -13,6 +15,8 @@ export interface InitiatePaymentResponse {
   status: number;
   data?: any;
   message?: string;
+  serverCorrelationId?: string;
+  objectReference?: string;
 }
 
 const useMvola = () => {
@@ -37,7 +41,9 @@ const useMvola = () => {
           transactionId: `TXN-${Date.now()}`,
           correlationId: `CORR-${Date.now()}`,
         },
-        message: "Payment initiated successfully"
+        message: "Payment initiated successfully",
+        serverCorrelationId: `CORR-${Date.now()}`,
+        objectReference: `REF-${Date.now()}`,
       };
 
       setLoading(false);

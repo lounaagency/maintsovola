@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { User, Heart, MessageSquare, Calendar, MapPin, Cloud, TrendingUp, Briefcase, Book } from "lucide-react";
@@ -55,8 +56,6 @@ const ProfileTabs: React.FC<ProfileTabsProps> = ({ userId }) => {
 
   return (
     <div className="w-full max-w-6xl mx-auto">
-      <ProfileHeader userId={userId} />
-      
       <div className="mt-8">
         <Tabs defaultValue="profile" className="w-full">
           <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8">
@@ -99,7 +98,7 @@ const ProfileTabs: React.FC<ProfileTabsProps> = ({ userId }) => {
                 </TabsContent>
                 
                 <TabsContent value="payments">
-                  <TechnicienPaymentHistory />
+                  <TechnicienPaymentHistory receivedPayments={[]} />
                 </TabsContent>
                 
                 <TabsContent value="resources">
@@ -111,7 +110,7 @@ const ProfileTabs: React.FC<ProfileTabsProps> = ({ userId }) => {
             {userRole === 'investisseur' && (
               <>
                 <TabsContent value="investments">
-                  <InvestmentsList />
+                  <InvestmentsList investedProjects={[]} loading={false} onViewDetails={() => {}} />
                 </TabsContent>
                 
                 <TabsContent value="payments">
@@ -122,7 +121,7 @@ const ProfileTabs: React.FC<ProfileTabsProps> = ({ userId }) => {
 
             {userRole === 'simple' && (
               <TabsContent value="projects">
-                <ProjectList />
+                <ProjectList projects={[]} />
               </TabsContent>
             )}
 

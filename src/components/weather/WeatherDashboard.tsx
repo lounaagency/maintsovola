@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -69,8 +68,17 @@ const WeatherDashboard: React.FC = () => {
           // Déterminer le type de culture
           const cultureType = parcel.cultures?.[0]?.nom_culture || 'Générique';
           
+          // Mapper WeeklyTask vers Task pour le service
+          const mappedTask = {
+            id_jalon_projet: task.id_jalon_projet || task.id_tache,
+            nom_jalon: task.nom_jalon || task.description,
+            date_previsionnelle: task.date_previsionnelle || task.date_prevue,
+            id_projet: task.id_projet,
+            type_intervention: task.type_intervention,
+          };
+          
           // Générer les alertes
-          const newAlerts = await weatherAlertService.generateAlertsForTask(task, weatherData, cultureType);
+          const newAlerts = await weatherAlertService.generateAlertsForTask(mappedTask, weatherData, cultureType);
           
           // Sauvegarder les alertes
           for (const alert of newAlerts) {
@@ -87,9 +95,9 @@ const WeatherDashboard: React.FC = () => {
     generateAlerts();
   }, [tasks, parcels, user, isGeneratingAlerts]);
 
-  const criticalAlerts = alerts.filter(alert => alert.priority === 'high');
-  const mediumAlerts = alerts.filter(alert => alert.priority === 'medium');
-  const lowAlerts = alerts.filter(alert => alert.priority === 'low');
+  const criticalAlerts = Array.isArray(alerts) ? alerts.filter(alert => alert.priority === 'high') : [];
+  const mediumAlerts = Array.isArray(alerts) ? alerts.filter(alert => alert.priority === 'medium') : [];
+  const lowAlerts = Array.isArray(alerts) ? alerts.filter(alert => alert.priority === 'low') : [];
 
   if (alertsLoading) {
     return (
