@@ -1,109 +1,17 @@
 
-import { WeatherAlert, WeatherData, ParcelWeatherData } from "@/types/weather";
-import { WeeklyTask } from "@/types/technicien";
+import { WeatherAlert, ParcelWeatherData, WeatherData } from "@/types/weather";
 import { supabase } from "@/integrations/supabase/client";
 
-interface InterventionRule {
-  type: string;
-  cultureName?: string;
-  checkWindSpeed?: number;
-  checkPrecipitation?: number;
-  checkTemperature?: { min: number; max: number };
-  timeWindow: number; // heures
-  priority: 'high' | 'medium' | 'low';
-  action: 'cancel' | 'postpone' | 'warning';
-  message: string;
-  recommendation: string;
+interface Task {
+  id_jalon_projet: number;
+  nom_jalon: string;
+  date_previsionnelle: string;
+  id_projet: number;
+  type_intervention?: string;
 }
 
 export class WeatherAlertService {
   private static instance: WeatherAlertService;
-  private rules: InterventionRule[] = [
-    // Règles de semis
-    {
-      type: 'Semis',
-      checkPrecipitation: 10,
-      timeWindow: 24,
-      priority: 'high',
-      action: 'postpone',
-      message: 'Semis prévu avec forte pluie annoncée',
-      recommendation: 'Reporter le semis après les précipitations pour éviter le lessivage des graines'
-    },
-    {
-      type: 'Plantation',
-      checkPrecipitation: 10,
-      timeWindow: 24,
-      priority: 'high',
-      action: 'postpone',
-      message: 'Plantation prévue avec forte pluie annoncée',
-      recommendation: 'Reporter la plantation pour éviter le compactage du sol'
-    },
-    
-    // Règles d'irrigation
-    {
-      type: 'Irrigation',
-      checkPrecipitation: 5,
-      timeWindow: 48,
-      priority: 'medium',
-      action: 'cancel',
-      message: 'Irrigation prévue mais pluie annoncée',
-      recommendation: 'Annuler l\'irrigation, la pluie naturelle sera suffisante'
-    },
-    
-    // Règles de traitement phytosanitaire
-    {
-      type: 'Traitement phytosanitaire',
-      checkWindSpeed: 15,
-      timeWindow: 6,
-      priority: 'high',
-      action: 'postpone',
-      message: 'Traitement phytosanitaire prévu avec vent fort',
-      recommendation: 'Reporter le traitement pour éviter la dérive des produits'
-    },
-    {
-      type: 'Traitement phytosanitaire',
-      checkPrecipitation: 2,
-      timeWindow: 6,
-      priority: 'high',
-      action: 'postpone',
-      message: 'Traitement phytosanitaire prévu avec pluie annoncée',
-      recommendation: 'Reporter le traitement pour éviter le lessivage des produits'
-    },
-    
-    // Règles de récolte
-    {
-      type: 'Récolte',
-      checkPrecipitation: 5,
-      timeWindow: 72,
-      priority: 'medium',
-      action: 'warning',
-      message: 'Récolte prévue avec risque de pluie',
-      recommendation: 'Surveiller la météo et anticiper la récolte si possible'
-    },
-    
-    // Règles de labour
-    {
-      type: 'Labour',
-      checkPrecipitation: 5,
-      timeWindow: 24,
-      priority: 'medium',
-      action: 'postpone',
-      message: 'Labour prévu avec sol humide',
-      recommendation: 'Attendre que le sol soit ressuyé pour éviter le compactage'
-    },
-    
-    // Règles générales de température
-    {
-      type: 'Semis',
-      cultureName: 'Riz',
-      checkTemperature: { min: 15, max: 35 },
-      timeWindow: 24,
-      priority: 'medium',
-      action: 'warning',
-      message: 'Température non optimale pour le semis de riz',
-      recommendation: 'Attendre des conditions de température plus favorables (15-35°C)'
-    }
-  ];
 
   static getInstance(): WeatherAlertService {
     if (!WeatherAlertService.instance) {
@@ -112,119 +20,212 @@ export class WeatherAlertService {
     return WeatherAlertService.instance;
   }
 
-  async generateAlertsForTask(
-    task: WeeklyTask,
-    weatherData: ParcelWeatherData,
-    cultureType: string
-  ): Promise<WeatherAlert[]> {
+  async generateAlertsForTask(task: Task, weatherData: ParcelWeatherData, cultureType: string): Promise<WeatherAlert[]> {
     const alerts: WeatherAlert[] = [];
-    const relevantRules = this.getRulesForIntervention(task.type_intervention, cultureType);
+    const interventionType = this.getInterventionType(task.nom_jalon);
+    
+    console.log(`Génération d'alertes pour ${interventionType} sur ${cultureType}`);
 
-    for (const rule of relevantRules) {
-      const alert = this.checkRuleAgainstWeather(task, rule, weatherData, cultureType);
-      if (alert) {
-        alerts.push(alert);
-      }
+    // Vérifier les conditions météo pour les prochains jours
+    const upcomingWeather = weatherData.weather.daily.slice(0, 3); // 3 prochains jours
+    
+    for (const dayWeather of upcomingWeather) {
+      const dayAlerts = this.checkWeatherConditions(
+        task,
+        dayWeather,
+        interventionType,
+        cultureType
+      );
+      alerts.push(...dayAlerts);
     }
 
     return alerts;
   }
 
-  private getRulesForIntervention(interventionType: string, cultureType: string): InterventionRule[] {
-    return this.rules.filter(rule => {
-      const typeMatch = rule.type.toLowerCase().includes(interventionType.toLowerCase()) ||
-                       interventionType.toLowerCase().includes(rule.type.toLowerCase());
-      const cultureMatch = !rule.cultureName || rule.cultureName.toLowerCase() === cultureType.toLowerCase();
-      return typeMatch && cultureMatch;
-    });
+  private getInterventionType(nomJalon: string): string {
+    const jalon = nomJalon.toLowerCase();
+    
+    if (jalon.includes('semis') || jalon.includes('plantation')) return 'semis';
+    if (jalon.includes('irrigation') || jalon.includes('arrosage')) return 'irrigation';
+    if (jalon.includes('traitement') || jalon.includes('phyto')) return 'traitement_phytosanitaire';
+    if (jalon.includes('récolte') || jalon.includes('harvest')) return 'récolte';
+    if (jalon.includes('labour') || jalon.includes('préparation')) return 'labour';
+    
+    return 'général';
   }
 
-  private checkRuleAgainstWeather(
-    task: WeeklyTask,
-    rule: InterventionRule,
-    weatherData: ParcelWeatherData,
+  private checkWeatherConditions(
+    task: Task,
+    weather: WeatherData,
+    interventionType: string,
     cultureType: string
-  ): WeatherAlert | null {
-    const taskDate = new Date(task.date_prevue);
-    const now = new Date();
-    const timeUntilTask = (taskDate.getTime() - now.getTime()) / (1000 * 60 * 60); // heures
+  ): WeatherAlert[] {
+    const alerts: WeatherAlert[] = [];
+    const taskDate = new Date(task.date_previsionnelle);
+    const weatherDate = new Date(weather.datetime);
 
-    if (timeUntilTask > rule.timeWindow || timeUntilTask < 0) {
-      return null;
+    // Règles par type d'intervention
+    switch (interventionType) {
+      case 'semis':
+        if (weather.precipitation > 10) {
+          alerts.push(this.createAlert({
+            type: 'danger',
+            title: `🌧️ Forte pluie prévue - Reporter le semis`,
+            message: `Précipitations de ${weather.precipitation}mm prévues le ${weatherDate.toLocaleDateString()}`,
+            recommendation: `Reporter le semis de ${cultureType}. Attendre une période sèche de 2-3 jours.`,
+            task,
+            cultureType,
+            interventionType,
+            priority: 'high',
+            weatherReason: `Risque de pourrissement des graines et de formation de croûte avec ${weather.precipitation}mm de pluie`
+          }));
+        }
+        break;
+
+      case 'irrigation':
+        if (weather.precipitation > 5) {
+          alerts.push(this.createAlert({
+            type: 'warning',
+            title: `💧 Pluie prévue - Ajuster l'irrigation`,
+            message: `${weather.precipitation}mm de pluie prévus`,
+            recommendation: `Réduire ou annuler l'irrigation prévue. La nature s'en charge !`,
+            task,
+            cultureType,
+            interventionType,
+            priority: 'medium',
+            weatherReason: `Irrigation inutile avec ${weather.precipitation}mm de pluie naturelle`
+          }));
+        }
+        break;
+
+      case 'traitement_phytosanitaire':
+        if (weather.windSpeed > 15) {
+          alerts.push(this.createAlert({
+            type: 'danger',
+            title: `💨 Vent fort - Reporter le traitement`,
+            message: `Vent de ${weather.windSpeed} km/h prévu`,
+            recommendation: `Reporter le traitement phytosanitaire ${cultureType}. Risque de dérive et d'inefficacité.`,
+            task,
+            cultureType,
+            interventionType,  
+            priority: 'high',
+            weatherReason: `Dérive du produit assurée avec des vents > 15 km/h`
+          }));
+        }
+        if (weather.precipitation > 2) {
+          alerts.push(this.createAlert({
+            type: 'warning',
+            title: `🌧️ Pluie après traitement`,
+            message: `${weather.precipitation}mm prévus dans les heures suivantes`,
+            recommendation: `Attendre une fenêtre sans pluie de 6h minimum après application.`,
+            task,
+            cultureType,
+            interventionType,
+            priority: 'medium',
+            weatherReason: `Le produit sera lessivé par ${weather.precipitation}mm de pluie`
+          }));
+        }
+        break;
+
+      case 'récolte':
+        if (weather.precipitation > 5) {
+          alerts.push(this.createAlert({
+            type: 'warning',
+            title: `🌾 Pluie avant récolte`,
+            message: `${weather.precipitation}mm prévus`,
+            recommendation: `Accélérer la récolte de ${cultureType} si possible, ou prévoir un séchage supplémentaire.`,
+            task,
+            cultureType,
+            interventionType,
+            priority: 'medium',
+            weatherReason: `Risque d'humidité excessive et de moisissures post-récolte`
+          }));
+        }
+        break;
+
+      case 'labour':
+        if (weather.precipitation > 8) {
+          alerts.push(this.createAlert({
+            type: 'warning',
+            title: `🚜 Sol trop humide pour le labour`,
+            message: `${weather.precipitation}mm prévus`,
+            recommendation: `Attendre que le sol ressuie avant le labour. Test : la terre ne doit pas coller aux outils.`,
+            task,
+            cultureType,
+            interventionType,
+            priority: 'medium',
+            weatherReason: `Labour impossible sur sol gorgé d'eau - risque de compactage`
+          }));
+        }
+        break;
     }
 
-    const relevantWeatherData = this.getRelevantWeatherData(weatherData, taskDate, rule.timeWindow);
-    let alertTriggered = false;
-    let weatherReason = '';
-
-    // Vérifier les conditions météo
-    if (rule.checkPrecipitation !== undefined) {
-      const maxPrecipitation = Math.max(...relevantWeatherData.map(w => w.precipitation));
-      const maxPrecipitationProb = Math.max(...relevantWeatherData.map(w => w.precipitationProbability));
-      
-      if (maxPrecipitation >= rule.checkPrecipitation || maxPrecipitationProb >= 70) {
-        alertTriggered = true;
-        weatherReason += `Précipitations prévues: ${maxPrecipitation}mm (${maxPrecipitationProb.toFixed(0)}% de probabilité). `;
-      }
+    // Vérifications générales de température
+    if (weather.temperature < 5) {
+      alerts.push(this.createAlert({
+        type: 'info',
+        title: `🥶 Température basse`,
+        message: `${weather.temperature}°C prévus`,
+        recommendation: `Protéger les cultures sensibles au froid. Vérifier l'état des plants de ${cultureType}.`,
+        task,
+        cultureType,
+        interventionType,
+        priority: 'low',
+        weatherReason: `Risque de stress hydrique et de ralentissement de croissance`
+      }));
     }
 
-    if (rule.checkWindSpeed !== undefined) {
-      const maxWindSpeed = Math.max(...relevantWeatherData.map(w => w.windSpeed));
-      if (maxWindSpeed >= rule.checkWindSpeed) {
-        alertTriggered = true;
-        weatherReason += `Vent fort prévu: ${maxWindSpeed.toFixed(1)} km/h. `;
-      }
+    if (weather.temperature > 35) {
+      alerts.push(this.createAlert({
+        type: 'warning',
+        title: `🔥 Forte chaleur`,
+        message: `${weather.temperature}°C prévus`,
+        recommendation: `Éviter les interventions en pleine chaleur. Prévoir un arrosage supplémentaire pour ${cultureType}.`,
+        task,
+        cultureType,
+        interventionType,
+        priority: 'medium',
+        weatherReason: `Stress thermique des plants et risque de déshydratation`
+      }));
     }
 
-    if (rule.checkTemperature !== undefined) {
-      const avgTemp = relevantWeatherData.reduce((sum, w) => sum + w.temperature, 0) / relevantWeatherData.length;
-      if (avgTemp < rule.checkTemperature.min || avgTemp > rule.checkTemperature.max) {
-        alertTriggered = true;
-        weatherReason += `Température non optimale: ${avgTemp.toFixed(1)}°C (recommandé: ${rule.checkTemperature.min}-${rule.checkTemperature.max}°C). `;
-      }
-    }
+    return alerts;
+  }
 
-    if (!alertTriggered) {
-      return null;
-    }
-
+  private createAlert(params: {
+    type: 'danger' | 'warning' | 'info';
+    title: string;
+    message: string;
+    recommendation: string;
+    task: Task;
+    cultureType: string;
+    interventionType: string;
+    priority: 'high' | 'medium' | 'low';
+    weatherReason: string;
+  }): WeatherAlert {
     return {
-      id: `alert_${task.id_tache}_${Date.now()}`,
-      type: rule.priority === 'high' ? 'danger' : rule.priority === 'medium' ? 'warning' : 'info',
-      title: rule.message,
-      message: `${rule.message} - ${weatherReason.trim()}`,
-      recommendation: rule.recommendation,
-      jalonId: task.id_tache,
-      projetId: task.id_projet,
-      cultureType: cultureType,
-      interventionType: task.type_intervention,
-      datePrevisionnelle: task.date_prevue,
-      weatherReason: weatherReason.trim(),
-      priority: rule.priority,
+      id: `alert-${params.task.id_jalon_projet}-${Date.now()}-${Math.random()}`,
+      type: params.type,
+      title: params.title,
+      message: params.message,
+      recommendation: params.recommendation,
+      jalonId: params.task.id_jalon_projet,
+      projetId: params.task.id_projet,
+      cultureType: params.cultureType,
+      interventionType: params.interventionType,
+      datePrevisionnelle: params.task.date_previsionnelle,
+      weatherReason: params.weatherReason,
+      priority: params.priority,
       createdAt: new Date().toISOString(),
       isActive: true
     };
   }
 
-  private getRelevantWeatherData(
-    weatherData: ParcelWeatherData,
-    taskDate: Date,
-    timeWindow: number
-  ): WeatherData[] {
-    const now = new Date();
-    const windowEnd = new Date(taskDate.getTime() + (timeWindow * 60 * 60 * 1000));
-
-    return weatherData.weather.hourly.filter(hourlyData => {
-      const dataDate = new Date(hourlyData.datetime);
-      return dataDate >= now && dataDate <= windowEnd;
-    });
-  }
-
   async saveAlert(alert: WeatherAlert): Promise<void> {
     try {
-      const { error } = await supabase
-        .from('weather_alerts')
-        .insert([{
+      // Utiliser une requête SQL personnalisée pour insérer dans weather_alerts
+      const { error } = await supabase.rpc('insert_weather_alert', {
+        alert_data: {
           id: alert.id,
           type: alert.type,
           title: alert.title,
@@ -237,52 +238,51 @@ export class WeatherAlertService {
           date_previsionnelle: alert.datePrevisionnelle,
           weather_reason: alert.weatherReason,
           priority: alert.priority,
-          is_active: alert.isActive,
-          created_at: alert.createdAt
-        }]);
+          is_active: alert.isActive
+        }
+      });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error saving weather alert:', error);
+        throw error;
+      }
     } catch (error) {
-      console.error('Error saving weather alert:', error);
+      console.error('Error in saveAlert:', error);
+      throw error;
     }
   }
 
   async getActiveAlertsForUser(userId: string): Promise<WeatherAlert[]> {
     try {
-      const { data, error } = await supabase
-        .from('weather_alerts')
-        .select(`
-          *,
-          jalon_projet:jalon_id(
-            projet:id_projet(
-              id_technicien
-            )
-          )
-        `)
-        .eq('is_active', true)
-        .eq('jalon_projet.projet.id_technicien', userId)
-        .order('created_at', { ascending: false });
+      // Utiliser une requête SQL personnalisée pour récupérer les alertes
+      const { data, error } = await supabase.rpc('get_user_weather_alerts', {
+        user_id: userId
+      });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching weather alerts:', error);
+        throw error;
+      }
 
-      return data?.map(alert => ({
-        id: alert.id,
-        type: alert.type,
-        title: alert.title,
-        message: alert.message,
-        recommendation: alert.recommendation,
-        jalonId: alert.jalon_id,
-        projetId: alert.projet_id,
-        cultureType: alert.culture_type,
-        interventionType: alert.intervention_type,
-        datePrevisionnelle: alert.date_previsionnelle,
-        weatherReason: alert.weather_reason,
-        priority: alert.priority,
-        createdAt: alert.created_at,
-        isActive: alert.is_active
-      })) || [];
+      // Transformer les données en WeatherAlert
+      return (data || []).map((item: any) => ({
+        id: item.id,
+        type: item.type,
+        title: item.title,
+        message: item.message,
+        recommendation: item.recommendation,
+        jalonId: item.jalon_id,
+        projetId: item.projet_id,
+        cultureType: item.culture_type,
+        interventionType: item.intervention_type,
+        datePrevisionnelle: item.date_previsionnelle,
+        weatherReason: item.weather_reason,
+        priority: item.priority,
+        createdAt: item.created_at,
+        isActive: item.is_active
+      }));
     } catch (error) {
-      console.error('Error fetching weather alerts:', error);
+      console.error('Error in getActiveAlertsForUser:', error);
       return [];
     }
   }

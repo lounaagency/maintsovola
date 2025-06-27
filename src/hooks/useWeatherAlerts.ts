@@ -12,17 +12,31 @@ export const useWeatherAlerts = () => {
 
   const { data: alerts = [], isLoading, error } = useQuery({
     queryKey: ['weather-alerts', user?.id],
-    queryFn: () => weatherAlertService.getActiveAlertsForUser(user?.id || ''),
+    queryFn: async () => {
+      if (!user?.id) return [];
+      
+      // Utiliser une requête SQL personnalisée pour accéder à weather_alerts
+      const { data, error } = await supabase.rpc('get_user_weather_alerts', {
+        user_id: user.id
+      });
+      
+      if (error) {
+        console.error('Error fetching weather alerts:', error);
+        return [];
+      }
+      
+      return data || [];
+    },
     enabled: !!user?.id,
     refetchInterval: 5 * 60 * 1000, // Refresh every 5 minutes
   });
 
   const dismissAlert = useMutation({
     mutationFn: async (alertId: string) => {
-      const { error } = await supabase
-        .from('weather_alerts')
-        .update({ is_active: false })
-        .eq('id', alertId);
+      // Utiliser une requête SQL personnalisée pour mettre à jour weather_alerts
+      const { error } = await supabase.rpc('dismiss_weather_alert', {
+        alert_id: alertId
+      });
       
       if (error) throw error;
     },

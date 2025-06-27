@@ -693,20 +693,14 @@ export const Profile = () => {
       
       <Separator />
       
-      <ProfileTabs 
-        userId={profile?.id_utilisateur || ''}
-        investedProjects={investedProjects}
-        loading={loading}
-        onViewDetails={handleOpenDetails}
-        investmentSummary={investmentSummary}
-        projectsSummary={projectsSummary}
-      />
+      <ProfileTabs userId={profile?.id_utilisateur || ''} />
       
       {/* Add ProjectDetailsDialog */}
       {selectedProjectId && (
         <ProjectDetailsDialog
           isOpen={detailsOpen}
           onClose={() => setDetailsOpen(false)}
+          onSuccess={(projectId: number) => console.log('Project updated:', projectId)}
           projectId={selectedProjectId}
           userRole={userRole || undefined}
         />

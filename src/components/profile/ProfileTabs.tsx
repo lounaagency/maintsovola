@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { User, Heart, MessageSquare, Calendar, MapPin, Cloud, TrendingUp, Briefcase, Book } from "lucide-react";
@@ -100,7 +99,7 @@ const ProfileTabs: React.FC<ProfileTabsProps> = ({ userId }) => {
                 </TabsContent>
                 
                 <TabsContent value="payments">
-                  <TechnicienPaymentHistory userId={userId} />
+                  <TechnicienPaymentHistory />
                 </TabsContent>
                 
                 <TabsContent value="resources">
@@ -112,7 +111,7 @@ const ProfileTabs: React.FC<ProfileTabsProps> = ({ userId }) => {
             {userRole === 'investisseur' && (
               <>
                 <TabsContent value="investments">
-                  <InvestmentsList userId={userId} />
+                  <InvestmentsList />
                 </TabsContent>
                 
                 <TabsContent value="payments">
@@ -123,7 +122,7 @@ const ProfileTabs: React.FC<ProfileTabsProps> = ({ userId }) => {
 
             {userRole === 'simple' && (
               <TabsContent value="projects">
-                <ProjectList userId={userId} />
+                <ProjectList />
               </TabsContent>
             )}
 
