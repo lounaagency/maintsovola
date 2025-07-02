@@ -1,137 +1,358 @@
+import React from 'react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { useAuth } from '@/contexts/AuthContext';
+import InvestmentTable from './InvestmentTable';
+import ProjectFeed from '../ProjectFeed';
+import PaymentHistory from './PaymentHistory';
+import InvestmentsList from './InvestmentsList';
+import InvestmentSummary from './InvestmentSummary';
+import ProjectsSummary from './ProjectsSummary';
+import ActivityFeed from './ActivityFeed';
+import PaymentTrackingSection from './PaymentTrackingSection';
+import PaymentAnalytics from './PaymentAnalytics';
+import PaymentFilters, { PaymentFilterState } from './PaymentFilters';
+import { usePaymentData } from '@/hooks/usePaymentData';
+import { Separator } from '@/components/ui/separator';
 
-import React from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { User, Heart, MessageSquare, Calendar, MapPin, Cloud, TrendingUp, Briefcase, Book } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
-import ProfileHeader from "./ProfileHeader";
-import ProjectList from "./ProjectList";
-import InvestmentsList from "./InvestmentsList";
-import PaymentHistory from "./PaymentHistory";
-import ActivityFeed from "./ActivityFeed";
-import WeeklyPlanningTable from "./technicien/WeeklyPlanningTable";
-import AssignedParcelsView from "./technicien/AssignedParcelsView";
-import CompletedTasksList from "./technicien/CompletedTasksList";
-import TechnicienPaymentHistory from "./technicien/TechnicienPaymentHistory";
-import TechnicalResourcesLibrary from "./technicien/TechnicalResourcesLibrary";
-import WeatherSection from "./technicien/WeatherSection";
+// Nouveaux composants pour techniciens
+import AssignedParcelsView from './technicien/AssignedParcelsView';
+import WeeklyPlanningTable from './technicien/WeeklyPlanningTable';
+import CompletedTasksList from './technicien/CompletedTasksList';
+import TechnicalResourcesLibrary from './technicien/TechnicalResourcesLibrary';
+import TechnicienPaymentSummary from './technicien/TechnicienPaymentSummary';
+import UpcomingPaymentSchedule from './technicien/UpcomingPaymentSchedule';
+import TechnicienPaymentHistory from './technicien/TechnicienPaymentHistory';
+import { useTechnicienPaymentData } from '@/hooks/useTechnicienPaymentData';
+
+interface ProjectCultureCount {
+  name: string;
+  count: number;
+  fill: string;
+}
+
+interface ProjectCategoryData {
+  count: number;
+  area: number;
+  funding: number;
+  profit: number;
+  ownerProfit: number;
+  cultures: ProjectCultureCount[];
+}
+
+interface ProjectStatusData {
+  enFinancement: ProjectCategoryData;
+  enCours: ProjectCategoryData;
+  termine: ProjectCategoryData;
+}
 
 interface ProfileTabsProps {
   userId: string;
+  investedProjects?: any[];
+  loading?: boolean;
+  onViewDetails?: (projectId: number) => void;
+  investmentSummary?: {
+    totalInvested: number;
+    totalProfit: number;
+    averageROI: number;
+    ongoingProjects: number;
+    completedProjects: number;
+    projectsByStatusData: Array<{name: string, value: number, fill: string}>;
+  };
+  projectsSummary?: {
+    totalProjects: number;
+    totalArea: number;
+    totalFunding: number;
+    totalProfit: number;
+    ownerProfit: number;
+    projectsByStatus: ProjectStatusData;
+    projectsByCulture?: Array<{
+      name: string;
+      count: number;
+      fill: string;
+    }>;
+  };
 }
 
-const ProfileTabs: React.FC<ProfileTabsProps> = ({ userId }) => {
+const ProfileTabs: React.FC<ProfileTabsProps> = ({ 
+  userId,
+  investedProjects = [],
+  loading = false,
+  onViewDetails = () => {},
+  investmentSummary,
+  projectsSummary
+}) => {
   const { user, profile } = useAuth();
-  const isOwnProfile = user?.id === userId;
-  const userRole = profile?.nom_role?.toLowerCase() || 'simple';
+  const { metrics, paymentTrends, paymentMethods, loading: paymentLoading } = usePaymentData(userId);
+  
+  // Hook spécialisé pour les techniciens
+  const { 
+    metrics: technicienMetrics, 
+    upcomingPayments, 
+    receivedPayments, 
+    loading: technicienPaymentLoading 
+  } = useTechnicienPaymentData(userId);
+  
+  // Déterminer le rôle de l'utilisateur
+  const userRole = profile?.nom_role || 'simple';
 
-  const getTabs = () => {
-    if (userRole === 'technicien') {
-      return [
-        { id: 'profile', label: 'Profil', icon: User },
-        { id: 'planning', label: 'Planning', icon: Calendar },
-        { id: 'parcels', label: 'Parcelles', icon: MapPin },
-        { id: 'weather', label: 'Météo', icon: Cloud },
-        { id: 'completed', label: 'Terminées', icon: TrendingUp },
-        { id: 'payments', label: 'Paiements', icon: Briefcase },
-        { id: 'resources', label: 'Ressources', icon: Book },
-        { id: 'activity', label: 'Activité', icon: MessageSquare },
-      ];
-    } else if (userRole === 'investisseur') {
-      return [
-        { id: 'profile', label: 'Profil', icon: User },
-        { id: 'investments', label: 'Investissements', icon: Heart },
-        { id: 'payments', label: 'Paiements', icon: TrendingUp },
-        { id: 'activity', label: 'Activité', icon: MessageSquare },
-      ];
-    } else {
-      return [
-        { id: 'profile', label: 'Profil', icon: User },
-        { id: 'projects', label: 'Projets', icon: Heart },
-        { id: 'activity', label: 'Activité', icon: MessageSquare },
-      ];
-    }
+  const handlePaymentFilter = (filters: PaymentFilterState) => {
+    console.log('Applying filters:', filters);
+    // TODO: Implémenter la logique de filtrage
   };
 
-  const tabs = getTabs();
+  const handleExport = (type: 'csv' | 'pdf') => {
+    console.log('Exporting as:', type);
+    // TODO: Implémenter la logique d'export
+  };
+  
+  // Fonction pour rendre les onglets selon le rôle
+  const renderTabsList = () => {
+    if (userRole === 'technicien') {
+      return (
+        <TabsList className="grid grid-cols-5 mb-4">
+          <TabsTrigger value="parcelles">Parcelles</TabsTrigger>
+          <TabsTrigger value="planning">Planning</TabsTrigger>
+          <TabsTrigger value="rapports">Effectués</TabsTrigger>
+          <TabsTrigger value="ressources">Ressources</TabsTrigger>
+          <TabsTrigger value="paiements">Paiements</TabsTrigger>
+        </TabsList>
+      );
+    }
+    
+    if (userRole === 'superviseur') {
+      return (
+        <TabsList className="grid grid-cols-6 mb-4">
+          <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
+          <TabsTrigger value="carte">Carte</TabsTrigger>
+          <TabsTrigger value="techniciens">Techniciens</TabsTrigger>
+          <TabsTrigger value="logistique">Logistique</TabsTrigger>
+          <TabsTrigger value="alertes">Alertes</TabsTrigger>
+          <TabsTrigger value="kpi">KPI</TabsTrigger>
+        </TabsList>
+      );
+    }
+    
+    // Utilisateurs simples (défaut)
+    return (
+      <TabsList className="grid grid-cols-4 mb-4">
+        <TabsTrigger value="investments">Investissements</TabsTrigger>
+        <TabsTrigger value="projects">Projets</TabsTrigger>
+        <TabsTrigger value="payments">Paiements</TabsTrigger>
+        <TabsTrigger value="activity">Activité</TabsTrigger>
+      </TabsList>
+    );
+  };
 
-  return (
-    <div className="w-full max-w-6xl mx-auto">
-      <div className="mt-8">
-        <Tabs defaultValue="profile" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8">
-            {tabs.map((tab) => (
-              <TabsTrigger
-                key={tab.id}
-                value={tab.id}
-                className="flex items-center gap-2 text-xs sm:text-sm"
-              >
-                <tab.icon className="h-4 w-4" />
-                <span className="hidden sm:inline">{tab.label}</span>
-              </TabsTrigger>
-            ))}
-          </TabsList>
-
-          <div className="mt-6">
-            <TabsContent value="profile">
-              <div className="text-center py-8">
-                <h3 className="text-lg font-semibold mb-2">Profil utilisateur</h3>
-                <p className="text-gray-600">Informations du profil à venir</p>
+  // Fonction pour rendre le contenu selon le rôle
+  const renderTabsContent = () => {
+    if (userRole === 'technicien') {
+      return (
+        <>
+          <TabsContent value="parcelles" className="space-y-4">
+            <div className="rounded-lg border bg-card p-4">
+              <AssignedParcelsView userId={userId} userRole={userRole} />
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="planning" className="space-y-4">
+            <div className="rounded-lg border bg-card p-4">
+              <WeeklyPlanningTable userId={userId} userRole={userRole} />
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="rapports" className="space-y-4">
+            <div className="rounded-lg border bg-card p-4">
+              <CompletedTasksList userId={userId} userRole={userRole} />
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="ressources" className="space-y-4">
+            <div className="rounded-lg border bg-card p-4">
+              <TechnicalResourcesLibrary />
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="paiements" className="space-y-6">
+            <div className="rounded-lg border bg-card p-6">
+              {/* Section Résumé des Paiements Technicien */}
+              <TechnicienPaymentSummary metrics={technicienMetrics} />
+              
+              <Separator className="my-6" />
+              
+              {/* Section Planning des Paiements à Venir */}
+              <UpcomingPaymentSchedule upcomingPayments={upcomingPayments} />
+              
+              <Separator className="my-6" />
+              
+              {/* Section Historique des Paiements Reçus */}
+              <TechnicienPaymentHistory receivedPayments={receivedPayments} />
+            </div>
+          </TabsContent>
+        </>
+      );
+    }
+    
+    if (userRole === 'superviseur') {
+      return (
+        <>
+          <TabsContent value="overview" className="space-y-4">
+            <div className="rounded-lg border bg-card p-4">
+              <h3 className="text-lg font-semibold mb-4">Vue d'ensemble des projets</h3>
+              <p className="text-muted-foreground">Dashboard superviseur en cours de développement...</p>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="carte" className="space-y-4">
+            <div className="rounded-lg border bg-card p-4">
+              <h3 className="text-lg font-semibold mb-4">Carte interactive</h3>
+              <p className="text-muted-foreground">Carte des parcelles en cours de développement...</p>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="techniciens" className="space-y-4">
+            <div className="rounded-lg border bg-card p-4">
+              <h3 className="text-lg font-semibold mb-4">Suivi des techniciens</h3>
+              <p className="text-muted-foreground">Gestion des techniciens en cours de développement...</p>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="logistique" className="space-y-4">
+            <div className="rounded-lg border bg-card p-4">
+              <h3 className="text-lg font-semibold mb-4">Demandes logistiques</h3>
+              <p className="text-muted-foreground">Gestion logistique en cours de développement...</p>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="alertes" className="space-y-4">
+            <div className="rounded-lg border bg-card p-4">
+              <h3 className="text-lg font-semibold mb-4">Alertes et remontées</h3>
+              <p className="text-muted-foreground">Centre d'alertes en cours de développement...</p>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="kpi" className="space-y-4">
+            <div className="rounded-lg border bg-card p-4">
+              <h3 className="text-lg font-semibold mb-4">Indicateurs de performance</h3>
+              <p className="text-muted-foreground">Tableau de bord KPI en cours de développement...</p>
+            </div>
+          </TabsContent>
+        </>
+      );
+    }
+    
+    // Contenu pour utilisateurs simples (inchangé)
+    return (
+      <>
+        <TabsContent value="investments" className="space-y-4">
+          <div className="rounded-lg border bg-card p-4">
+            {investmentSummary && (
+              <div className="mb-6">
+                <InvestmentSummary
+                  totalInvested={investmentSummary.totalInvested}
+                  totalProfit={investmentSummary.totalProfit}
+                  averageROI={investmentSummary.averageROI}
+                  ongoingProjects={investmentSummary.ongoingProjects}
+                  completedProjects={investmentSummary.completedProjects}
+                  projectsByStatusData={investmentSummary.projectsByStatusData}
+                />
               </div>
-            </TabsContent>
-
-            {userRole === 'technicien' && (
-              <>
-                <TabsContent value="planning">
-                  <WeeklyPlanningTable userId={userId} userRole={userRole} />
-                </TabsContent>
-                
-                <TabsContent value="parcels">
-                  <AssignedParcelsView userId={userId} userRole={userRole} />
-                </TabsContent>
-                
-                <TabsContent value="weather">
-                  <WeatherSection />
-                </TabsContent>
-                
-                <TabsContent value="completed">
-                  <CompletedTasksList userId={userId} userRole={userRole} />
-                </TabsContent>
-                
-                <TabsContent value="payments">
-                  <TechnicienPaymentHistory receivedPayments={[]} />
-                </TabsContent>
-                
-                <TabsContent value="resources">
-                  <TechnicalResourcesLibrary />
-                </TabsContent>
-              </>
             )}
-
-            {userRole === 'investisseur' && (
-              <>
-                <TabsContent value="investments">
-                  <InvestmentsList investedProjects={[]} loading={false} onViewDetails={() => {}} />
-                </TabsContent>
-                
-                <TabsContent value="payments">
-                  <PaymentHistory userId={userId} />
-                </TabsContent>
-              </>
+            
+            <h3 className="text-lg font-semibold mb-4">Mes investissements</h3>
+            {investedProjects && investedProjects.length > 0 ? (
+              <InvestmentsList 
+                investedProjects={investedProjects}
+                loading={loading}
+                onViewDetails={onViewDetails}
+              />
+            ) : (
+              <InvestmentTable investments={[]} />
             )}
-
-            {userRole === 'simple' && (
-              <TabsContent value="projects">
-                <ProjectList projects={[]} />
-              </TabsContent>
-            )}
-
-            <TabsContent value="activity">
-              <ActivityFeed userId={userId} />
-            </TabsContent>
           </div>
-        </Tabs>
-      </div>
-    </div>
+        </TabsContent>
+        
+        <TabsContent value="projects" className="space-y-4">
+          <div className="rounded-lg border bg-card p-4">
+            {projectsSummary && (
+              <div className="mb-6">
+                <ProjectsSummary
+                  totalProjects={projectsSummary.totalProjects}
+                  totalArea={projectsSummary.totalArea}
+                  totalFunding={projectsSummary.totalFunding}
+                  totalProfit={projectsSummary.totalProfit}
+                  ownerProfit={projectsSummary.ownerProfit}
+                  projectsByStatus={projectsSummary.projectsByStatus}
+                  projectsByCulture={projectsSummary.projectsByCulture}
+                />
+              </div>
+            )}
+            
+            <ProjectFeed 
+              filters={{ userId: userId }}
+              showFilters={false}
+              showFollowingTab={false}
+              title="Projets publiés"
+              gridLayout={true}
+            />
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="payments" className="space-y-6">
+          <div className="rounded-lg border bg-card p-6">
+            {/* Section Suivi des Paiements */}
+            <PaymentTrackingSection metrics={metrics} />
+            
+            <Separator className="my-6" />
+            
+            {/* Section Filtres et Actions */}
+            <PaymentFilters 
+              onFilterChange={handlePaymentFilter}
+              onExport={handleExport}
+            />
+            
+            <Separator className="my-6" />
+            
+            {/* Section Analytics */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Analyse des Paiements</h3>
+              <PaymentAnalytics 
+                paymentTrends={paymentTrends}
+                paymentMethods={paymentMethods}
+              />
+            </div>
+            
+            <Separator className="my-6" />
+            
+            {/* Section Historique détaillé */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Historique détaillé des paiements</h3>
+              <PaymentHistory userId={userId} />
+            </div>
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="activity" className="space-y-4">
+          <div className="rounded-lg border bg-card p-4">
+            <h3 className="text-lg font-semibold mb-4">Activité récente</h3>
+            <ActivityFeed userId={userId} />
+          </div>
+        </TabsContent>
+      </>
+    );
+  };
+
+  // Déterminer la valeur par défaut selon le rôle
+  const getDefaultValue = () => {
+    if (userRole === 'technicien') return 'parcelles';
+    if (userRole === 'superviseur') return 'overview';
+    return 'investments';
+  };
+  
+  return (
+    <Tabs defaultValue={getDefaultValue()} className="mt-6">
+      {renderTabsList()}
+      {renderTabsContent()}
+    </Tabs>
   );
 };
 

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { AssignedParcel } from '@/types/technicien';
@@ -103,14 +102,10 @@ export const useAssignedParcels = (userId: string, userRole: string) => {
 
           formattedParcels.push({
             id_projet: project.id_projet,
-            nom_projet: project.titre || `Projet ${project.id_projet}`,
             titre: project.titre || `Projet ${project.id_projet}`,
-            superficie: project.surface_ha || 0,
             surface_ha: project.surface_ha || 0,
             statut: project.statut || 'en_cours',
-            date_assignation: project.date_debut_production || new Date().toISOString(),
             date_debut_production: project.date_debut_production,
-            technicien_assigné: userId,
             id_terrain: project.terrain?.id_terrain,
             nom_terrain: project.terrain?.nom_terrain,
             cultures: culturesWithJalons,

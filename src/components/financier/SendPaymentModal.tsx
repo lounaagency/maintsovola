@@ -73,7 +73,7 @@ const SendPaymentModal: React.FC<SendPaymentModalProps> = ({
           amount: montant,
           phoneNumber: numeroMobileBanking,
           description: `Paiement - ${jalon.nom_jalon}`,
-          merchantId: import.meta.env.VITE_MERCHANT_ID || "default_merchant",
+          merchantId: import.meta.env.VITE_MERCHANT_ID,
           investmentId: jalon.id_jalon_projet,
         });
 
@@ -132,7 +132,7 @@ const SendPaymentModal: React.FC<SendPaymentModalProps> = ({
 
           {typePaiement === PAYMENT_TYPES.MOBILE_BANKING && (
             <MobileBankingSection
-              technicienEmail={jalon.technicien_nom}
+              technicienEmail={jalon.technicien_email}
               selectedNumber={numeroMobileBanking}
               setSelectedNumber={setNumeroMobileBanking}
             />

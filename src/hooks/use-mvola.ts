@@ -1,92 +1,72 @@
-
 import { useState } from "react";
+import apiClientMvola from "../utils/apiClientMvola";
 
-export interface InitiatePaymentRequest {
+interface InitiatePaymentRequest {
   amount: string;
-  phoneNumber: string;
+  currency: string;
   description: string;
-  merchantId: string;
+  merchantID: string;
   customerMsisdn: string;
-  X_Callback_URL: string;
-  investmentId: number;
+  X_Callback_URL?: string;
 }
 
-export interface InitiatePaymentResponse {
+interface InitiatePaymentResponse {
+  serverCorrelationId: string;
+  objectReference: string;
   status: number;
-  data?: any;
-  message?: string;
-  serverCorrelationId?: string;
-  objectReference?: string;
+}
+
+interface TransactionStatusResponse {
+  serverCorrelationId: string;
+  status: number;
+  message: string;
 }
 
 const useMvola = () => {
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
-  const initiatePayment = async (paymentData: InitiatePaymentRequest): Promise<InitiatePaymentResponse> => {
+  // Fonction d'initiation du paiement
+  const initiatePayment = async (
+    paymentData: InitiatePaymentRequest
+  ): Promise<InitiatePaymentResponse | undefined> => {
     setLoading(true);
-    setError("");
-
     try {
-      // Simulation d'un appel API MVola
-      console.log("Initiating MVola payment:", paymentData);
-      
-      // Simuler un délai
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Simuler une réponse de succès
-      const response: InitiatePaymentResponse = {
-        status: 200,
-        data: {
-          transactionId: `TXN-${Date.now()}`,
-          correlationId: `CORR-${Date.now()}`,
-        },
-        message: "Payment initiated successfully",
-        serverCorrelationId: `CORR-${Date.now()}`,
-        objectReference: `REF-${Date.now()}`,
-      };
-
-      setLoading(false);
-      return response;
+      const response = await apiClientMvola.post(
+        "/mvola/mm/transactions/type/merchantpay/1.0.0/",
+        paymentData
+      );
+      console.log("Paiement initié:", response.data);
+      return response.data;
     } catch (err: any) {
-      const errorMessage = err.message || "Erreur lors de l'initiation du paiement";
-      setError(errorMessage);
+      setError(
+        err.response?.data?.message || "Erreur lors de l'initiation du paiement"
+      );
+      console.error("Erreur:", err);
+    } finally {
       setLoading(false);
-      throw new Error(errorMessage);
     }
   };
 
-  const sendPaymentToMvola = async (paymentData: InitiatePaymentRequest): Promise<InitiatePaymentResponse> => {
-    return await initiatePayment(paymentData);
-  };
-
-  const checkTransactionStatus = async (serverCorrelationId: string) => {
+  // Fonction pour vérifier le statut de la transaction
+  const checkTransactionStatus = async (
+    serverCorrelationId: string
+  ): Promise<TransactionStatusResponse | undefined> => {
     setLoading(true);
-    setError("");
-
     try {
-      console.log("Checking transaction status:", serverCorrelationId);
-      
-      // Simuler un délai
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Simuler une réponse de statut
-      const response = {
-        status: 200,
-        data: {
-          transactionStatus: "COMPLETED",
-          amount: "1000",
-          currency: "MGA"
-        }
-      };
-
-      setLoading(false);
-      return response;
+      const response = await apiClientMvola.get(
+        `/mvola/mm/transactions/type/merchantpay/1.0.0/status/${serverCorrelationId}`
+      );
+      console.log("Statut de la transaction:", response.data);
+      return response.data;
     } catch (err: any) {
-      const errorMessage = err.message || "Erreur lors de la vérification du statut";
-      setError(errorMessage);
+      setError(
+        err.response?.data?.message ||
+          "Erreur lors de la vérification du statut"
+      );
+      console.error("Erreur:", err);
+    } finally {
       setLoading(false);
-      throw new Error(errorMessage);
     }
   };
 
@@ -94,7 +74,6 @@ const useMvola = () => {
     loading,
     error,
     initiatePayment,
-    sendPaymentToMvola,
     checkTransactionStatus,
   };
 };

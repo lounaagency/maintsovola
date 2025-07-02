@@ -693,7 +693,14 @@ export const Profile = () => {
       
       <Separator />
       
-      <ProfileTabs userId={profile?.id_utilisateur || ''} />
+      <ProfileTabs 
+        userId={profile?.id_utilisateur || ''}
+        investedProjects={investedProjects}
+        loading={loading}
+        onViewDetails={handleOpenDetails}
+        investmentSummary={investmentSummary}
+        projectsSummary={projectsSummary}
+      />
       
       {/* Add ProjectDetailsDialog */}
       {selectedProjectId && (
