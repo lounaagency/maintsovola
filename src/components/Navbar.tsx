@@ -7,6 +7,7 @@ import UserAvatar from "./UserAvatar";
 import Notifications from "./Notifications";
 import { useIsMobile } from "@/hooks/use-mobile";
 import Logo from "./Logo";
+import { WeatherAlertNotification } from "./weather/WeatherAlertNotification";
 import MessageBadge from "./MessageBadge";
 import { useOffline } from "@/hooks/use-offline";
 import {
@@ -94,6 +95,8 @@ const Navbar: React.FC = () => {
           <MessageBadge isActive={isActive("/messages")} />
           
           <Notifications />
+          
+          <WeatherAlertNotification />
         
         {/* User profile dropdown menu */}
         <DropdownMenu>

@@ -303,17 +303,18 @@ export class WeatherAlertEngine {
         .insert(
           alerts.map(alert => ({
             id: alert.id,
-            project_id: alert.projectId,
-            user_id: alert.userId,
-            alert_type: alert.alertType,
+            type: alert.alertType,
             title: alert.title,
             message: alert.message,
             recommendation: alert.recommendation,
-            jalons_affected: alert.jalonsAffected,
-            weather_condition: alert.weatherCondition,
-            severity: alert.severity,
-            valid_until: alert.validUntil,
-            acknowledged: alert.acknowledged,
+            jalon_id: alert.jalonsAffected[0] || null,
+            projet_id: alert.projectId,
+            culture_type: this.getCultureTypeFromProject(alert.projectId),
+            intervention_type: this.getInterventionTypeFromAlert(alert),
+            date_previsionnelle: new Date().toISOString().split('T')[0],
+            weather_reason: alert.weatherCondition,
+            priority: alert.severity,
+            is_active: true,
           }))
         );
 
@@ -323,5 +324,21 @@ export class WeatherAlertEngine {
     } catch (error) {
       console.error('Error in saveAlerts:', error);
     }
+  }
+
+  private getCultureTypeFromProject(projectId: number): string {
+    // Cette fonction devrait récupérer le type de culture du projet
+    // Pour l'instant, on retourne une valeur par défaut
+    return 'culture_generale';
+  }
+
+  private getInterventionTypeFromAlert(alert: WeatherAlert): string {
+    // Extraire le type d'intervention du titre ou message
+    const title = alert.title.toLowerCase();
+    if (title.includes('semis')) return 'SEMIS';
+    if (title.includes('irrigation')) return 'IRRIGATION';
+    if (title.includes('traitement')) return 'TRAITEMENT_PHYTO';
+    if (title.includes('récolte')) return 'RECOLTE';
+    return 'AUTRE';
   }
 }
