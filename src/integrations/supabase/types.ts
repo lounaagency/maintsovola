@@ -2005,6 +2005,60 @@ export type Database = {
           },
         ]
       }
+      weather_alerts: {
+        Row: {
+          created_at: string | null
+          culture_type: string
+          date_previsionnelle: string
+          id: string
+          intervention_type: string
+          is_active: boolean | null
+          jalon_id: number | null
+          message: string
+          priority: string
+          projet_id: number | null
+          recommendation: string
+          title: string
+          type: string
+          updated_at: string | null
+          weather_reason: string
+        }
+        Insert: {
+          created_at?: string | null
+          culture_type: string
+          date_previsionnelle: string
+          id: string
+          intervention_type: string
+          is_active?: boolean | null
+          jalon_id?: number | null
+          message: string
+          priority: string
+          projet_id?: number | null
+          recommendation: string
+          title: string
+          type: string
+          updated_at?: string | null
+          weather_reason: string
+        }
+        Update: {
+          created_at?: string | null
+          culture_type?: string
+          date_previsionnelle?: string
+          id?: string
+          intervention_type?: string
+          is_active?: boolean | null
+          jalon_id?: number | null
+          message?: string
+          priority?: string
+          projet_id?: number | null
+          recommendation?: string
+          title?: string
+          type?: string
+          updated_at?: string | null
+          weather_reason?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       geography_columns: {

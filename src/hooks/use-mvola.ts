@@ -70,11 +70,29 @@ const useMvola = () => {
     }
   };
 
+  // Fonction pour envoyer un paiement via MVola
+  const sendPaymentToMvola = async (paymentData: {
+    amount: string;
+    phoneNumber: string;
+    description: string;
+    merchantId: string;
+    investmentId: number;
+  }) => {
+    return initiatePayment({
+      amount: paymentData.amount,
+      currency: "MGA",
+      description: paymentData.description,
+      merchantID: paymentData.merchantId,
+      customerMsisdn: paymentData.phoneNumber,
+    });
+  };
+
   return {
     loading,
     error,
     initiatePayment,
     checkTransactionStatus,
+    sendPaymentToMvola,
   };
 };
 

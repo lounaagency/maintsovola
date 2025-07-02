@@ -132,7 +132,7 @@ const SendPaymentModal: React.FC<SendPaymentModalProps> = ({
 
           {typePaiement === PAYMENT_TYPES.MOBILE_BANKING && (
             <MobileBankingSection
-              technicienEmail={jalon.technicien_email}
+              technicienEmail={jalon.technicien_nom || ''}
               selectedNumber={numeroMobileBanking}
               setSelectedNumber={setNumeroMobileBanking}
             />
