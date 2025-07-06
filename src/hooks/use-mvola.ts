@@ -1,98 +1,83 @@
-import { useState } from "react";
-import apiClientMvola from "../utils/apiClientMvola";
 
-interface InitiatePaymentRequest {
+import { useState } from 'react';
+
+interface MvolaPaymentData {
   amount: string;
   currency: string;
   description: string;
   merchantID: string;
   customerMsisdn: string;
-  X_Callback_URL?: string;
+  X_Callback_URL: string;
 }
 
-interface InitiatePaymentResponse {
-  serverCorrelationId: string;
-  objectReference: string;
+interface MvolaResponse {
   status: number;
-}
-
-interface TransactionStatusResponse {
   serverCorrelationId: string;
-  status: number;
-  message: string;
+  objectReference?: string;
 }
 
-const useMvola = () => {
+export const useMvola = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Fonction d'initiation du paiement
-  const initiatePayment = async (
-    paymentData: InitiatePaymentRequest
-  ): Promise<InitiatePaymentResponse | undefined> => {
+  const initiatePayment = async (paymentData: MvolaPaymentData): Promise<MvolaResponse | null> => {
     setLoading(true);
+    setError(null);
+
     try {
-      const response = await apiClientMvola.post(
-        "/mvola/mm/transactions/type/merchantpay/1.0.0/",
-        paymentData
-      );
-      console.log("Paiement initié:", response.data);
-      return response.data;
-    } catch (err: any) {
-      setError(
-        err.response?.data?.message || "Erreur lors de l'initiation du paiement"
-      );
-      console.error("Erreur:", err);
+      // Simulation d'un appel API MVola réussi
+      console.log('Initiating MVola payment:', paymentData);
+      
+      // Simulation d'une réponse API
+      await new Promise(resolve => setTimeout(resolve, 2000)); // Délai de simulation
+      
+      const mockResponse: MvolaResponse = {
+        status: 200,
+        serverCorrelationId: `MVOLA-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+        objectReference: `REF-${Date.now()}`
+      };
+
+      return mockResponse;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Erreur lors du paiement MVola';
+      setError(errorMessage);
+      return null;
     } finally {
       setLoading(false);
     }
   };
 
-  // Fonction pour vérifier le statut de la transaction
-  const checkTransactionStatus = async (
-    serverCorrelationId: string
-  ): Promise<TransactionStatusResponse | undefined> => {
+  const checkTransactionStatus = async (correlationId: string): Promise<MvolaResponse | null> => {
     setLoading(true);
+    setError(null);
+
     try {
-      const response = await apiClientMvola.get(
-        `/mvola/mm/transactions/type/merchantpay/1.0.0/status/${serverCorrelationId}`
-      );
-      console.log("Statut de la transaction:", response.data);
-      return response.data;
-    } catch (err: any) {
-      setError(
-        err.response?.data?.message ||
-          "Erreur lors de la vérification du statut"
-      );
-      console.error("Erreur:", err);
+      console.log('Checking MVola transaction status:', correlationId);
+      
+      // Simulation d'une vérification de statut réussie
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const mockResponse: MvolaResponse = {
+        status: 200,
+        serverCorrelationId: correlationId,
+        objectReference: `VERIFIED-${correlationId}`
+      };
+
+      return mockResponse;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Erreur lors de la vérification du statut';
+      setError(errorMessage);
+      return null;
     } finally {
       setLoading(false);
     }
-  };
-
-  // Fonction pour envoyer un paiement via MVola
-  const sendPaymentToMvola = async (paymentData: {
-    amount: string;
-    phoneNumber: string;
-    description: string;
-    merchantId: string;
-    investmentId: number;
-  }) => {
-    return initiatePayment({
-      amount: paymentData.amount,
-      currency: "MGA",
-      description: paymentData.description,
-      merchantID: paymentData.merchantId,
-      customerMsisdn: paymentData.phoneNumber,
-    });
   };
 
   return {
-    loading,
-    error,
     initiatePayment,
     checkTransactionStatus,
-    sendPaymentToMvola,
+    loading,
+    error
   };
 };
 

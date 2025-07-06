@@ -19,10 +19,7 @@ import AssignedParcelsView from './technicien/AssignedParcelsView';
 import WeeklyPlanningTable from './technicien/WeeklyPlanningTable';
 import CompletedTasksList from './technicien/CompletedTasksList';
 import TechnicalResourcesLibrary from './technicien/TechnicalResourcesLibrary';
-import TechnicienPaymentSummary from './technicien/TechnicienPaymentSummary';
-import UpcomingPaymentSchedule from './technicien/UpcomingPaymentSchedule';
-import TechnicienPaymentHistory from './technicien/TechnicienPaymentHistory';
-import { useTechnicienPaymentData } from '@/hooks/useTechnicienPaymentData';
+import TechnicienPaymentDashboard from './technicien/TechnicienPaymentDashboard';
 
 interface ProjectCultureCount {
   name: string;
@@ -83,14 +80,6 @@ const ProfileTabs: React.FC<ProfileTabsProps> = ({
 }) => {
   const { user, profile } = useAuth();
   const { metrics, paymentTrends, paymentMethods, loading: paymentLoading } = usePaymentData(userId);
-  
-  // Hook spécialisé pour les techniciens
-  const { 
-    metrics: technicienMetrics, 
-    upcomingPayments, 
-    receivedPayments, 
-    loading: technicienPaymentLoading 
-  } = useTechnicienPaymentData(userId);
   
   // Déterminer le rôle de l'utilisateur
   const userRole = profile?.nom_role || 'simple';
@@ -174,18 +163,7 @@ const ProfileTabs: React.FC<ProfileTabsProps> = ({
           
           <TabsContent value="paiements" className="space-y-6">
             <div className="rounded-lg border bg-card p-6">
-              {/* Section Résumé des Paiements Technicien */}
-              <TechnicienPaymentSummary metrics={technicienMetrics} />
-              
-              <Separator className="my-6" />
-              
-              {/* Section Planning des Paiements à Venir */}
-              <UpcomingPaymentSchedule upcomingPayments={upcomingPayments} />
-              
-              <Separator className="my-6" />
-              
-              {/* Section Historique des Paiements Reçus */}
-              <TechnicienPaymentHistory receivedPayments={receivedPayments} />
+              <TechnicienPaymentDashboard userId={userId} />
             </div>
           </TabsContent>
         </>
