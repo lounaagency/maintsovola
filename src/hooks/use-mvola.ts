@@ -16,6 +16,14 @@ interface MvolaResponse {
   objectReference?: string;
 }
 
+interface SendPaymentData {
+  amount: string;
+  phoneNumber: string;
+  description: string;
+  merchantId: string;
+  investmentId: number;
+}
+
 export const useMvola = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,11 +33,9 @@ export const useMvola = () => {
     setError(null);
 
     try {
-      // Simulation d'un appel API MVola réussi
       console.log('Initiating MVola payment:', paymentData);
       
-      // Simulation d'une réponse API
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Délai de simulation
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
       const mockResponse: MvolaResponse = {
         status: 200,
@@ -47,6 +53,31 @@ export const useMvola = () => {
     }
   };
 
+  const sendPaymentToMvola = async (paymentData: SendPaymentData): Promise<MvolaResponse | null> => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      console.log('Sending payment to MVola:', paymentData);
+      
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      const mockResponse: MvolaResponse = {
+        status: 200,
+        serverCorrelationId: `MVOLA-PAY-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+        objectReference: `PAY-REF-${Date.now()}`
+      };
+
+      return mockResponse;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Erreur lors de l\'envoi du paiement MVola';
+      setError(errorMessage);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const checkTransactionStatus = async (correlationId: string): Promise<MvolaResponse | null> => {
     setLoading(true);
     setError(null);
@@ -54,7 +85,6 @@ export const useMvola = () => {
     try {
       console.log('Checking MVola transaction status:', correlationId);
       
-      // Simulation d'une vérification de statut réussie
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       const mockResponse: MvolaResponse = {
@@ -75,6 +105,7 @@ export const useMvola = () => {
 
   return {
     initiatePayment,
+    sendPaymentToMvola,
     checkTransactionStatus,
     loading,
     error

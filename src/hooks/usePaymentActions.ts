@@ -61,15 +61,14 @@ export const usePaymentActions = () => {
         throw histError;
       }
 
-      // 4. Mettre à jour le statut du jalon à "Terminé" (valeur autorisée par la contrainte)
-      const { error: jalonUpdateError } = await supabase
-        .from('jalon_projet')
-        .update({ statut: 'Terminé' })
-        .eq('id_jalon_projet', payment.id_jalon_projet);
+      // 4. Confirmer le paiement du jalon (qui change le statut à "Payé")
+      const { error: confirmError } = await supabase.rpc('confirm_milestone_payment', {
+        p_jalon_projet_id: payment.id_jalon_projet
+      });
 
-      if (jalonUpdateError) {
-        console.error('Erreur lors de la mise à jour du jalon:', jalonUpdateError);
-        throw jalonUpdateError;
+      if (confirmError) {
+        console.error('Erreur lors de la confirmation du paiement:', confirmError);
+        throw confirmError;
       }
 
       return histData;
@@ -97,8 +96,6 @@ export const usePaymentActions = () => {
 
   const validateJustificatif = useMutation({
     mutationFn: async ({ paymentId, status }: { paymentId: number; status: string }) => {
-      // Pour le moment, on simule la validation
-      // Une fois que le champ statut_justificatif sera ajouté à la table, on pourra l'utiliser
       console.log(`Validation du justificatif ${paymentId} avec le statut: ${status}`);
       
       // Simulation d'une mise à jour

@@ -13,7 +13,7 @@ import PaymentFormFields from "./PaymentFormFields";
 import MobileBankingSection from "./MobileBankingSection";
 import ChequeSection from "./ChequeSection";
 import CashSection from "./CashSection";
-import useMvola from "@/hooks/use-mvola";
+import { useMvola } from "@/hooks/use-mvola";
 
 interface SendPaymentModalProps {
   isOpen: boolean;
@@ -73,7 +73,7 @@ const SendPaymentModal: React.FC<SendPaymentModalProps> = ({
           amount: montant,
           phoneNumber: numeroMobileBanking,
           description: `Paiement - ${jalon.nom_jalon}`,
-          merchantId: import.meta.env.VITE_MERCHANT_ID,
+          merchantId: "MERCHANT_ID_PLACEHOLDER",
           investmentId: jalon.id_jalon_projet,
         });
 

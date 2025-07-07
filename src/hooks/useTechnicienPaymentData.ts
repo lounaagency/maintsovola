@@ -49,7 +49,14 @@ export const useTechnicienPaymentData = (userId: string) => {
       try {
         setLoading(true);
 
-        // Récupérer l'historique des paiements reçus par le technicien
+        // Récupérer les jalons avec leurs montants calculés depuis la nouvelle vue
+        const { data: jalonsData } = await supabase
+          .from('vue_jalons_technicien')
+          .select('*')
+          .eq('id_technicien', userId)
+          .in('statut', ['Prévu', 'En attente de paiement', 'Payé']);
+
+        // Récupérer l'historique des paiements reçus
         const { data: historiquePayments } = await supabase
           .from('historique_paiement')
           .select(`
@@ -63,25 +70,9 @@ export const useTechnicienPaymentData = (userId: string) => {
           `)
           .eq('id_technicien', userId);
 
-        // Récupérer les jalons à venir avec leurs coûts (jointure externe pour inclure les jalons sans coûts définis)
-        const { data: jalonsData } = await supabase
-          .from('jalon_projet')
-          .select(`
-            id_jalon_projet,
-            date_previsionnelle,
-            statut,
-            projet:id_projet(titre),
-            jalon_agricole:id_jalon_agricole(nom_jalon),
-            cout_jalon_projet(montant_total)
-          `)
-          .eq('projet.id_technicien', userId)
-          .in('statut', ['Prévu', 'En cours'])
-          .gte('date_previsionnelle', new Date().toISOString());
-
         // Calculer les métriques
         const totalReceived = historiquePayments?.reduce((sum, payment) => sum + payment.montant, 0) || 0;
         
-        // Dates pour les prévisions
         const now = new Date();
         const oneWeekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
         const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
@@ -96,26 +87,29 @@ export const useTechnicienPaymentData = (userId: string) => {
         if (jalonsData) {
           jalonsData.forEach(jalon => {
             const datePrevisionnelle = new Date(jalon.date_previsionnelle);
-            const montant = jalon.cout_jalon_projet?.[0]?.montant_total || null;
+            const montant = jalon.montant_total;
             
-            if (montant === null) {
+            if (montant === null || montant === 0) {
               milestonesWithoutAmount++;
             } else {
-              pendingPayments += montant;
+              // Compter comme pending si statut Prévu ou En attente de paiement
+              if (jalon.statut === 'Prévu' || jalon.statut === 'En attente de paiement') {
+                pendingPayments += montant;
 
-              if (datePrevisionnelle <= oneWeekFromNow) {
-                thisWeekForecast += montant;
-              }
-              
-              if (datePrevisionnelle <= endOfMonth) {
-                thisMonthForecast += montant;
+                if (datePrevisionnelle <= oneWeekFromNow) {
+                  thisWeekForecast += montant;
+                }
+                
+                if (datePrevisionnelle <= endOfMonth) {
+                  thisMonthForecast += montant;
+                }
               }
             }
 
             upcomingPaymentsList.push({
               id_jalon_projet: jalon.id_jalon_projet,
-              projet_titre: jalon.projet?.titre || 'Projet inconnu',
-              jalon_nom: jalon.jalon_agricole?.nom_jalon || 'Jalon inconnu',
+              projet_titre: jalon.projet_titre || 'Projet inconnu',
+              jalon_nom: jalon.nom_jalon || 'Jalon inconnu',
               date_previsionnelle: jalon.date_previsionnelle,
               montant: montant,
               statut: jalon.statut
@@ -123,7 +117,6 @@ export const useTechnicienPaymentData = (userId: string) => {
           });
         }
 
-        // Préparer l'historique des paiements reçus
         const receivedPaymentsList: ReceivedPayment[] = historiquePayments?.map(payment => ({
           id_historique_paiement: payment.id_historique_paiement,
           montant: payment.montant,

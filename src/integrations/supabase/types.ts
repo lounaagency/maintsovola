@@ -385,6 +385,20 @@ export type Database = {
             foreignKeyName: "cout_jalon_projet_id_jalon_projet_fkey"
             columns: ["id_jalon_projet"]
             isOneToOne: false
+            referencedRelation: "vue_demandes_paiement_financier"
+            referencedColumns: ["id_jalon_projet"]
+          },
+          {
+            foreignKeyName: "cout_jalon_projet_id_jalon_projet_fkey"
+            columns: ["id_jalon_projet"]
+            isOneToOne: false
+            referencedRelation: "vue_jalons_technicien"
+            referencedColumns: ["id_jalon_projet"]
+          },
+          {
+            foreignKeyName: "cout_jalon_projet_id_jalon_projet_fkey"
+            columns: ["id_jalon_projet"]
+            isOneToOne: false
             referencedRelation: "vue_suivi_jalons_projet"
             referencedColumns: ["id_jalon_projet"]
           },
@@ -858,8 +872,10 @@ export type Database = {
         Row: {
           created_at: string | null
           created_by: string | null
+          date_demande_paiement: string | null
           date_previsionnelle: string
           date_reelle: string | null
+          demande_paiement_par: string | null
           heure_debut: string | null
           heure_fin: string | null
           id_jalon_agricole: number
@@ -874,8 +890,10 @@ export type Database = {
         Insert: {
           created_at?: string | null
           created_by?: string | null
+          date_demande_paiement?: string | null
           date_previsionnelle: string
           date_reelle?: string | null
+          demande_paiement_par?: string | null
           heure_debut?: string | null
           heure_fin?: string | null
           id_jalon_agricole: number
@@ -890,8 +908,10 @@ export type Database = {
         Update: {
           created_at?: string | null
           created_by?: string | null
+          date_demande_paiement?: string | null
           date_previsionnelle?: string
           date_reelle?: string | null
+          demande_paiement_par?: string | null
           heure_debut?: string | null
           heure_fin?: string | null
           id_jalon_agricole?: number
@@ -2233,6 +2253,109 @@ export type Database = {
           },
         ]
       }
+      vue_demandes_paiement_financier: {
+        Row: {
+          date_demande_paiement: string | null
+          id_jalon_projet: number | null
+          id_projet: number | null
+          id_technicien: string | null
+          montant_demande: number | null
+          nom_jalon: string | null
+          projet_titre: string | null
+          surface_ha: number | null
+          technicien_nom: string | null
+          technicien_prenoms: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jalon_projet_id_projet_fkey"
+            columns: ["id_projet"]
+            isOneToOne: false
+            referencedRelation: "projet"
+            referencedColumns: ["id_projet"]
+          },
+          {
+            foreignKeyName: "jalon_projet_id_projet_fkey"
+            columns: ["id_projet"]
+            isOneToOne: false
+            referencedRelation: "vue_projet_detaille"
+            referencedColumns: ["id_projet"]
+          },
+          {
+            foreignKeyName: "jalon_projet_id_projet_fkey"
+            columns: ["id_projet"]
+            isOneToOne: false
+            referencedRelation: "vue_suivi_financier_projet"
+            referencedColumns: ["id_projet"]
+          },
+          {
+            foreignKeyName: "jalon_projet_id_projet_fkey"
+            columns: ["id_projet"]
+            isOneToOne: false
+            referencedRelation: "vue_suivi_jalons_projet"
+            referencedColumns: ["id_projet"]
+          },
+        ]
+      }
+      vue_jalons_technicien: {
+        Row: {
+          date_demande_paiement: string | null
+          date_previsionnelle: string | null
+          id_jalon_projet: number | null
+          id_projet: number | null
+          id_technicien: string | null
+          montant_total: number | null
+          nom_jalon: string | null
+          projet_titre: string | null
+          statut: string | null
+          surface_ha: number | null
+          types_depenses: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_projet_id_technicien_utilisateur"
+            columns: ["id_technicien"]
+            isOneToOne: false
+            referencedRelation: "utilisateur"
+            referencedColumns: ["id_utilisateur"]
+          },
+          {
+            foreignKeyName: "fk_projet_id_technicien_utilisateur"
+            columns: ["id_technicien"]
+            isOneToOne: false
+            referencedRelation: "utilisateurs_par_role"
+            referencedColumns: ["id_utilisateur"]
+          },
+          {
+            foreignKeyName: "jalon_projet_id_projet_fkey"
+            columns: ["id_projet"]
+            isOneToOne: false
+            referencedRelation: "projet"
+            referencedColumns: ["id_projet"]
+          },
+          {
+            foreignKeyName: "jalon_projet_id_projet_fkey"
+            columns: ["id_projet"]
+            isOneToOne: false
+            referencedRelation: "vue_projet_detaille"
+            referencedColumns: ["id_projet"]
+          },
+          {
+            foreignKeyName: "jalon_projet_id_projet_fkey"
+            columns: ["id_projet"]
+            isOneToOne: false
+            referencedRelation: "vue_suivi_financier_projet"
+            referencedColumns: ["id_projet"]
+          },
+          {
+            foreignKeyName: "jalon_projet_id_projet_fkey"
+            columns: ["id_projet"]
+            isOneToOne: false
+            referencedRelation: "vue_suivi_jalons_projet"
+            referencedColumns: ["id_projet"]
+          },
+        ]
+      }
       vue_projet_detaille: {
         Row: {
           cout_total: number | null
@@ -2582,6 +2705,10 @@ export type Database = {
           surface_validee: number | null
           validation_decision: string | null
         }[]
+      }
+      confirm_milestone_payment: {
+        Args: { p_jalon_projet_id: number }
+        Returns: boolean
       }
       create_technicien_assignment_notification: {
         Args: {
@@ -3104,6 +3231,10 @@ export type Database = {
       postgis_wagyu_version: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      request_milestone_payment: {
+        Args: { p_jalon_projet_id: number; p_technicien_id: string }
+        Returns: boolean
       }
       spheroid_in: {
         Args: { "": unknown }

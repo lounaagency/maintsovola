@@ -5,14 +5,16 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { formatCurrency } from '@/lib/utils';
-import { Clock, CheckCircle, AlertCircle, CreditCard } from 'lucide-react';
+import { Clock, CheckCircle, AlertCircle, CreditCard, Hourglass } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTechnicienPaymentRequests } from '@/hooks/useTechnicienPaymentRequests';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface PendingPayment {
   id_jalon_projet: number;
   projet_titre: string;
   jalon_nom: string;
-  montant: number;
+  montant: number | null;
   date_previsionnelle: string;
   statut: string;
 }
@@ -27,21 +29,25 @@ const TechnicienPaymentActions: React.FC<TechnicienPaymentActionsProps> = ({
   onPaymentRequest 
 }) => {
   const [requestingPayment, setRequestingPayment] = useState<number | null>(null);
+  const { requestPayment, loading } = useTechnicienPaymentRequests();
+  const { user } = useAuth();
 
   const handlePaymentRequest = async (jalon: PendingPayment) => {
+    if (!user?.id) {
+      toast.error("Utilisateur non authentifié");
+      return;
+    }
+
     setRequestingPayment(jalon.id_jalon_projet);
     
     try {
-      // Simulation d'une demande de paiement
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      toast.success(`Demande de paiement envoyée pour ${jalon.jalon_nom}`, {
-        description: "Le responsable financier a été notifié de votre demande"
-      });
-      
+      await requestPayment(jalon.id_jalon_projet, user.id);
       onPaymentRequest?.(jalon.id_jalon_projet);
+      
+      // Rafraîchir la page pour voir les changements
+      window.location.reload();
     } catch (error) {
-      toast.error("Erreur lors de l'envoi de la demande de paiement");
+      console.error('Error requesting payment:', error);
     } finally {
       setRequestingPayment(null);
     }
@@ -49,23 +55,30 @@ const TechnicienPaymentActions: React.FC<TechnicienPaymentActionsProps> = ({
 
   const getStatusBadge = (statut: string) => {
     switch (statut) {
-      case 'Terminé':
+      case 'Prévu':
+        return (
+          <Badge variant="outline" className="text-blue-600 border-blue-200">
+            <Clock className="h-3 w-3 mr-1" />
+            Prévu
+          </Badge>
+        );
+      case 'En attente de paiement':
+        return (
+          <Badge variant="default" className="bg-orange-100 text-orange-700">
+            <Hourglass className="h-3 w-3 mr-1" />
+            En attente de paiement
+          </Badge>
+        );
+      case 'Payé':
         return (
           <Badge variant="default" className="bg-green-100 text-green-700">
             <CheckCircle className="h-3 w-3 mr-1" />
-            Terminé
-          </Badge>
-        );
-      case 'En cours':
-        return (
-          <Badge variant="default" className="bg-blue-100 text-blue-700">
-            <Clock className="h-3 w-3 mr-1" />
-            En cours
+            Payé
           </Badge>
         );
       default:
         return (
-          <Badge variant="outline" className="text-orange-600">
+          <Badge variant="outline" className="text-gray-600">
             <AlertCircle className="h-3 w-3 mr-1" />
             {statut}
           </Badge>
@@ -73,61 +86,66 @@ const TechnicienPaymentActions: React.FC<TechnicienPaymentActionsProps> = ({
     }
   };
 
-  const eligiblePayments = pendingPayments.filter(payment => 
-    payment.statut === 'Terminé' && payment.montant > 0
+  // Séparer les jalons par statut
+  const jalonsPrevus = pendingPayments.filter(payment => 
+    payment.statut === 'Prévu' && payment.montant && payment.montant > 0
+  );
+
+  const jalonsEnAttentePaiement = pendingPayments.filter(payment => 
+    payment.statut === 'En attente de paiement'
+  );
+
+  const jalonsPayes = pendingPayments.filter(payment => 
+    payment.statut === 'Payé'
   );
 
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-semibold">Actions de Paiement</h3>
       
+      {/* Jalons prêts pour demande de paiement */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <CreditCard className="h-5 w-5" />
-            Demandes de Paiement Disponibles
+            Jalons Éligibles pour Demande de Paiement
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {eligiblePayments.length === 0 ? (
-            <div className="text-center text-muted-foreground py-8">
-              <CreditCard className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Aucune demande de paiement disponible</p>
-              <p className="text-sm mt-2">
-                Terminez vos jalons pour pouvoir demander des paiements
-              </p>
+          {jalonsPrevus.length === 0 ? (
+            <div className="text-center text-muted-foreground py-4">
+              <CreditCard className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <p>Aucun jalon éligible pour demande de paiement</p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {eligiblePayments.map((payment) => (
+            <div className="space-y-3">
+              {jalonsPrevus.map((payment) => (
                 <div 
                   key={payment.id_jalon_projet}
-                  className="flex items-center justify-between p-4 rounded-lg border border-gray-200 bg-gray-50"
+                  className="flex items-center justify-between p-3 rounded-lg border border-blue-200 bg-blue-50"
                 >
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
+                    <div className="flex items-center gap-2 mb-1">
                       <h4 className="font-medium">{payment.jalon_nom}</h4>
                       {getStatusBadge(payment.statut)}
                     </div>
                     
                     <div className="text-sm text-muted-foreground">
                       <p className="font-medium">{payment.projet_titre}</p>
-                      <p>
-                        Terminé le {new Date(payment.date_previsionnelle).toLocaleDateString('fr-FR')}
-                      </p>
+                      <p>Prévu pour le {new Date(payment.date_previsionnelle).toLocaleDateString('fr-FR')}</p>
                     </div>
                   </div>
                   
                   <div className="text-right flex items-center gap-4">
                     <div>
                       <div className="text-lg font-semibold text-green-600">
-                        {formatCurrency(payment.montant)}
+                        {formatCurrency(payment.montant || 0)}
                       </div>
                     </div>
                     
                     <Button
                       onClick={() => handlePaymentRequest(payment)}
-                      disabled={requestingPayment === payment.id_jalon_projet}
+                      disabled={requestingPayment === payment.id_jalon_projet || loading}
                       size="sm"
                       className="gap-2"
                     >
@@ -146,21 +164,102 @@ const TechnicienPaymentActions: React.FC<TechnicienPaymentActionsProps> = ({
                   </div>
                 </div>
               ))}
-              
-              <Separator className="my-4" />
-              
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <h4 className="font-medium text-blue-900 mb-2">Information</h4>
-                <p className="text-sm text-blue-700">
-                  Vous pouvez demander le paiement uniquement pour les jalons terminés. 
-                  Une fois votre demande envoyée, le responsable financier traitera votre paiement 
-                  dans les plus brefs délais.
-                </p>
-              </div>
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Jalons en attente de paiement */}
+      {jalonsEnAttentePaiement.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Hourglass className="h-5 w-5" />
+              Demandes de Paiement en Cours
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {jalonsEnAttentePaiement.map((payment) => (
+                <div 
+                  key={payment.id_jalon_projet}
+                  className="flex items-center justify-between p-3 rounded-lg border border-orange-200 bg-orange-50"
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h4 className="font-medium">{payment.jalon_nom}</h4>
+                      {getStatusBadge(payment.statut)}
+                    </div>
+                    
+                    <div className="text-sm text-muted-foreground">
+                      <p className="font-medium">{payment.projet_titre}</p>
+                      <p>Demande en cours de traitement</p>
+                    </div>
+                  </div>
+                  
+                  <div className="text-right">
+                    <div className="text-lg font-semibold text-orange-600">
+                      {formatCurrency(payment.montant || 0)}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Jalons payés */}
+      {jalonsPayes.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <CheckCircle className="h-5 w-5" />
+              Jalons Payés - Prêts à Démarrer
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {jalonsPayes.map((payment) => (
+                <div 
+                  key={payment.id_jalon_projet}
+                  className="flex items-center justify-between p-3 rounded-lg border border-green-200 bg-green-50"
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h4 className="font-medium">{payment.jalon_nom}</h4>
+                      {getStatusBadge(payment.statut)}
+                    </div>
+                    
+                    <div className="text-sm text-muted-foreground">
+                      <p className="font-medium">{payment.projet_titre}</p>
+                      <p>Paiement reçu - Vous pouvez commencer les activités</p>
+                    </div>
+                  </div>
+                  
+                  <div className="text-right">
+                    <div className="text-lg font-semibold text-green-600">
+                      {formatCurrency(payment.montant || 0)}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      
+      <Separator className="my-4" />
+      
+      <div className="bg-blue-50 p-4 rounded-lg">
+        <h4 className="font-medium text-blue-900 mb-2">Nouveau Processus de Paiement</h4>
+        <p className="text-sm text-blue-700">
+          1. <strong>Demandez le paiement</strong> pour les jalons prévus avant de commencer les activités<br/>
+          2. <strong>Attendez la validation</strong> du responsable financier<br/>
+          3. <strong>Commencez les activités</strong> une fois le paiement reçu<br/>
+          4. Les montants sont calculés automatiquement selon la surface du terrain
+        </p>
+      </div>
     </div>
   );
 };
