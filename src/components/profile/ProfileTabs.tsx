@@ -21,6 +21,9 @@ import CompletedTasksList from './technicien/CompletedTasksList';
 import TechnicalResourcesLibrary from './technicien/TechnicalResourcesLibrary';
 import TechnicienPaymentDashboard from './technicien/TechnicienPaymentDashboard';
 
+// Nouveaux composants pour superviseurs
+import SuperviseurDashboard from './superviseur/SuperviseurDashboard';
+
 interface ProjectCultureCount {
   name: string;
   count: number;
@@ -172,49 +175,7 @@ const ProfileTabs: React.FC<ProfileTabsProps> = ({
     
     if (userRole === 'superviseur') {
       return (
-        <>
-          <TabsContent value="overview" className="space-y-4">
-            <div className="rounded-lg border bg-card p-4">
-              <h3 className="text-lg font-semibold mb-4">Vue d'ensemble des projets</h3>
-              <p className="text-muted-foreground">Dashboard superviseur en cours de développement...</p>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="carte" className="space-y-4">
-            <div className="rounded-lg border bg-card p-4">
-              <h3 className="text-lg font-semibold mb-4">Carte interactive</h3>
-              <p className="text-muted-foreground">Carte des parcelles en cours de développement...</p>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="techniciens" className="space-y-4">
-            <div className="rounded-lg border bg-card p-4">
-              <h3 className="text-lg font-semibold mb-4">Suivi des techniciens</h3>
-              <p className="text-muted-foreground">Gestion des techniciens en cours de développement...</p>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="logistique" className="space-y-4">
-            <div className="rounded-lg border bg-card p-4">
-              <h3 className="text-lg font-semibold mb-4">Demandes logistiques</h3>
-              <p className="text-muted-foreground">Gestion logistique en cours de développement...</p>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="alertes" className="space-y-4">
-            <div className="rounded-lg border bg-card p-4">
-              <h3 className="text-lg font-semibold mb-4">Alertes et remontées</h3>
-              <p className="text-muted-foreground">Centre d'alertes en cours de développement...</p>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="kpi" className="space-y-4">
-            <div className="rounded-lg border bg-card p-4">
-              <h3 className="text-lg font-semibold mb-4">Indicateurs de performance</h3>
-              <p className="text-muted-foreground">Tableau de bord KPI en cours de développement...</p>
-            </div>
-          </TabsContent>
-        </>
+        <SuperviseurDashboard userId={userId} />
       );
     }
     
