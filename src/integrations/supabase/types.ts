@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instanciate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "12.2.3 (519615d)"
+    PostgrestVersion: "12.2.12 (cd3cf9e)"
   }
   public: {
     Tables: {
@@ -533,6 +533,92 @@ export type Database = {
           rendement_ha?: number | null
         }
         Relationships: []
+      }
+      demande_materiel: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          date_demande: string
+          date_livraison_reelle: string | null
+          date_livraison_souhaitee: string
+          description: string
+          id_demande: number
+          id_superviseur: string
+          modified_at: string | null
+          observations: string | null
+          projet_concerne: number | null
+          quantite: number
+          statut: string
+          type_materiel: string
+          unite: string | null
+          urgence: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          date_demande?: string
+          date_livraison_reelle?: string | null
+          date_livraison_souhaitee: string
+          description: string
+          id_demande?: number
+          id_superviseur: string
+          modified_at?: string | null
+          observations?: string | null
+          projet_concerne?: number | null
+          quantite: number
+          statut?: string
+          type_materiel: string
+          unite?: string | null
+          urgence?: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          date_demande?: string
+          date_livraison_reelle?: string | null
+          date_livraison_souhaitee?: string
+          description?: string
+          id_demande?: number
+          id_superviseur?: string
+          modified_at?: string | null
+          observations?: string | null
+          projet_concerne?: number | null
+          quantite?: number
+          statut?: string
+          type_materiel?: string
+          unite?: string | null
+          urgence?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demande_materiel_projet_concerne_fkey"
+            columns: ["projet_concerne"]
+            isOneToOne: false
+            referencedRelation: "projet"
+            referencedColumns: ["id_projet"]
+          },
+          {
+            foreignKeyName: "demande_materiel_projet_concerne_fkey"
+            columns: ["projet_concerne"]
+            isOneToOne: false
+            referencedRelation: "vue_projet_detaille"
+            referencedColumns: ["id_projet"]
+          },
+          {
+            foreignKeyName: "demande_materiel_projet_concerne_fkey"
+            columns: ["projet_concerne"]
+            isOneToOne: false
+            referencedRelation: "vue_suivi_financier_projet"
+            referencedColumns: ["id_projet"]
+          },
+          {
+            foreignKeyName: "demande_materiel_projet_concerne_fkey"
+            columns: ["projet_concerne"]
+            isOneToOne: false
+            referencedRelation: "vue_suivi_jalons_projet"
+            referencedColumns: ["id_projet"]
+          },
+        ]
       }
       district: {
         Row: {
@@ -3107,7 +3193,7 @@ export type Database = {
         Args:
           | { tbl_oid: unknown; use_typmod?: boolean }
           | { use_typmod?: boolean }
-        Returns: string
+        Returns: number
       }
       postgis_addbbox: {
         Args: { "": unknown }

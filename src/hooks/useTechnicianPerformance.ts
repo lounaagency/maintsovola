@@ -6,30 +6,47 @@ export const useTechnicianPerformance = (superviseurId: string) => {
   return useQuery({
     queryKey: ["technician-performance", superviseurId],
     queryFn: async (): Promise<TechnicianPerformance[]> => {
-      const { data, error } = await supabase
+      // Récupérer les techniciens avec leurs projets et jalons
+      const { data: techniciensData, error: techError } = await supabase
         .from("utilisateur")
         .select(`
           id_utilisateur,
           nom,
           prenoms,
-          role!inner(nom_role),
-          projet!projet_id_technicien_fkey(
-            id_projet,
-            id_superviseur,
-            jalon_projet(
-              statut,
-              date_previsionnelle,
-              date_reelle
-            )
-          )
+          role!inner(nom_role)
         `)
-        .eq("role.nom_role", "technicien")
-        .eq("projet.id_superviseur", superviseurId);
+        .eq("role.nom_role", "technicien");
 
-      if (error) throw error;
+      if (techError) throw techError;
 
-      return (data || []).map(technicien => {
-        const projets = technicien.projet || [];
+      // Pour chaque technicien, récupérer ses projets sous ce superviseur
+      const techniciensWithProjects = await Promise.all(
+        (techniciensData || []).map(async (technicien) => {
+          const { data: projetsData, error: projetsError } = await supabase
+            .from("projet")
+            .select(`
+              id_projet,
+              jalon_projet(
+                statut,
+                date_previsionnelle,
+                date_reelle,
+                rapport_jalon
+              )
+            `)
+            .eq("id_technicien", technicien.id_utilisateur)
+            .eq("id_superviseur", superviseurId);
+
+          if (projetsError) throw projetsError;
+
+          return {
+            ...technicien,
+            projets: projetsData || []
+          };
+        })
+      );
+
+      return techniciensWithProjects.map(technicien => {
+        const projets = technicien.projets || [];
         const tachesTotales = projets.reduce((acc, p) => acc + (p.jalon_projet?.length || 0), 0);
         const tachesCompletes = projets.reduce((acc, p) => 
           acc + (p.jalon_projet?.filter(j => j.statut === "Terminé").length || 0), 0);
@@ -39,7 +56,26 @@ export const useTechnicianPerformance = (superviseurId: string) => {
             new Date(j.date_previsionnelle) < new Date()
           ).length || 0), 0);
 
+        // Calculer la qualité des rapports basée sur les rapports non vides
+        const rapportsRemplis = projets.reduce((acc, p) => 
+          acc + (p.jalon_projet?.filter(j => j.rapport_jalon && j.rapport_jalon.trim() !== "").length || 0), 0);
+        const qualiteRapports = tachesTotales > 0 ? Math.round((rapportsRemplis / tachesTotales) * 100) : 0;
+
+        // Calculer présences basées sur les jalons des 7 derniers jours
+        const septDerniersJours = new Date();
+        septDerniersJours.setDate(septDerniersJours.getDate() - 7);
+        const activitesRecentes = projets.reduce((acc, p) => 
+          acc + (p.jalon_projet?.filter(j => 
+            j.date_reelle && new Date(j.date_reelle) >= septDerniersJours
+          ).length || 0), 0);
+
         const tauxCompletion = tachesTotales > 0 ? (tachesCompletes / tachesTotales) * 100 : 0;
+
+        // Dernière activité basée sur le jalon le plus récent
+        const derniereActivite = projets
+          .flatMap(p => p.jalon_projet || [])
+          .filter(j => j.date_reelle)
+          .sort((a, b) => new Date(b.date_reelle!).getTime() - new Date(a.date_reelle!).getTime())[0]?.date_reelle || new Date().toISOString();
 
         return {
           id_technicien: technicien.id_utilisateur,
@@ -49,9 +85,9 @@ export const useTechnicianPerformance = (superviseurId: string) => {
           taches_completees: tachesCompletes,
           taches_en_retard: tachesEnRetard,
           taux_completion: Math.round(tauxCompletion),
-          qualite_rapports: 85, // À calculer selon critères de qualité
-          derniere_activite: new Date().toISOString(),
-          presences_semaine: 5 // Mock data - à implémenter selon système de présence
+          qualite_rapports: qualiteRapports,
+          derniere_activite: derniereActivite,
+          presences_semaine: Math.min(5, activitesRecentes) // Max 5 jours de travail par semaine
         };
       });
     },
