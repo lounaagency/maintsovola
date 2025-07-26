@@ -238,7 +238,7 @@ const ConversationList: React.FC<ConversationListProps> = ({
         supabase.removeChannel(channel);
       };
     }
-  }, [userId, fetchConversations]);
+  }, [userId]); // Removed fetchConversations from dependency array to prevent multiple subscriptions
   useEffect(() => {
     if (searchQuery) {
       const filtered = conversations.filter(conversation => conversation.user?.name.toLowerCase().includes(searchQuery.toLowerCase()) || conversation.lastMessage?.text && conversation.lastMessage.text.toLowerCase().includes(searchQuery.toLowerCase()));
