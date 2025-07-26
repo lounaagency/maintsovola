@@ -112,16 +112,8 @@ const ProfileTabs: React.FC<ProfileTabsProps> = ({
     }
     
     if (userRole === 'superviseur') {
-      return (
-        <TabsList className="grid grid-cols-6 mb-4">
-          <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
-          <TabsTrigger value="carte">Carte</TabsTrigger>
-          <TabsTrigger value="techniciens">Techniciens</TabsTrigger>
-          <TabsTrigger value="logistique">Logistique</TabsTrigger>
-          <TabsTrigger value="alertes">Alertes</TabsTrigger>
-          <TabsTrigger value="kpi">KPI</TabsTrigger>
-        </TabsList>
-      );
+      // Pas de barre d'onglets pour superviseur - géré par SuperviseurDashboard
+      return null;
     }
     
     // Utilisateurs simples (défaut)
@@ -287,6 +279,15 @@ const ProfileTabs: React.FC<ProfileTabsProps> = ({
     return 'investments';
   };
   
+  // Pour superviseur, pas besoin de Tabs wrapper
+  if (userRole === 'superviseur') {
+    return (
+      <div className="mt-6">
+        {renderTabsContent()}
+      </div>
+    );
+  }
+
   return (
     <Tabs defaultValue={getDefaultValue()} className="mt-6">
       {renderTabsList()}
