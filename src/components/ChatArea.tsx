@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { ConversationMessage } from "@/types/message";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { fr } from "date-fns/locale";
 import UserAvatar from "./UserAvatar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { v4 as uuidv4 } from 'uuid';
+import { useRealtimeChannels } from '@/hooks/useRealtimeChannels';
 
 interface ChatAreaProps {
   userId: string;
@@ -177,28 +178,41 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   useEffect(() => {
     scrollToBottom();
   }, [currentMessages]);
+  // Configure realtime channels for messages
+  const channelConfigs = useMemo(() => {
+    if (!conversation) return [];
+    return [
+      {
+        table: 'message',
+        event: 'INSERT',
+        filter: `id_conversation=eq.${conversation.id_conversation}`,
+        callback: (payload: any) => {
+          if (payload.new && payload.new.id_expediteur !== userId) {
+            fetchMessages(conversation.id_conversation);
+          }
+          if (payload.new && payload.new.id_destinataire === userId) {
+            markMessagesAsRead(conversation.id_conversation);
+          }
+        }
+      }
+    ];
+  }, [conversation, userId, fetchMessages, markMessagesAsRead]);
+
+  // Use the centralized realtime hook
+  useRealtimeChannels({
+    userId,
+    channelType: 'messages',
+    conversationId: conversation?.id_conversation,
+    configs: channelConfigs
+  });
+
+  // Initial fetch and setup when conversation changes
   useEffect(() => {
     if (conversation) {
       fetchMessages(conversation.id_conversation);
       markMessagesAsRead(conversation.id_conversation);
-      const channel = supabase.channel(`messages-${conversation.id_conversation}`).on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'message',
-        filter: `id_conversation=eq.${conversation.id_conversation}`
-      }, payload => {
-        if (payload.new && payload.new.id_expediteur !== userId) {
-          fetchMessages(conversation.id_conversation);
-        }
-        if (payload.new && payload.new.id_destinataire === userId) {
-          markMessagesAsRead(conversation.id_conversation);
-        }
-      }).subscribe();
-      return () => {
-        supabase.removeChannel(channel);
-      };
     }
-  }, [conversation, fetchMessages, markMessagesAsRead, userId]);
+  }, [conversation, fetchMessages, markMessagesAsRead]);
   if (!conversation) {
     return <div className="flex items-center justify-center h-full">
         <div className="text-center p-8">

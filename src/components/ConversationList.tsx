@@ -11,6 +11,7 @@ import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import { markMessagesAsRead } from '@/lib/messagerie';
 import { useUnreadMessagesCount } from '@/hooks/use-unread-messages';
+import { useRealtimeChannels } from '@/hooks/useRealtimeChannels';
 
 interface ConversationListProps {
   userId: string;
@@ -29,7 +30,6 @@ const ConversationList: React.FC<ConversationListProps> = ({
   const [isSearchingUser, setIsSearchingUser] = useState(false);
   const [userSearchQuery, setUserSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
-  const subscriptionRef = useRef<any>(null);
   
   const { fetchUnreadCount } = useUnreadMessagesCount(userId);
 
@@ -238,89 +238,48 @@ const ConversationList: React.FC<ConversationListProps> = ({
     }
   };
 
-  // Set up subscription with proper cleanup
-  useEffect(() => {
-    if (!userId) return;
-
-    let isMounted = true;
-
-    // Clean up existing subscription if it exists
-    if (subscriptionRef.current) {
-      console.log("Cleaning up existing subscription");
-      supabase.removeChannel(subscriptionRef.current);
-      subscriptionRef.current = null;
+  // Configure realtime channels for conversations
+  const channelConfigs = useMemo(() => [
+    {
+      table: 'message',
+      event: '*',
+      filter: `id_destinataire=eq.${userId}`,
+      callback: (payload: any) => {
+        console.log('Message update received:', payload);
+        fetchConversations();
+      }
+    },
+    {
+      table: 'conversation',
+      event: '*',
+      filter: `id_utilisateur1=eq.${userId}`,
+      callback: (payload: any) => {
+        console.log('Conversation update received:', payload);
+        fetchConversations();
+      }
+    },
+    {
+      table: 'conversation',
+      event: '*',
+      filter: `id_utilisateur2=eq.${userId}`,
+      callback: (payload: any) => {
+        console.log('Conversation update received:', payload);
+        fetchConversations();
+      }
     }
+  ], [userId, fetchConversations]);
 
-    // Fetch conversations initially
+  // Use the centralized realtime hook
+  useRealtimeChannels({
+    userId,
+    channelType: 'conversations',
+    configs: channelConfigs
+  });
+
+  // Initial fetch of conversations
+  useEffect(() => {
     fetchConversations();
-
-    // Create new subscription with a unique channel name
-    const channelName = `conversation-updates-${userId}-${Date.now()}`;
-    
-    const setupSubscription = async () => {
-      try {
-        const channel = supabase
-          .channel(channelName)
-          .on('postgres_changes', {
-            event: '*',
-            schema: 'public',
-            table: 'message',
-            filter: `id_destinataire=eq.${userId}`
-          }, (payload) => {
-            console.log('Message update received:', payload);
-            if (isMounted) {
-              fetchConversations();
-            }
-          })
-          .on('postgres_changes', {
-            event: '*',
-            schema: 'public',
-            table: 'conversation',
-            filter: `id_utilisateur1=eq.${userId}`
-          }, (payload) => {
-            console.log('Conversation update received:', payload);
-            if (isMounted) {
-              fetchConversations();
-            }
-          })
-          .on('postgres_changes', {
-            event: '*',
-            schema: 'public',
-            table: 'conversation',
-            filter: `id_utilisateur2=eq.${userId}`
-          }, (payload) => {
-            console.log('Conversation update received:', payload);
-            if (isMounted) {
-              fetchConversations();
-            }
-          });
-
-        // Subscribe to the channel
-        await channel.subscribe((status) => {
-          if (status === 'SUBSCRIBED' && isMounted) {
-            console.log('Successfully subscribed to channel:', channelName);
-            subscriptionRef.current = channel;
-          } else if (status === 'CHANNEL_ERROR') {
-            console.error('Error subscribing to channel:', channelName);
-          }
-        });
-      } catch (error) {
-        console.error('Error setting up subscription:', error);
-      }
-    };
-
-    setupSubscription();
-
-    // Cleanup function
-    return () => {
-      isMounted = false;
-      if (subscriptionRef.current) {
-        console.log("Cleaning up subscription on unmount");
-        supabase.removeChannel(subscriptionRef.current);
-        subscriptionRef.current = null;
-      }
-    };
-  }, [userId, fetchConversations]);
+  }, [fetchConversations]);
 
   useEffect(() => {
     if (searchQuery) {
