@@ -29,7 +29,7 @@ const ConversationList: React.FC<ConversationListProps> = ({
   const [isSearchingUser, setIsSearchingUser] = useState(false);
   const [userSearchQuery, setUserSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
-  const channelRef = useRef<any>(null);
+  const subscriptionRef = useRef<any>(null);
   
   const { fetchUnreadCount } = useUnreadMessagesCount(userId);
 
@@ -238,44 +238,96 @@ const ConversationList: React.FC<ConversationListProps> = ({
     }
   };
 
-  // Set up subscription only once
+  // Set up subscription with proper cleanup
   useEffect(() => {
     if (!userId) return;
 
-    // Clean up existing channel if it exists
-    if (channelRef.current) {
-      supabase.removeChannel(channelRef.current);
-      channelRef.current = null;
+    let isMounted = true;
+
+    // Clean up existing subscription if it exists
+    if (subscriptionRef.current) {
+      console.log("Cleaning up existing subscription");
+      supabase.removeChannel(subscriptionRef.current);
+      subscriptionRef.current = null;
     }
 
     // Fetch conversations initially
     fetchConversations();
 
-    // Create new channel and store reference
-    channelRef.current = supabase
-      .channel('conversation-updates')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'message',
-        filter: `id_destinataire=eq.${userId}`
-      }, () => {
-        fetchConversations();
-      })
-      .subscribe();
+    // Create new subscription with a unique channel name
+    const channelName = `conversation-updates-${userId}-${Date.now()}`;
+    
+    const setupSubscription = async () => {
+      try {
+        const channel = supabase
+          .channel(channelName)
+          .on('postgres_changes', {
+            event: '*',
+            schema: 'public',
+            table: 'message',
+            filter: `id_destinataire=eq.${userId}`
+          }, (payload) => {
+            console.log('Message update received:', payload);
+            if (isMounted) {
+              fetchConversations();
+            }
+          })
+          .on('postgres_changes', {
+            event: '*',
+            schema: 'public',
+            table: 'conversation',
+            filter: `id_utilisateur1=eq.${userId}`
+          }, (payload) => {
+            console.log('Conversation update received:', payload);
+            if (isMounted) {
+              fetchConversations();
+            }
+          })
+          .on('postgres_changes', {
+            event: '*',
+            schema: 'public',
+            table: 'conversation',
+            filter: `id_utilisateur2=eq.${userId}`
+          }, (payload) => {
+            console.log('Conversation update received:', payload);
+            if (isMounted) {
+              fetchConversations();
+            }
+          });
+
+        // Subscribe to the channel
+        const subscriptionStatus = await channel.subscribe();
+        
+        if (subscriptionStatus === 'SUBSCRIBED' && isMounted) {
+          console.log('Successfully subscribed to channel:', channelName);
+          subscriptionRef.current = channel;
+        } else if (subscriptionStatus === 'CHANNEL_ERROR') {
+          console.error('Error subscribing to channel:', channelName);
+        }
+      } catch (error) {
+        console.error('Error setting up subscription:', error);
+      }
+    };
+
+    setupSubscription();
 
     // Cleanup function
     return () => {
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
+      isMounted = false;
+      if (subscriptionRef.current) {
+        console.log("Cleaning up subscription on unmount");
+        supabase.removeChannel(subscriptionRef.current);
+        subscriptionRef.current = null;
       }
     };
   }, [userId, fetchConversations]);
 
   useEffect(() => {
     if (searchQuery) {
-      const filtered = conversations.filter(conversation => conversation.user?.name.toLowerCase().includes(searchQuery.toLowerCase()) || conversation.lastMessage?.text && conversation.lastMessage.text.toLowerCase().includes(searchQuery.toLowerCase()));
+      const filtered = conversations.filter(conversation => 
+        conversation.user?.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        (conversation.lastMessage?.text && conversation.lastMessage.text.toLowerCase().includes(searchQuery.toLowerCase()))
+      );
       setFilteredConversations(filtered);
     } else {
       setFilteredConversations(conversations);
