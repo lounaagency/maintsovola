@@ -296,14 +296,14 @@ const ConversationList: React.FC<ConversationListProps> = ({
           });
 
         // Subscribe to the channel
-        const subscriptionStatus = await channel.subscribe();
-        
-        if (subscriptionStatus === 'SUBSCRIBED' && isMounted) {
-          console.log('Successfully subscribed to channel:', channelName);
-          subscriptionRef.current = channel;
-        } else if (subscriptionStatus === 'CHANNEL_ERROR') {
-          console.error('Error subscribing to channel:', channelName);
-        }
+        await channel.subscribe((status) => {
+          if (status === 'SUBSCRIBED' && isMounted) {
+            console.log('Successfully subscribed to channel:', channelName);
+            subscriptionRef.current = channel;
+          } else if (status === 'CHANNEL_ERROR') {
+            console.error('Error subscribing to channel:', channelName);
+          }
+        });
       } catch (error) {
         console.error('Error setting up subscription:', error);
       }
