@@ -238,36 +238,32 @@ const ConversationList: React.FC<ConversationListProps> = ({
     }
   };
 
-  // Configure realtime channels for conversations
+  // Stable callback for fetchConversations
+  const stableFetchConversations = useCallback(() => {
+    fetchConversations();
+  }, [fetchConversations]);
+
+  // Configure realtime channels for conversations - stable callbacks
   const channelConfigs = useMemo(() => [
     {
       table: 'message',
       event: '*',
       filter: `id_destinataire=eq.${userId}`,
-      callback: (payload: any) => {
-        console.log('Message update received:', payload);
-        fetchConversations();
-      }
+      callback: stableFetchConversations
     },
     {
       table: 'conversation',
       event: '*',
       filter: `id_utilisateur1=eq.${userId}`,
-      callback: (payload: any) => {
-        console.log('Conversation update received:', payload);
-        fetchConversations();
-      }
+      callback: stableFetchConversations
     },
     {
       table: 'conversation',
       event: '*',
       filter: `id_utilisateur2=eq.${userId}`,
-      callback: (payload: any) => {
-        console.log('Conversation update received:', payload);
-        fetchConversations();
-      }
+      callback: stableFetchConversations
     }
-  ], [userId, fetchConversations]);
+  ], [userId, stableFetchConversations]);
 
   // Use the centralized realtime hook
   useRealtimeChannels({

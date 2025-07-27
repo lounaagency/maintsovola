@@ -1,6 +1,5 @@
-import { useEffect, useRef } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { RealtimeChannel } from '@supabase/supabase-js';
+import { useEffect, useRef, useCallback } from 'react';
+import { channelManager } from '@/utils/ChannelManager';
 import { getPlatform } from '@/utils/deviceDetection';
 
 interface ChannelConfig {
@@ -23,85 +22,74 @@ export const useRealtimeChannels = ({
   conversationId,
   configs
 }: UseRealtimeChannelsProps) => {
-  const channelsRef = useRef<RealtimeChannel[]>([]);
   const isMountedRef = useRef(true);
-  const isSubscribingRef = useRef(false);
+  const currentChannelKeyRef = useRef<string | null>(null);
+  const callbacksRef = useRef(configs);
 
-  // Effect to setup and cleanup channels
-  useEffect(() => {
-    const setupChannels = async () => {
-      if (!userId || !isMountedRef.current || isSubscribingRef.current) return;
+  // Update callbacks ref when configs change
+  callbacksRef.current = configs;
+
+  // Create stable channel key
+  const createChannelKey = useCallback(() => {
+    const channelId = channelType === 'conversations' ? userId : conversationId;
+    if (!channelId) return null;
+    
+    const platform = getPlatform();
+    return `${platform}-${channelType}-${channelId}`;
+  }, [userId, channelType, conversationId]);
+
+  // Stable setup function
+  const setupChannel = useCallback(async () => {
+    if (!userId || !isMountedRef.current) return;
+
+    const channelKey = createChannelKey();
+    if (!channelKey) return;
+
+    // Don't recreate if same channel key
+    if (currentChannelKeyRef.current === channelKey) return;
+
+    // Clean up previous channel
+    if (currentChannelKeyRef.current) {
+      channelManager.removeChannel(currentChannelKeyRef.current);
+    }
+
+    try {
+      // Create configs with stable callbacks
+      const stableConfigs = callbacksRef.current.map(config => ({
+        ...config,
+        callback: (payload: any) => {
+          if (isMountedRef.current) {
+            config.callback(payload);
+          }
+        }
+      }));
+
+      const channel = await channelManager.getOrCreateChannel(channelKey, stableConfigs);
       
-      // Clean up existing channels first
-      if (channelsRef.current.length > 0) {
-        channelsRef.current.forEach(channel => {
-          try {
-            supabase.removeChannel(channel);
-          } catch (error) {
-            console.error('Error removing channel:', error);
-          }
-        });
-        channelsRef.current = [];
+      if (channel && isMountedRef.current) {
+        currentChannelKeyRef.current = channelKey;
       }
+    } catch (error) {
+      console.error(`Error setting up ${channelType} channel:`, error);
+    }
+  }, [userId, channelType, conversationId, createChannelKey]);
 
-      try {
-        isSubscribingRef.current = true;
-        const channelId = channelType === 'conversations' ? userId : conversationId;
-        if (!channelId) return;
-
-        const platform = getPlatform();
-        const channelName = `${platform}-${channelType}-${channelId}`;
-        const channel = supabase.channel(channelName);
-
-        // Add all configured listeners
-        configs.forEach(config => {
-          channel.on('postgres_changes', {
-            event: config.event as any,
-            schema: 'public',
-            table: config.table,
-            filter: config.filter
-          }, (payload) => {
-            if (isMountedRef.current) {
-              config.callback(payload);
-            }
-          });
-        });
-
-        // Subscribe to the channel
-        await channel.subscribe((status) => {
-          if (status === 'SUBSCRIBED' && isMountedRef.current) {
-            console.log(`Successfully subscribed to ${channelType} channel:`, channelName);
-            channelsRef.current.push(channel);
-          } else if (status === 'CHANNEL_ERROR') {
-            console.error(`Error subscribing to ${channelType} channel:`, channelName);
-          }
-          isSubscribingRef.current = false;
-        });
-
-      } catch (error) {
-        console.error(`Error setting up ${channelType} channels:`, error);
-        isSubscribingRef.current = false;
-      }
-    };
-
+  // Setup effect with debouncing
+  useEffect(() => {
     isMountedRef.current = true;
-    setupChannels();
+    
+    const timeoutId = setTimeout(setupChannel, 100);
 
     return () => {
+      clearTimeout(timeoutId);
       isMountedRef.current = false;
-      isSubscribingRef.current = false;
-      if (channelsRef.current.length > 0) {
-        channelsRef.current.forEach(channel => {
-          try {
-            supabase.removeChannel(channel);
-          } catch (error) {
-            console.error('Error removing channel:', error);
-          }
-        });
-        channelsRef.current = [];
+      
+      if (currentChannelKeyRef.current) {
+        channelManager.removeChannel(currentChannelKeyRef.current);
+        currentChannelKeyRef.current = null;
       }
     };
-  }, [userId, channelType, conversationId]);
+  }, [setupChannel]);
 
   return {};
 };

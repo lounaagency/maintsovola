@@ -178,7 +178,20 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   useEffect(() => {
     scrollToBottom();
   }, [currentMessages]);
-  // Configure realtime channels for messages
+  // Stable callback functions
+  const stableFetchMessages = useCallback(() => {
+    if (conversation) {
+      fetchMessages(conversation.id_conversation);
+    }
+  }, [conversation, fetchMessages]);
+
+  const stableMarkMessagesAsRead = useCallback(() => {
+    if (conversation) {
+      markMessagesAsRead(conversation.id_conversation);
+    }
+  }, [conversation, markMessagesAsRead]);
+
+  // Configure realtime channels for messages - stable callbacks
   const channelConfigs = useMemo(() => {
     if (!conversation) return [];
     return [
@@ -188,15 +201,15 @@ const ChatArea: React.FC<ChatAreaProps> = ({
         filter: `id_conversation=eq.${conversation.id_conversation}`,
         callback: (payload: any) => {
           if (payload.new && payload.new.id_expediteur !== userId) {
-            fetchMessages(conversation.id_conversation);
+            stableFetchMessages();
           }
           if (payload.new && payload.new.id_destinataire === userId) {
-            markMessagesAsRead(conversation.id_conversation);
+            stableMarkMessagesAsRead();
           }
         }
       }
     ];
-  }, [conversation, userId, fetchMessages, markMessagesAsRead]);
+  }, [conversation, userId, stableFetchMessages, stableMarkMessagesAsRead]);
 
   // Use the centralized realtime hook
   useRealtimeChannels({
