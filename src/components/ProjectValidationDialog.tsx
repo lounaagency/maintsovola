@@ -83,31 +83,13 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
     setSignedContract(file);
   };
 
-  const handleDialogInteraction = (e: React.MouseEvent) => {
-    console.log("🔄 Interaction dialog interceptée");
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
-  const handleContentKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      console.log("⌨️ Touche Entrée pressée dans le contenu");
-      e.preventDefault();
-      e.stopPropagation();
-    }
-  };
-
-  const handleCancelClick = (e: React.MouseEvent) => {
+  const handleCancelClick = () => {
     console.log("❌ Clic sur Annuler");
-    e.preventDefault();
-    e.stopPropagation();
     onClose();
   };
 
-  const handleSubmitClick = (e: React.MouseEvent) => {
+  const handleSubmitClick = () => {
     console.log("✅ Clic sur Valider/Rejeter");
-    e.preventDefault();
-    e.stopPropagation();
     handleSubmit();
   };
   
@@ -245,18 +227,14 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={undefined}>
-        <DialogContent 
-          className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto"
-          onClick={handleDialogInteraction}
-          onKeyDown={handleContentKeyDown}
-        >
+        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Validation du projet</DialogTitle>
           </DialogHeader>
           
           <ProjectSummary project={project} />
           
-          <div className="space-y-4" onClick={handleDialogInteraction}>
+          <div className="space-y-4">
             <div className="grid grid-cols-1 gap-4">
               <div>
                 <Label htmlFor="validation-date">Date de validation</Label>
@@ -265,7 +243,6 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
                   type="date"
                   value={validationDate}
                   onChange={(e) => setValidationDate(e.target.value)}
-                  onClick={(e) => e.stopPropagation()}
                 />
               </div>
               
@@ -277,7 +254,6 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
                   value={validationReport}
                   onChange={(e) => setValidationReport(e.target.value)}
                   className="min-h-[120px]"
-                  onClick={(e) => e.stopPropagation()}
                 />
               </div>
               
@@ -287,7 +263,6 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
                   value={validationDecision} 
                   onValueChange={(value) => setValidationDecision(value as "valider" | "rejetter")}
                   className="flex space-x-8"
-                  onClick={(e) => e.stopPropagation()}
                 >
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="valider" id="valider" />
@@ -310,7 +285,7 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
             </div>
             
             <div className="flex justify-between items-center">
-              <div onClick={(e) => e.stopPropagation()}>
+              <div>
                 <ContractTemplate project={project} />
               </div>
               <ContractFileUploader

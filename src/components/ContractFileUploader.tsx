@@ -20,8 +20,6 @@ const ContractFileUploader: React.FC<ContractFileUploaderProps> = ({
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     console.log("🔒 ContractFileUploader: Changement de fichier détecté");
-    e.preventDefault();
-    e.stopPropagation();
     
     const file = e.target.files?.[0];
     if (!file) {
@@ -60,23 +58,11 @@ const ContractFileUploader: React.FC<ContractFileUploaderProps> = ({
   const triggerFileSelect = (e: React.MouseEvent) => {
     console.log("🔒 ContractFileUploader: Déclenchement sélection fichier");
     e.preventDefault();
-    e.stopPropagation();
     contractFileRef.current?.click();
   };
 
-  const handleContainerClick = (e: React.MouseEvent) => {
-    console.log("🔒 ContractFileUploader: Clic sur conteneur intercepté");
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
   return (
-    <div 
-      className="space-y-2" 
-      onClick={handleContainerClick}
-      onMouseDown={(e) => e.stopPropagation()}
-      onMouseUp={(e) => e.stopPropagation()}
-    >
+    <div className="space-y-2">
       <Label>Contrat signé</Label>
       <input
         ref={contractFileRef}
@@ -84,7 +70,6 @@ const ContractFileUploader: React.FC<ContractFileUploaderProps> = ({
         accept=".pdf"
         onChange={handleFileChange}
         className="hidden"
-        onClick={(e) => e.stopPropagation()}
       />
       <Button
         type="button"
@@ -92,7 +77,6 @@ const ContractFileUploader: React.FC<ContractFileUploaderProps> = ({
         onClick={triggerFileSelect}
         disabled={isSubmitting}
         className="w-full"
-        onMouseDown={(e) => e.stopPropagation()}
       >
         {signedContract ? "Modifier le contrat" : "Choisir un fichier PDF"}
       </Button>
