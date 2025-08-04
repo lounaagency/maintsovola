@@ -115,61 +115,66 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
           )}
         </div>
         
-        <div className="flex flex-wrap justify-end gap-1">
+        <div className="flex justify-end gap-1">
           <Button 
             variant="ghost" 
-            size="sm"
-            className="hover:bg-primary/10 hover:text-primary text-xs px-2 py-1 h-auto"
+            size="icon"
+            className="hover:bg-primary/10 hover:text-primary h-7 w-7"
             onClick={() => onViewDetails(project)}
+            title="Détails"
           >
-            <Eye className="h-3 w-3 mr-1" /> Détails
+            <Eye className="h-3 w-3" />
           </Button>
           
           {project.statut === 'en attente' && (
-            <ContractTemplate project={project} className="mr-1" />
+            <ContractTemplate project={project} className="h-7 w-7" />
           )}
           
           {canEdit && onEdit && (
             <Button 
               variant="ghost" 
-              size="sm"
-              className="hover:bg-blue-50 hover:text-blue-600 text-xs px-2 py-1 h-auto"
+              size="icon"
+              className="hover:bg-blue-50 hover:text-blue-600 h-7 w-7"
               onClick={() => onEdit(project)}
+              title="Modifier"
             >
-              <FileEdit className="h-3 w-3 mr-1" /> Modifier
+              <FileEdit className="h-3 w-3" />
             </Button>
           )}
           
           {canValidate && onValidate && (
             <Button 
               variant="ghost" 
-              size="sm"
-              className="hover:bg-emerald-50 hover:text-emerald-600 text-xs px-2 py-1 h-auto"
+              size="icon"
+              className="hover:bg-emerald-50 hover:text-emerald-600 h-7 w-7"
               onClick={() => onValidate(project)}
+              title="Valider"
             >
-              <CheckCircle className="h-3 w-3 mr-1" /> Valider
+              <CheckCircle className="h-3 w-3" />
             </Button>
           )}
           
           {canLaunchProduction && onLaunchProduction && (
             <Button 
               variant="ghost" 
-              size="sm"
-              className="hover:bg-green-50 hover:text-green-600 text-xs px-2 py-1 h-auto"
+              size="icon"
+              className="hover:bg-green-50 hover:text-green-600 h-7 w-7"
               onClick={() => onLaunchProduction(project)}
+              title="Lancer"
             >
-              <Play className="h-3 w-3 mr-1" /> Lancer
+              <Play className="h-3 w-3" />
             </Button>
           )}
           
           {canDelete && onDelete && (
             <Button 
               variant="ghost" 
-              size="sm"
-              className="text-destructive hover:text-destructive/90 hover:bg-destructive/10 text-xs px-2 py-1 h-auto"
+              size="icon"
+              className="text-destructive hover:text-destructive/90 hover:bg-destructive/10 h-7 w-7"
               onClick={() => onDelete(project)}
+              title="Supprimer"
             >
-              <Trash2 className="h-3 w-3 mr-1" /> Supprimer
+              <Trash2 className="h-3 w-3" />
             </Button>
           )}
         </div>

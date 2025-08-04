@@ -153,7 +153,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
   // Mobile view - display as cards
   if (isMobile) {
     return (
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 gap-2">
         {sortedTerrains.map((terrain) => (
           <TerrainListCard
             key={terrain.id_terrain || Math.random()}

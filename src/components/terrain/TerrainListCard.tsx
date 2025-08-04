@@ -154,59 +154,64 @@ const TerrainListCard: React.FC<TerrainListCardProps> = ({
           )}
         </div>
         
-        <div className="flex flex-wrap justify-end gap-1">
+        <div className="flex justify-end gap-1">
           {onViewDetails && (
             <Button 
               variant="ghost" 
-              size="sm"
-              className="hover:bg-primary/10 hover:text-primary text-xs px-2 py-1 h-auto"
+              size="icon"
+              className="hover:bg-primary/10 hover:text-primary h-7 w-7"
               onClick={() => onViewDetails(terrain)}
+              title="Détails"
             >
-              <Eye className="h-3 w-3 mr-1" /> Détails
+              <Eye className="h-3 w-3" />
             </Button>
           )}
           
           {canEdit && onEdit && (
             <Button 
               variant="ghost" 
-              size="sm"
-              className="hover:bg-blue-50 hover:text-blue-600 text-xs px-2 py-1 h-auto"
+              size="icon"
+              className="hover:bg-blue-50 hover:text-blue-600 h-7 w-7"
               onClick={() => onEdit(terrain)}
+              title="Modifier"
             >
-              <Edit className="h-3 w-3 mr-1" /> Modifier
+              <Edit className="h-3 w-3" />
             </Button>
           )}
           
           {canValidate && onValidate && (
             <Button 
               variant="ghost" 
-              size="sm"
-              className="hover:bg-emerald-50 hover:text-emerald-600 text-xs px-2 py-1 h-auto"
+              size="icon"
+              className="hover:bg-emerald-50 hover:text-emerald-600 h-7 w-7"
               onClick={() => onValidate(terrain)}
+              title="Valider"
             >
-              <ShieldCheck className="h-3 w-3 mr-1" /> Valider
+              <ShieldCheck className="h-3 w-3" />
             </Button>
           )}
           
           {canContact && (
             <Button 
               variant="ghost" 
-              size="sm"
-              className="hover:bg-orange-50 hover:text-orange-600 text-xs px-2 py-1 h-auto"
+              size="icon"
+              className="hover:bg-orange-50 hover:text-orange-600 h-7 w-7"
               onClick={() => onContactTechnicien!(terrain)}
+              title="Contacter"
             >
-              <Clock className="h-3 w-3 mr-1" /> Contacter
+              <Clock className="h-3 w-3" />
             </Button>
           )}
           
           {canDelete && onDelete && (
             <Button 
               variant="ghost" 
-              size="sm"
-              className="text-destructive hover:text-destructive/90 hover:bg-destructive/10 text-xs px-2 py-1 h-auto"
+              size="icon"
+              className="text-destructive hover:text-destructive/90 hover:bg-destructive/10 h-7 w-7"
               onClick={() => onDelete(terrain)}
+              title="Supprimer"
             >
-              <Trash2 className="h-3 w-3 mr-1" /> Supprimer
+              <Trash2 className="h-3 w-3" />
             </Button>
           )}
         </div>
