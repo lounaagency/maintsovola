@@ -1,6 +1,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useRealtimeChannels } from "./useRealtimeChannels";
 
 export const useUnreadMessagesCount = (userId?: string) => {
   const [unreadCount, setUnreadCount] = useState(0);
@@ -28,32 +29,30 @@ export const useUnreadMessagesCount = (userId?: string) => {
     setUnreadCount(prev => Math.max(0, prev - amount));
   }, []);
   
-  useEffect(() => {
-    if (!userId) return;
-    
-    // Initial call
-    fetchUnreadCount();
-    
-    // Setup real-time subscription for new messages
-    const channel = supabase
-      .channel('unread-messages')
-      .on('postgres_changes', {
+  // Setup real-time subscription using centralized channel manager
+  useRealtimeChannels({
+    userId: userId || '',
+    channelType: 'messages',
+    configs: userId ? [
+      {
+        table: 'message',
         event: 'INSERT',
-        schema: 'public',
-        table: 'message',
-        filter: `id_destinataire=eq.${userId}`
-      }, fetchUnreadCount)
-      .on('postgres_changes', {
+        filter: `id_destinataire=eq.${userId}`,
+        callback: fetchUnreadCount
+      },
+      {
+        table: 'message', 
         event: 'UPDATE',
-        schema: 'public',
-        table: 'message',
-        filter: `id_destinataire=eq.${userId} AND lu=eq.true`
-      }, fetchUnreadCount)
-      .subscribe();
-    
-    return () => {
-      supabase.removeChannel(channel);
-    };
+        filter: `id_destinataire=eq.${userId}`,
+        callback: fetchUnreadCount
+      }
+    ] : []
+  });
+  
+  useEffect(() => {
+    if (userId) {
+      fetchUnreadCount();
+    }
   }, [userId, fetchUnreadCount]);
   
   return { unreadCount, fetchUnreadCount, decrementCount };
