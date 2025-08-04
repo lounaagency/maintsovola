@@ -23,10 +23,6 @@ const FinancialDetailsDialog: React.FC<FinancialDetailsDialogProps> = ({
 }) => {
   const [sortField, setSortField] = useState<string>('culture');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
-
-  if (!projectCultures || projectCultures.length === 0) {
-    return null;
-  }
   
   const handleOpenChange = (open: boolean) => {
     if (!open) {
@@ -51,6 +47,9 @@ const FinancialDetailsDialog: React.FC<FinancialDetailsDialogProps> = ({
   };
 
   const sortedCultures = useMemo(() => {
+    if (!projectCultures || projectCultures.length === 0) {
+      return [];
+    }
     return [...projectCultures].sort((a, b) => {
       let aValue: any, bValue: any;
       
@@ -96,6 +95,9 @@ const FinancialDetailsDialog: React.FC<FinancialDetailsDialogProps> = ({
   }, [projectCultures, sortField, sortDirection]);
 
   const totals = useMemo(() => {
+    if (!projectCultures || projectCultures.length === 0) {
+      return { cout: 0, revenu: 0, benefice: 0 };
+    }
     return projectCultures.reduce((acc, culture) => {
       const cout = culture.cout_exploitation_previsionnel || culture.culture?.cout_exploitation_ha || 0;
       const revenu = calculateEstimatedRevenue(
@@ -115,6 +117,25 @@ const FinancialDetailsDialog: React.FC<FinancialDetailsDialogProps> = ({
     if (sortField !== field) return null;
     return sortDirection === 'asc' ? '↑' : '↓';
   };
+
+  // Afficher un état vide si pas de données
+  if (!projectCultures || projectCultures.length === 0) {
+    return (
+      <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Calculator className="h-6 w-6 text-primary" />
+              {title}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-8 text-center text-muted-foreground">
+            Aucune donnée financière disponible pour ce projet.
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
