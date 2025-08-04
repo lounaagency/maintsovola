@@ -137,12 +137,22 @@ const Projects = () => {
 
       <Tabs defaultValue="en_attente" value={activeTab} onValueChange={handleTabChange} className={isMobile ? "space-y-4" : ""}>
         <div className={isMobile ? "sticky top-0 z-10 bg-background pt-2 pb-4" : ""}>
-          <TabsList className={isMobile ? "w-full grid grid-cols-5" : "grid grid-cols-5 w-full sm:w-auto"}>
-            <TabsTrigger value="en_attente">En attente</TabsTrigger>
-            <TabsTrigger value="en_financement_100">Financement 100%</TabsTrigger>
-            <TabsTrigger value="en_financement">Levée de fonds</TabsTrigger>
-            <TabsTrigger value="en_cours">En production</TabsTrigger>
-            <TabsTrigger value="terminé">Terminés</TabsTrigger>
+          <TabsList className={isMobile ? "w-full grid grid-cols-5 text-xs" : "grid grid-cols-5 w-full sm:w-auto"}>
+            <TabsTrigger value="en_attente" className={isMobile ? "px-2 py-1 text-xs" : ""}>
+              {isMobile ? "Attente" : "En attente"}
+            </TabsTrigger>
+            <TabsTrigger value="en_financement" className={isMobile ? "px-2 py-1 text-xs" : ""}>
+              {isMobile ? "Levée" : "Levée de fonds"}
+            </TabsTrigger>
+            <TabsTrigger value="en_financement_100" className={isMobile ? "px-2 py-1 text-xs" : ""}>
+              {isMobile ? "Financé" : "Financement 100%"}
+            </TabsTrigger>
+            <TabsTrigger value="en_cours" className={isMobile ? "px-2 py-1 text-xs" : ""}>
+              {isMobile ? "Production" : "En production"}
+            </TabsTrigger>
+            <TabsTrigger value="terminé" className={isMobile ? "px-2 py-1 text-xs" : ""}>
+              Terminés
+            </TabsTrigger>
           </TabsList>
         </div>
                
@@ -150,19 +160,19 @@ const Projects = () => {
           <ProjectTable filter={search} statutFilter="en attente" />
         </TabsContent>
         
-        <TabsContent value="en_financement_100" className="mt-4">
-          <ProjectTable 
-            filter={search} 
-            statutFilter="en financement" 
-            fundingStatus="completed" 
-          />
-        </TabsContent>
-        
         <TabsContent value="en_financement" className="mt-4">
           <ProjectTable 
             filter={search} 
             statutFilter="en financement" 
             fundingStatus="in_progress" 
+          />
+        </TabsContent>
+        
+        <TabsContent value="en_financement_100" className="mt-4">
+          <ProjectTable 
+            filter={search} 
+            statutFilter="en financement" 
+            fundingStatus="completed" 
           />
         </TabsContent>
         
