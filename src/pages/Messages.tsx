@@ -24,7 +24,18 @@ const Messages: React.FC = () => {
         
         {/* Chat Area */}
         <div className={`${selectedConversation ? 'flex' : 'hidden md:flex'} flex-col flex-1 bg-background h-full`}>
-          <ChatArea userId={user.id} conversation={selectedConversation} onBack={() => setSelectedConversation(null)} />
+          <ChatArea 
+            userId={user.id} 
+            conversation={selectedConversation} 
+            onBack={() => setSelectedConversation(null)}
+            onMessageSent={() => {
+              // Force refresh of conversations list
+              const conversationListElement = document.querySelector('[data-conversation-list]');
+              if (conversationListElement) {
+                (conversationListElement as any).refreshConversations?.();
+              }
+            }}
+          />
         </div>
       </div>
     </TooltipProvider>;

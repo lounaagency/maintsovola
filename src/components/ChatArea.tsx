@@ -16,12 +16,14 @@ interface ChatAreaProps {
   userId: string;
   conversation: ConversationMessage | null;
   onBack: () => void;
+  onMessageSent?: () => void;
 }
 
 const ChatArea: React.FC<ChatAreaProps> = ({
   userId,
   conversation,
-  onBack
+  onBack,
+  onMessageSent
 }) => {
   const [currentMessages, setCurrentMessages] = useState<ConversationMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
@@ -141,6 +143,9 @@ const ChatArea: React.FC<ChatAreaProps> = ({
       await supabase.from('conversation').update({
         derniere_activite: new Date().toISOString()
       }).eq('id_conversation', conversation.id_conversation);
+
+      // Notifier le parent que le message a été envoyé
+      onMessageSent?.();
     } catch (error) {
       console.error("Error sending message:", error);
     } finally {
@@ -245,11 +250,10 @@ const ChatArea: React.FC<ChatAreaProps> = ({
         <Button variant="ghost" size="icon" className="md:hidden mr-2" onClick={onBack}>
           <ArrowLeftCircle className="h-5 w-5" />
         </Button>
-        <UserAvatar src={conversation.other_user?.photo_profil} alt={conversation.other_user?.nom || ""} size="sm" />
+        <UserAvatar src={conversation.user?.photo_profil} alt={conversation.user?.name || ""} size="sm" />
         <div className="ml-3">
           <h3 className="font-semibold">
-            {conversation.other_user?.nom} 
-            {conversation.other_user?.prenoms && ` ${conversation.other_user.prenoms}`}
+            {conversation.user?.name}
           </h3>
         </div>
       </div>

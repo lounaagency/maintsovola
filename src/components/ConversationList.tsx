@@ -61,9 +61,23 @@ const ConversationList: React.FC<ConversationListProps> = ({
         return;
       }
 
-      const formattedConversations: ConversationMessage[] = [];
-
+      // Groupe les conversations par utilisateur (garder seulement la plus récente pour chaque utilisateur)
+      const userConversationMap = new Map<string, any>();
+      
       for (const conv of conversationsData) {
+        const otherUserId = conv.id_utilisateur1 === userId ? conv.id_utilisateur2 : conv.id_utilisateur1;
+        
+        // Ne garder que la conversation la plus récente pour chaque utilisateur
+        if (!userConversationMap.has(otherUserId) || 
+            new Date(conv.derniere_activite) > new Date(userConversationMap.get(otherUserId).derniere_activite)) {
+          userConversationMap.set(otherUserId, conv);
+        }
+      }
+
+      const formattedConversations: ConversationMessage[] = [];
+      const uniqueConversations = Array.from(userConversationMap.values());
+
+      for (const conv of uniqueConversations) {
         // Determine the other user in the conversation
         const otherUserId = conv.id_utilisateur1 === userId ? conv.id_utilisateur2 : conv.id_utilisateur1;
 
@@ -128,6 +142,13 @@ const ConversationList: React.FC<ConversationListProps> = ({
           unread: unreadCount || 0
         });
       }
+
+      // Tri par ordre chronologique (plus récent en premier)
+      formattedConversations.sort((a, b) => {
+        const dateA = new Date(a.timestamp || 0);
+        const dateB = new Date(b.timestamp || 0);
+        return dateB.getTime() - dateA.getTime();
+      });
 
       setConversations(formattedConversations);
       setFilteredConversations(formattedConversations);
@@ -319,8 +340,16 @@ const ConversationList: React.FC<ConversationListProps> = ({
     ));
   }, [filteredConversations, selectedConversation, handleSelectConversation]);
 
+  // Expose refresh function to parent
+  useEffect(() => {
+    const element = document.querySelector('[data-conversation-list]');
+    if (element) {
+      (element as any).refreshConversations = fetchConversations;
+    }
+  }, [fetchConversations]);
+
   return (
-    <div className="h-full flex flex-col messenger-sidebar">
+    <div className="h-full flex flex-col messenger-sidebar" data-conversation-list>
       {/* Header with Search */}
       <div className="p-4 border-b border-border/30">
         <div className="flex items-center justify-between mb-4">
