@@ -82,10 +82,17 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
   };
 
   const handleContractFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log("📁 Changement de fichier contrat détecté");
     e.preventDefault();
+    e.stopPropagation();
     
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      console.log("❌ Aucun fichier sélectionné");
+      return;
+    }
+    
+    console.log("📄 Fichier sélectionné:", file.name, file.type, file.size);
     
     // Validation du type de fichier
     if (file.type !== 'application/pdf') {
@@ -106,16 +113,46 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
     }
     
     setSignedContract(file);
+    console.log("✅ Contrat signé ajouté avec succès");
     toast.success("Contrat signé ajouté avec succès");
   };
 
   const handleFormSubmit = (e: React.FormEvent) => {
+    console.log("📋 Soumission de formulaire interceptée");
     e.preventDefault();
-    handleSubmit();
+    e.stopPropagation();
+    // Ne pas déclencher handleSubmit automatiquement
   };
 
-  const triggerContractUpload = () => {
+  const handleFormKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      console.log("⌨️ Touche Entrée pressée dans le formulaire");
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  };
+
+  const triggerContractUpload = (e?: React.MouseEvent) => {
+    console.log("🖱️ Déclenchement upload contrat");
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     contractFileRef.current?.click();
+  };
+
+  const handleCancelClick = (e: React.MouseEvent) => {
+    console.log("❌ Clic sur Annuler");
+    e.preventDefault();
+    e.stopPropagation();
+    onClose();
+  };
+
+  const handleSubmitClick = (e: React.MouseEvent) => {
+    console.log("✅ Clic sur Valider/Rejeter");
+    e.preventDefault();
+    e.stopPropagation();
+    handleSubmit();
   };
   
   const handleSubmit = async () => {
@@ -264,7 +301,7 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
           
           <ProjectSummary project={project} />
           
-          <form onSubmit={handleFormSubmit} className="space-y-4">
+          <form onSubmit={handleFormSubmit} onKeyDown={handleFormKeyDown} className="space-y-4">
             <div className="grid grid-cols-1 gap-4">
               <div>
                 <Label htmlFor="validation-date">Date de validation</Label>
@@ -320,7 +357,7 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
               </div>
               <div className="space-y-2">
                 <Label>Contrat signé</Label>
-                <div className="space-y-2">
+                <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
                   <input
                     ref={contractFileRef}
                     type="file"
@@ -350,34 +387,35 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
                 </div>
               </div>
             </div>
+
+            {/* Boutons déplacés À L'INTÉRIEUR du formulaire pour éviter les soumissions implicites */}
+            <div className="flex justify-end space-x-2 mt-6 pt-4 border-t">
+              <Button 
+                type="button"
+                variant="outline" 
+                onClick={handleCancelClick} 
+                disabled={isSubmitting}
+              >
+                Annuler
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSubmitClick}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Traitement...
+                  </>
+                ) : validationDecision === "valider" ? (
+                  "Valider le projet"
+                ) : (
+                  "Rejeter le projet"
+                )}
+              </Button>
+            </div>
           </form>
-          
-          <DialogFooter className="mt-6">
-            <Button 
-              type="button"
-              variant="outline" 
-              onClick={onClose} 
-              disabled={isSubmitting}
-            >
-              Annuler
-            </Button>
-            <Button
-              type="button"
-              onClick={handleSubmit}
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Traitement...
-                </>
-              ) : validationDecision === "valider" ? (
-                "Valider le projet"
-              ) : (
-                "Rejeter le projet"
-              )}
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
       
