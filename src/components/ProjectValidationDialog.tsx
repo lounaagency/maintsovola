@@ -40,6 +40,7 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [showRejectConfirmation, setShowRejectConfirmation] = useState(false);
   const [signedContract, setSignedContract] = useState<File | null>(null);
+  const contractFileRef = useRef<HTMLInputElement>(null);
   
   const resetForm = () => {
     setValidationDate(format(new Date(), 'yyyy-MM-dd'));
@@ -48,6 +49,9 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
     setValidationPhotos([]);
     setPhotoUrls([]);
     setSignedContract(null);
+    if (contractFileRef.current) {
+      contractFileRef.current.value = '';
+    }
   };
   
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -75,6 +79,43 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
       newUrls.splice(index, 1);
       return newUrls;
     });
+  };
+
+  const handleContractFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // Validation du type de fichier
+    if (file.type !== 'application/pdf') {
+      toast.error("Seuls les fichiers PDF sont acceptés pour le contrat");
+      if (contractFileRef.current) {
+        contractFileRef.current.value = '';
+      }
+      return;
+    }
+    
+    // Validation de la taille (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Le fichier ne doit pas dépasser 10MB");
+      if (contractFileRef.current) {
+        contractFileRef.current.value = '';
+      }
+      return;
+    }
+    
+    setSignedContract(file);
+    toast.success("Contrat signé ajouté avec succès");
+  };
+
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleSubmit();
+  };
+
+  const triggerContractUpload = () => {
+    contractFileRef.current?.click();
   };
   
   const handleSubmit = async () => {
@@ -223,7 +264,7 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
           
           <ProjectSummary project={project} />
           
-          <div className="space-y-4">
+          <form onSubmit={handleFormSubmit} className="space-y-4">
             <div className="grid grid-cols-1 gap-4">
               <div>
                 <Label htmlFor="validation-date">Date de validation</Label>
@@ -278,29 +319,42 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
                 <ContractTemplate project={project} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="signed-contract">Contrat signé</Label>
-                <Input
-                  id="signed-contract"
-                  type="file"
-                  accept=".pdf"
-                  onChange={(e) => {
-                    if (e.target.files?.[0]) {
-                      setSignedContract(e.target.files[0]);
-                    }
-                  }}
-                  className="mt-1"
-                />
-                {validationDecision === "valider" && (
-                  <p className="text-xs text-muted-foreground">
-                    *Le contrat signé est requis pour valider le projet
-                  </p>
-                )}
+                <Label>Contrat signé</Label>
+                <div className="space-y-2">
+                  <input
+                    ref={contractFileRef}
+                    type="file"
+                    accept=".pdf"
+                    onChange={handleContractFileChange}
+                    className="hidden"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={triggerContractUpload}
+                    disabled={isSubmitting}
+                    className="w-full"
+                  >
+                    {signedContract ? "Modifier le contrat" : "Choisir un fichier PDF"}
+                  </Button>
+                  {signedContract && (
+                    <p className="text-xs text-muted-foreground">
+                      Fichier sélectionné: {signedContract.name}
+                    </p>
+                  )}
+                  {validationDecision === "valider" && (
+                    <p className="text-xs text-muted-foreground">
+                      *Le contrat signé est requis pour valider le projet
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
+          </form>
           
           <DialogFooter className="mt-6">
             <Button 
+              type="button"
               variant="outline" 
               onClick={onClose} 
               disabled={isSubmitting}
@@ -308,6 +362,7 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
               Annuler
             </Button>
             <Button
+              type="button"
               onClick={handleSubmit}
               disabled={isSubmitting}
             >
