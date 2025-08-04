@@ -1,5 +1,5 @@
-import React, { useState, useRef } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import React, { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ProjectData } from "./ProjectTable";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,6 +14,7 @@ import { Loader2 } from "lucide-react";
 import ProjectSummary from "./ProjectSummary";
 import PhotoUploader from "./PhotoUploader";
 import ContractTemplate from './ContractTemplate';
+import ContractFileUploader from './ContractFileUploader';
 
 interface ProjectValidationDialogProps {
   isOpen: boolean;
@@ -40,7 +41,6 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [showRejectConfirmation, setShowRejectConfirmation] = useState(false);
   const [signedContract, setSignedContract] = useState<File | null>(null);
-  const contractFileRef = useRef<HTMLInputElement>(null);
   
   const resetForm = () => {
     setValidationDate(format(new Date(), 'yyyy-MM-dd'));
@@ -49,9 +49,6 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
     setValidationPhotos([]);
     setPhotoUrls([]);
     setSignedContract(null);
-    if (contractFileRef.current) {
-      contractFileRef.current.value = '';
-    }
   };
   
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -81,64 +78,23 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
     });
   };
 
-  const handleContractFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    console.log("📁 Changement de fichier contrat détecté");
-    e.preventDefault();
-    e.stopPropagation();
-    
-    const file = e.target.files?.[0];
-    if (!file) {
-      console.log("❌ Aucun fichier sélectionné");
-      return;
-    }
-    
-    console.log("📄 Fichier sélectionné:", file.name, file.type, file.size);
-    
-    // Validation du type de fichier
-    if (file.type !== 'application/pdf') {
-      toast.error("Seuls les fichiers PDF sont acceptés pour le contrat");
-      if (contractFileRef.current) {
-        contractFileRef.current.value = '';
-      }
-      return;
-    }
-    
-    // Validation de la taille (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("Le fichier ne doit pas dépasser 10MB");
-      if (contractFileRef.current) {
-        contractFileRef.current.value = '';
-      }
-      return;
-    }
-    
+  const handleContractChange = (file: File | null) => {
+    console.log("📁 Nouveau contrat reçu du composant isolé:", file?.name || "null");
     setSignedContract(file);
-    console.log("✅ Contrat signé ajouté avec succès");
-    toast.success("Contrat signé ajouté avec succès");
   };
 
-  const handleFormSubmit = (e: React.FormEvent) => {
-    console.log("📋 Soumission de formulaire interceptée");
+  const handleDialogInteraction = (e: React.MouseEvent) => {
+    console.log("🔄 Interaction dialog interceptée");
     e.preventDefault();
     e.stopPropagation();
-    // Ne pas déclencher handleSubmit automatiquement
   };
 
-  const handleFormKeyDown = (e: React.KeyboardEvent) => {
+  const handleContentKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      console.log("⌨️ Touche Entrée pressée dans le formulaire");
+      console.log("⌨️ Touche Entrée pressée dans le contenu");
       e.preventDefault();
       e.stopPropagation();
     }
-  };
-
-  const triggerContractUpload = (e?: React.MouseEvent) => {
-    console.log("🖱️ Déclenchement upload contrat");
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-    contractFileRef.current?.click();
   };
 
   const handleCancelClick = (e: React.MouseEvent) => {
@@ -288,20 +244,19 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
 
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={(open) => {
-        if (!open) {
-          resetForm();
-          onClose();
-        }
-      }}>
-        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+      <Dialog open={isOpen} onOpenChange={undefined}>
+        <DialogContent 
+          className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto"
+          onClick={handleDialogInteraction}
+          onKeyDown={handleContentKeyDown}
+        >
           <DialogHeader>
             <DialogTitle>Validation du projet</DialogTitle>
           </DialogHeader>
           
           <ProjectSummary project={project} />
           
-          <form onSubmit={handleFormSubmit} onKeyDown={handleFormKeyDown} className="space-y-4">
+          <div className="space-y-4" onClick={handleDialogInteraction}>
             <div className="grid grid-cols-1 gap-4">
               <div>
                 <Label htmlFor="validation-date">Date de validation</Label>
@@ -310,6 +265,7 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
                   type="date"
                   value={validationDate}
                   onChange={(e) => setValidationDate(e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
                 />
               </div>
               
@@ -321,6 +277,7 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
                   value={validationReport}
                   onChange={(e) => setValidationReport(e.target.value)}
                   className="min-h-[120px]"
+                  onClick={(e) => e.stopPropagation()}
                 />
               </div>
               
@@ -330,6 +287,7 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
                   value={validationDecision} 
                   onValueChange={(value) => setValidationDecision(value as "valider" | "rejetter")}
                   className="flex space-x-8"
+                  onClick={(e) => e.stopPropagation()}
                 >
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="valider" id="valider" />
@@ -352,43 +310,18 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
             </div>
             
             <div className="flex justify-between items-center">
-              <div>
+              <div onClick={(e) => e.stopPropagation()}>
                 <ContractTemplate project={project} />
               </div>
-              <div className="space-y-2">
-                <Label>Contrat signé</Label>
-                <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
-                  <input
-                    ref={contractFileRef}
-                    type="file"
-                    accept=".pdf"
-                    onChange={handleContractFileChange}
-                    className="hidden"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={triggerContractUpload}
-                    disabled={isSubmitting}
-                    className="w-full"
-                  >
-                    {signedContract ? "Modifier le contrat" : "Choisir un fichier PDF"}
-                  </Button>
-                  {signedContract && (
-                    <p className="text-xs text-muted-foreground">
-                      Fichier sélectionné: {signedContract.name}
-                    </p>
-                  )}
-                  {validationDecision === "valider" && (
-                    <p className="text-xs text-muted-foreground">
-                      *Le contrat signé est requis pour valider le projet
-                    </p>
-                  )}
-                </div>
-              </div>
+              <ContractFileUploader
+                signedContract={signedContract}
+                onContractChange={handleContractChange}
+                isSubmitting={isSubmitting}
+                required={validationDecision === "valider"}
+              />
             </div>
 
-            {/* Boutons déplacés À L'INTÉRIEUR du formulaire pour éviter les soumissions implicites */}
+            {/* Boutons contrôlés manuellement */}
             <div className="flex justify-end space-x-2 mt-6 pt-4 border-t">
               <Button 
                 type="button"
@@ -415,7 +348,7 @@ const ProjectValidationDialog: React.FC<ProjectValidationDialogProps> = ({
                 )}
               </Button>
             </div>
-          </form>
+          </div>
         </DialogContent>
       </Dialog>
       
