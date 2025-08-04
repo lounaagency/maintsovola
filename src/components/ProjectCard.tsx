@@ -69,11 +69,13 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
   };
 
   return (
-    <Card className="shadow-sm hover:shadow-md transition-shadow">
-      <CardContent className="p-4">
-        <div className="flex justify-between items-start mb-2">
-          <div>
-            <h3 className="text-lg font-semibold">{project.titre || `Projet #${project.id_projet}`}</h3>
+    <Card className="shadow-sm hover:shadow-lg transition-all duration-200 border-0 bg-gradient-to-br from-background to-muted/20">
+      <CardContent className="p-5">
+        <div className="flex justify-between items-start mb-3">
+          <div className="flex-1">
+            <h3 className="text-lg font-semibold text-foreground mb-1">
+              {project.titre || `Projet #${project.id_projet}`}
+            </h3>
             <p className="text-sm text-muted-foreground">
               {project.terrain?.nom_terrain || `Terrain #${project.id_terrain}`}
             </p>
@@ -81,31 +83,43 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
           {renderStatusBadge(project.statut)}
         </div>
         
-        <div className="grid grid-cols-2 gap-1 my-2 text-sm">
-          <div>
-            <span className="font-medium">Surface:</span> {project.surface_ha} ha
+        <div className="space-y-3 mb-4">
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="space-y-1">
+              <span className="font-medium text-foreground">Surface:</span>
+              <p className="text-muted-foreground">{project.surface_ha} ha</p>
+            </div>
+            <div className="space-y-1">
+              <span className="font-medium text-foreground">Culture:</span>
+              <p className="text-muted-foreground text-xs leading-relaxed">
+                {project.projet_culture?.map(pc => pc.culture?.nom_culture).join(', ')}
+              </p>
+            </div>
           </div>
-          <div>
-            <span className="font-medium">Culture:</span> {project.projet_culture?.map(pc => pc.culture?.nom_culture).join(', ')}
+          
+          <div className="space-y-1">
+            <span className="font-medium text-foreground text-sm">Localisation:</span>
+            <p className="text-muted-foreground text-xs leading-relaxed">
+              {project.region?.nom_region || "Non spécifié"}, {project.district?.nom_district || "Non spécifié"}
+            </p>
           </div>
-          <div className="col-span-2">
-            <span className="font-medium">Localisation:</span> {project.region?.nom_region || "Non spécifié"}, {project.district?.nom_district || "Non spécifié"}
-          </div>
+
           {showFunding && project.currentFunding !== undefined && project.fundingGoal !== undefined && (
-            <div className="col-span-2 mt-2">
-              <div className="flex justify-between text-xs mb-1">
-                <span>Financement</span>
-                <span>{calculateFundingProgress()}%</span>
+            <div className="pt-2 border-t border-border/50">
+              <div className="flex justify-between text-xs mb-2">
+                <span className="font-medium text-foreground">Financement</span>
+                <span className="text-muted-foreground">{calculateFundingProgress()}%</span>
               </div>
               <Progress value={calculateFundingProgress()} className="h-2" />
             </div>
           )}
         </div>
         
-        <div className="flex flex-wrap justify-end mt-3 gap-2">
+        <div className="flex flex-wrap justify-end gap-2">
           <Button 
             variant="ghost" 
-            size="sm" 
+            size="sm"
+            className="hover:bg-primary/10 hover:text-primary"
             onClick={() => onViewDetails(project)}
           >
             <Eye className="h-4 w-4 mr-1" /> Détails
@@ -118,7 +132,8 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
           {canEdit && onEdit && (
             <Button 
               variant="ghost" 
-              size="sm" 
+              size="sm"
+              className="hover:bg-blue-50 hover:text-blue-600"
               onClick={() => onEdit(project)}
             >
               <FileEdit className="h-4 w-4 mr-1" /> Modifier
@@ -128,20 +143,22 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
           {canValidate && onValidate && (
             <Button 
               variant="ghost" 
-              size="sm" 
+              size="sm"
+              className="hover:bg-emerald-50 hover:text-emerald-600"
               onClick={() => onValidate(project)}
             >
-              <CheckCircle className="h-4 w-4 mr-1 text-green-500" /> Valider
+              <CheckCircle className="h-4 w-4 mr-1" /> Valider
             </Button>
           )}
           
           {canLaunchProduction && onLaunchProduction && (
             <Button 
               variant="ghost" 
-              size="sm" 
+              size="sm"
+              className="hover:bg-green-50 hover:text-green-600"
               onClick={() => onLaunchProduction(project)}
             >
-              <Play className="h-4 w-4 mr-1 text-green-500" /> Lancer
+              <Play className="h-4 w-4 mr-1" /> Lancer
             </Button>
           )}
           
@@ -149,7 +166,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
             <Button 
               variant="ghost" 
               size="sm"
-              className="text-destructive hover:text-destructive/90"
+              className="text-destructive hover:text-destructive/90 hover:bg-destructive/10"
               onClick={() => onDelete(project)}
             >
               <Trash2 className="h-4 w-4 mr-1" /> Supprimer

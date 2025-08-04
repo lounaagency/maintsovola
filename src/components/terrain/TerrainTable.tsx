@@ -14,6 +14,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Edit, Eye, Check, ShieldCheck, Trash2, Clock, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useIsMobile } from "@/hooks/use-mobile";
+import TerrainListCard from "./TerrainListCard";
 
 interface TerrainTableProps {
   terrains: TerrainData[];
@@ -45,6 +47,7 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
 }) => {
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
+  const isMobile = useIsMobile();
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -147,6 +150,30 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
     );
   }
 
+  // Mobile view - display as cards
+  if (isMobile) {
+    return (
+      <div className="grid gap-4">
+        {sortedTerrains.map((terrain) => (
+          <TerrainListCard
+            key={terrain.id_terrain || Math.random()}
+            terrain={terrain}
+            type={type}
+            userRole={userRole}
+            onViewDetails={onViewDetails}
+            onEdit={onEdit}
+            onValidate={onValidate}
+            onDelete={onDelete}
+            onContactTechnicien={onContactTechnicien}
+            onAssignTechnician={assignTechnicien}
+            techniciens={techniciens}
+          />
+        ))}
+      </div>
+    );
+  }
+
+  // Desktop view - display as table
   return (
     <div className="rounded-md border overflow-hidden">
       <Table>
