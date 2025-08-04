@@ -222,6 +222,51 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({
       // Additional success handling if needed
       await fetchCurrentFundingData();
 
+      // Envoyer des notifications aux parties prenantes du projet
+      try {
+        // Récupérer les informations du projet pour les notifications
+        const { data: projectData, error: projectError } = await supabase
+          .from('projet')
+          .select('id_tantsaha, id_superviseur, id_technicien, titre')
+          .eq('id_projet', parseInt(project.id))
+          .single();
+
+        if (projectError) throw projectError;
+
+        if (projectData && user) {
+          // Créer la liste des destinataires (propriétaire, superviseur, technicien)
+          const recipients: { id_utilisateur: string }[] = [];
+          
+          if (projectData.id_tantsaha && projectData.id_tantsaha !== user.id) {
+            recipients.push({ id_utilisateur: projectData.id_tantsaha });
+          }
+          if (projectData.id_superviseur && projectData.id_superviseur !== user.id) {
+            recipients.push({ id_utilisateur: projectData.id_superviseur });
+          }
+          if (projectData.id_technicien && projectData.id_technicien !== user.id) {
+            recipients.push({ id_utilisateur: projectData.id_technicien });
+          }
+
+          // Envoyer les notifications
+          if (recipients.length > 0) {
+            const { sendNotification } = await import('@/types/notification');
+            await sendNotification(
+              supabase,
+              user.id,
+              recipients,
+              "Nouvel investissement reçu",
+              `Un investissement de ${investAmount.toLocaleString()} Ar a été effectué sur le projet "${projectData.titre || 'Sans titre'}"`,
+              'info',
+              'projet',
+              parseInt(project.id),
+              parseInt(project.id)
+            );
+          }
+        }
+      } catch (error) {
+        console.error("Erreur lors de l'envoi des notifications:", error);
+      }
+
       // Show success message with transaction ID if available
       if (transactionId) {
         toast.success(`Paiement effectué avec succès`, {

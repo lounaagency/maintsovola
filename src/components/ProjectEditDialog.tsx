@@ -199,6 +199,69 @@ const ProjectEditDialog: React.FC<ProjectEditDialogProps> = ({
         }
 
         toast.success("Projet créé avec succès");
+
+        // Envoyer des notifications pour la création du projet
+        try {
+          const recipients: { id_utilisateur: string }[] = [];
+          
+          if (data.id_superviseur) {
+            recipients.push({ id_utilisateur: data.id_superviseur });
+          }
+          if (data.id_technicien) {
+            recipients.push({ id_utilisateur: data.id_technicien });
+          }
+
+          if (recipients.length > 0) {
+            const { sendNotification } = await import('@/types/notification');
+            await sendNotification(
+              supabase,
+              data.id_tantsaha,
+              recipients,
+              "Nouveau projet créé",
+              `Un nouveau projet "${data.titre}" a été créé et vous a été assigné`,
+              'info',
+              'projet',
+              newProject.id_projet,
+              newProject.id_projet
+            );
+          }
+        } catch (error) {
+          console.error("Erreur lors de l'envoi des notifications:", error);
+        }
+      }
+
+      if (isEdit) {
+        // Envoyer des notifications pour la modification du projet
+        try {
+          const recipients: { id_utilisateur: string }[] = [];
+          
+          if (data.id_superviseur && data.id_superviseur !== userId) {
+            recipients.push({ id_utilisateur: data.id_superviseur });
+          }
+          if (data.id_technicien && data.id_technicien !== userId) {
+            recipients.push({ id_utilisateur: data.id_technicien });
+          }
+          if (project.id_tantsaha && project.id_tantsaha !== userId) {
+            recipients.push({ id_utilisateur: project.id_tantsaha });
+          }
+
+          if (recipients.length > 0 && userId) {
+            const { sendNotification } = await import('@/types/notification');
+            await sendNotification(
+              supabase,
+              userId,
+              recipients,
+              "Projet modifié",
+              `Le projet "${data.titre}" a été mis à jour`,
+              'info',
+              'projet',
+              project.id_projet,
+              project.id_projet
+            );
+          }
+        } catch (error) {
+          console.error("Erreur lors de l'envoi des notifications:", error);
+        }
       }
       
       onSubmitSuccess();

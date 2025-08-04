@@ -319,6 +319,36 @@ const TerrainForm: React.FC<TerrainFormProps> = ({
             
           if (error) throw error;
           
+          // Envoyer des notifications pour la modification du terrain
+          try {
+            const recipients: { id_utilisateur: string }[] = [];
+            
+            if (initialData.id_superviseur && initialData.id_superviseur !== userId) {
+              recipients.push({ id_utilisateur: initialData.id_superviseur });
+            }
+            if (initialData.id_technicien && initialData.id_technicien !== userId) {
+              recipients.push({ id_utilisateur: initialData.id_technicien });
+            }
+            if (initialData.id_tantsaha && initialData.id_tantsaha !== userId) {
+              recipients.push({ id_utilisateur: initialData.id_tantsaha });
+            }
+
+            if (recipients.length > 0) {
+              await sendNotification(
+                supabase,
+                userId,
+                recipients,
+                "Terrain modifié",
+                `Le terrain "${terrainData.nom_terrain}" a été mis à jour`,
+                'info',
+                'terrain',
+                initialData.id_terrain
+              );
+            }
+          } catch (error) {
+            console.error("Erreur lors de l'envoi des notifications:", error);
+          }
+          
           toast.success("Terrain modifié avec succès");
           
           if (onSubmitSuccess) {

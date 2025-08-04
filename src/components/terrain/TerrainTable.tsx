@@ -130,6 +130,22 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
         techniqueNom: techData ? `${techData.nom} ${techData.prenoms || ""}`.trim() : "Non assigné",
       };
 
+      // Envoyer une notification au technicien assigné
+      try {
+        const { error: notificationError } = await supabase
+          .rpc('create_technicien_assignment_notification', {
+            technicien_id: technicienId,
+            terrain_id: terrain.id_terrain,
+            superviseur_id: terrain.id_superviseur
+          });
+        
+        if (notificationError) {
+          console.error("Erreur lors de l'envoi de la notification:", notificationError);
+        }
+      } catch (notificationError) {
+        console.error("Erreur lors de l'envoi de la notification:", notificationError);
+      }
+
       onTerrainUpdate(updatedTerrain, "update");
       toast.success("Technicien assigné avec succès");
     } catch (error: any) {
