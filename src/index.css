@@ -34,6 +34,22 @@
     --ring: 142.1 76.2% 36.3%;
  
     --radius: 0.5rem;
+
+    /* Messenger-like colors */
+    --messenger-blue: 214 100% 59%;
+    --messenger-blue-light: 214 100% 95%;
+    --messenger-gray: 0 0% 95%;
+    --messenger-gray-dark: 0 0% 85%;
+    --messenger-sidebar: 214 32% 97%;
+    --messenger-sidebar-hover: 214 64% 94%;
+    --messenger-online: 120 100% 40%;
+    --messenger-typing: 214 100% 59%;
+    
+    /* Message bubble colors */
+    --message-sent: 214 100% 59%;
+    --message-sent-foreground: 0 0% 100%;
+    --message-received: 0 0% 95%;
+    --message-received-foreground: 0 0% 20%;
   }
  
   .dark {
@@ -96,5 +112,92 @@
   
   .mobile-nav .nav-item svg {
     @apply mr-3 mb-0;
+  }
+
+  /* Messenger-like styles */
+  .messenger-sidebar {
+    background: hsl(var(--messenger-sidebar));
+  }
+  
+  .messenger-sidebar-hover:hover {
+    background: hsl(var(--messenger-sidebar-hover));
+  }
+  
+  .message-bubble-sent {
+    background: hsl(var(--message-sent));
+    color: hsl(var(--message-sent-foreground));
+  }
+  
+  .message-bubble-received {
+    background: hsl(var(--message-received));
+    color: hsl(var(--message-received-foreground));
+  }
+  
+  .online-indicator {
+    background: hsl(var(--messenger-online));
+  }
+  
+  /* Typing animation */
+  .typing-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  
+  .typing-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: hsl(var(--messenger-typing));
+    animation: typing-pulse 1.4s infinite ease-in-out;
+  }
+  
+  .typing-dot:nth-child(1) {
+    animation-delay: -0.32s;
+  }
+  
+  .typing-dot:nth-child(2) {
+    animation-delay: -0.16s;
+  }
+  
+  @keyframes typing-pulse {
+    0%, 80%, 100% {
+      transform: scale(0.8);
+      opacity: 0.6;
+    }
+    40% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+  
+  /* Message grouping */
+  .message-group-first {
+    border-radius: 18px 18px 4px 18px;
+  }
+  
+  .message-group-middle {
+    border-radius: 4px 18px 4px 18px;
+  }
+  
+  .message-group-last {
+    border-radius: 4px 18px 18px 18px;
+  }
+  
+  .message-group-single {
+    border-radius: 18px;
+  }
+  
+  /* Sent message variants */
+  .message-group-first.sent {
+    border-radius: 18px 18px 18px 4px;
+  }
+  
+  .message-group-middle.sent {
+    border-radius: 18px 4px 18px 4px;
+  }
+  
+  .message-group-last.sent {
+    border-radius: 18px 4px 18px 18px;
   }
 }

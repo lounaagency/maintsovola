@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { supabase } from "@/integrations/supabase/client";
-import { Search, Users } from "lucide-react";
+import { Search, Users, UserPlus, MessageCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import MessageItem from "./MessageItem";
+import UserAvatar from "./UserAvatar";
 import { UserProfile } from "@/types/userProfile";
 import { ConversationMessage } from "@/types/message";
 import { formatDistanceToNow } from "date-fns";
@@ -312,87 +314,108 @@ const ConversationList: React.FC<ConversationListProps> = ({
   }, [filteredConversations, selectedConversation, handleSelectConversation]);
 
   return (
-    <div className="flex flex-col w-full h-full border-r border-border bg-background overflow-hidden">
-      <div className="p-4 border-b border-border py-[16px] my-0">
-        <h1 className="text-xl font-bold mb-4">Messages</h1>
-        
-        <div className="flex items-center space-x-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input 
-              placeholder="Rechercher dans les messages..." 
-              className="pl-8" 
-              value={searchQuery} 
-              onChange={(e) => setSearchQuery(e.target.value)} 
-            />
-          </div>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => setIsSearchingUser(!isSearchingUser)}
-          >
-            <Users className="h-5 w-5" />
-          </Button>
+    <div className="h-full flex flex-col messenger-sidebar">
+      {/* Header with Search */}
+      <div className="p-4 border-b border-border/30">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold text-foreground">Messages</h2>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsSearchingUser(!isSearchingUser)}
+                  className={`rounded-full h-9 w-9 p-0 ${isSearchingUser ? 'bg-[hsl(var(--messenger-blue))] text-white' : 'hover:bg-muted'}`}
+                >
+                  <UserPlus className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Nouvelle conversation</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
         
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+          <Input
+            type="text"
+            placeholder="Rechercher dans Messenger"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 bg-background border-border rounded-full h-10 focus:border-[hsl(var(--messenger-blue))] focus:ring-[hsl(var(--messenger-blue))]"
+          />
+        </div>
+      </div>
+        
+      {/* Content Area */}
+      <div className="flex-1 overflow-y-auto">
         {isSearchingUser ? (
-          <div className="mt-4 space-y-4">
-            <div className="flex gap-2">
+          // User Search Results
+          <div className="p-2">
+            <div className="px-4 py-2">
+              <h3 className="text-sm font-medium text-muted-foreground mb-3">Contacts suggérés</h3>
+            </div>
+            <div className="flex gap-2 px-4 pb-4">
               <Input 
                 placeholder="Rechercher un utilisateur..." 
                 value={userSearchQuery} 
                 onChange={(e) => setUserSearchQuery(e.target.value)} 
-                className="flex-1" 
+                className="flex-1 rounded-full h-9" 
               />
-              <Button onClick={handleUserSearch}>
-                <Search className="h-4 w-4 mr-2" />
-                Rechercher
+              <Button onClick={handleUserSearch} size="sm" className="rounded-full">
+                <Search className="h-4 w-4" />
               </Button>
             </div>
-            
-            <ScrollArea className="h-[400px] rounded-md border p-4">
-              {searchResults.length > 0 ? (
-                searchResults.map(result => (
-                  <div 
-                    key={result.id_utilisateur} 
-                    className="flex items-center p-2 hover:bg-muted rounded-md cursor-pointer mb-2"
-                    onClick={() => startConversation(result)}
-                  >
-                    <div className="w-10 h-10 rounded-full bg-gray-300 overflow-hidden mr-3">
-                      {result.photo_profil && (
-                        <img 
-                          src={result.photo_profil} 
-                          alt={result.nom} 
-                          className="w-full h-full object-cover" 
-                        />
-                      )}
-                    </div>
-                    <div>
-                      <div className="font-medium">
-                        {result.nom} {result.prenoms || ''}
-                      </div>
-                    </div>
+            <div>
+              {searchResults.map((user) => (
+                <div
+                  key={user.id_utilisateur}
+                  onClick={() => startConversation(user)}
+                  className="flex items-center p-4 cursor-pointer messenger-sidebar-hover transition-colors"
+                >
+                  <div className="relative">
+                    <UserAvatar 
+                      src={user.photo_profil} 
+                      alt={`${user.nom} ${user.prenoms || ''}`}
+                      className="w-12 h-12"
+                    />
                   </div>
-                ))
-              ) : (
-                <div className="text-center py-4 text-gray-500">
-                  {userSearchQuery ? "Aucun utilisateur trouvé" : "Recherchez un utilisateur pour démarrer une conversation"}
+                  <div className="ml-4">
+                    <p className="font-medium text-sm text-foreground">
+                      {user.nom} {user.prenoms || ''}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Commencer une conversation</p>
+                  </div>
                 </div>
-              )}
-            </ScrollArea>
-          </div>
-        ) : (
-          <ScrollArea className="h-[calc(100vh-220px)] mt-4">
-            <div className="space-y-1">
-              {filteredConversations.length > 0 ? (
-                conversationItems
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  {searchQuery ? "Aucun message ne correspond à votre recherche" : "Aucune conversation. Commencez à discuter !"}
+              ))}
+              {userSearchQuery && searchResults.length === 0 && (
+                <div className="text-center py-8">
+                  <p className="text-sm text-muted-foreground">Aucun utilisateur trouvé</p>
                 </div>
               )}
             </div>
-          </ScrollArea>
+          </div>
+        ) : (
+          // Conversations List
+          <div>
+            {conversationItems.length > 0 ? (
+              conversationItems
+            ) : (
+              <div className="flex flex-col items-center justify-center h-64 text-center p-6">
+                <div className="w-16 h-16 rounded-full bg-[hsl(var(--messenger-blue))]/10 flex items-center justify-center mb-4">
+                  <MessageCircle className="h-8 w-8 text-[hsl(var(--messenger-blue))]" />
+                </div>
+                <p className="text-foreground text-lg font-semibold mb-2">Pas encore de conversations</p>
+                <p className="text-muted-foreground text-sm leading-relaxed">
+                  Envoyez un message à vos contacts et <br />
+                  commencez une conversation
+                </p>
+              </div>
+            )}
+          </div>
         )}
       </div>
     </div>
