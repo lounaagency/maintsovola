@@ -32,12 +32,14 @@ const ConversationList: React.FC<ConversationListProps> = ({
   const [isSearchingUser, setIsSearchingUser] = useState(false);
   const [userSearchQuery, setUserSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
+  const [isLoadingConversations, setIsLoadingConversations] = useState(true);
   
   const { fetchUnreadCount } = useUnreadMessagesCount(userId);
 
   const fetchConversations = useCallback(async () => {
     if (!userId) return;
     
+    setIsLoadingConversations(true);
     try {
       // Get all conversations for the current user
       const { data: conversationsData, error: conversationsError } = await supabase
@@ -48,12 +50,14 @@ const ConversationList: React.FC<ConversationListProps> = ({
 
       if (conversationsError) {
         console.error("Error fetching conversations:", conversationsError);
+        setIsLoadingConversations(false);
         return;
       }
 
       if (!conversationsData || conversationsData.length === 0) {
         setConversations([]);
         setFilteredConversations([]);
+        setIsLoadingConversations(false);
         return;
       }
 
@@ -129,6 +133,8 @@ const ConversationList: React.FC<ConversationListProps> = ({
       setFilteredConversations(formattedConversations);
     } catch (error) {
       console.error("Error fetching conversations:", error);
+    } finally {
+      setIsLoadingConversations(false);
     }
   }, [userId]);
 
@@ -401,7 +407,12 @@ const ConversationList: React.FC<ConversationListProps> = ({
         ) : (
           // Conversations List
           <div>
-            {conversationItems.length > 0 ? (
+            {isLoadingConversations ? (
+              <div className="flex flex-col items-center justify-center h-64 text-center p-6">
+                <div className="animate-spin w-8 h-8 border-2 border-[hsl(var(--messenger-blue))] border-t-transparent rounded-full mb-4"></div>
+                <p className="text-muted-foreground text-sm">Chargement des conversations...</p>
+              </div>
+            ) : conversationItems.length > 0 ? (
               conversationItems
             ) : (
               <div className="flex flex-col items-center justify-center h-64 text-center p-6">
