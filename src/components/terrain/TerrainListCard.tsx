@@ -56,60 +56,60 @@ const TerrainListCard: React.FC<TerrainListCardProps> = ({
 
   return (
     <Card className="shadow-sm hover:shadow-lg transition-all duration-200 border-0 bg-gradient-to-br from-background to-muted/20">
-      <CardContent className="p-5">
-        <div className="flex justify-between items-start mb-3">
-          <div className="flex-1">
-            <h3 className="text-lg font-semibold text-foreground mb-1">
+      <CardContent className="p-3">
+        <div className="flex justify-between items-start mb-2">
+          <div className="flex-1 min-w-0">
+            <h3 className="text-base font-semibold text-foreground mb-1 leading-tight truncate">
               {terrain.nom_terrain}
             </h3>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs text-muted-foreground truncate">
               {terrain.tantsahaNom || "Non spécifié"}
             </p>
           </div>
           {renderStatusBadge()}
         </div>
         
-        <div className="space-y-3 mb-4">
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            <div className="space-y-1">
+        <div className="space-y-2 mb-3">
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div>
               <span className="font-medium text-foreground">Surface:</span>
               <p className="text-muted-foreground">
                 {terrain.surface_validee || terrain.surface_proposee} ha
               </p>
             </div>
-            <div className="space-y-1">
+            <div>
               <span className="font-medium text-foreground">Localisation:</span>
-              <p className="text-muted-foreground text-xs leading-relaxed">
+              <p className="text-muted-foreground leading-tight truncate">
                 {terrain.region_name || "Non spécifié"}, {terrain.commune_name || "Non spécifié"}
               </p>
             </div>
           </div>
 
           {/* Access badges */}
-          <div className="flex gap-2">
+          <div className="flex gap-1">
             <Badge
               variant={terrain.acces_eau ? "default" : "secondary"}
-              className={`text-xs ${terrain.acces_eau 
+              className={`text-xs px-1 py-0 ${terrain.acces_eau 
                 ? "bg-blue-100 text-blue-800 border-blue-200" 
                 : "bg-gray-100 text-gray-600 border-gray-200"}`}
             >
               {terrain.acces_eau ? (
-                <Check className="h-3 w-3 mr-1" />
+                <Check className="h-2 w-2 mr-1" />
               ) : (
-                <X className="h-3 w-3 mr-1" />
+                <X className="h-2 w-2 mr-1" />
               )}
               Eau
             </Badge>
             <Badge
               variant={terrain.acces_route ? "default" : "secondary"}
-              className={`text-xs ${terrain.acces_route 
+              className={`text-xs px-1 py-0 ${terrain.acces_route 
                 ? "bg-green-100 text-green-800 border-green-200" 
                 : "bg-gray-100 text-gray-600 border-gray-200"}`}
             >
               {terrain.acces_route ? (
-                <Check className="h-3 w-3 mr-1" />
+                <Check className="h-2 w-2 mr-1" />
               ) : (
-                <X className="h-3 w-3 mr-1" />
+                <X className="h-2 w-2 mr-1" />
               )}
               Route
             </Badge>
@@ -117,17 +117,17 @@ const TerrainListCard: React.FC<TerrainListCardProps> = ({
 
           {/* Technician assignment for supervisors */}
           {type === "pending" && userRole === "superviseur" && (
-            <div className="pt-2 border-t border-border/50">
+            <div className="pt-1 border-t border-border/50">
               <span className="text-xs font-medium text-muted-foreground">Technicien:</span>
               {terrain.id_technicien ? (
                 <div className="flex items-center mt-1">
-                  <Check className="h-4 w-4 text-emerald-500 mr-2" />
-                  <span className="text-sm text-foreground">{terrain.techniqueNom || "Non assigné"}</span>
+                  <Check className="h-3 w-3 text-emerald-500 mr-1" />
+                  <span className="text-xs text-foreground truncate">{terrain.techniqueNom || "Non assigné"}</span>
                 </div>
               ) : (
-                <div className="mt-2">
+                <div className="mt-1">
                   <select
-                    className="w-full text-sm border border-border rounded-md px-2 py-1 bg-background"
+                    className="w-full text-xs border border-border rounded px-1 py-1 bg-background"
                     onChange={(e) => onAssignTechnician && onAssignTechnician(terrain, e.target.value)}
                     value=""
                   >
@@ -147,22 +147,22 @@ const TerrainListCard: React.FC<TerrainListCardProps> = ({
 
           {/* Validation info for validated terrains */}
           {type === "validated" && (
-            <div className="pt-2 border-t border-border/50">
+            <div className="pt-1 border-t border-border/50">
               <span className="text-xs font-medium text-muted-foreground">Validé par:</span>
-              <p className="text-sm text-foreground mt-1">{terrain.superviseurNom || "Non spécifié"}</p>
+              <p className="text-xs text-foreground mt-1 truncate">{terrain.superviseurNom || "Non spécifié"}</p>
             </div>
           )}
         </div>
         
-        <div className="flex flex-wrap justify-end gap-2">
+        <div className="flex flex-wrap justify-end gap-1">
           {onViewDetails && (
             <Button 
               variant="ghost" 
               size="sm"
-              className="hover:bg-primary/10 hover:text-primary"
+              className="hover:bg-primary/10 hover:text-primary text-xs px-2 py-1 h-auto"
               onClick={() => onViewDetails(terrain)}
             >
-              <Eye className="h-4 w-4 mr-1" /> Détails
+              <Eye className="h-3 w-3 mr-1" /> Détails
             </Button>
           )}
           
@@ -170,10 +170,10 @@ const TerrainListCard: React.FC<TerrainListCardProps> = ({
             <Button 
               variant="ghost" 
               size="sm"
-              className="hover:bg-blue-50 hover:text-blue-600"
+              className="hover:bg-blue-50 hover:text-blue-600 text-xs px-2 py-1 h-auto"
               onClick={() => onEdit(terrain)}
             >
-              <Edit className="h-4 w-4 mr-1" /> Modifier
+              <Edit className="h-3 w-3 mr-1" /> Modifier
             </Button>
           )}
           
@@ -181,10 +181,10 @@ const TerrainListCard: React.FC<TerrainListCardProps> = ({
             <Button 
               variant="ghost" 
               size="sm"
-              className="hover:bg-emerald-50 hover:text-emerald-600"
+              className="hover:bg-emerald-50 hover:text-emerald-600 text-xs px-2 py-1 h-auto"
               onClick={() => onValidate(terrain)}
             >
-              <ShieldCheck className="h-4 w-4 mr-1" /> Valider
+              <ShieldCheck className="h-3 w-3 mr-1" /> Valider
             </Button>
           )}
           
@@ -192,10 +192,10 @@ const TerrainListCard: React.FC<TerrainListCardProps> = ({
             <Button 
               variant="ghost" 
               size="sm"
-              className="hover:bg-orange-50 hover:text-orange-600"
+              className="hover:bg-orange-50 hover:text-orange-600 text-xs px-2 py-1 h-auto"
               onClick={() => onContactTechnicien!(terrain)}
             >
-              <Clock className="h-4 w-4 mr-1" /> Contacter
+              <Clock className="h-3 w-3 mr-1" /> Contacter
             </Button>
           )}
           
@@ -203,10 +203,10 @@ const TerrainListCard: React.FC<TerrainListCardProps> = ({
             <Button 
               variant="ghost" 
               size="sm"
-              className="text-destructive hover:text-destructive/90 hover:bg-destructive/10"
+              className="text-destructive hover:text-destructive/90 hover:bg-destructive/10 text-xs px-2 py-1 h-auto"
               onClick={() => onDelete(terrain)}
             >
-              <Trash2 className="h-4 w-4 mr-1" /> Supprimer
+              <Trash2 className="h-3 w-3 mr-1" /> Supprimer
             </Button>
           )}
         </div>

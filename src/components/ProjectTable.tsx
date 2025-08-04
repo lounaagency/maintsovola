@@ -364,7 +364,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
   return (
     <Card className="w-full shadow-sm">
       {isMobile ? (
-        <div className="grid grid-cols-1 gap-4 p-4">
+        <div className="grid grid-cols-2 gap-2 p-2">
           {projects.map((project) => (
             <ProjectCard
               key={project.id_projet}
