@@ -154,65 +154,122 @@ const TerrainListCard: React.FC<TerrainListCardProps> = ({
           )}
         </div>
         
-        <div className="flex justify-end gap-1">
-          {onViewDetails && (
-            <Button 
-              variant="ghost" 
-              size="icon"
-              className="hover:bg-primary/10 hover:text-primary h-7 w-7"
-              onClick={() => onViewDetails(terrain)}
-              title="Détails"
-            >
-              <Eye className="h-3 w-3" />
-            </Button>
+        <div className={`flex justify-end gap-1 ${userRole === 'technicien' || userRole === 'superviseur' ? 'flex-col space-y-1' : ''}`}>
+          {/* Première ligne : actions principales */}
+          <div className="flex justify-end gap-1">
+            {onViewDetails && (
+              <Button 
+                variant="ghost" 
+                size="sm"
+                className="hover:bg-primary/10 hover:text-primary h-7 px-2"
+                onClick={() => onViewDetails(terrain)}
+                title="Détails"
+              >
+                <span className="text-xs mr-1">Voir</span>
+                <Eye className="h-3 w-3" />
+              </Button>
+            )}
+            
+            {canEdit && onEdit && (
+              <Button 
+                variant="ghost" 
+                size="sm"
+                className="hover:bg-blue-50 hover:text-blue-600 h-7 px-2"
+                onClick={() => onEdit(terrain)}
+                title="Modifier"
+              >
+                <span className="text-xs mr-1">Modifier</span>
+                <Edit className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
+          
+          {/* Deuxième ligne : actions secondaires (seulement pour techniciens/superviseurs) */}
+          {(userRole === 'technicien' || userRole === 'superviseur') && (
+            <div className="flex justify-end gap-1">
+              {canValidate && onValidate && (
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  className="hover:bg-emerald-50 hover:text-emerald-600 h-7 px-2"
+                  onClick={() => onValidate(terrain)}
+                  title="Valider"
+                >
+                  <span className="text-xs mr-1">Valider</span>
+                  <ShieldCheck className="h-3 w-3" />
+                </Button>
+              )}
+              
+              {canContact && (
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  className="hover:bg-orange-50 hover:text-orange-600 h-7 px-2"
+                  onClick={() => onContactTechnicien!(terrain)}
+                  title="Contacter"
+                >
+                  <span className="text-xs mr-1">Contact</span>
+                  <Clock className="h-3 w-3" />
+                </Button>
+              )}
+              
+              {canDelete && onDelete && (
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  className="text-destructive hover:text-destructive/90 hover:bg-destructive/10 h-7 px-2"
+                  onClick={() => onDelete(terrain)}
+                  title="Supprimer"
+                >
+                  <span className="text-xs mr-1">Supprimer</span>
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              )}
+            </div>
           )}
           
-          {canEdit && onEdit && (
-            <Button 
-              variant="ghost" 
-              size="icon"
-              className="hover:bg-blue-50 hover:text-blue-600 h-7 w-7"
-              onClick={() => onEdit(terrain)}
-              title="Modifier"
-            >
-              <Edit className="h-3 w-3" />
-            </Button>
-          )}
-          
-          {canValidate && onValidate && (
-            <Button 
-              variant="ghost" 
-              size="icon"
-              className="hover:bg-emerald-50 hover:text-emerald-600 h-7 w-7"
-              onClick={() => onValidate(terrain)}
-              title="Valider"
-            >
-              <ShieldCheck className="h-3 w-3" />
-            </Button>
-          )}
-          
-          {canContact && (
-            <Button 
-              variant="ghost" 
-              size="icon"
-              className="hover:bg-orange-50 hover:text-orange-600 h-7 w-7"
-              onClick={() => onContactTechnicien!(terrain)}
-              title="Contacter"
-            >
-              <Clock className="h-3 w-3" />
-            </Button>
-          )}
-          
-          {canDelete && onDelete && (
-            <Button 
-              variant="ghost" 
-              size="icon"
-              className="text-destructive hover:text-destructive/90 hover:bg-destructive/10 h-7 w-7"
-              onClick={() => onDelete(terrain)}
-              title="Supprimer"
-            >
-              <Trash2 className="h-3 w-3" />
-            </Button>
+          {/* Actions inline pour utilisateurs simples */}
+          {userRole !== 'technicien' && userRole !== 'superviseur' && (
+            <>
+              {canValidate && onValidate && (
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  className="hover:bg-emerald-50 hover:text-emerald-600 h-7 px-2"
+                  onClick={() => onValidate(terrain)}
+                  title="Valider"
+                >
+                  <span className="text-xs mr-1">Valider</span>
+                  <ShieldCheck className="h-3 w-3" />
+                </Button>
+              )}
+              
+              {canContact && (
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  className="hover:bg-orange-50 hover:text-orange-600 h-7 px-2"
+                  onClick={() => onContactTechnicien!(terrain)}
+                  title="Contacter"
+                >
+                  <span className="text-xs mr-1">Contact</span>
+                  <Clock className="h-3 w-3" />
+                </Button>
+              )}
+              
+              {canDelete && onDelete && (
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  className="text-destructive hover:text-destructive/90 hover:bg-destructive/10 h-7 px-2"
+                  onClick={() => onDelete(terrain)}
+                  title="Supprimer"
+                >
+                  <span className="text-xs mr-1">Supprimer</span>
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              )}
+            </>
           )}
         </div>
       </CardContent>

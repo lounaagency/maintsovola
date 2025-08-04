@@ -379,6 +379,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
               canLaunchProduction={canLaunchProduction(project)}
               canDelete={canDeleteProject(project, userRole, user?.id)}
               showFunding={project.statut === 'en financement'}
+              userRole={userRole}
             />
           ))}
         </div>
