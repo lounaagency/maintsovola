@@ -41,10 +41,17 @@ const ConversationList: React.FC<ConversationListProps> = ({
     
     setIsLoadingConversations(true);
     try {
-      // Get all conversations for the current user
+      // Optimized single query to get all data at once
       const { data: conversationsData, error: conversationsError } = await supabase
         .from('conversation')
-        .select('id_conversation, id_utilisateur1, id_utilisateur2, derniere_activite')
+        .select(`
+          id_conversation, 
+          id_utilisateur1, 
+          id_utilisateur2, 
+          derniere_activite,
+          utilisateur1:id_utilisateur1!inner(id_utilisateur, nom, prenoms, photo_profil),
+          utilisateur2:id_utilisateur2!inner(id_utilisateur, nom, prenoms, photo_profil)
+        `)
         .or(`id_utilisateur1.eq.${userId},id_utilisateur2.eq.${userId}`)
         .order('derniere_activite', { ascending: false });
 
@@ -61,97 +68,95 @@ const ConversationList: React.FC<ConversationListProps> = ({
         return;
       }
 
-      // Groupe les conversations par utilisateur (garder seulement la plus récente pour chaque utilisateur)
+      // Group conversations by user and keep only the most recent per user
       const userConversationMap = new Map<string, any>();
       
       for (const conv of conversationsData) {
         const otherUserId = conv.id_utilisateur1 === userId ? conv.id_utilisateur2 : conv.id_utilisateur1;
         
-        // Ne garder que la conversation la plus récente pour chaque utilisateur
         if (!userConversationMap.has(otherUserId) || 
             new Date(conv.derniere_activite) > new Date(userConversationMap.get(otherUserId).derniere_activite)) {
           userConversationMap.set(otherUserId, conv);
         }
       }
 
-      const formattedConversations: ConversationMessage[] = [];
       const uniqueConversations = Array.from(userConversationMap.values());
+      const formattedConversations: ConversationMessage[] = [];
 
-      for (const conv of uniqueConversations) {
-        // Determine the other user in the conversation
-        const otherUserId = conv.id_utilisateur1 === userId ? conv.id_utilisateur2 : conv.id_utilisateur1;
+      // Process conversations in batches for progressive loading
+      const batchSize = 5;
+      
+      for (let i = 0; i < uniqueConversations.length; i += batchSize) {
+        const batch = uniqueConversations.slice(i, i + batchSize);
+        
+        // Process batch in parallel
+        const batchPromises = batch.map(async (conv) => {
+          const otherUserId = conv.id_utilisateur1 === userId ? conv.id_utilisateur2 : conv.id_utilisateur1;
+          const otherUser = conv.id_utilisateur1 === userId ? conv.utilisateur2 : conv.utilisateur1;
 
-        // Get user details
-        const { data: userData, error: userError } = await supabase
-          .from('utilisateur')
-          .select('id_utilisateur, nom, prenoms, photo_profil')
-          .eq('id_utilisateur', otherUserId)
-          .single();
+          // Get last message and unread count in parallel
+          const [lastMessageResult, unreadResult] = await Promise.all([
+            supabase
+              .from('message')
+              .select('contenu, date_envoi')
+              .eq('id_conversation', conv.id_conversation)
+              .order('date_envoi', { ascending: false })
+              .limit(1)
+              .maybeSingle(),
+            supabase
+              .from('message')
+              .select('*', { count: 'exact', head: true })
+              .eq('id_conversation', conv.id_conversation)
+              .eq('id_destinataire', userId)
+              .eq('lu', false)
+          ]);
 
-        if (userError) {
-          console.error("Error fetching user details:", userError);
-          continue;
-        }
+          const lastMessage = lastMessageResult.data;
+          const unreadCount = unreadResult.count || 0;
 
-        // Get last message in the conversation
-        const { data: lastMessageData, error: lastMessageError } = await supabase
-          .from('message')
-          .select('*')
-          .eq('id_conversation', conv.id_conversation)
-          .order('date_envoi', { ascending: false })
-          .limit(1);
-
-        if (lastMessageError) {
-          console.error("Error fetching last message:", lastMessageError);
-          continue;
-        }
-
-        // Count unread messages
-        const { count: unreadCount, error: unreadError } = await supabase
-          .from('message')
-          .select('*', { count: 'exact', head: true })
-          .eq('id_conversation', conv.id_conversation)
-          .eq('id_destinataire', userId)
-          .eq('lu', false);
-
-        if (unreadError) {
-          console.error("Error counting unread messages:", unreadError);
-        }
-
-        const lastMessage = lastMessageData && lastMessageData.length > 0 ? lastMessageData[0] : null;
-
-        formattedConversations.push({
-          id_message: lastMessage?.id_message || 0,
-          id_conversation: conv.id_conversation,
-          id_expediteur: lastMessage?.id_expediteur || "",
-          id_destinataire: lastMessage?.id_destinataire || "",
-          contenu: lastMessage?.contenu || "",
-          date_envoi: lastMessage?.date_envoi || conv.derniere_activite,
-          lu: lastMessage?.lu || false,
-          user: {
-            id: userData.id_utilisateur,
-            name: `${userData.nom} ${userData.prenoms || ''}`.trim(),
-            photo_profil: userData.photo_profil,
-            status: "online" // Default status
-          },
-          lastMessage: {
-            text: lastMessage?.contenu || "Nouvelle conversation",
-            timestamp: lastMessage?.date_envoi || conv.derniere_activite
-          },
-          timestamp: lastMessage?.date_envoi || conv.derniere_activite,
-          unread: unreadCount || 0
+          return {
+            id_message: 0,
+            id_conversation: conv.id_conversation,
+            id_expediteur: otherUserId,
+            id_destinataire: userId,
+            contenu: lastMessage?.contenu || "",
+            date_envoi: lastMessage?.date_envoi || conv.derniere_activite,
+            lu: false,
+            user: {
+              id: otherUser?.id_utilisateur || otherUserId,
+              name: `${otherUser?.nom || ''} ${otherUser?.prenoms || ''}`.trim(),
+              photo_profil: otherUser?.photo_profil,
+              status: "online" as const
+            },
+            lastMessage: {
+              text: lastMessage?.contenu || "Nouvelle conversation",
+              timestamp: lastMessage?.date_envoi || conv.derniere_activite
+            },
+            timestamp: lastMessage?.date_envoi || conv.derniere_activite,
+            unread: unreadCount
+          };
         });
+
+        // Wait for batch to complete
+        const batchResults = await Promise.all(batchPromises);
+        formattedConversations.push(...batchResults);
+        
+        // Sort and update state progressively for immediate display
+        const sortedConversations = [...formattedConversations].sort((a, b) => {
+          const dateA = new Date(a.timestamp || 0);
+          const dateB = new Date(b.timestamp || 0);
+          return dateB.getTime() - dateA.getTime();
+        });
+
+        setConversations([...sortedConversations]);
+        setFilteredConversations([...sortedConversations]);
+        
+        // Small delay for smooth progressive loading (only between batches)
+        if (i + batchSize < uniqueConversations.length) {
+          await new Promise(resolve => setTimeout(resolve, 50));
+        }
       }
 
-      // Tri par ordre chronologique (plus récent en premier)
-      formattedConversations.sort((a, b) => {
-        const dateA = new Date(a.timestamp || 0);
-        const dateB = new Date(b.timestamp || 0);
-        return dateB.getTime() - dateA.getTime();
-      });
-
-      setConversations(formattedConversations);
-      setFilteredConversations(formattedConversations);
     } catch (error) {
       console.error("Error fetching conversations:", error);
     } finally {
