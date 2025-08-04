@@ -1,11 +1,12 @@
 
 import React, { useState, useEffect } from "react";
 import { Button } from "./ui/button";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, Phone } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import UserAvatar from "./UserAvatar";
 import MessageDialog from "./MessageDialog";
+import { useAllTechnicienPhoneNumbers } from "@/hooks/useAllTechnicienPhoneNumbers";
 
 interface TechnicienContactLinkProps {
   technicienId: string;
@@ -30,6 +31,9 @@ const TechnicienContactLink: React.FC<TechnicienContactLinkProps> = ({
     photo?: string;
   } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Récupérer les numéros de téléphone du technicien
+  const { data: phoneNumbers } = useAllTechnicienPhoneNumbers(technicienId);
 
   // Fetch technicien details when component mounts or when technicienId changes
   useEffect(() => {
@@ -66,8 +70,17 @@ const TechnicienContactLink: React.FC<TechnicienContactLinkProps> = ({
     }
   };
 
+  // Identifier le numéro principal ou le premier disponible
+  const principalPhone = phoneNumbers?.find(phone => phone.type === 'principal') || phoneNumbers?.[0];
+
   const handleClick = () => {
     setIsMessageDialogOpen(true);
+  };
+
+  const handlePhoneCall = () => {
+    if (principalPhone?.numero) {
+      window.open(`tel:${principalPhone.numero}`, '_self');
+    }
   };
 
   // Don't render anything if the user is not logged in or if the user is the technician
@@ -85,18 +98,34 @@ const TechnicienContactLink: React.FC<TechnicienContactLinkProps> = ({
   if (variant === "avatar") {
     return (
       <>
-        <div 
-          className={`flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-2 rounded-md ${className}`}
-          onClick={handleClick}
-        >
+        <div className={`flex items-center gap-2 ${className}`}>
           <UserAvatar 
             src={technicien?.photo} 
             alt={technicien?.name || "Technicien"} 
             size="sm"
           />
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             <span className="text-sm font-medium">{technicien?.name || "Technicien"}</span>
-            <MessageSquare className="h-4 w-4 text-primary" />
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm" 
+                className="h-8 w-8 p-0 hover:bg-muted/50"
+                onClick={handleClick}
+              >
+                <MessageSquare className="h-4 w-4 text-primary" />
+              </Button>
+              {principalPhone && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 hover:bg-muted/50"
+                  onClick={handlePhoneCall}
+                >
+                  <Phone className="h-4 w-4 text-primary" />
+                </Button>
+              )}
+            </div>
           </div>
         </div>
 
