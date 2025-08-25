@@ -60,24 +60,27 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
           <p className="mt-2 text-muted-foreground">{profile.bio}</p>
         )}
         
-        <div className="flex flex-wrap gap-4 mt-3">
-          <div className="flex items-center text-sm text-muted-foreground">
-            <MapPin size={16} className="mr-1" />
-            <span>{profile.adresse || 'Aucune adresse'}</span>
-          </div>
-          
-          {profile.telephone && (
+        {/* Informations de contact - seulement pour l'utilisateur courant */}
+        {isCurrentUser && (
+          <div className="flex flex-wrap gap-4 mt-3">
             <div className="flex items-center text-sm text-muted-foreground">
-              <Phone size={16} className="mr-1" />
-              <span>{profile.telephone}</span>
+              <MapPin size={16} className="mr-1" />
+              <span>{profile.adresse || 'Aucune adresse'}</span>
             </div>
-          )}
-          
-          <div className="flex items-center text-sm text-muted-foreground">
-            <Mail size={16} className="mr-1" />
-            <span>{profile.email}</span>
+            
+            {profile.telephone && (
+              <div className="flex items-center text-sm text-muted-foreground">
+                <Phone size={16} className="mr-1" />
+                <span>{profile.telephone}</span>
+              </div>
+            )}
+            
+            <div className="flex items-center text-sm text-muted-foreground">
+              <Mail size={16} className="mr-1" />
+              <span>{profile.email}</span>
+            </div>
           </div>
-        </div>
+        )}
         
         <div className="flex flex-wrap items-center gap-4 mt-4">
           <div className="flex items-center gap-1">

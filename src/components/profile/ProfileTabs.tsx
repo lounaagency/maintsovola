@@ -47,6 +47,7 @@ interface ProjectStatusData {
 
 interface ProfileTabsProps {
   userId: string;
+  isCurrentUser: boolean;
   investedProjects?: any[];
   loading?: boolean;
   onViewDetails?: (projectId: number) => void;
@@ -75,6 +76,7 @@ interface ProfileTabsProps {
 
 const ProfileTabs: React.FC<ProfileTabsProps> = ({ 
   userId,
+  isCurrentUser,
   investedProjects = [],
   loading = false,
   onViewDetails = () => {},
@@ -117,6 +119,17 @@ const ProfileTabs: React.FC<ProfileTabsProps> = ({
     }
     
     // Utilisateurs simples (défaut)
+    if (!isCurrentUser) {
+      // Profil public - onglets limités
+      return (
+        <TabsList className="grid grid-cols-2 mb-4">
+          <TabsTrigger value="projects">Projets publics</TabsTrigger>
+          <TabsTrigger value="activity">Activité publique</TabsTrigger>
+        </TabsList>
+      );
+    }
+    
+    // Profil personnel - tous les onglets
     return (
       <TabsList className="grid grid-cols-4 mb-4">
         <TabsTrigger value="investments">Investissements</TabsTrigger>
@@ -171,7 +184,35 @@ const ProfileTabs: React.FC<ProfileTabsProps> = ({
       );
     }
     
-    // Contenu pour utilisateurs simples (inchangé)
+    // Contenu différent selon le type de profil
+    if (!isCurrentUser) {
+      // Profil public - contenu limité
+      return (
+        <>
+          <TabsContent value="projects" className="space-y-4">
+            <div className="rounded-lg border bg-card p-4">
+              <h3 className="text-lg font-semibold mb-4">Projets publics</h3>
+              <ProjectFeed 
+                filters={{ userId: userId, status: 'validé' }}
+                showFilters={false}
+                showFollowingTab={false}
+                title=""
+                gridLayout={true}
+              />
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="activity" className="space-y-4">
+            <div className="rounded-lg border bg-card p-4">
+              <h3 className="text-lg font-semibold mb-4">Activité publique</h3>
+              <ActivityFeed userId={userId} />
+            </div>
+          </TabsContent>
+        </>
+      );
+    }
+    
+    // Profil personnel - contenu complet
     return (
       <>
         <TabsContent value="investments" className="space-y-4">
@@ -272,11 +313,11 @@ const ProfileTabs: React.FC<ProfileTabsProps> = ({
     );
   };
 
-  // Déterminer la valeur par défaut selon le rôle
+  // Déterminer la valeur par défaut selon le rôle et le type de profil
   const getDefaultValue = () => {
     if (userRole === 'technicien') return 'parcelles';
     if (userRole === 'superviseur') return 'overview';
-    return 'investments';
+    return isCurrentUser ? 'investments' : 'projects';
   };
   
   // Pour superviseur, pas besoin de Tabs wrapper

@@ -130,8 +130,16 @@ export const Profile = () => {
       
       await fetchFollowStatus(userId);
       await fetchProjectsCount(userId);
-      await fetchInvestedProjects(userId);
-      await fetchProjectsSummary(userId);
+      
+      // Ne récupérer les données sensibles que pour l'utilisateur courant
+      if (isCurrentUser) {
+        await fetchInvestedProjects(userId);
+        await fetchProjectsSummary(userId);
+      } else {
+        // Pour les profils consultés, récupérer seulement les projets publics
+        await fetchPublicProjectsSummary(userId);
+      }
+      
       setLoading(false);
     };
     
@@ -420,6 +428,74 @@ export const Profile = () => {
     }
   };
   
+  // Nouvelle fonction pour récupérer seulement les données publiques des projets
+  const fetchPublicProjectsSummary = async (userId: string) => {
+    try {
+      const { data: projectsData, error } = await supabase
+        .from('projet')
+        .select(`
+          id_projet,
+          statut,
+          surface_ha,
+          cultures:projet_culture(
+            culture:id_culture(nom_culture)
+          )
+        `)
+        .eq('id_tantsaha', userId)
+        .eq('statut', 'validé'); // Seulement les projets validés
+        
+      if (error) throw error;
+      
+      if (!projectsData) return;
+      
+      let totalArea = 0;
+      const cultureMap = new Map<string, { count: number, fill: string }>();
+      const statusColors = ['#3b82f6', '#10b981', '#f59e0b'];
+      
+      projectsData.forEach(project => {
+        totalArea += project.surface_ha || 0;
+        
+        if (project.cultures && Array.isArray(project.cultures)) {
+          project.cultures.forEach(pc => {
+            if (pc.culture) {
+              const cultureName = pc.culture.nom_culture;
+              if (!cultureMap.has(cultureName)) {
+                const colorIndex = cultureMap.size % statusColors.length;
+                cultureMap.set(cultureName, { count: 1, fill: statusColors[colorIndex] });
+              } else {
+                cultureMap.get(cultureName)!.count += 1;
+              }
+            }
+          });
+        }
+      });
+      
+      const projectsByCulture = Array.from(cultureMap.entries()).map(([name, info]) => ({
+        name,
+        count: info.count,
+        fill: info.fill
+      }));
+      
+      // Version allégée pour les profils publics - sans données financières
+      setProjectsSummary({
+        totalProjects: projectsData.length,
+        totalArea,
+        totalFunding: 0, // Masqué pour les profils publics
+        totalProfit: 0, // Masqué pour les profils publics
+        ownerProfit: 0, // Masqué pour les profils publics
+        projectsByStatus: {
+          enFinancement: { count: 0, area: 0, funding: 0, profit: 0, ownerProfit: 0, cultures: [] },
+          enCours: { count: 0, area: 0, funding: 0, profit: 0, ownerProfit: 0, cultures: [] },
+          termine: { count: projectsData.length, area: totalArea, funding: 0, profit: 0, ownerProfit: 0, cultures: projectsByCulture }
+        },
+        projectsByCulture
+      });
+      
+    } catch (error) {
+      console.error("Erreur lors de la récupération des projets publics:", error);
+    }
+  };
+  
   const fetchInvestedProjects = async (userId: string) => {
     try {
       const { data: investmentData, error } = await supabase
@@ -695,6 +771,7 @@ export const Profile = () => {
       
       <ProfileTabs 
         userId={profile?.id_utilisateur || ''}
+        isCurrentUser={isCurrentUser}
         investedProjects={investedProjects}
         loading={loading}
         onViewDetails={handleOpenDetails}
