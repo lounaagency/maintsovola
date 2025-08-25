@@ -7,6 +7,8 @@ import PaymentHistory from './PaymentHistory';
 import InvestmentsList from './InvestmentsList';
 import InvestmentSummary from './InvestmentSummary';
 import ProjectsSummary from './ProjectsSummary';
+import ProjectActivitiesSummary from './ProjectActivitiesSummary';
+import InvestedProjectsFeed from './InvestedProjectsFeed';
 import ActivityFeed from './ActivityFeed';
 import PaymentTrackingSection from './PaymentTrackingSection';
 import PaymentAnalytics from './PaymentAnalytics';
@@ -131,9 +133,10 @@ const ProfileTabs: React.FC<ProfileTabsProps> = ({
     
     // Profil personnel - tous les onglets
     return (
-      <TabsList className="grid grid-cols-4 mb-4">
+      <TabsList className="grid grid-cols-5 mb-4">
+        <TabsTrigger value="summary">Résumé</TabsTrigger>
+        <TabsTrigger value="all-projects">Tous mes projets</TabsTrigger>
         <TabsTrigger value="investments">Investissements</TabsTrigger>
-        <TabsTrigger value="projects">Projets</TabsTrigger>
         <TabsTrigger value="payments">Paiements</TabsTrigger>
         <TabsTrigger value="activity">Activité</TabsTrigger>
       </TabsList>
@@ -215,6 +218,57 @@ const ProfileTabs: React.FC<ProfileTabsProps> = ({
     // Profil personnel - contenu complet
     return (
       <>
+        <TabsContent value="summary" className="space-y-4">
+          <div className="rounded-lg border bg-card p-4">
+            <ProjectActivitiesSummary 
+              totalCreatedProjects={projectsSummary?.totalProjects || 0}
+              totalCreatedArea={projectsSummary?.totalArea || 0}
+              totalCreatedFunding={projectsSummary?.totalFunding || 0}
+              totalCreatedProfit={projectsSummary?.ownerProfit || 0}
+              totalInvestedProjects={investedProjects.length}
+              totalInvested={investmentSummary?.totalInvested || 0}
+              totalInvestmentProfit={investmentSummary?.totalProfit || 0}
+              averageROI={investmentSummary?.averageROI || 0}
+              ongoingProjects={(investmentSummary?.ongoingProjects || 0) + (projectsSummary?.projectsByStatus.enCours.count || 0) + (projectsSummary?.projectsByStatus.enFinancement.count || 0)}
+              completedProjects={(investmentSummary?.completedProjects || 0) + (projectsSummary?.projectsByStatus.termine.count || 0)}
+              activitiesBreakdown={[
+                { name: 'Projets créés', value: projectsSummary?.totalProjects || 0, fill: '#10b981' },
+                { name: 'Investissements', value: investedProjects.length, fill: '#3b82f6' }
+              ]}
+              statusBreakdown={[
+                { name: 'En financement', value: (projectsSummary?.projectsByStatus.enFinancement.count || 0), fill: '#94a3b8' },
+                { name: 'En cours', value: (projectsSummary?.projectsByStatus.enCours.count || 0) + (investmentSummary?.ongoingProjects || 0), fill: '#3b82f6' },
+                { name: 'Terminés', value: (projectsSummary?.projectsByStatus.termine.count || 0) + (investmentSummary?.completedProjects || 0), fill: '#10b981' }
+              ]}
+              isCurrentUser={true}
+            />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="all-projects" className="space-y-4">
+          <div className="rounded-lg border bg-card p-4 space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Projets créés par moi</h3>
+              <p className="text-sm text-muted-foreground mb-4">Les projets que j'ai soumis</p>
+              <ProjectFeed 
+                filters={{ userId: userId }}
+                showFilters={false}
+                showFollowingTab={false}
+                title=""
+                gridLayout={true}
+              />
+            </div>
+            
+            {investedProjects.length > 0 && (
+              <div className="border-t pt-6">
+                <h3 className="text-lg font-semibold mb-2">Projets dans lesquels j'ai investi</h3>
+                <p className="text-sm text-muted-foreground mb-4">Les projets que je finance</p>
+                <InvestedProjectsFeed investedProjects={investedProjects} onViewDetails={onViewDetails} />
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
         <TabsContent value="investments" className="space-y-4">
           <div className="rounded-lg border bg-card p-4">
             {investmentSummary && (
@@ -240,32 +294,6 @@ const ProfileTabs: React.FC<ProfileTabsProps> = ({
             ) : (
               <InvestmentTable investments={[]} />
             )}
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="projects" className="space-y-4">
-          <div className="rounded-lg border bg-card p-4">
-            {projectsSummary && (
-              <div className="mb-6">
-                <ProjectsSummary
-                  totalProjects={projectsSummary.totalProjects}
-                  totalArea={projectsSummary.totalArea}
-                  totalFunding={projectsSummary.totalFunding}
-                  totalProfit={projectsSummary.totalProfit}
-                  ownerProfit={projectsSummary.ownerProfit}
-                  projectsByStatus={projectsSummary.projectsByStatus}
-                  projectsByCulture={projectsSummary.projectsByCulture}
-                />
-              </div>
-            )}
-            
-            <ProjectFeed 
-              filters={{ userId: userId }}
-              showFilters={false}
-              showFollowingTab={false}
-              title="Projets publiés"
-              gridLayout={true}
-            />
           </div>
         </TabsContent>
         
@@ -317,7 +345,7 @@ const ProfileTabs: React.FC<ProfileTabsProps> = ({
   const getDefaultValue = () => {
     if (userRole === 'technicien') return 'parcelles';
     if (userRole === 'superviseur') return 'overview';
-    return isCurrentUser ? 'investments' : 'projects';
+    return isCurrentUser ? 'summary' : 'projects';
   };
   
   // Pour superviseur, pas besoin de Tabs wrapper
