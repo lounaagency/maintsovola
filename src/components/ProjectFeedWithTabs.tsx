@@ -30,17 +30,23 @@ const ProjectFeedWithTabs: React.FC<ProjectFeedWithTabsProps> = ({
     const tab = searchParams.get('tab');
     const projectId = searchParams.get('id_projet');
     
-    if (projectId && tab && (tab === 'finances' || tab === 'jalons')) {
+    if (projectId) {
       setSelectedProjectId(parseInt(projectId));
-      setDialogTab(tab);
+      if (tab && (tab === 'finances' || tab === 'jalons')) {
+        setDialogTab(tab);
+      } else {
+        // Default to finances tab when no specific tab is provided
+        setDialogTab('finances');
+      }
     }
   }, [searchParams]);
 
   const handleCloseDialog = () => {
     setSelectedProjectId(null);
-    // Clear tab parameter from URL when closing dialog
+    // Clear both tab and id_projet parameters from URL when closing dialog
     const currentParams = new URLSearchParams(window.location.search);
     currentParams.delete('tab');
+    currentParams.delete('id_projet');
     const newUrl = `${window.location.pathname}${currentParams.toString() ? '?' + currentParams.toString() : ''}`;
     window.history.replaceState({}, '', newUrl);
   };

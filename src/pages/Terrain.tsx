@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Navigate } from "react-router-dom";
+import { Navigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -26,6 +26,7 @@ export const Terrain = () => {
   const {
     toast
   } = useToast();
+  const [searchParams] = useSearchParams();
   const [pendingTerrains, setPendingTerrains] = useState<TerrainData[]>([]);
   const [validatedTerrains, setValidatedTerrains] = useState<TerrainData[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
@@ -150,6 +151,24 @@ export const Terrain = () => {
       fetchAgriculteurs();
     }
   }, [user, fetchTerrains, fetchTechniciens, fetchAgriculteurs]);
+
+  // Handle automatic terrain dialog opening from notification links
+  useEffect(() => {
+    const terrainId = searchParams.get('id');
+    if (terrainId && (pendingTerrains.length > 0 || validatedTerrains.length > 0)) {
+      const allTerrains = [...pendingTerrains, ...validatedTerrains];
+      const terrain = allTerrains.find(t => t.id_terrain === parseInt(terrainId));
+      if (terrain) {
+        setSelectedTerrain(terrain);
+        setIsTerrainCardOpen(true);
+        // Clean up URL parameter
+        const currentParams = new URLSearchParams(window.location.search);
+        currentParams.delete('id');
+        const newUrl = `${window.location.pathname}${currentParams.toString() ? '?' + currentParams.toString() : ''}`;
+        window.history.replaceState({}, '', newUrl);
+      }
+    }
+  }, [searchParams, pendingTerrains, validatedTerrains]);
   const handleTerrainUpdate = (updatedTerrain?: TerrainData, action?: 'add' | 'update' | 'delete') => {
     if (!updatedTerrain) return;
     if (action === 'delete') {
