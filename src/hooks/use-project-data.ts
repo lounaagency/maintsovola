@@ -9,7 +9,7 @@ export type ProjectFilter = {
   projectId?: string | number;
   userId?: string;
   followedUsersOnly?: boolean;
-  status?: string;
+  status?: string | string[];
   region?: string;
   district?: string;
   commune?: string;
@@ -111,7 +111,11 @@ export const useProjectData = (filters: ProjectFilter = {}) => {
 
       // Apply status filter
       if (filters.status) {
-        query = query.eq('statut', filters.status);
+        if (Array.isArray(filters.status)) {
+          query = query.in('statut', filters.status);
+        } else {
+          query = query.eq('statut', filters.status);
+        }
       } else {
         // Default to "en financement" if no status is specified
         query = query.eq('statut', 'en financement');

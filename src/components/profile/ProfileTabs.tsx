@@ -193,7 +193,7 @@ const ProfileTabs: React.FC<ProfileTabsProps> = ({
             <div className="rounded-lg border bg-card p-4">
               <h3 className="text-lg font-semibold mb-4">Projets publics</h3>
               <ProjectFeed 
-                filters={{ userId: userId, status: 'validé' }}
+                filters={{ userId: userId, status: ['validé', 'en financement', 'en cours'] }}
                 showFilters={false}
                 showFollowingTab={false}
                 title=""
