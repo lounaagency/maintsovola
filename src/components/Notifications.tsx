@@ -66,17 +66,7 @@ const Notifications: React.FC = () => {
             break;
         }
         
-        // Determine link based on entity type
-        let link = '';
         const entityType = notification.entity_type as 'terrain' | 'projet' | 'jalon' | 'investissement' | 'commentaire' | undefined;
-        
-        if (entityType === 'projet' || notification.projet_id) {
-          link = `/projects/${notification.entity_id || notification.projet_id}`;
-        } else if (entityType === 'terrain') {
-          link = `/terrain?id=${notification.entity_id}`;
-        } else if (entityType === 'jalon') {
-          link = `/projects/${notification.projet_id}?jalon=${notification.entity_id}`;
-        }
         
         return {
           id: notification.id_notification.toString(),
@@ -85,7 +75,7 @@ const Notifications: React.FC = () => {
           timestamp: notification.date_creation,
           read: notification.lu,
           type: notifType,
-          link: link,
+          link: '',
           entity_id: notification.entity_id?.toString() || null,
           entity_type: entityType,
           projet_id: notification.projet_id?.toString() || null
@@ -154,8 +144,8 @@ const Notifications: React.FC = () => {
     if (notification.entity_type && notification.entity_id) {
       switch (notification.entity_type) {
         case 'terrain':
-          // For terrain notifications, navigate to terrain dialog
-          navigate(notification.link || '/terrain');
+          // For terrain notifications, navigate to terrain with ID parameter
+          navigate(`/terrain?id=${notification.entity_id}`);
           break;
         case 'projet':
           // For project notifications, navigate to feed with project ID
