@@ -29,6 +29,7 @@ interface ProjectActionsProps {
   canInvest?: boolean;
   onInvest?: () => void;
   fundingGap: number;
+  commentsDataAttribute?: string;
 }
 
 const ProjectActions: React.FC<ProjectActionsProps> = ({
@@ -42,7 +43,8 @@ const ProjectActions: React.FC<ProjectActionsProps> = ({
   className,
   canInvest,
   onInvest,
-  fundingGap = 0
+  fundingGap = 0,
+  commentsDataAttribute
 }) => {
   const isMobile = useIsMobile();
   const { user } = useAuth();
@@ -162,6 +164,7 @@ const ProjectActions: React.FC<ProjectActionsProps> = ({
         size="sm"
         className="flex items-center gap-1 text-sm font-normal text-muted-foreground"
         onClick={onOpenComments}
+        {...(commentsDataAttribute && { [commentsDataAttribute]: true })}
       >
         <span>{comments > 0 ? comments : ''}</span>
         <MessageCircle size={18} />

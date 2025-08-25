@@ -24,13 +24,15 @@ interface ProjectDetailsDialogProps {
   onClose: () => void;
   projectId: number;
   userRole?: string;
+  defaultTab?: 'finances' | 'jalons';
 }
 
 const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
   isOpen,
   onClose,
   projectId,
-  userRole
+  userRole,
+  defaultTab = 'finances'
 }) => {
   const { toast } = useToast();
   const [project, setProject] = useState<any>(null);
@@ -484,7 +486,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
               </CardContent>
             </Card>
 
-            <Tabs defaultValue="finances" className="w-full text-xs">
+            <Tabs defaultValue={defaultTab} className="w-full text-xs">
               <TabsList className="grid grid-cols-2">
                 <TabsTrigger value="finances">Financement</TabsTrigger>
                 <TabsTrigger value="jalons">Jalons & Production</TabsTrigger>

@@ -321,7 +321,7 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({
   const displayTitle = projectDetails.title || `Projet de culture de ${project.cultures}`;
   const displayDescription = projectDetails.description || `Projet de culture de ${typeof project.cultures === 'string' ? project.cultures : 'cultures'} sur un terrain de ${project.cultures} hectares.`;
   return <>
-      <Card className="overflow-hidden mb-4">
+      <Card className="overflow-hidden mb-4" data-project-id={project.id}>
         <div className="p-4">
           <div className="flex items-start justify-between mb-3">
             <div className="flex items-center">
@@ -446,9 +446,22 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({
             }}></div>
             </div>
           </div>
-          <ProjectActions projectId={project.id} likes={project.likes} comments={commentCount} shares={project.shares} isLiked={liked} onLikeToggle={handleLike} onOpenComments={handleToggleComments} onInvest={handleOpenInvestModal} fundingGap={fundingGap} canInvest={canInvest} onShare={() => {
-          toast.info("Fonctionnalité de partage à venir");
-        }} />            
+          <ProjectActions 
+            projectId={project.id} 
+            likes={project.likes} 
+            comments={commentCount} 
+            shares={project.shares} 
+            isLiked={liked} 
+            onLikeToggle={handleLike} 
+            onOpenComments={handleToggleComments} 
+            onInvest={handleOpenInvestModal} 
+            fundingGap={fundingGap} 
+            canInvest={canInvest} 
+            onShare={() => {
+              toast.info("Fonctionnalité de partage à venir");
+            }}
+            commentsDataAttribute="data-comments-trigger"
+          />
         </div>
         
         {showComments && <CommentSection postId={project.id} onCommentCountChange={handleCommentCountChange} />}

@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { Navigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
-import ProjectFeed from "@/components/ProjectFeed";
+import ProjectFeedWithTabs from "@/components/ProjectFeedWithTabs";
 import { ProjectFilter } from "@/hooks/use-project-data";
 
 const Feed: React.FC = () => {
@@ -32,6 +32,25 @@ const Feed: React.FC = () => {
     }
     
     setFilters(newFilters);
+
+    // Handle focus on comments if specified in URL
+    if (searchParams.has('focus') && searchParams.get('focus') === 'comments') {
+      // Scroll to project and expand comments after a short delay
+      setTimeout(() => {
+        const projectId = searchParams.get('id_projet');
+        if (projectId) {
+          const projectElement = document.querySelector(`[data-project-id="${projectId}"]`);
+          if (projectElement) {
+            projectElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Trigger comment expansion
+            const commentButton = projectElement.querySelector('[data-comments-trigger]') as HTMLElement;
+            if (commentButton) {
+              commentButton.click();
+            }
+          }
+        }
+      }, 500);
+    }
   }, [searchParams]);
   
   if (!user) {
@@ -57,17 +76,23 @@ const Feed: React.FC = () => {
       params.set('commune', newFilters.commune);
     }
     
+    // Remove focus parameter when filters change (unless it's the first load)
+    if (searchParams.has('focus')) {
+      params.delete('focus');
+    }
+    
     setSearchParams(params);
   };
 
   return (
     <div className={`${isMobile ? 'w-full' : 'max-w-md'} mx-auto px-4 py-4`}>
-      <ProjectFeed
+      <ProjectFeedWithTabs
         filters={filters}
         showFilters={true}
         showFollowingTab={true}
         title="Projets en financement"
         onFilterChange={handleFilterChange}
+        className={`${isMobile ? 'w-full' : 'max-w-md'} mx-auto px-4 py-4`}
       />
     </div>
   );

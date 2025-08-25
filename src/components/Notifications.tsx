@@ -18,7 +18,7 @@ interface NotificationItem {
   type: 'info' | 'error' | 'success' | 'warning';
   link: string;
   entity_id: string | null;
-  entity_type: 'terrain' | 'projet' | 'jalon' | 'investissement' | undefined;
+  entity_type: 'terrain' | 'projet' | 'jalon' | 'investissement' | 'commentaire' | undefined;
   projet_id: string | null;
 }
 
@@ -68,7 +68,7 @@ const Notifications: React.FC = () => {
         
         // Determine link based on entity type
         let link = '';
-        const entityType = notification.entity_type as 'terrain' | 'projet' | 'jalon' | 'investissement' | undefined;
+        const entityType = notification.entity_type as 'terrain' | 'projet' | 'jalon' | 'investissement' | 'commentaire' | undefined;
         
         if (entityType === 'projet' || notification.projet_id) {
           link = `/projects/${notification.entity_id || notification.projet_id}`;
@@ -145,14 +145,46 @@ const Notifications: React.FC = () => {
   };
   
   const handleNotificationClick = (notification: NotificationItem) => {
+    // Mark as read if unread
     if (!notification.read) {
       markAsRead(notification.id);
     }
     
-    if (notification.link) {
+    // Navigate based on notification type and entity
+    if (notification.entity_type && notification.entity_id) {
+      switch (notification.entity_type) {
+        case 'terrain':
+          // For terrain notifications, navigate to terrain dialog
+          navigate(notification.link || '/terrain');
+          break;
+        case 'projet':
+          // For project notifications, navigate to feed with project ID
+          navigate(`/feed?id_projet=${notification.entity_id}`);
+          break;
+        case 'jalon':
+          // For milestone notifications, navigate to project with jalons tab
+          navigate(`/feed?id_projet=${notification.projet_id}&tab=jalons`);
+          break;
+        case 'investissement':
+          // For investment notifications, navigate to project with financement tab
+          navigate(`/feed?id_projet=${notification.projet_id}&tab=financement`);
+          break;
+        case 'commentaire':
+          // For comment notifications, navigate to feed with focus on comments
+          navigate(`/feed?id_projet=${notification.projet_id}&focus=comments`);
+          break;
+        default:
+          if (notification.link) {
+            navigate(notification.link);
+          }
+          break;
+      }
+    } else if (notification.link) {
       navigate(notification.link);
-      setIsOpen(false);
     }
+    
+    // Close the popover
+    setIsOpen(false);
   };
   
   const getTimeAgo = (timestamp: string) => {
