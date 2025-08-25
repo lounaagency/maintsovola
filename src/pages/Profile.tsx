@@ -132,7 +132,7 @@ export const Profile = () => {
       await fetchProjectsCount(userId);
       
       // Ne récupérer les données sensibles que pour l'utilisateur courant
-      if (isCurrentUser) {
+      if (user?.id === userId) {
         await fetchInvestedProjects(userId);
         await fetchProjectsSummary(userId);
       } else {
