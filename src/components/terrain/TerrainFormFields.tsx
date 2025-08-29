@@ -22,6 +22,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet-draw/dist/leaflet.draw.css";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import SurfaceDisplay from "./SurfaceDisplay";
 
 interface TerrainFormFieldsProps {
   form: UseFormReturn<TerrainFormData>;
@@ -61,6 +62,7 @@ const TerrainFormFields: React.FC<TerrainFormFieldsProps> = ({
   const [shouldUpdateSurface, setShouldUpdateSurface] = useState(false);
   const [existingTerrains, setExistingTerrains] = useState<TerrainData[]>([]);
   const [showOverlapDialog, setShowOverlapDialog] = useState(false);
+  const [calculatedSurface, setCalculatedSurface] = useState<number | null>(null);
   const featureGroupRef = useRef<L.FeatureGroup | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -235,7 +237,10 @@ const TerrainFormFields: React.FC<TerrainFormFieldsProps> = ({
     if (shouldUpdateSurface && polygonCoordinates && polygonCoordinates.length >= 3) {
       const area = calculateAreaInHectares(polygonCoordinates);
       form.setValue("surface_proposee", area);
+      setCalculatedSurface(area);
       setShouldUpdateSurface(false);
+    } else if (polygonCoordinates.length === 0) {
+      setCalculatedSurface(null);
     }
   }, [polygonCoordinates, form, shouldUpdateSurface]);
 
@@ -278,6 +283,7 @@ const TerrainFormFields: React.FC<TerrainFormFieldsProps> = ({
 
   const handleDeleted = () => {
     setPolygonCoordinates([]);
+    setCalculatedSurface(null);
   };
 
   return (
@@ -630,6 +636,10 @@ const TerrainFormFields: React.FC<TerrainFormFieldsProps> = ({
                 onDeleted={handleDeleted}
               />
             </FeatureGroup>
+            <SurfaceDisplay 
+              surface={calculatedSurface} 
+              polygonCoordinates={polygonCoordinates}
+            />
             <MapInitializer />
           </MapContainer>
         </div>
