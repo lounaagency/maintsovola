@@ -234,14 +234,22 @@ export const Terrain = () => {
       setIsMessageDialogOpen(true);
     }
   };
-  const handleTerrainSaved = (updatedTerrain: TerrainData) => {
+  const handleTerrainSaved = async (updatedTerrain: TerrainData) => {
     console.log("Terrain saved:", updatedTerrain);
+    
+    // Forcer le rechargement des données pour s'assurer que toutes les jointures sont correctes
+    // particulièrement important pour les nouveaux terrains
     const isNewTerrain = !pendingTerrains.some(t => t.id_terrain === updatedTerrain.id_terrain) && !validatedTerrains.some(t => t.id_terrain === updatedTerrain.id_terrain);
+    
     if (isNewTerrain) {
-      handleTerrainUpdate(updatedTerrain, 'add');
+      console.log("Nouveau terrain créé, rechargement des données...");
+      // Pour les nouveaux terrains, forcer un refresh complet pour récupérer toutes les données avec jointures
+      await fetchTerrains();
     } else {
+      console.log("Terrain existant mis à jour");
       handleTerrainUpdate(updatedTerrain, 'update');
     }
+    
     setIsTerrainDialogOpen(false);
     setIsTerrainValidateOpen(false);
   };

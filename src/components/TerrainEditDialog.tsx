@@ -144,95 +144,121 @@ const TerrainEditDialog: React.FC<TerrainEditDialogProps> = ({
         toast.success("Terrain mis à jour avec succès");
       }
       
-      // Fetch additional data for the terrain
+      // Pour les nouveaux terrains, laisser le parent (Terrain.tsx) récupérer les données complètes via fetchTerrains()
+      // Cela évite les problèmes de synchronisation et garantit que toutes les jointures sont correctes
       if (result) {
-        // Get region name
-        if (result.id_region) {
-          const { data: regionData } = await supabase
-            .from('region')
-            .select('nom_region')
-            .eq('id_region', result.id_region)
-            .maybeSingle();
-            
-          if (regionData) {
-            result.region_name = regionData.nom_region;
-          }
-        }
+        console.log("Terrain sauvegardé, données de base disponibles:", {
+          id_terrain: result.id_terrain,
+          nom_terrain: result.nom_terrain,
+          id_tantsaha: result.id_tantsaha,
+          id_region: result.id_region,
+          id_district: result.id_district,
+          id_commune: result.id_commune
+        });
         
-        // Get district name
-        if (result.id_district) {
-          const { data: districtData } = await supabase
-            .from('district')
-            .select('nom_district')
-            .eq('id_district', result.id_district)
-            .maybeSingle();
-            
-          if (districtData) {
-            result.district_name = districtData.nom_district;
+        // Pour les nouveaux terrains, on envoie juste les données de base
+        // Le parent fera un fetchTerrains() pour récupérer les données complètes avec jointures
+        if (isNew) {
+          onSubmitSuccess({
+            ...result,
+            // Valeurs par défaut pour éviter l'affichage "Non spécifié" temporairement
+            region_name: result.region_name || 'Chargement...',
+            district_name: result.district_name || 'Chargement...',
+            commune_name: result.commune_name || 'Chargement...',
+            tantsahaNom: result.tantsahaNom || 'Chargement...',
+            techniqueNom: result.techniqueNom || 'Non assigné',
+            superviseurNom: result.superviseurNom || 'Non assigné'
+          } as TerrainData);
+        } else {
+          // Pour les mises à jour, récupérer les données complètes comme avant
+          // Get region name
+          if (result.id_region) {
+            const { data: regionData } = await supabase
+              .from('region')
+              .select('nom_region')
+              .eq('id_region', result.id_region)
+              .maybeSingle();
+              
+            if (regionData) {
+              result.region_name = regionData.nom_region;
+            }
           }
-        }
-        
-        // Get commune name
-        if (result.id_commune) {
-          const { data: communeData } = await supabase
-            .from('commune')
-            .select('nom_commune')
-            .eq('id_commune', result.id_commune)
-            .maybeSingle();
-            
-          if (communeData) {
-            result.commune_name = communeData.nom_commune;
+          
+          // Get district name
+          if (result.id_district) {
+            const { data: districtData } = await supabase
+              .from('district')
+              .select('nom_district')
+              .eq('id_district', result.id_district)
+              .maybeSingle();
+              
+            if (districtData) {
+              result.district_name = districtData.nom_district;
+            }
           }
-        }
-        
-        // Get farmer name
-        if (result.id_tantsaha) {
-          const { data: ownerData } = await supabase
-            .from('utilisateurs_par_role')
-            .select('nom, prenoms')
-            .eq('id_utilisateur', result.id_tantsaha)
-            .maybeSingle();
-            
-          if (ownerData) {
-            result.tantsahaNom = `${ownerData.nom} ${ownerData.prenoms || ''}`.trim();
+          
+          // Get commune name
+          if (result.id_commune) {
+            const { data: communeData } = await supabase
+              .from('commune')
+              .select('nom_commune')
+              .eq('id_commune', result.id_commune)
+              .maybeSingle();
+              
+            if (communeData) {
+              result.commune_name = communeData.nom_commune;
+            }
           }
-        }
-        
-        // Get technician name
-        if (result.id_technicien) {
-          const { data: techData } = await supabase
-            .from('utilisateurs_par_role')
-            .select('nom, prenoms')
-            .eq('id_utilisateur', result.id_technicien)
-            .maybeSingle();
-            
-          if (techData) {
-            result.techniqueNom = `${techData.nom} ${techData.prenoms || ''}`.trim();
+          
+          // Get farmer name
+          if (result.id_tantsaha) {
+            const { data: ownerData } = await supabase
+              .from('utilisateur')
+              .select('nom, prenoms')
+              .eq('id_utilisateur', result.id_tantsaha)
+              .maybeSingle();
+              
+            if (ownerData) {
+              result.tantsahaNom = `${ownerData.nom} ${ownerData.prenoms || ''}`.trim();
+            }
+          }
+          
+          // Get technician name
+          if (result.id_technicien) {
+            const { data: techData } = await supabase
+              .from('utilisateur')
+              .select('nom, prenoms')
+              .eq('id_utilisateur', result.id_technicien)
+              .maybeSingle();
+              
+            if (techData) {
+              result.techniqueNom = `${techData.nom} ${techData.prenoms || ''}`.trim();
+            } else {
+              result.techniqueNom = 'Non assigné';
+            }
           } else {
             result.techniqueNom = 'Non assigné';
           }
-        } else {
-          result.techniqueNom = 'Non assigné';
-        }
-        
-        // Get supervisor name
-        if (result.id_superviseur) {
-          const { data: supervData } = await supabase
-            .from('utilisateurs_par_role')
-            .select('nom, prenoms')
-            .eq('id_utilisateur', result.id_superviseur)
-            .maybeSingle();
-            
-          if (supervData) {
-            result.superviseurNom = `${supervData.nom} ${supervData.prenoms || ''}`.trim();
+          
+          // Get supervisor name
+          if (result.id_superviseur) {
+            const { data: supervData } = await supabase
+              .from('utilisateur')
+              .select('nom, prenoms')
+              .eq('id_utilisateur', result.id_superviseur)
+              .maybeSingle();
+              
+            if (supervData) {
+              result.superviseurNom = `${supervData.nom} ${supervData.prenoms || ''}`.trim();
+            } else {
+              result.superviseurNom = 'Non assigné';
+            }
           } else {
             result.superviseurNom = 'Non assigné';
           }
-        } else {
-          result.superviseurNom = 'Non assigné';
+          
+          onSubmitSuccess(result as TerrainData);
         }
-        
-        onSubmitSuccess(result as TerrainData);
       }
       
       // Use setTimeout to handle modal close after state updates

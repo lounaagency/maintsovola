@@ -235,11 +235,19 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
               <TableCell>
                 <div className="font-medium">{terrain.nom_terrain}</div>
                 <div className="text-xs text-muted-foreground">
-                  {terrain.tantsahaNom || "Non spécifié"}
+                  {terrain.tantsahaNom === 'Chargement...' ? (
+                    <span className="animate-pulse">Chargement...</span>
+                  ) : (
+                    terrain.tantsahaNom || "Non spécifié"
+                  )}
                 </div>
               </TableCell>
               <TableCell>
-                {terrain.region_name || "Non spécifié"}, {terrain.commune_name || "Non spécifié"}, {terrain.district_name || "Non spécifié"}
+                {terrain.region_name === 'Chargement...' ? (
+                  <span className="animate-pulse">Chargement...</span>
+                ) : (
+                  `${terrain.region_name || "Non spécifié"}, ${terrain.commune_name || "Non spécifié"}, ${terrain.district_name || "Non spécifié"}`
+                )}
               </TableCell>
               <TableCell>
                 {terrain.surface_validee || terrain.surface_proposee} ha
