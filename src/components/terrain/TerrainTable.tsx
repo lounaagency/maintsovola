@@ -298,7 +298,9 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                 <div className="flex flex-col gap-1">
                   <Badge
                     variant={terrain.acces_eau ? "outline" : "secondary"}
-                    className="text-xs justify-start"
+                    className={`text-xs justify-start ${terrain.acces_eau 
+                      ? "bg-green-100 text-green-800 border-green-200" 
+                      : "bg-gray-100 text-gray-600 border-gray-200"}`}
                   >
                     {terrain.acces_eau ? (
                       <Check className="h-3 w-3 mr-1" />
@@ -309,7 +311,9 @@ const TerrainTable: React.FC<TerrainTableProps> = ({
                   </Badge>
                   <Badge
                     variant={terrain.acces_route ? "outline" : "secondary"}
-                    className="text-xs justify-start"
+                    className={`text-xs justify-start ${terrain.acces_route 
+                      ? "bg-green-100 text-green-800 border-green-200" 
+                      : "bg-gray-100 text-gray-600 border-gray-200"}`}
                   >
                     {terrain.acces_route ? (
                       <Check className="h-3 w-3 mr-1" />

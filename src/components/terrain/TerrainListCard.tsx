@@ -90,7 +90,7 @@ const TerrainListCard: React.FC<TerrainListCardProps> = ({
             <Badge
               variant={terrain.acces_eau ? "default" : "secondary"}
               className={`text-xs px-1 py-0 ${terrain.acces_eau 
-                ? "bg-blue-100 text-blue-800 border-blue-200" 
+                ? "bg-green-100 text-green-800 border-green-200" 
                 : "bg-gray-100 text-gray-600 border-gray-200"}`}
             >
               {terrain.acces_eau ? (
