@@ -1,5 +1,6 @@
 
 import { useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface MvolaPaymentData {
   amount: string;
@@ -14,6 +15,9 @@ interface MvolaResponse {
   status: number;
   serverCorrelationId: string;
   objectReference?: string;
+  success?: boolean;
+  message?: string;
+  transactionId?: string;
 }
 
 interface SendPaymentData {
@@ -28,22 +32,38 @@ export const useMvola = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const initiatePayment = async (paymentData: MvolaPaymentData): Promise<MvolaResponse | null> => {
+  const initiatePayment = async (paymentData: SendPaymentData): Promise<MvolaResponse | null> => {
     setLoading(true);
     setError(null);
 
     try {
-      console.log('Initiating MVola payment:', paymentData);
+      console.log('Initiating MVola payment via edge function:', paymentData);
       
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const mockResponse: MvolaResponse = {
-        status: 200,
-        serverCorrelationId: `MVOLA-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
-        objectReference: `REF-${Date.now()}`
-      };
+      const { data: response, error } = await supabase.functions.invoke('paiement-mvola', {
+        body: {
+          phone: paymentData.phoneNumber,
+          amount: paymentData.amount,
+          reason: paymentData.description,
+          investissementId: paymentData.investmentId
+        }
+      });
 
-      return mockResponse;
+      if (error) {
+        throw new Error(`Erreur lors de l'appel à l'API MVola: ${error.message}`);
+      }
+
+      if (!response.success) {
+        throw new Error(response.message || "Échec du paiement MVola");
+      }
+
+      return {
+        status: 200,
+        serverCorrelationId: response.transactionId,
+        objectReference: response.transactionId,
+        success: response.success,
+        message: response.message,
+        transactionId: response.transactionId
+      };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erreur lors du paiement MVola';
       setError(errorMessage);
@@ -54,53 +74,17 @@ export const useMvola = () => {
   };
 
   const sendPaymentToMvola = async (paymentData: SendPaymentData): Promise<MvolaResponse | null> => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      console.log('Sending payment to MVola:', paymentData);
-      
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      const mockResponse: MvolaResponse = {
-        status: 200,
-        serverCorrelationId: `MVOLA-PAY-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
-        objectReference: `PAY-REF-${Date.now()}`
-      };
-
-      return mockResponse;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Erreur lors de l\'envoi du paiement MVola';
-      setError(errorMessage);
-      return null;
-    } finally {
-      setLoading(false);
-    }
+    // Cette fonction est maintenant un alias de initiatePayment pour maintenir la compatibilité
+    return initiatePayment(paymentData);
   };
 
   const checkTransactionStatus = async (correlationId: string): Promise<MvolaResponse | null> => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      console.log('Checking MVola transaction status:', correlationId);
-      
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const mockResponse: MvolaResponse = {
-        status: 200,
-        serverCorrelationId: correlationId,
-        objectReference: `VERIFIED-${correlationId}`
-      };
-
-      return mockResponse;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Erreur lors de la vérification du statut';
-      setError(errorMessage);
-      return null;
-    } finally {
-      setLoading(false);
-    }
+    // L'edge function gère déjà le statut, pas besoin de vérification séparée
+    return {
+      status: 200,
+      serverCorrelationId: correlationId,
+      objectReference: correlationId
+    };
   };
 
   return {

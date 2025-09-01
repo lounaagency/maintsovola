@@ -113,42 +113,17 @@ const PaymentOptions: React.FC<PaymentOptionsProps> = ({
 
     try {
       if (paymentMethod === 'mvola') {
-        // Process MVola payment
-        /* const { data: response, error } = await supabase.functions.invoke('paiement-mvola', {
-          body: {
-            phone: phoneNumber,
-            amount,
-            reason: `Investissement Maintso Vola #${investmentId}`,
-            investissementId: investmentId
-          }, */
-        // Initier le paiement via l'API MVola - Etape 1
+        // Process MVola payment via edge function
         const result = await initiatePayment({
           amount: amount.toString(),
-          currency: "MGA",
-          description: `Investissement Maintso vola #${investmentId}`,
-          merchantID: import.meta.env.VITE_MERCHANT_ID,
-          customerMsisdn: phoneNumber,
-          X_Callback_URL: import.meta.env.VITE_CALLBACK_URL,
+          phoneNumber: phoneNumber,
+          description: `Investissement Maintso Vola #${investmentId}`,
+          merchantId: "YOUR_MERCHANT_ID", // This will be handled by the edge function
+          investmentId: investmentId || 0
         });
 
-        /* if (error) {
-          throw new Error(`Erreur lors de l'appel à l'API MVola: ${error.message}`); */
-        if (!result || result.status !== 200) {
-          throw new Error(
-            mvolaError || "Échec de l'initiation du paiement MVola"
-          );
-        }
-
-        /* if (!response.success) {
-          throw new Error(response.message || "Échec du paiement MVola"); */
-        
-        // On vérifie le statut de la transaction
-        const statusResult = await checkTransactionStatus(
-          result.serverCorrelationId
-        );
-
-        if (!statusResult || statusResult.status !== 200) {
-          throw new Error("Le paiement n'a pas été confirmé.");
+        if (!result || !result.success) {
+          throw new Error(result?.message || mvolaError || "Échec du paiement MVola");
         }
 
         // Paiement réussi
@@ -156,9 +131,7 @@ const PaymentOptions: React.FC<PaymentOptionsProps> = ({
           description: "Votre investissement a été enregistré et payé"
         });
 
-        // onPaymentComplete?.(true, response.transactionId);
-        // Retourne le succès + transac ID si disponible
-        onPaymentComplete?.(true, result.objectReference);
+        onPaymentComplete?.(true, result.transactionId);
 
       } else {
         // Handle other payment methods (not implemented yet)
@@ -171,9 +144,9 @@ const PaymentOptions: React.FC<PaymentOptionsProps> = ({
       }
     } catch (err) {
       console.error("Payment error:", err);
-      setError(err.message || "Une erreur est survenue lors du traitement du paiement");
+      setError(err instanceof Error ? err.message : "Une erreur est survenue lors du traitement du paiement");
       toast.error("Échec du paiement", {
-        description: err.message || "Veuillez réessayer ou choisir une autre méthode de paiement"
+        description: (err instanceof Error ? err.message : "Une erreur inconnue est survenue") || "Veuillez réessayer ou choisir une autre méthode de paiement"
       });
       onPaymentComplete?.(false);
     } finally {
