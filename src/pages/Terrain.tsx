@@ -154,7 +154,7 @@ export const Terrain = () => {
 
   // Handle automatic terrain dialog opening from notification links
   useEffect(() => {
-    const terrainId = searchParams.get('id');
+    const terrainId = searchParams.get('id') || searchParams.get('selected');
     if (terrainId && (pendingTerrains.length > 0 || validatedTerrains.length > 0)) {
       const allTerrains = [...pendingTerrains, ...validatedTerrains];
       const terrain = allTerrains.find(t => t.id_terrain === parseInt(terrainId));
@@ -164,6 +164,7 @@ export const Terrain = () => {
         // Clean up URL parameter
         const currentParams = new URLSearchParams(window.location.search);
         currentParams.delete('id');
+        currentParams.delete('selected');
         const newUrl = `${window.location.pathname}${currentParams.toString() ? '?' + currentParams.toString() : ''}`;
         window.history.replaceState({}, '', newUrl);
       }

@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import ProjectEditDialog from "@/components/ProjectEditDialog";
+import ProjectDetailsDialog from "@/components/ProjectDetailsDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 const Projects = () => {
@@ -21,9 +22,12 @@ const Projects = () => {
   const [showNewProjectDialog, setShowNewProjectDialog] = useState(false);
   const [showNoTerrainAlert, setShowNoTerrainAlert] = useState(false);
   const [hasValidTerrains, setHasValidTerrains] = useState(true);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const [searchParams] = useSearchParams();
   if (!user) {
     return <Navigate to={`/auth${location.search}`} replace />;
   }
@@ -40,6 +44,20 @@ const Projects = () => {
       checkForValidTerrains();
     }
   }, [user, profile]);
+
+  // Handle automatic project dialog opening from search results
+  useEffect(() => {
+    const projectId = searchParams.get('selected');
+    if (projectId) {
+      setSelectedProjectId(parseInt(projectId));
+      setDetailsOpen(true);
+      // Clean up URL parameter
+      const currentParams = new URLSearchParams(window.location.search);
+      currentParams.delete('selected');
+      const newUrl = `${window.location.pathname}${currentParams.toString() ? '?' + currentParams.toString() : ''}`;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, [searchParams]);
 
   const checkForValidTerrains = async () => {
     if (!user) return;
@@ -219,6 +237,14 @@ const Projects = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {detailsOpen && selectedProjectId && (
+        <ProjectDetailsDialog
+          isOpen={detailsOpen}
+          onClose={() => setDetailsOpen(false)}
+          projectId={selectedProjectId}
+        />
+      )}
     </motion.div>
   );
 };

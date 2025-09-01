@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Navigate } from 'react-router-dom';
+import { useParams, useNavigate, Navigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Separator } from '@/components/ui/separator';
@@ -16,6 +16,7 @@ const isSelectQueryError = (obj: any): boolean => {
 
 export const Profile = () => {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user, profile: currentUserProfile } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -114,7 +115,7 @@ export const Profile = () => {
   
   useEffect(() => {
     const loadProfileData = async () => {
-      const userId = id || user?.id;
+      const userId = searchParams.get('user') || id || user?.id;
       
       if (!userId) return;
       
