@@ -35,9 +35,16 @@ const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({ className }) => {
           <Button
             variant="outline"
             size="sm"
-            className={`h-9 w-9 p-0 ${className}`}
+            className={`
+              h-10 w-10 p-0 rounded-full 
+              bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700
+              border-0 shadow-lg hover:shadow-xl
+              text-white hover:text-white
+              transform hover:scale-105 transition-all duration-200
+              ${className}
+            `}
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="h-5 w-5 font-bold" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">

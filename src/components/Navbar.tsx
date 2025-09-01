@@ -54,8 +54,8 @@ const Navbar: React.FC = () => {
       
       {/* Navigation bar */}
       <div className="flex items-center justify-between px-4 py-2 h-12">
-        {/* Network status indicator */}
-        <div className="flex items-center">
+        {/* Left side - Network status */}
+        <div className="flex items-center min-w-0">
           {isOnline ? (
             <div className="flex items-center text-green-600 text-xs">
               <Wifi size={14} className="mr-1" />
@@ -69,49 +69,51 @@ const Navbar: React.FC = () => {
           )}
         </div>
         
-        {/* Central Navigation Icons */}
-        <div className="flex items-center space-x-1">
-          <Link 
-            to="/feed" 
-            className={`p-2 rounded-md ${isActive("/feed") ? "text-green-600 bg-gray-100" : "text-gray-700 hover:bg-gray-100"}`}
-            title="Accueil"
-          >
-            <Home size={18} />
-            {!isMobile && <span className="text-xs ml-1">Accueil</span>}
-          </Link>
-          
-          <Link 
-            to="/terrain" 
-            className={`p-2 rounded-md ${isActive("/terrain") ? "text-green-600 bg-gray-100" : "text-gray-700 hover:bg-gray-100"}`}
-            title="Terrains"
-          > 
-            <MapPin size={18} />
-            {!isMobile && <span className="text-xs ml-1">Terrains</span>}
-          </Link>
-
-          <Link 
-            to="/projects" 
-            className={`p-2 rounded-md ${isActive("/projects") ? "text-green-600 bg-gray-100" : "text-gray-700 hover:bg-gray-100"}`}
-            title="Projets"
-          >
-            <FileText size={18} />
-            {!isMobile && <span className="text-xs ml-1">Projets</span>}
-          </Link>
-          
-          {profile?.nom_role === "financier" && (
+        {/* Central Navigation Icons - Well distributed */}
+        <div className="flex-1 flex items-center justify-center">
+          <div className="flex items-center justify-around max-w-md w-full">
             <Link 
-              to="/financier" 
-              className={`p-2 rounded-md ${isActive("/financier") ? "text-green-600 bg-gray-100" : "text-gray-700 hover:bg-gray-100"}`}
-              title="Finances"
+              to="/feed" 
+              className={`flex flex-col items-center p-2 rounded-md ${isActive("/feed") ? "text-green-600 bg-gray-100" : "text-gray-700 hover:bg-gray-100"}`}
+              title="Accueil"
             >
-              <DollarSign size={18} />
-              {!isMobile && <span className="text-xs ml-1">Finances</span>}
-            </Link> 
-          )}
+              <Home size={18} />
+              {!isMobile && <span className="text-xs mt-1">Accueil</span>}
+            </Link>
+            
+            <Link 
+              to="/terrain" 
+              className={`flex flex-col items-center p-2 rounded-md ${isActive("/terrain") ? "text-green-600 bg-gray-100" : "text-gray-700 hover:bg-gray-100"}`}
+              title="Terrains"
+            > 
+              <MapPin size={18} />
+              {!isMobile && <span className="text-xs mt-1">Terrains</span>}
+            </Link>
+
+            <Link 
+              to="/projects" 
+              className={`flex flex-col items-center p-2 rounded-md ${isActive("/projects") ? "text-green-600 bg-gray-100" : "text-gray-700 hover:bg-gray-100"}`}
+              title="Projets"
+            >
+              <FileText size={18} />
+              {!isMobile && <span className="text-xs mt-1">Projets</span>}
+            </Link>
+            
+            {profile?.nom_role === "financier" && (
+              <Link 
+                to="/financier" 
+                className={`flex flex-col items-center p-2 rounded-md ${isActive("/financier") ? "text-green-600 bg-gray-100" : "text-gray-700 hover:bg-gray-100"}`}
+                title="Finances"
+              >
+                <DollarSign size={18} />
+                {!isMobile && <span className="text-xs mt-1">Finances</span>}
+              </Link> 
+            )}
+          </div>
         </div>
 
         {/* Right side actions */}
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 min-w-0">
           <MessageBadge isActive={isActive("/messages")} />
           <Notifications />
           <WeatherAlertNotification />
