@@ -69,16 +69,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       
       if (currentSession?.user) {
         fetchUserProfile(currentSession.user.id);
+      } else {
+        setLoading(false);
       }
+    }).catch((error) => {
+      console.error('Error getting session:', error);
+      setError(new Error('Impossible de récupérer la session'));
       setLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  const fetchUserProfile = async (userId: string) => {
+  const fetchUserProfile = async (userId: string, retryCount: number = 0) => {
     try {
-      console.log('Fetching user profile for:', userId);
+      console.log('Fetching user profile for:', userId, 'retry:', retryCount);
       
       // Première requête : récupérer les données utilisateur avec le rôle
       const { data: userData, error: userError } = await supabase
@@ -92,6 +97,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (userError) {
         console.error("Error fetching user data:", userError);
+        if (retryCount < 2) {
+          console.log('Retrying user profile fetch...');
+          setTimeout(() => fetchUserProfile(userId, retryCount + 1), 2000);
+          return;
+        }
+        setError(new Error('Impossible de charger le profil utilisateur'));
+        setLoading(false);
         return;
       }
 
@@ -133,8 +145,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       
       console.log('Final user profile:', userProfile);
       setProfile(userProfile);
+      setLoading(false);
     } catch (error) {
       console.error("Error fetching profile:", error);
+      if (retryCount < 2) {
+        console.log('Retrying after network error...');
+        setTimeout(() => fetchUserProfile(userId, retryCount + 1), 3000);
+      } else {
+        setError(error instanceof Error ? error : new Error('Erreur de connexion'));
+        // En cas d'échec total, créer un profil minimal pour éviter les crashes
+        const minimalProfile: UserProfile = {
+          id_utilisateur: userId,
+          id: userId,
+          nom: 'Utilisateur',
+          prenoms: '',
+          email: user?.email || '',
+          id_role: 1,
+          nom_role: 'simple',
+          telephones: []
+        };
+        setProfile(minimalProfile);
+        setLoading(false);
+      }
     }
   };
 

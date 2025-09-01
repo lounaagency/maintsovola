@@ -3,7 +3,8 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data: gap: https://gtqpgewedhbprmebghhr.supabase.co https://*.supabase.co https://fonts.googleapis.com https://fonts.gstatic.com; img-src 'self' data: https: blob:; media-src 'self' data: https: blob:;">
     <title>Maintso Vola</title>
     <meta name="description" content="Plateforme Maintso Vola" />
     <meta name="author" content="Maintso Vola" />
@@ -23,8 +24,6 @@
 
   <body>
     <div id="root"></div>
-    <!-- IMPORTANT: DO NOT REMOVE THIS SCRIPT TAG OR THIS VERY COMMENT! -->
-    <script src="https://cdn.gpteng.co/gptengineer.js" type="module"></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
