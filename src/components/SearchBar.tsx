@@ -120,13 +120,13 @@ const SearchBar: React.FC = () => {
     
     switch (result.type) {
       case 'terrain':
-        navigate('/terrain');
+        navigate(`/terrain?selected=${result.id}`);
         break;
       case 'projet':
-        navigate('/projects');
+        navigate(`/projects?selected=${result.id}`);
         break;
       case 'personne':
-        // Navigate to profile or messages
+        navigate(`/profile?user=${result.id}`);
         break;
     }
   };
@@ -146,12 +146,12 @@ const SearchBar: React.FC = () => {
   };
 
   return (
-    <div className="relative flex-1 max-w-md mx-4" ref={searchRef}>
+    <div className="relative flex-1 max-w-md mx-2 md:mx-4" ref={searchRef}>
       <div className="relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           type="text"
-          placeholder="Rechercher terrains, projets, personnes..."
+          placeholder="Rechercher..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => query.length >= 2 && setIsOpen(true)}

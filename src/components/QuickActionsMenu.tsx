@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useNavigate } from 'react-router-dom';
 import TerrainEditDialog from '@/components/TerrainEditDialog';
+import ProjectEditDialog from '@/components/ProjectEditDialog';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface QuickActionsMenuProps {
@@ -17,6 +18,7 @@ interface QuickActionsMenuProps {
 
 const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({ className }) => {
   const [terrainDialogOpen, setTerrainDialogOpen] = useState(false);
+  const [projectDialogOpen, setProjectDialogOpen] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -25,7 +27,7 @@ const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({ className }) => {
   };
 
   const handleNewProject = () => {
-    navigate('/projects');
+    setProjectDialogOpen(true);
   };
 
   return (
@@ -60,14 +62,24 @@ const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({ className }) => {
       </DropdownMenu>
 
       {user && (
-        <TerrainEditDialog
-          isOpen={terrainDialogOpen}
-          onClose={() => setTerrainDialogOpen(false)}
-          userId={user.id}
-          onSubmitSuccess={() => {
-            setTerrainDialogOpen(false);
-          }}
-        />
+        <>
+          <TerrainEditDialog
+            isOpen={terrainDialogOpen}
+            onClose={() => setTerrainDialogOpen(false)}
+            userId={user.id}
+            onSubmitSuccess={() => {
+              setTerrainDialogOpen(false);
+            }}
+          />
+          <ProjectEditDialog
+            isOpen={projectDialogOpen}
+            onClose={() => setProjectDialogOpen(false)}
+            userId={user.id}
+            onSubmitSuccess={() => {
+              setProjectDialogOpen(false);
+            }}
+          />
+        </>
       )}
     </>
   );

@@ -46,7 +46,7 @@ const Navbar: React.FC = () => {
         />
         
         {/* Search Bar */}
-        {!isMobile && <SearchBar />}
+        <SearchBar />
         
         {/* Quick Actions Menu */}
         <QuickActionsMenu />
