@@ -72,7 +72,7 @@ const ProjectPhotosGallery: React.FC<ProjectPhotosGalleryProps> = ({
   
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[800px]">
+      <DialogContent className="w-full max-w-full sm:max-w-[800px]">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>

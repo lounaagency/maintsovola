@@ -363,7 +363,7 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({
                 </>}
             </div>}
           
-          <div className="mb-4 flex gap-2">
+          <div className="w-full mb-4 flex gap-2">
             {hasPhotos && <Button variant="outline" size="sm" onClick={() => handleOpenGallery('photos')} className="flex-1 flex items-center justify-center gap-2 bg-amber-400 hover:bg-amber-300">
                 <Image className="h-4 w-4" />
                 <span>Voir les photos</span>

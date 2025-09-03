@@ -181,8 +181,8 @@ const ProjectFeed: React.FC<ProjectFeedProps> = ({
         animate="show"
       >
         {projectsList.map((project) => (
-          <motion.div key={project.id} variants={item}>
-            <AgriculturalProjectCard 
+          <motion.div key={project.id} variants={item} className="w-full">
+            <AgriculturalProjectCard
               project={{
                 ...project,
                 farmer: {
