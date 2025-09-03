@@ -321,7 +321,7 @@ const AgriculturalProjectCard: React.FC<AgriculturalProjectCardProps> = ({
   const displayTitle = projectDetails.title || `Projet de culture de ${project.cultures}`;
   const displayDescription = projectDetails.description || `Projet de culture de ${typeof project.cultures === 'string' ? project.cultures : 'cultures'} sur un terrain de ${project.cultures} hectares.`;
   return <>
-      <Card className="overflow-hidden mb-4" data-project-id={project.id}>
+      <Card className="w-full max-w-full sm:max-w-md overflow-hidden mb-4" data-project-id={project.id}>
         <div className="p-4">
           <div className="flex items-start justify-between mb-3">
             <div className="flex items-center">

@@ -379,7 +379,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-full max-w-full sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Détails du projet #{project.id_projet}</DialogTitle>
           </DialogHeader>

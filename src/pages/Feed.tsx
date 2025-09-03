@@ -85,14 +85,14 @@ const Feed: React.FC = () => {
   };
 
   return (
-    <div className={`${isMobile ? 'w-full' : 'max-w-md'} mx-auto px-4 py-4`}>
+    <div className="w-full max-w-full sm:max-w-md mx-auto px-4 py-4">
       <ProjectFeedWithTabs
         filters={filters}
         showFilters={true}
         showFollowingTab={true}
         title="Projets en financement"
         onFilterChange={handleFilterChange}
-        className={`${isMobile ? 'w-full' : 'max-w-md'} mx-auto px-4 py-4`}
+        className="w-full max-w-full sm:max-w-md mx-auto px-4 py-4"
       />
     </div>
   );
