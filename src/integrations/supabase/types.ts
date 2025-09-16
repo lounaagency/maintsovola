@@ -411,13 +411,6 @@ export type Database = {
             foreignKeyName: "cout_jalon_projet_id_jalon_projet_fkey"
             columns: ["id_jalon_projet"]
             isOneToOne: false
-            referencedRelation: "vue_jalons_technicien"
-            referencedColumns: ["id_jalon_projet"]
-          },
-          {
-            foreignKeyName: "cout_jalon_projet_id_jalon_projet_fkey"
-            columns: ["id_jalon_projet"]
-            isOneToOne: false
             referencedRelation: "vue_suivi_jalons_projet"
             referencedColumns: ["id_jalon_projet"]
           },
@@ -2555,72 +2548,6 @@ export type Database = {
           },
         ]
       }
-      vue_jalons_technicien: {
-        Row: {
-          date_demande_paiement: string | null
-          date_previsionnelle: string | null
-          id_jalon_projet: number | null
-          id_projet: number | null
-          id_technicien: string | null
-          montant_total: number | null
-          nom_jalon: string | null
-          projet_titre: string | null
-          statut: string | null
-          surface_ha: number | null
-          types_depenses: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "fk_projet_id_technicien_utilisateur"
-            columns: ["id_technicien"]
-            isOneToOne: false
-            referencedRelation: "utilisateur"
-            referencedColumns: ["id_utilisateur"]
-          },
-          {
-            foreignKeyName: "fk_projet_id_technicien_utilisateur"
-            columns: ["id_technicien"]
-            isOneToOne: false
-            referencedRelation: "utilisateurs_par_role"
-            referencedColumns: ["id_utilisateur"]
-          },
-          {
-            foreignKeyName: "jalon_projet_id_projet_fkey"
-            columns: ["id_projet"]
-            isOneToOne: false
-            referencedRelation: "projet"
-            referencedColumns: ["id_projet"]
-          },
-          {
-            foreignKeyName: "jalon_projet_id_projet_fkey"
-            columns: ["id_projet"]
-            isOneToOne: false
-            referencedRelation: "vue_cout_total_projet"
-            referencedColumns: ["id_projet"]
-          },
-          {
-            foreignKeyName: "jalon_projet_id_projet_fkey"
-            columns: ["id_projet"]
-            isOneToOne: false
-            referencedRelation: "vue_projet_detaille"
-            referencedColumns: ["id_projet"]
-          },
-          {
-            foreignKeyName: "jalon_projet_id_projet_fkey"
-            columns: ["id_projet"]
-            isOneToOne: false
-            referencedRelation: "vue_suivi_financier_projet"
-            referencedColumns: ["id_projet"]
-          },
-          {
-            foreignKeyName: "jalon_projet_id_projet_fkey"
-            columns: ["id_projet"]
-            isOneToOne: false
-            referencedRelation: "vue_suivi_jalons_projet"
-            referencedColumns: ["id_projet"]
-          },
-        ]
-      }
       vue_projet_detaille: {
         Row: {
           cout_total: number | null
@@ -3262,6 +3189,20 @@ export type Database = {
       get_proj4_from_srid: {
         Args: { "": number }
         Returns: string
+      }
+      get_technicien_jalons: {
+        Args: { technicien_id: string }
+        Returns: {
+          date_previsionnelle: string
+          date_reelle: string
+          id_jalon_projet: number
+          id_projet: number
+          id_technicien: string
+          montant_total: number
+          nom_jalon: string
+          projet_titre: string
+          statut: string
+        }[]
       }
       get_users_not_in_contact_with: {
         Args: { current_user_id: string }
@@ -4602,6 +4543,10 @@ export type Database = {
           table_name: string
         }
         Returns: string
+      }
+      user_can_access_project: {
+        Args: { project_id: number; user_id: string }
+        Returns: boolean
       }
     }
     Enums: {
