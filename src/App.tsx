@@ -54,54 +54,23 @@ const App = () => {
               <AnimatePresence mode="wait">
                 <Suspense fallback={<LoadingFallback />}>
                   <Routes>
+                    {/* Routes publiques sans Layout */}
                     <Route path="/" element={<Index />} />
                     <Route path="/auth" element={<Auth />} />
-                    <Route path="/feed" element={
-                      <Layout>
-                        <Feed />
-                      </Layout>
-                    } />
-                    <Route path="/messages" element={
-                      <Layout>
-                        <Messages />
-                      </Layout>
-                    } />
-                    <Route path="/profile" element={
-                      <Layout>
-                        <Profile />
-                      </Layout>
-                    } />
-                    <Route path="/profile/:id" element={
-                      <Layout>
-                        <Profile />
-                      </Layout>
-                    } />
-                    <Route path="/terrain" element={
-                      <Layout>
-                        <Terrain />
-                      </Layout>
-                    } />
-                    <Route path="/projects" element={
-                      <Layout>
-                        <Projects />
-                      </Layout>
-                    } />
-                    <Route path="/financier" element={
-                      <Layout>
-                        <Financier />
-                      </Layout>
-                    } />
-                    <Route path="/settings" element={
-                      <Layout>
-                        <Settings />
-                      </Layout>
-                    } />
-                    <Route path="/404" element={
-                      <Layout>
-                        <NotFound />
-                      </Layout>
-                    } />
-                    <Route path="*" element={<Navigate to="/" replace />} />
+                    
+                    {/* Routes avec Layout persistant */}
+                    <Route path="/*" element={<Layout />}>
+                      <Route path="feed" element={<Feed />} />
+                      <Route path="messages" element={<Messages />} />
+                      <Route path="profile" element={<Profile />} />
+                      <Route path="profile/:id" element={<Profile />} />
+                      <Route path="terrain" element={<Terrain />} />
+                      <Route path="projects" element={<Projects />} />
+                      <Route path="financier" element={<Financier />} />
+                      <Route path="settings" element={<Settings />} />
+                      <Route path="404" element={<NotFound />} />
+                      <Route path="*" element={<Navigate to="/" replace />} />
+                    </Route>
                   </Routes>
                 </Suspense>
               </AnimatePresence>

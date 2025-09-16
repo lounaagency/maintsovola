@@ -1,16 +1,12 @@
 
-import React, { useState } from "react";
+import React from "react";
 import Navbar from "./Navbar";
-import { useLocation } from "react-router-dom";
+import { useLocation, Outlet } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { useSwipeNavigation } from "@/hooks/useSwipeNavigation";
 import { useIsMobile } from "@/hooks/use-mobile";
 
-interface LayoutProps {
-  children: React.ReactNode;
-}
-
-const Layout: React.FC<LayoutProps> = ({ children }) => {
+const Layout: React.FC = () => {
   const location = useLocation();
   const isMobile = useIsMobile();
   const { swipeDirection } = useSwipeNavigation();
@@ -63,7 +59,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             transition={pageTransition}
             className="h-full"
           >
-            {children}
+            <Outlet />
           </motion.div>
         </AnimatePresence>
       </main>
