@@ -89,6 +89,19 @@ export const useTechnicienPaymentData = (userId: string) => {
             const datePrevisionnelle = new Date(jalon.date_previsionnelle);
             const montant = jalon.montant_total;
             
+            // Toujours ajouter le jalon à la liste s'il est dans un statut pertinent
+            if (jalon.statut === 'Prévu' || jalon.statut === 'En attente de paiement' || jalon.statut === 'Payé') {
+              upcomingPaymentsList.push({
+                id_jalon_projet: jalon.id_jalon_projet,
+                projet_titre: jalon.projet_titre || 'Projet inconnu',
+                jalon_nom: jalon.nom_jalon || 'Jalon inconnu',
+                date_previsionnelle: jalon.date_previsionnelle,
+                montant: montant || 0, // 0 si pas de montant défini
+                statut: jalon.statut
+              });
+            }
+            
+            // Calculer les métriques uniquement pour les jalons avec montant
             if (montant === null || montant === 0) {
               milestonesWithoutAmount++;
             } else {
@@ -105,15 +118,6 @@ export const useTechnicienPaymentData = (userId: string) => {
                 }
               }
             }
-
-            upcomingPaymentsList.push({
-              id_jalon_projet: jalon.id_jalon_projet,
-              projet_titre: jalon.projet_titre || 'Projet inconnu',
-              jalon_nom: jalon.nom_jalon || 'Jalon inconnu',
-              date_previsionnelle: jalon.date_previsionnelle,
-              montant: montant,
-              statut: jalon.statut
-            });
           });
         }
 

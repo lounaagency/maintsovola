@@ -86,9 +86,9 @@ const TechnicienPaymentActions: React.FC<TechnicienPaymentActionsProps> = ({
     }
   };
 
-  // Séparer les jalons par statut
+  // Séparer les jalons par statut - conditions simplifiées
   const jalonsPrevus = pendingPayments.filter(payment => 
-    payment.statut === 'Prévu' && payment.montant && payment.montant > 0
+    payment.statut === 'Prévu'
   );
 
   const jalonsEnAttentePaiement = pendingPayments.filter(payment => 
@@ -138,9 +138,15 @@ const TechnicienPaymentActions: React.FC<TechnicienPaymentActionsProps> = ({
                   
                   <div className="text-right flex items-center gap-4">
                     <div>
-                      <div className="text-lg font-semibold text-green-600">
-                        {formatCurrency(payment.montant || 0)}
-                      </div>
+                      {payment.montant && payment.montant > 0 ? (
+                        <div className="text-lg font-semibold text-green-600">
+                          {formatCurrency(payment.montant)}
+                        </div>
+                      ) : (
+                        <Badge variant="outline" className="text-amber-600 border-amber-200">
+                          Montant à définir
+                        </Badge>
+                      )}
                     </div>
                     
                     <Button
@@ -148,6 +154,7 @@ const TechnicienPaymentActions: React.FC<TechnicienPaymentActionsProps> = ({
                       disabled={requestingPayment === payment.id_jalon_projet || loading}
                       size="sm"
                       className="gap-2"
+                      variant={payment.montant && payment.montant > 0 ? "default" : "outline"}
                     >
                       {requestingPayment === payment.id_jalon_projet ? (
                         <>
@@ -254,10 +261,10 @@ const TechnicienPaymentActions: React.FC<TechnicienPaymentActionsProps> = ({
       <div className="bg-blue-50 p-4 rounded-lg">
         <h4 className="font-medium text-blue-900 mb-2">Nouveau Processus de Paiement</h4>
         <p className="text-sm text-blue-700">
-          1. <strong>Demandez le paiement</strong> pour les jalons prévus avant de commencer les activités<br/>
+          1. <strong>Demandez le paiement</strong> pour tous les jalons prévus, même sans montant défini<br/>
           2. <strong>Attendez la validation</strong> du responsable financier<br/>
           3. <strong>Commencez les activités</strong> une fois le paiement reçu<br/>
-          4. Les montants sont calculés automatiquement selon la surface du terrain
+          4. Les montants sont calculés automatiquement selon les coûts de référence et la surface
         </p>
       </div>
     </div>

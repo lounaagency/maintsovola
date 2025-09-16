@@ -13,6 +13,8 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useTechnicienPaymentRequests } from '@/hooks/useTechnicienPaymentRequests';
+import { useAuth } from '@/contexts/AuthContext';
 import UserAvatar from './UserAvatar';
 import JalonReportDialog from "./JalonReportDialog";
 import { ExternalLink } from "lucide-react";
@@ -35,6 +37,8 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
   defaultTab = 'finances'
 }) => {
   const { toast } = useToast();
+  const { requestPayment, loading: paymentRequestLoading } = useTechnicienPaymentRequests();
+  const { user } = useAuth();
   const [project, setProject] = useState<any>(null);
   const [investments, setInvestments] = useState<any[]>([]);
   const [jalons, setJalons] = useState<any[]>([]);
@@ -339,6 +343,29 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
   const handleJalonReportSuccess = () => {
     fetchJalons();
     setSelectedJalon(null);
+  };
+
+  const handleRequestPayment = async (jalon: any) => {
+    if (!user?.id) {
+      toast({
+        title: "Erreur",
+        description: "Utilisateur non authentifié",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      await requestPayment(jalon.id_jalon_projet, user.id);
+      // Rafraîchir les jalons pour voir le changement de statut
+      fetchJalons();
+    } catch (error) {
+      console.error('Error requesting payment:', error);
+    }
+  };
+
+  const canRequestPayment = (jalon: any) => {
+    return jalon.statut === 'Prévu' && userRole === 'technicien';
   };
 
   const getJalonStatus = (jalon: any): 'completed' | 'overdue' | 'normal' => {
@@ -647,27 +674,47 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
                                   <td className="p-2 text-sm">
                                     {jalon.date_reelle ? formatDate(jalon.date_reelle) : ''}
                                   </td>
-                                  {userRole === 'technicien' && (
-                                    <td className="p-2 text-center">
-                                      {jalon.date_reelle ? (
-                                        <Button 
-                                          size="sm" 
-                                          variant="outline"
-                                          onClick={() => handleShowJalonReport(jalon, true)}
-                                        >
-                                          Voir le rapport
-                                        </Button>
-                                      ) : (
-                                        <Button 
-                                          size="sm" 
-                                          variant="outline"
-                                          onClick={() => handleShowJalonReport(jalon)}
-                                        >
-                                          Marquer réalisé
-                                        </Button>
-                                      )}
-                                    </td>
-                                  )}
+                                   {userRole === 'technicien' && (
+                                     <td className="p-2 text-center">
+                                       <div className="flex flex-col gap-1">
+                                         {jalon.date_reelle ? (
+                                           <Button 
+                                             size="sm" 
+                                             variant="outline"
+                                             onClick={() => handleShowJalonReport(jalon, true)}
+                                           >
+                                             Voir le rapport
+                                           </Button>
+                                         ) : (
+                                           <>
+                                             <Button 
+                                               size="sm" 
+                                               variant="outline"
+                                               onClick={() => handleShowJalonReport(jalon)}
+                                             >
+                                               Marquer réalisé
+                                             </Button>
+                                             {canRequestPayment(jalon) && (
+                                               <Button 
+                                                 size="sm" 
+                                                 variant="default"
+                                                 onClick={() => handleRequestPayment(jalon)}
+                                                 disabled={paymentRequestLoading}
+                                                 className="gap-1"
+                                               >
+                                                 💰 Demander paiement
+                                               </Button>
+                                             )}
+                                             {jalon.statut === 'En attente de paiement' && (
+                                               <Badge variant="outline" className="text-orange-600 text-xs">
+                                                 Paiement demandé
+                                               </Badge>
+                                             )}
+                                           </>
+                                         )}
+                                       </div>
+                                     </td>
+                                   )}
                                 </tr>
                               );
                             })
