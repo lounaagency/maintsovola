@@ -52,8 +52,10 @@ export const useJalonsFinancement = () => {
   return useQuery({
     queryKey: ['jalons-financement'],
     queryFn: async (): Promise<JalonFinancement[]> => {
-      console.log('🔍 Fetching jalons financement...');
+      const dateLimit = new Date();
+      dateLimit.setDate(dateLimit.getDate() + 30);
       
+      // Récupérer les jalons avec leurs coûts calculés
       const { data, error } = await supabase
         .from('jalon_projet')
         .select(`
@@ -61,50 +63,81 @@ export const useJalonsFinancement = () => {
           id_projet,
           date_previsionnelle,
           statut,
-          jalon_agricole:id_jalon_agricole(nom_jalon),
+          jalon_agricole:id_jalon_agricole(
+            nom_jalon,
+            id_jalon_agricole
+          ),
           projet:id_projet(
             titre,
-            id_technicien,
             surface_ha,
-            utilisateur!id_technicien(nom, prenoms)
+            id_technicien,
+            utilisateur:id_technicien(
+              nom,
+              prenoms
+            ),
+            projet_culture(
+              id_culture,
+              culture:id_culture(nom_culture)
+            )
           )
         `)
         .in('statut', ['Prévu', 'En cours'])
-        .gte('date_previsionnelle', new Date().toISOString().split('T')[0])
-        .lte('date_previsionnelle', new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
-        .order('date_previsionnelle', { ascending: true });
-      
+        .lte('date_previsionnelle', dateLimit.toISOString().split('T')[0])
+        .order('date_previsionnelle');
+
       if (error) {
-        console.error('❌ Error fetching jalons financement:', error);
-        return [];
+        console.error('Error fetching jalons financement:', error);
+        throw error;
       }
-      
-      console.log('📄 Raw jalons data:', data);
-      
-      const mappedJalons = data.map((item: any) => {
-        const mappedJalon = {
-          id_jalon_projet: item.id_jalon_projet,
-          id_projet: item.id_projet,
-          date_previsionnelle: item.date_previsionnelle,
-          statut: item.statut,
-          nom_jalon: item.jalon_agricole?.nom_jalon || 'Jalon inconnu',
-          nom_projet: item.projet?.titre || 'Projet inconnu',
-          id_technicien: item.projet?.id_technicien || '',
-          technicien_nom: item.projet?.utilisateur?.nom || 'Non assigné',
-          technicien_prenoms: item.projet?.utilisateur?.prenoms || '',
-          montant_demande: Math.floor(Math.random() * 500000) + 100000, // Montant simulé en attendant les coûts
-          surface_ha: item.projet?.surface_ha || 0
-        };
-        
-        console.log(`👤 Jalon ${item.id_jalon_projet} - Technicien ID: ${mappedJalon.id_technicien}, Nom: ${mappedJalon.technicien_nom} ${mappedJalon.technicien_prenoms}`);
-        
-        return mappedJalon;
-      });
-      
-      console.log('✅ Mapped jalons:', mappedJalons);
-      return mappedJalons;
+
+      // Pour chaque jalon, calculer le montant basé sur les coûts de référence
+      const jalonsAvecCouts = await Promise.all(
+        (data || []).map(async (jalon) => {
+          const projet = jalon.projet as any;
+          const technicien = projet?.utilisateur as any;
+          const jalonAgricole = jalon.jalon_agricole as any;
+          const projetCulture = projet?.projet_culture?.[0];
+          
+          let montantDemande = 0;
+          
+          if (projetCulture && jalonAgricole) {
+            // Calculer le coût basé sur les coûts de référence
+            const { data: coutsRef, error: coutsError } = await supabase
+              .from('cout_jalon_reference')
+              .select('montant_par_hectare')
+              .eq('id_culture', projetCulture.id_culture)
+              .eq('id_jalon_agricole', jalonAgricole.id_jalon_agricole);
+
+            if (!coutsError && coutsRef) {
+              const coutTotal = coutsRef.reduce((sum, cout) => sum + cout.montant_par_hectare, 0);
+              montantDemande = coutTotal * (projet?.surface_ha || 1);
+            }
+          }
+
+          // Fallback si pas de coûts de référence
+          if (montantDemande === 0) {
+            montantDemande = (projet?.surface_ha || 1) * 150000; // 150k Ar/ha comme base
+          }
+          
+          return {
+            id_jalon_projet: jalon.id_jalon_projet,
+            id_projet: jalon.id_projet,
+            date_previsionnelle: jalon.date_previsionnelle,
+            statut: jalon.statut,
+            nom_jalon: jalonAgricole?.nom_jalon || '',
+            nom_projet: projet?.titre || '',
+            id_technicien: projet?.id_technicien || '',
+            technicien_nom: technicien?.nom || '',
+            technicien_prenoms: technicien?.prenoms || '',
+            montant_demande: montantDemande,
+            surface_ha: projet?.surface_ha || 0
+          };
+        })
+      );
+
+      return jalonsAvecCouts;
     },
-    refetchInterval: 60000, // Rafraîchir chaque minute
+    refetchInterval: 60000, // Refresh every minute
   });
 };
 

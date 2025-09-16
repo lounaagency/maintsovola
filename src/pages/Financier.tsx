@@ -12,6 +12,7 @@ import FinancialSummaryCards from "@/components/financier/FinancialSummaryCards"
 import MilestonePaymentTable from "@/components/financier/MilestonePaymentTable";
 import FinancialForecastChart from "@/components/financier/FinancialForecastChart";
 import PaymentHistoryList from "@/components/financier/PaymentHistoryList";
+import { AdminDashboard } from "@/components/admin/AdminDashboard";
 
 const Financier = () => {
   const { profile } = useAuth();
@@ -51,6 +52,7 @@ const Financier = () => {
           <TabsTrigger value="jalons">Jalons à Financer</TabsTrigger>
           <TabsTrigger value="previsions">Prévisions</TabsTrigger>
           <TabsTrigger value="historique">Historique</TabsTrigger>
+          <TabsTrigger value="admin">Administration</TabsTrigger>
         </TabsList>
 
         <TabsContent value="jalons" className="space-y-4">
@@ -69,6 +71,10 @@ const Financier = () => {
             historique={historique || []} 
             isLoading={historiqueLoading} 
           />
+        </TabsContent>
+
+        <TabsContent value="admin" className="space-y-4">
+          <AdminDashboard />
         </TabsContent>
       </Tabs>
     </div>
