@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { Suspense } from "react";
 import Navbar from "./Navbar";
 import { useLocation, Outlet } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
@@ -45,6 +45,12 @@ const Layout: React.FC = () => {
     duration: isMobile && swipeDirection ? 0.25 : 0.3,
   };
 
+  const InnerLoading = () => (
+    <div className="flex items-center justify-center h-full py-8">
+      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+    </div>
+  );
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <Navbar />
@@ -59,7 +65,9 @@ const Layout: React.FC = () => {
             transition={pageTransition}
             className="h-full"
           >
-            <Outlet />
+            <Suspense fallback={<InnerLoading />}>
+              <Outlet />
+            </Suspense>
           </motion.div>
         </AnimatePresence>
       </main>

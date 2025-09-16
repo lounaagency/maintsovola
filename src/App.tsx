@@ -52,11 +52,11 @@ const App = () => {
           <AuthProvider>
             <TooltipProvider>
               <AnimatePresence mode="wait">
-                <Suspense fallback={<LoadingFallback />}>
+                
                   <Routes>
                     {/* Routes publiques sans Layout */}
-                    <Route path="/" element={<Index />} />
-                    <Route path="/auth" element={<Auth />} />
+                    <Route path="/" element={<Suspense fallback={<LoadingFallback />}><Index /></Suspense>} />
+                    <Route path="/auth" element={<Suspense fallback={<LoadingFallback />}><Auth /></Suspense>} />
                     
                     {/* Routes avec Layout persistant */}
                     <Route path="/*" element={<Layout />}>
@@ -72,7 +72,7 @@ const App = () => {
                       <Route path="*" element={<Navigate to="/" replace />} />
                     </Route>
                   </Routes>
-                </Suspense>
+                
               </AnimatePresence>
               <Toaster />
               <Sonner />

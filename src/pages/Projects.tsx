@@ -7,7 +7,7 @@ import { Search, Plus } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import ProjectTable from "@/components/ProjectTable";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { motion } from "framer-motion";
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
@@ -115,10 +115,7 @@ const Projects = () => {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
+    <div
       className="container max-w-6xl mx-auto py-6 px-4 sm:px-6 space-y-8"
     >
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -245,7 +242,7 @@ const Projects = () => {
           projectId={selectedProjectId}
         />
       )}
-    </motion.div>
+    </div>
   );
 };
 
