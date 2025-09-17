@@ -675,49 +675,64 @@ export type Database = {
       }
       historique_paiement: {
         Row: {
+          commentaire_validation: string | null
           created_at: string | null
           created_by: string | null
           date_paiement: string | null
+          date_validation: string | null
           id_cout_jalon_projet: number | null
           id_historique_paiement: number
           id_projet: number
           id_responsable_financier: string | null
           id_technicien: string | null
+          justificatif_url: string | null
           modified_at: string | null
           montant: number
           observation: string | null
           reference_paiement: string | null
+          statut_justificatif: string | null
           type_paiement: string
+          valide_par: string | null
         }
         Insert: {
+          commentaire_validation?: string | null
           created_at?: string | null
           created_by?: string | null
           date_paiement?: string | null
+          date_validation?: string | null
           id_cout_jalon_projet?: number | null
           id_historique_paiement?: number
           id_projet: number
           id_responsable_financier?: string | null
           id_technicien?: string | null
+          justificatif_url?: string | null
           modified_at?: string | null
           montant: number
           observation?: string | null
           reference_paiement?: string | null
+          statut_justificatif?: string | null
           type_paiement: string
+          valide_par?: string | null
         }
         Update: {
+          commentaire_validation?: string | null
           created_at?: string | null
           created_by?: string | null
           date_paiement?: string | null
+          date_validation?: string | null
           id_cout_jalon_projet?: number | null
           id_historique_paiement?: number
           id_projet?: number
           id_responsable_financier?: string | null
           id_technicien?: string | null
+          justificatif_url?: string | null
           modified_at?: string | null
           montant?: number
           observation?: string | null
           reference_paiement?: string | null
+          statut_justificatif?: string | null
           type_paiement?: string
+          valide_par?: string | null
         }
         Relationships: [
           {
@@ -3169,6 +3184,25 @@ export type Database = {
         Args: { "": string }
         Returns: unknown
       }
+      get_financial_forecasts: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          ecart: number
+          montant_engage: number
+          montant_prevu: number
+          periode: string
+        }[]
+      }
+      get_financial_summary: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          budget_total: number
+          jalons_en_attente: number
+          montant_engage: number
+          montant_utilise: number
+          solde_disponible: number
+        }[]
+      }
       get_notifications_for_user: {
         Args: { user_id: string }
         Returns: {
@@ -4546,6 +4580,10 @@ export type Database = {
       }
       user_can_access_project: {
         Args: { project_id: number; user_id: string }
+        Returns: boolean
+      }
+      validate_payment_justification: {
+        Args: { p_comment?: string; p_payment_id: number; p_status: string }
         Returns: boolean
       }
     }
