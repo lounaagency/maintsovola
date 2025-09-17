@@ -49,11 +49,21 @@ export const useTechnicienPaymentData = (userId: string) => {
       try {
         setLoading(true);
 
-        // Récupérer les jalons avec leurs montants calculés depuis la nouvelle vue
+        // Récupérer les jalons avec leurs montants calculés depuis la table directement
         const { data: jalonsData } = await supabase
-          .from('vue_jalons_technicien')
-          .select('*')
-          .eq('id_technicien', userId)
+          .from('jalon_projet')
+          .select(`
+            id_jalon_projet,
+            date_previsionnelle,
+            statut,
+            jalon_agricole:id_jalon_agricole(nom_jalon),
+            projet:id_projet(
+              titre,
+              surface_ha,
+              id_technicien
+            )
+          `)
+          .eq('projet.id_technicien', userId)
           .in('statut', ['Prévu', 'En attente de paiement', 'Payé']);
 
         // Récupérer l'historique des paiements reçus
@@ -86,15 +96,18 @@ export const useTechnicienPaymentData = (userId: string) => {
 
         if (jalonsData) {
           jalonsData.forEach(jalon => {
+            const projet = jalon.projet as any;
+            const jalonAgricole = jalon.jalon_agricole as any;
             const datePrevisionnelle = new Date(jalon.date_previsionnelle);
-            const montant = jalon.montant_total;
+            // Calculer montant estimé basé sur la surface (150k Ar/ha comme base)
+            const montant = (projet?.surface_ha || 0) * 150000;
             
             // Toujours ajouter le jalon à la liste s'il est dans un statut pertinent
             if (jalon.statut === 'Prévu' || jalon.statut === 'En attente de paiement' || jalon.statut === 'Payé') {
               upcomingPaymentsList.push({
                 id_jalon_projet: jalon.id_jalon_projet,
-                projet_titre: jalon.projet_titre || 'Projet inconnu',
-                jalon_nom: jalon.nom_jalon || 'Jalon inconnu',
+                projet_titre: projet?.titre || 'Projet inconnu',
+                jalon_nom: jalonAgricole?.nom_jalon || 'Jalon inconnu',
                 date_previsionnelle: jalon.date_previsionnelle,
                 montant: montant || 0, // 0 si pas de montant défini
                 statut: jalon.statut

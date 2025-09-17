@@ -95,18 +95,40 @@ export const usePaymentActions = () => {
   });
 
   const validateJustificatif = useMutation({
-    mutationFn: async ({ paymentId, status }: { paymentId: number; status: string }) => {
+    mutationFn: async ({ paymentId, status, comment }: { paymentId: number; status: string; comment?: string }) => {
       console.log(`Validation du justificatif ${paymentId} avec le statut: ${status}`);
       
-      // Simulation d'une mise à jour
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const { data, error } = await supabase.rpc('validate_payment_justification', {
+        p_payment_id: paymentId,
+        p_status: status,
+        p_comment: comment || null
+      });
+
+      if (error) {
+        console.error('Erreur lors de la validation:', error);
+        throw error;
+      }
+
+      return data;
     },
-    onSuccess: () => {
-      toast.success("Statut du justificatif mis à jour !");
+    onSuccess: (_, variables) => {
+      const message = variables.status === 'valide' 
+        ? "Justificatif validé avec succès !" 
+        : "Justificatif rejeté.";
+      toast.success(message);
+      
       queryClient.invalidateQueries({ queryKey: ['historique-paiements'] });
+      queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
     },
     onError: (error: any) => {
-      toast.error(`Erreur: ${error.message}`);
+      console.error('Validation error:', error);
+      let errorMessage = `Erreur lors de la validation: ${error.message}`;
+      
+      if (error.message?.includes('Seuls les financiers')) {
+        errorMessage = 'Vous n\'êtes pas autorisé à valider les justificatifs.';
+      }
+      
+      toast.error(errorMessage);
     },
   });
 

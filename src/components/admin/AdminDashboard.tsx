@@ -3,8 +3,10 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DollarSign, Calculator, Database } from 'lucide-react';
 import { CoutReferencesAdmin } from './CoutReferencesAdmin';
+import { useAdminStats } from '@/hooks/useAdminStats';
 
 export const AdminDashboard = () => {
+  const { data: stats, isLoading } = useAdminStats();
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -18,7 +20,9 @@ export const AdminDashboard = () => {
             <Calculator className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">156</div>
+            <div className="text-2xl font-bold">
+              {isLoading ? "..." : (stats?.totalCoutReferences || 0)}
+            </div>
             <p className="text-xs text-muted-foreground">
               Entrées configurées
             </p>
@@ -31,7 +35,9 @@ export const AdminDashboard = () => {
             <Database className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">9</div>
+            <div className="text-2xl font-bold">
+              {isLoading ? "..." : (stats?.totalCulturesActives || 0)}
+            </div>
             <p className="text-xs text-muted-foreground">
               Types de cultures
             </p>
@@ -44,7 +50,9 @@ export const AdminDashboard = () => {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">48</div>
+            <div className="text-2xl font-bold">
+              {isLoading ? "..." : (stats?.totalJalonsDéfinis || 0)}
+            </div>
             <p className="text-xs text-muted-foreground">
               Jalons agricoles
             </p>

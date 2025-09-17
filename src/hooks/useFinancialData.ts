@@ -5,46 +5,46 @@ import { ResumeFinancier, JalonFinancement, HistoriquePaiementFinancier } from "
 export const useFinancialSummary = () => {
   return useQuery({
     queryKey: ['financial-summary'],
-    queryFn: async (): Promise<ResumeFinancier | null> => {
-      // Simuler des données financières pour le moment
-      // En attendant la création de la table budget_mensuel
-      const currentDate = new Date();
-      const annee = currentDate.getFullYear();
-      const mois = currentDate.getMonth() + 1;
+    queryFn: async () => {
+      console.log('Fetching financial summary...');
       
-      // Récupérer le total des investissements du mois
-      const { data: investissements } = await supabase
-        .from('investissement')
-        .select('montant')
-        .gte('created_at', `${annee}-${mois.toString().padStart(2, '0')}-01`);
+      // Utiliser la nouvelle fonction RPC pour obtenir les vraies données
+      const { data, error } = await supabase.rpc('get_financial_summary');
       
-      const montant_investi = investissements?.reduce((sum, inv) => sum + inv.montant, 0) || 0;
+      if (error) {
+        console.error('Error fetching financial summary:', error);
+        // Fallback vers des données de base si erreur
+        return {
+          annee: new Date().getFullYear(),
+          mois: new Date().getMonth() + 1,
+          budget_total: 0,
+          montant_engage: 0,
+          montant_utilise: 0,
+          solde_disponible: 0,
+          jalons_en_attente: 0
+        };
+      }
       
-      // Compter les jalons en attente
-      const { data: jalons } = await supabase
-        .from('jalon_projet')
-        .select('id_jalon_projet')
-        .in('statut', ['Prévu', 'En cours']);
-      
-      const jalons_en_attente = jalons?.length || 0;
-      
-      // Données simulées pour le budget
-      const budget_total = 5000000; // 5M Ar
-      const montant_engage = montant_investi * 0.8;
-      const montant_utilise = montant_investi * 0.6;
-      const solde_disponible = budget_total - montant_engage - montant_utilise;
+      // La fonction RPC retourne un tableau avec un seul élément
+      const summaryData = data[0] || {
+        budget_total: 0,
+        montant_engage: 0,
+        montant_utilise: 0,
+        solde_disponible: 0,
+        jalons_en_attente: 0
+      };
       
       return {
-        annee,
-        mois,
-        budget_total,
-        montant_engage,
-        montant_utilise,
-        solde_disponible,
-        jalons_en_attente
+        annee: new Date().getFullYear(),
+        mois: new Date().getMonth() + 1,
+        budget_total: Number(summaryData.budget_total) || 0,
+        montant_engage: Number(summaryData.montant_engage) || 0,
+        montant_utilise: Number(summaryData.montant_utilise) || 0,
+        solde_disponible: Number(summaryData.solde_disponible) || 0,
+        jalons_en_attente: Number(summaryData.jalons_en_attente) || 0,
       };
     },
-    refetchInterval: 30000, // Rafraîchir toutes les 30 secondes
+    refetchInterval: 30000, // Actualiser toutes les 30 secondes
   });
 };
 
@@ -170,8 +170,8 @@ export const useHistoriquePaiements = () => {
         date_paiement: item.date_paiement,
         reference_paiement: item.reference_paiement || '',
         type_paiement: item.type_paiement,
-        justificatif_url: undefined, // Champ non encore ajouté à la table
-        statut_justificatif: 'en_attente', // Valeur par défaut
+        justificatif_url: item.justificatif_url,
+        statut_justificatif: item.statut_justificatif || 'en_attente',
         observation: item.observation,
         technicien_nom: item.projet?.utilisateur ? `${item.projet.utilisateur.nom} ${item.projet.utilisateur.prenoms || ''}`.trim() : 'Non assigné',
         nom_projet: item.projet?.titre || 'Projet inconnu'

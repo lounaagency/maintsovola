@@ -1,29 +1,42 @@
 
-import React, { useState } from "react";
+import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { TrendingUp, Calendar } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { useFinancialForecastsData } from "@/hooks/useFinancialForecastsData";
 
 const FinancialForecastChart: React.FC = () => {
-  // Données simulées pour les prévisions
-  const weeklyData = [
-    { periode: "Sem 1", montant_prevu: 850000, montant_engage: 800000, ecart: 50000 },
-    { periode: "Sem 2", montant_prevu: 920000, montant_engage: 950000, ecart: -30000 },
-    { periode: "Sem 3", montant_prevu: 780000, montant_engage: 720000, ecart: 60000 },
-    { periode: "Sem 4", montant_prevu: 1100000, montant_engage: 1050000, ecart: 50000 },
-  ];
+  const { data: forecastData, isLoading } = useFinancialForecastsData();
+  // Utiliser les vraies données de prévision
+  const monthlyData = forecastData || [];
+  
+  // Simuler des données hebdomadaires basées sur les données mensuelles
+  const weeklyData = monthlyData.slice(0, 4).map((item, index) => ({
+    periode: `Sem ${index + 1}`,
+    montant_prevu: Math.round(item.montant_prevu / 4),
+    montant_engage: Math.round(item.montant_engage / 4),
+    ecart: Math.round(item.ecart / 4)
+  }));
 
-  const monthlyData = [
-    { periode: "Jan", montant_prevu: 3200000, montant_engage: 3100000, ecart: 100000 },
-    { periode: "Fév", montant_prevu: 2800000, montant_engage: 2950000, ecart: -150000 },
-    { periode: "Mar", montant_prevu: 3500000, montant_engage: 3300000, ecart: 200000 },
-    { periode: "Avr", montant_prevu: 3100000, montant_engage: 3200000, ecart: -100000 },
-    { periode: "Mai", montant_prevu: 3600000, montant_engage: 3400000, ecart: 200000 },
-    { periode: "Juin", montant_prevu: 3800000, montant_engage: 3750000, ecart: 50000 },
-  ];
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5" />
+            Prévisions Financières
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-80 flex items-center justify-center">
+            <div className="text-muted-foreground">Chargement des prévisions...</div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const formatTooltipValue = (value: number) => formatCurrency(value);
 

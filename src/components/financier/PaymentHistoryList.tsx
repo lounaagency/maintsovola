@@ -21,6 +21,10 @@ const PaymentHistoryList: React.FC<PaymentHistoryListProps> = ({
   historique,
   isLoading
 }) => {
+  const [validationComment, setValidationComment] = useState("");
+  const [selectedPayment, setSelectedPayment] = useState<number | null>(null);
+  const [validationDialogOpen, setValidationDialogOpen] = useState(false);
+
   const { validateJustificatif } = usePaymentActions();
 
   const getStatusBadge = (statut: string) => {

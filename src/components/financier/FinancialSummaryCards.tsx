@@ -4,17 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DollarSign, TrendingUp, AlertCircle, Clock } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
-import { ResumeFinancier } from "@/types/financier";
+import { useFinancialSummaryData } from "@/hooks/useFinancialSummaryData";
 
-interface FinancialSummaryCardsProps {
-  summary: ResumeFinancier | null;
-  isLoading: boolean;
-}
-
-const FinancialSummaryCards: React.FC<FinancialSummaryCardsProps> = ({
-  summary,
-  isLoading
-}) => {
+const FinancialSummaryCards: React.FC = () => {
+  const { data: summary, isLoading } = useFinancialSummaryData();
   if (isLoading) {
     return (
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -60,7 +53,7 @@ const FinancialSummaryCards: React.FC<FinancialSummaryCardsProps> = ({
         <CardContent>
           <div className="text-2xl font-bold">{formatCurrency(summary.budget_total)}</div>
           <p className="text-xs text-muted-foreground">
-            {summary.mois}/{summary.annee}
+            Budget disponible
           </p>
         </CardContent>
       </Card>
@@ -73,7 +66,7 @@ const FinancialSummaryCards: React.FC<FinancialSummaryCardsProps> = ({
         <CardContent>
           <div className="text-2xl font-bold">{formatCurrency(summary.montant_engage)}</div>
           <p className="text-xs text-muted-foreground">
-            {pourcentageUtilise.toFixed(1)}% du budget
+            Engagements en cours
           </p>
         </CardContent>
       </Card>

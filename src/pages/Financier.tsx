@@ -42,10 +42,7 @@ const Financier = () => {
       </div>
 
       {/* Résumé financier */}
-      <FinancialSummaryCards 
-        summary={summary} 
-        isLoading={summaryLoading} 
-      />
+      <FinancialSummaryCards />
 
       <Tabs defaultValue="jalons" className="space-y-4">
         <TabsList>
