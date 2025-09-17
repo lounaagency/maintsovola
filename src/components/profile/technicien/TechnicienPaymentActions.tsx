@@ -44,8 +44,8 @@ const TechnicienPaymentActions: React.FC<TechnicienPaymentActionsProps> = ({
       await requestPayment(jalon.id_jalon_projet, user.id);
       onPaymentRequest?.(jalon.id_jalon_projet);
       
-      // Rafraîchir la page pour voir les changements
-      window.location.reload();
+      // Plus besoin de recharger la page - les données se mettront à jour automatiquement
+      toast.success("Demande de paiement envoyée avec succès");
     } catch (error) {
       console.error('Error requesting payment:', error);
     } finally {
